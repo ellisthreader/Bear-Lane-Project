@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState } from "react";
 import { useDarkMode } from "@/Context/DarkModeContext";
 import { useCart } from "@/Context/CartContext";
 import { Link } from "@inertiajs/react";
@@ -19,39 +19,9 @@ export default function NavMenu() {
   const { toggleCart } = useCart();
 
   const [activeSidebar, setActiveSidebar] = useState<string | null>(null);
-  const [isAnimating, setIsAnimating] = useState(false);
   const [logoGlow, setLogoGlow] = useState(false);
 
-  const hoverTimeout = useRef<NodeJS.Timeout | null>(null);
-
   const categories = ["Women", "Men", "Kids", "Sale"];
-
-  const detectCategory = (event: React.MouseEvent<HTMLDivElement>) => {
-    const el = (event.target as HTMLElement).closest("[data-category]");
-    return el ? el.getAttribute("data-category") : null;
-  };
-
-  const handleNavMouseMove = (event: React.MouseEvent<HTMLDivElement>) => {
-    const category = detectCategory(event);
-    if (!category || isAnimating || category === activeSidebar) return;
-
-    if (hoverTimeout.current) clearTimeout(hoverTimeout.current);
-    hoverTimeout.current = setTimeout(() => {
-      setActiveSidebar(category);
-    }, 120);
-  };
-
-  const handleMouseLeave = () => {
-    if (hoverTimeout.current) clearTimeout(hoverTimeout.current);
-    hoverTimeout.current = setTimeout(() => {
-      setActiveSidebar(null);
-    }, 180);
-  };
-
-  const closeSidebar = () => {
-    if (hoverTimeout.current) clearTimeout(hoverTimeout.current);
-    setActiveSidebar(null);
-  };
 
   const sidebarVariants = {
     hidden: { x: "-100%", opacity: 0 },
@@ -62,20 +32,23 @@ export default function NavMenu() {
   const renderSidebar = () => {
     switch (activeSidebar?.toLowerCase()) {
       case "women":
-        return <WomenSidebar closeSidebar={closeSidebar} />;
+        return <WomenSidebar closeSidebar={() => setActiveSidebar(null)} />;
       case "men":
-        return <MenSidebar closeSidebar={closeSidebar} />;
+        return <MenSidebar closeSidebar={() => setActiveSidebar(null)} />;
       case "kids":
-        return <KidsSidebar closeSidebar={closeSidebar} />;
+        return <KidsSidebar closeSidebar={() => setActiveSidebar(null)} />;
       case "sale":
-        return <SaleSidebar closeSidebar={closeSidebar} />;
+        return <SaleSidebar closeSidebar={() => setActiveSidebar(null)} />;
       default:
         return null;
     }
   };
 
   return (
-    <div className="relative">
+    <div
+      className="relative"
+      onMouseLeave={() => setActiveSidebar(null)} // CLOSE ONLY when leaving entire area
+    >
       <motion.nav
         className="
           relative z-30 w-full
@@ -102,7 +75,6 @@ export default function NavMenu() {
               className={`
                 relative h-[50px] w-[220px]
                 transition-all duration-300
-                logo-glow-hover
                 ${logoGlow ? "logo-neon-glow" : ""}
               `}
             >
@@ -121,13 +93,11 @@ export default function NavMenu() {
               text-[17px] uppercase tracking-wide
               text-black dark:text-gray-200
             "
-            onMouseMove={handleNavMouseMove}
-            onMouseLeave={handleMouseLeave}
           >
             {categories.map((cat) => (
               <div
                 key={cat}
-                data-category={cat}
+                onMouseEnter={() => setActiveSidebar(cat)} // OPEN on hover
                 className="
                   cursor-pointer px-4 py-2
                   transition-all duration-300
@@ -171,22 +141,21 @@ export default function NavMenu() {
       <AnimatePresence>
         {activeSidebar && (
           <>
+            {/* BACKDROP */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 0.5 }}
               exit={{ opacity: 0 }}
-              onClick={closeSidebar}
               className="absolute top-full left-0 w-full h-screen bg-black z-20"
             />
 
+            {/* SIDEBAR PANEL */}
             <motion.div
               variants={sidebarVariants}
               initial="hidden"
               animate="visible"
               exit="exit"
               transition={{ duration: 0.25 }}
-              onAnimationStart={() => setIsAnimating(true)}
-              onAnimationComplete={() => setIsAnimating(false)}
               className="
                 absolute top-full left-0
                 w-[35%] h-screen

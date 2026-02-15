@@ -18,6 +18,7 @@ The project emphasises usability, responsiveness and clean UI structure.
 - Interactive UI elements
 - Clean component-based styling using Tailwind CSS
 - Optimised performance and fast loading
+- Easy to use admin interface
 
 ---
 
@@ -46,10 +47,10 @@ Example:
 ## 🎥 Demo
 
 If deployed:
-[Live Demo](https://your-live-link.com)
+[Front Page](https://youtu.be/lqXdlYeijcA)
 
 If video demo:
-[Watch Demo Video](https://your-video-link.com)
+[Embroidery Designer](https://youtu.be/U65KJfSCV0M)
 
 ---
 
