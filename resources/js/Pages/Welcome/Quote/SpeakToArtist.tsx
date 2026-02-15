@@ -1,92 +1,199 @@
+"use client";
+
 import React, { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Check, X } from "lucide-react";
+import LuxuryPhoneInput from "@/Components/LuxuryPhoneInput";
 
 export default function SpeakToArtist() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [projectType, setProjectType] = useState("Business Uniform");
-  const [quantity, setQuantity] = useState("");
+  const [phone, setPhone] = useState(""); // always string
   const [budget, setBudget] = useState("");
   const [details, setDetails] = useState("");
+  const [files, setFiles] = useState<File[]>([]);
+  const [previews, setPreviews] = useState<string[]>([]);
+  const [submitted, setSubmitted] = useState(false);
+
+  const [touchedPhone, setTouchedPhone] = useState(false);
+
+  const gold = "#C9A24D";
+  const maxCharacters = 1000;
+
+  // Email validation
+  const isEmailValid = (email: string) =>
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+  // Phone validation: only show error if touched
+  const isPhoneValid = phone.trim().length > 6 || !touchedPhone;
+
+  // Form validation
+  const isFormValid =
+    name.trim().length > 0 &&
+    isEmailValid(email) &&
+    phone.trim().length > 6 &&
+    details.trim().length > 0;
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files) return;
+    const selectedFiles = Array.from(e.target.files);
+    setFiles((prev) => [...prev, ...selectedFiles]);
+    const newPreviews = selectedFiles.map((file) => URL.createObjectURL(file));
+    setPreviews((prev) => [...prev, ...newPreviews]);
+  };
+
+  const removeImage = (index: number) => {
+    const updatedFiles = [...files];
+    const updatedPreviews = [...previews];
+    URL.revokeObjectURL(updatedPreviews[index]);
+    updatedFiles.splice(index, 1);
+    updatedPreviews.splice(index, 1);
+    setFiles(updatedFiles);
+    setPreviews(updatedPreviews);
+  };
 
   const handleSubmit = () => {
-    alert("Your request has been sent! Our embroidery artist will contact you shortly.");
+    if (!isFormValid) return;
+
+    setSubmitted(true);
+    setTimeout(() => setSubmitted(false), 2500);
+
+    console.log({ name, email, phone, budget, details, files });
   };
 
   return (
-    <div>
-      <h1 className="text-4xl font-extrabold text-center mb-8">
+    <div className="bg-white px-4 md:px-0 pt-10 pb-20 max-w-4xl mx-auto">
+      <h1 className="text-4xl font-extrabold text-gray-900 text-center mb-12">
         Speak to an Embroidery Artist
       </h1>
 
-      <div className="space-y-6">
+      <AnimatePresence mode="wait">
+        {!submitted ? (
+          <motion.div
+            key="form"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.45 }}
+            className="space-y-6"
+          >
+            {/* NAME */}
+            <input
+              type="text"
+              placeholder="Full Name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full rounded-xl border border-gray-200 px-5 py-4 focus:outline-none focus:ring-2 focus:ring-[#C9A24D]"
+            />
 
-        <input
-          type="text"
-          placeholder="Full Name"
-          className="w-full border p-3 rounded-xl"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
+            {/* EMAIL */}
+            <input
+              type="email"
+              placeholder="Email Address"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full rounded-xl border border-gray-200 px-5 py-4 focus:outline-none focus:ring-2 focus:ring-[#C9A24D]"
+            />
 
-        <input
-          type="email"
-          placeholder="Email Address"
-          className="w-full border p-3 rounded-xl"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
+            {/* PHONE */}
+            <LuxuryPhoneInput
+              value={phone}
+              onChange={(v) => setPhone(v || "")}
+              required
+              onBlur={() => setTouchedPhone(true)}
+            />
 
-        <input
-          type="tel"
-          placeholder="Phone Number"
-          className="w-full border p-3 rounded-xl"
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-        />
+            {/* BUDGET */}
+            <input
+              type="text"
+              placeholder="Estimated Budget (£)"
+              value={budget}
+              onChange={(e) => setBudget(e.target.value)}
+              className="w-full rounded-xl border border-gray-200 px-5 py-4 focus:outline-none focus:ring-2 focus:ring-[#C9A24D]"
+            />
 
-        <select
-          className="w-full border p-3 rounded-xl"
-          value={projectType}
-          onChange={(e) => setProjectType(e.target.value)}
-        >
-          <option>Business Uniform</option>
-          <option>School Uniform</option>
-          <option>Sports Team</option>
-          <option>Custom Fashion</option>
-          <option>Other</option>
-        </select>
+            {/* DETAILS */}
+            <div>
+              <textarea
+                maxLength={maxCharacters}
+                placeholder="Describe your design in detail..."
+                value={details}
+                onChange={(e) => setDetails(e.target.value)}
+                className="w-full rounded-2xl border border-gray-200 px-5 py-4 h-40 focus:outline-none focus:ring-2 focus:ring-[#C9A24D]"
+              />
+              <div className="text-right text-sm text-gray-500 mt-1">
+                {details.length}/{maxCharacters} characters
+              </div>
+            </div>
 
-        <input
-          type="number"
-          placeholder="Estimated Quantity"
-          className="w-full border p-3 rounded-xl"
-          value={quantity}
-          onChange={(e) => setQuantity(e.target.value)}
-        />
+            {/* IMAGE PREVIEW */}
+            {previews.length > 0 && (
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
+                {previews.map((src, index) => (
+                  <div
+                    key={index}
+                    className="relative aspect-square rounded-lg overflow-hidden border border-gray-200 group"
+                  >
+                    <img
+                      src={src}
+                      alt={`Upload ${index}`}
+                      className="w-full h-full object-cover"
+                    />
+                    <button
+                      onClick={() => removeImage(index)}
+                      className="absolute top-1 right-1 bg-white/90 p-1 rounded-full shadow opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
 
-        <input
-          type="text"
-          placeholder="Estimated Budget (£)"
-          className="w-full border p-3 rounded-xl"
-          value={budget}
-          onChange={(e) => setBudget(e.target.value)}
-        />
+            {/* FILE UPLOAD */}
+            <label className="flex items-center justify-center gap-2 border-2 border-dashed border-gray-300 rounded-2xl py-6 cursor-pointer hover:border-[#C9A24D] transition-colors">
+              <span className="text-gray-600">Upload Reference Images</span>
+              <input
+                type="file"
+                multiple
+                accept="image/*"
+                onChange={handleFileChange}
+                className="hidden"
+              />
+            </label>
 
-        <textarea
-          placeholder="Describe your design in detail (placement, colours, stitching type, deadline etc.)"
-          className="w-full border p-3 rounded-xl h-32"
-          value={details}
-          onChange={(e) => setDetails(e.target.value)}
-        />
-
-        <button
-          onClick={handleSubmit}
-          className="w-full bg-black text-white py-3 rounded-xl font-semibold hover:opacity-90 transition"
-        >
-          Request Detailed Quote
-        </button>
-      </div>
+            {/* SUBMIT */}
+            <button
+              onClick={handleSubmit}
+              disabled={!isFormValid}
+              className={`w-full py-5 rounded-2xl text-white font-semibold transition-all duration-200 ${
+                !isFormValid ? "opacity-60 cursor-not-allowed" : "hover:scale-[1.02]"
+              }`}
+              style={{ backgroundColor: gold }}
+            >
+              Request Detailed Quote
+            </button>
+          </motion.div>
+        ) : (
+          <motion.div
+            key="success"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5 }}
+            className="flex flex-col items-center justify-center py-28"
+          >
+            <div className="bg-[#C9A24D] text-white rounded-full p-5 mb-5 shadow-lg">
+              <Check size={36} />
+            </div>
+            <h3 className="text-2xl font-semibold text-gray-900 mb-3 text-center">
+              Request Sent
+            </h3>
+            <p className="text-gray-600 text-center max-w-md">
+              Thank you. Our embroidery artist will contact you shortly.
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -18,9 +18,10 @@ class QuoteController extends Controller
             'email' => 'required|email',
             'items' => 'required|array|min:1',
             'total' => 'required|numeric',
+            'quoteNumber' => 'required|numeric', // Added validation for quote number
         ]);
 
-        $data = $request->only(['name', 'email', 'items', 'total']);
+        $data = $request->only(['name', 'email', 'items', 'total', 'quoteNumber']);
 
         $data['items'] = array_map(function ($item) {
             return [
@@ -41,7 +42,7 @@ class QuoteController extends Controller
                 $message->html($this->generateQuoteHtml($data));
             });
 
-            Log::info('Quote email sent successfully', ['email' => $data['email']]);
+            Log::info('Quote email sent successfully', ['email' => $data['email'], 'quoteNumber' => $data['quoteNumber']]);
 
             return response()->json(['message' => 'Quote sent successfully']);
 
@@ -87,9 +88,13 @@ class QuoteController extends Controller
                      style='max-width: 150px;'>
             </div>
 
-            <h2 style='color: #C9A24D; text-align: center; margin-bottom: 20px;'>
+            <h2 style='color: #C9A24D; text-align: center; margin-bottom: 10px;'>
                 Hello {$data['name']},
             </h2>
+
+            <p style='font-size: 14px; text-align: center; font-weight: bold; color: #555; margin-bottom: 30px;'>
+                Quote #: {$data['quoteNumber']}
+            </p>
 
             <p style='font-size: 16px; text-align: center; margin-bottom: 30px;'>
                 Thank you for requesting a quote! Here’s a summary of your selected items:
@@ -119,7 +124,7 @@ class QuoteController extends Controller
                 Prices are subject to change until confirmed.<br><br>
                 Best regards,<br>
                 <span style='color: #C9A24D; font-weight: bold;'>
-                    Your Company Name
+                    Bear Lane Team
                 </span>
             </p>
         </div>

@@ -1,8 +1,6 @@
 type Props = {
   designType?: string;
   setDesignType: (v: string) => void;
-  size?: string;
-  setSize: (v: string) => void;
   onBack: () => void;
   onAdd: () => void;
 };
@@ -10,16 +8,13 @@ type Props = {
 export default function EmbroideryStep({
   designType = "",
   setDesignType,
-  size = "",
-  setSize,
   onBack,
   onAdd,
 }: Props) {
   const gold = "#C9A24D";
 
   const isValid =
-    designType && designType.trim() !== "" &&
-    size && size.trim() !== "";
+    designType && designType.trim() !== "";
 
   const embroideryOptions = [
     { name: "Logo", image: "/images/embroidery/logo.png" },
@@ -28,13 +23,6 @@ export default function EmbroideryStep({
     { name: "Personalised Text", image: "/images/embroidery/text.png" },
     { name: "Event / Team Branding", image: "/images/embroidery/teambranding.png" },
     { name: "Image & Text", image: "/images/embroidery/imagetext.png" },
-  ];
-
-  const sizeOptions = [
-    { label: "Small (5cm)", value: "Small" },
-    { label: "Medium (10cm)", value: "Medium" },
-    { label: "Large (15cm)", value: "Large" },
-    { label: "Extra Large (20cm)", value: "XL" },
   ];
 
   return (
@@ -61,7 +49,6 @@ export default function EmbroideryStep({
               type="button"
               onClick={() => {
                 setDesignType(option.name);
-                setSize(""); // reset size when changing design
               }}
               className="rounded-2xl border transition-all duration-300 text-left overflow-hidden"
               style={{
@@ -69,14 +56,13 @@ export default function EmbroideryStep({
                 boxShadow: selected ? `0 0 0 2px ${gold}20` : "none",
               }}
             >
-                  <div className="aspect-[5/4] bg-gray-100 overflow-hidden">
-
-                    <img
-                      src={option.image}
-                      alt={option.name}
-                      className="w-full h-full object-contain p-0 scale-105 hover:scale-110 transition-transform duration-500"
-                    />
-                  </div>
+              <div className="aspect-[5/4] bg-gray-100 overflow-hidden">
+                <img
+                  src={option.image}
+                  alt={option.name}
+                  className="w-full h-full object-contain p-0 scale-105 hover:scale-110 transition-transform duration-500"
+                />
+              </div>
 
               <div className="p-4">
                 <p
@@ -90,37 +76,6 @@ export default function EmbroideryStep({
           );
         })}
       </div>
-
-      {/* SIZE SELECTOR */}
-      {designType !== "" && (
-        <div className="mb-14">
-          <h3 className="text-lg font-semibold mb-6 text-gray-900">
-            Select Embroidery Size
-          </h3>
-
-          <div className="flex flex-wrap gap-4">
-            {sizeOptions.map((s) => {
-              const selected = size === s.value;
-
-              return (
-                <button
-                  key={s.value}
-                  type="button"
-                  onClick={() => setSize(s.value)}
-                  className="px-6 py-3 rounded-full border font-medium transition-all duration-300"
-                  style={{
-                    borderColor: selected ? gold : "#E5E7EB",
-                    backgroundColor: selected ? gold : "white",
-                    color: selected ? "white" : "#374151",
-                  }}
-                >
-                  {s.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
 
       {/* BUTTONS */}
       <div className="flex flex-col md:flex-row gap-5">
