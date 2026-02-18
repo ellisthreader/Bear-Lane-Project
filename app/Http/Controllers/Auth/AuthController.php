@@ -61,8 +61,6 @@ class AuthController extends Controller
 
             if (Auth::user()->is_admin) {
                 Log::info("AuthController: Admin logged in.", ['email' => $email]);
-                
-                // ✅ Correct redirect, no double /admin/admin
                 return redirect('/admin/dashboard');
             }
 
@@ -136,5 +134,29 @@ class AuthController extends Controller
         }
 
         return back()->withErrors(['email' => 'Invalid or expired link.']);
+    }
+
+    // -----------------------
+    // CHECK EMAIL
+    // -----------------------
+    public function checkEmail(Request $request)
+    {
+        $request->validate(['email' => 'required|email']);
+
+        $exists = User::where('email', $request->email)->exists();
+
+        // Optional: Suggest usernames based on email prefix if taken
+        $suggestions = [];
+        if ($exists) {
+            $prefix = explode('@', $request->email)[0];
+            for ($i = 1; $i <= 3; $i++) {
+                $suggestions[] = $prefix . $i;
+            }
+        }
+
+        return response()->json([
+            'exists' => $exists,
+            'suggestions' => $suggestions,
+        ]);
     }
 }

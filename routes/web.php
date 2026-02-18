@@ -17,6 +17,7 @@ use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\Admin\ProductController as AdminProductController;
 use App\Http\Controllers\DesignController;
 use App\Http\Controllers\ProductSearchController;
+use App\Http\Controllers\Auth\OAuthController;
 
 /*
 |--------------------------------------------------------------------------
@@ -32,9 +33,9 @@ Route::get('/menu/categories', function () {
 
         if (!$root) {
             $response[$main] = [
-                'topLevel'     => [['title' => ucfirst($main)]],
-                'links'        => [],
-                'subcategories'=> [],
+                'topLevel'      => [['title' => ucfirst($main)]],
+                'links'         => [],
+                'subcategories' => [],
             ];
             continue;
         }
@@ -49,8 +50,8 @@ Route::get('/menu/categories', function () {
         }
 
         $response[$main] = [
-            'topLevel' => [['title' => ucfirst($main)]],
-            'links'    => $levelOne->map(fn($c) => [
+            'topLevel'      => [['title' => ucfirst($main)]],
+            'links'         => $levelOne->map(fn($c) => [
                 'key'  => strtolower($c->slug),
                 'name' => $c->name,
             ]),
@@ -104,7 +105,7 @@ Route::get('/category/{slug}', [CategoryController::class, 'show'])
 
 /*
 |--------------------------------------------------------------------------
-| CATEGORY SEARCH (NEW)
+| CATEGORY SEARCH
 |--------------------------------------------------------------------------
 */
 Route::get('/search-categories', [ProductSearchController::class, 'searchCategories'])
@@ -167,10 +168,15 @@ Route::post('/reset-password', [AuthController::class, 'resetPassword'])->name('
 |--------------------------------------------------------------------------
 */
 Route::middleware('auth')->group(function () {
-    Route::get('/profile', fn() => redirect()->route('profile.edit'));
+    // Profile page
+    Route::get('/profile', [ProfileController::class, 'index'])->name('profile.index'); 
+    // Edit profile page
     Route::get('/profile/edit', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::post('/profile/update', [ProfileController::class, 'update'])->name('profile.update.custom');
+    // Update profile
+    Route::post('/profile/update', [ProfileController::class, 'update'])->name('profile.update');
+    // Generate avatar
     Route::post('/profile/generate-avatar', [ProfileController::class, 'generateRandomAvatar'])->name('profile.generate-avatar');
+    // Delete account
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
@@ -271,7 +277,6 @@ Route::get('/design/{slug}', [DesignController::class, 'show'])->name('design.sh
 Route::get('/design/change-product/{product}', [DesignController::class, 'changeProduct'])
      ->name('design.changeProduct');
 
-
 /*
 |--------------------------------------------------------------------------
 | CATEGORY PRODUCTS PAGE
@@ -279,3 +284,12 @@ Route::get('/design/change-product/{product}', [DesignController::class, 'change
 */
 Route::get('/category-products/{slug}', [ProductController::class, 'categoryProducts'])
      ->name('category.products');
+
+// -- Sign in with google / apple (OAuth)
+Route::get('/auth/google', [OAuthController::class, 'redirectToGoogle'])->name('auth.google');
+Route::get('/auth/google/callback', [OAuthController::class, 'handleGoogleCallback']);
+
+Route::get('/auth/apple', [OAuthController::class, 'redirectToApple'])->name('auth.apple');
+Route::get('/auth/apple/callback', [OAuthController::class, 'handleAppleCallback']);
+
+Route::post('/check-email', [AuthController::class, 'checkEmail']);

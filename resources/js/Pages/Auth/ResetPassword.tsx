@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { router } from "@inertiajs/react";
+import { CheckCircleIcon, XCircleIcon } from "@heroicons/react/24/solid";
 
 export default function ResetPassword() {
-  // Extract token from path
   const pathParts = window.location.pathname.split("/");
   const token = pathParts[pathParts.length - 1];
 
-  // Extract email from query string
   const query = new URLSearchParams(window.location.search);
   const email = query.get("email") || "";
 
@@ -22,6 +21,8 @@ export default function ResetPassword() {
     special: false,
   });
 
+  const gold = "#C6A75E";
+
   useEffect(() => {
     setPasswordCriteria({
       length: password.length >= 8,
@@ -33,7 +34,7 @@ export default function ResetPassword() {
 
   if (!token || !email) {
     return (
-      <div className="text-red-500 p-4 text-center">
+      <div className="text-red-500 p-4 text-center text-lg font-semibold">
         Invalid or expired link.
       </div>
     );
@@ -71,7 +72,6 @@ export default function ResetPassword() {
       setStatus("Password reset successfully! Redirecting to login...");
       setErrors({});
 
-      // Redirect with Inertia after 2s
       setTimeout(() => {
         router.visit("/login");
       }, 2000);
@@ -84,67 +84,80 @@ export default function ResetPassword() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900">
-      <div className="max-w-md w-full p-6 bg-white dark:bg-gray-800 rounded-xl shadow-md">
-        <h2 className="text-2xl font-bold mb-4 text-center text-gray-900 dark:text-gray-100">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-6 py-12">
+      <div className="w-full max-w-2xl bg-white rounded-3xl shadow-[0_25px_80px_rgba(0,0,0,0.08)] border border-[#EFE3C3] p-16 flex flex-col">
+        <h2 className="text-3xl font-semibold text-center text-gray-900 mb-8">
           Reset Password
         </h2>
 
+        {/* Success Notification */}
         {status && (
-          <div className="bg-green-100 text-green-800 px-4 py-3 rounded mb-4 flex items-center justify-center">
-            <span className="mr-2">✅</span>
-            {status}
+          <div className="flex items-center gap-4 bg-green-50 border border-green-200 rounded-2xl p-5 mb-8 shadow-md">
+            <CheckCircleIcon className="w-8 h-8 text-green-600 flex-shrink-0" />
+            <p className="text-green-800 font-medium text-lg">{status}</p>
           </div>
         )}
 
+        {/* Error Notification */}
         {errors.general && (
-          <div className="bg-red-100 text-red-800 px-4 py-3 rounded mb-4 text-center">
-            {errors.general}
+          <div className="flex items-center gap-4 bg-red-50 border border-red-200 rounded-2xl p-5 mb-8 shadow-md">
+            <XCircleIcon className="w-8 h-8 text-red-600 flex-shrink-0" />
+            <p className="text-red-800 font-medium text-lg">{errors.general}</p>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-8">
           <div>
-            <label className="block text-gray-700 dark:text-gray-200 mb-1">
+            <label className="block text-gray-700 font-medium mb-3 text-xl">
               New Password
             </label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3 py-2 border rounded-md dark:bg-gray-700 dark:text-gray-100"
+              className="w-full rounded-2xl border border-gray-200 px-6 py-6 text-gray-900 text-lg focus:outline-none focus:ring-2 focus:ring-[#C6A75E] transition-all duration-200"
+              placeholder="Enter new password"
               required
             />
+            <ul className="text-base text-gray-500 mt-3 space-y-1">
+              <li
+                className={passwordCriteria.length ? "text-green-600 font-semibold" : ""}
+              >
+                • At least 8 characters
+              </li>
+              <li
+                className={passwordCriteria.uppercase ? "text-green-600 font-semibold" : ""}
+              >
+                • Contains uppercase letter
+              </li>
+              <li
+                className={passwordCriteria.number ? "text-green-600 font-semibold" : ""}
+              >
+                • Contains a number
+              </li>
+              <li
+                className={passwordCriteria.special ? "text-green-600 font-semibold" : ""}
+              >
+                • Contains special character
+              </li>
+            </ul>
           </div>
 
-          <ul className="text-sm text-gray-500 dark:text-gray-300 mb-2">
-            <li className={passwordCriteria.length ? "text-green-600" : ""}>
-              • At least 8 characters
-            </li>
-            <li className={passwordCriteria.uppercase ? "text-green-600" : ""}>
-              • Contains uppercase letter
-            </li>
-            <li className={passwordCriteria.number ? "text-green-600" : ""}>
-              • Contains a number
-            </li>
-            <li className={passwordCriteria.special ? "text-green-600" : ""}>
-              • Contains special character
-            </li>
-          </ul>
-
           <div>
-            <label className="block text-gray-700 dark:text-gray-200 mb-1">
+            <label className="block text-gray-700 font-medium mb-3 text-xl">
               Confirm Password
             </label>
             <input
               type="password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full px-3 py-2 border rounded-md dark:bg-gray-700 dark:text-gray-100"
+              className="w-full rounded-2xl border border-gray-200 px-6 py-6 text-gray-900 text-lg focus:outline-none focus:ring-2 focus:ring-[#C6A75E] transition-all duration-200"
+              placeholder="Confirm new password"
               required
             />
             {errors.confirmPassword && (
-              <p className="text-red-500 text-sm mt-1">
+              <p className="text-red-600 font-medium text-base mt-2 flex items-center gap-2">
+                <XCircleIcon className="w-5 h-5 text-red-600" />
                 {errors.confirmPassword}
               </p>
             )}
@@ -152,7 +165,8 @@ export default function ResetPassword() {
 
           <button
             type="submit"
-            className="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-md"
+            className="w-full py-6 text-white font-semibold text-lg rounded-2xl transition-all duration-300 shadow-md hover:shadow-lg"
+            style={{ background: gold }}
           >
             Reset Password
           </button>

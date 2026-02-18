@@ -18,7 +18,7 @@ class UnsplashService
 
         $response = Http::get("{$this->baseUrl}/search/photos", [
             'client_id' => config('services.unsplash.access_key'),
-            'query'     => 'beautiful animal',
+            'query'     => 'beautiful bears',
             'order_by'  => 'popular',
             'per_page'  => 30,
             'orientation' => 'squarish',

@@ -3,63 +3,141 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Check, X } from "lucide-react";
+import { isValidPhoneNumber } from "react-phone-number-input";
 import LuxuryPhoneInput from "@/Components/LuxuryPhoneInput";
 
 export default function SpeakToArtist() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState(""); // always string
+  const [phone, setPhone] = useState("");
   const [budget, setBudget] = useState("");
   const [details, setDetails] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
   const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
+  const [touchedEmail, setTouchedEmail] = useState(false);
   const [touchedPhone, setTouchedPhone] = useState(false);
 
   const gold = "#C9A24D";
   const maxCharacters = 1000;
 
-  // Email validation
-  const isEmailValid = (email: string) =>
-    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  /* ---------------- EMAIL VALIDATION ---------------- */
 
-  // Phone validation: only show error if touched
-  const isPhoneValid = phone.trim().length > 6 || !touchedPhone;
+  const isEmailValid = (email: string) => {
+    const strictRegex =
+      /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[A-Za-z]{2,}$/;
+    return strictRegex.test(email.trim());
+  };
 
-  // Form validation
+  const emailValid = !touchedEmail || isEmailValid(email);
+
+  /* ---------------- PHONE VALIDATION ---------------- */
+
+  const isPhoneValid =
+    !touchedPhone ||
+    (phone.length > 5 && isValidPhoneNumber(phone));
+
+  /* ---------------- BUDGET HANDLER ---------------- */
+
+  const handleBudgetChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value;
+    const numeric = value.replace(/\D/g, "");
+
+    if (!numeric) {
+      setBudget("");
+      return;
+    }
+
+    setBudget("£" + numeric);
+  };
+
+  /* ---------------- FORM VALIDATION ---------------- */
+
   const isFormValid =
     name.trim().length > 0 &&
     isEmailValid(email) &&
-    phone.trim().length > 6 &&
+    phone.length > 5 &&
+    isValidPhoneNumber(phone) &&
     details.trim().length > 0;
+
+  /* ---------------- FILE HANDLING ---------------- */
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return;
+
     const selectedFiles = Array.from(e.target.files);
+
     setFiles((prev) => [...prev, ...selectedFiles]);
-    const newPreviews = selectedFiles.map((file) => URL.createObjectURL(file));
+
+    const newPreviews = selectedFiles.map((file) =>
+      URL.createObjectURL(file)
+    );
+
     setPreviews((prev) => [...prev, ...newPreviews]);
   };
 
   const removeImage = (index: number) => {
     const updatedFiles = [...files];
     const updatedPreviews = [...previews];
+
     URL.revokeObjectURL(updatedPreviews[index]);
+
     updatedFiles.splice(index, 1);
     updatedPreviews.splice(index, 1);
+
     setFiles(updatedFiles);
     setPreviews(updatedPreviews);
   };
 
-  const handleSubmit = () => {
-    if (!isFormValid) return;
+  /* ---------------- SUBMIT ---------------- */
+
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost";
+
+const handleSubmit = async () => {
+  if (!isFormValid) return;
+
+  setLoading(true);
+  setError("");
+
+  const formData = new FormData();
+  formData.append("name", name);
+  formData.append("email", email);
+  formData.append("phone", phone);
+  formData.append("budget", budget);
+  formData.append("details", details);
+  files.forEach((file) => formData.append("images[]", file));
+
+  try {
+    const response = await fetch(`${API_URL}/api/quote-request`, {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!response.ok) throw new Error("Submission failed");
 
     setSubmitted(true);
+    setName("");
+    setEmail("");
+    setPhone("");
+    setBudget("");
+    setDetails("");
+    setFiles([]);
+    setPreviews([]);
     setTimeout(() => setSubmitted(false), 2500);
 
-    console.log({ name, email, phone, budget, details, files });
-  };
+  } catch (err) {
+    console.error(err);
+    setError("Something went wrong. Please try again.");
+  } finally {
+    setLoading(false);
+  }
+};
+
+
+
 
   return (
     <div className="bg-white px-4 md:px-0 pt-10 pb-20 max-w-4xl mx-auto">
@@ -77,7 +155,6 @@ export default function SpeakToArtist() {
             transition={{ duration: 0.45 }}
             className="space-y-6"
           >
-            {/* NAME */}
             <input
               type="text"
               placeholder="Full Name"
@@ -86,33 +163,41 @@ export default function SpeakToArtist() {
               className="w-full rounded-xl border border-gray-200 px-5 py-4 focus:outline-none focus:ring-2 focus:ring-[#C9A24D]"
             />
 
-            {/* EMAIL */}
-            <input
-              type="email"
-              placeholder="Email Address"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-xl border border-gray-200 px-5 py-4 focus:outline-none focus:ring-2 focus:ring-[#C9A24D]"
-            />
+            <div>
+              <input
+                type="email"
+                placeholder="Email Address"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                onBlur={() => setTouchedEmail(true)}
+                className={`w-full rounded-xl border px-5 py-4 focus:outline-none focus:ring-2 ${
+                  !emailValid
+                    ? "border-red-400 ring-red-200 focus:ring-red-200"
+                    : "border-gray-200 focus:ring-[#C9A24D]"
+                }`}
+              />
+              {!emailValid && (
+                <p className="text-red-500 text-sm mt-1">
+                  Please enter a valid email address.
+                </p>
+              )}
+            </div>
 
-            {/* PHONE */}
             <LuxuryPhoneInput
               value={phone}
-              onChange={(v) => setPhone(v || "")}
+              onChange={(v) => setPhone(v)}
               required
               onBlur={() => setTouchedPhone(true)}
             />
 
-            {/* BUDGET */}
             <input
               type="text"
-              placeholder="Estimated Budget (£)"
+              placeholder="Estimated Budget"
               value={budget}
-              onChange={(e) => setBudget(e.target.value)}
+              onChange={handleBudgetChange}
               className="w-full rounded-xl border border-gray-200 px-5 py-4 focus:outline-none focus:ring-2 focus:ring-[#C9A24D]"
             />
 
-            {/* DETAILS */}
             <div>
               <textarea
                 maxLength={maxCharacters}
@@ -122,11 +207,10 @@ export default function SpeakToArtist() {
                 className="w-full rounded-2xl border border-gray-200 px-5 py-4 h-40 focus:outline-none focus:ring-2 focus:ring-[#C9A24D]"
               />
               <div className="text-right text-sm text-gray-500 mt-1">
-                {details.length}/{maxCharacters} characters
+                {details.length}/{maxCharacters}
               </div>
             </div>
 
-            {/* IMAGE PREVIEW */}
             {previews.length > 0 && (
               <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
                 {previews.map((src, index) => (
@@ -150,9 +234,10 @@ export default function SpeakToArtist() {
               </div>
             )}
 
-            {/* FILE UPLOAD */}
             <label className="flex items-center justify-center gap-2 border-2 border-dashed border-gray-300 rounded-2xl py-6 cursor-pointer hover:border-[#C9A24D] transition-colors">
-              <span className="text-gray-600">Upload Reference Images</span>
+              <span className="text-gray-600">
+                Upload Reference Images
+              </span>
               <input
                 type="file"
                 multiple
@@ -162,16 +247,21 @@ export default function SpeakToArtist() {
               />
             </label>
 
-            {/* SUBMIT */}
+            {error && (
+              <p className="text-red-500 text-center">{error}</p>
+            )}
+
             <button
               onClick={handleSubmit}
-              disabled={!isFormValid}
+              disabled={!isFormValid || loading}
               className={`w-full py-5 rounded-2xl text-white font-semibold transition-all duration-200 ${
-                !isFormValid ? "opacity-60 cursor-not-allowed" : "hover:scale-[1.02]"
+                !isFormValid || loading
+                  ? "opacity-60 cursor-not-allowed"
+                  : "hover:scale-[1.02]"
               }`}
               style={{ backgroundColor: gold }}
             >
-              Request Detailed Quote
+              {loading ? "Submitting..." : "Request Detailed Quote"}
             </button>
           </motion.div>
         ) : (

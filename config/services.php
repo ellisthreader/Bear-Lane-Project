@@ -8,9 +8,8 @@ return [
     |--------------------------------------------------------------------------
     |
     | This file is for storing the credentials for third party services such
-    | as Mailgun, Postmark, AWS and more. This file provides the de facto
-    | location for this type of information, allowing packages to have
-    | a conventional file to locate the various service credentials.
+    | as Mailgun, Postmark, AWS, Stripe, OAuth providers, and more. This file
+    | provides a conventional location for packages to locate credentials.
     |
     */
 
@@ -54,6 +53,21 @@ return [
     // ---------------------------
     'shippo' => [
         'token' => env('SHIPPO_TOKEN'),
+    ],
+
+    // ---------------------------
+    // OAuth Providers
+    // ---------------------------
+    'google' => [
+        'client_id' => env('GOOGLE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+        'redirect' => env('GOOGLE_REDIRECT_URI'), // e.g., https://yourapp.com/auth/google/callback
+    ],
+
+    'apple' => [
+        'client_id' => env('APPLE_CLIENT_ID'),
+        'client_secret' => env('APPLE_CLIENT_SECRET'),
+        'redirect' => env('APPLE_REDIRECT_URI'), // e.g., https://yourapp.com/auth/apple/callback
     ],
 
 ];

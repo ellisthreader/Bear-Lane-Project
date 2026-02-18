@@ -33,23 +33,10 @@ The project emphasises usability, responsiveness and clean UI structure.
 
 ---
 
-## 📸 Screenshots
-
-_Add screenshots here_
-
-Example:
-
-![Homepage](assets/homepage.png)
-![Customiser](assets/customiser.png)
-
----
-
 ## 🎥 Demo
 
-If deployed:
 [Front Page](https://youtu.be/lqXdlYeijcA)
 
-If video demo:
 [Embroidery Designer](https://youtu.be/U65KJfSCV0M)
 
 ---
@@ -67,5 +54,5 @@ If video demo:
 ## 📌 Author
 
 Ellis Threader  
-Chelmsford, Essex  
+Essex, UK
 Aspiring Software Developer

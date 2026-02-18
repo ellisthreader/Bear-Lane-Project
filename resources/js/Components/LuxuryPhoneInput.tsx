@@ -1,17 +1,26 @@
 import React, { useState, useRef, useEffect } from "react";
-import PhoneInput, { getCountries, getCountryCallingCode, isValidPhoneNumber } from "react-phone-number-input";
+import {
+  getCountries,
+  getCountryCallingCode,
+  isValidPhoneNumber,
+} from "react-phone-number-input";
 import en from "react-phone-number-input/locale/en.json";
 import ReactCountryFlag from "react-country-flag";
 import "react-phone-number-input/style.css";
 
 type Props = {
-  value: string;                  // digits only
+  value: string; // full number including +countrycode
   onChange: (value: string) => void;
   required?: boolean;
   onBlur?: () => void;
 };
 
-export default function LuxuryPhoneInput({ value, onChange, required = false, onBlur }: Props) {
+export default function LuxuryPhoneInput({
+  value,
+  onChange,
+  required = false,
+  onBlur,
+}: Props) {
   const [selectedCountry, setSelectedCountry] = useState<string>("GB");
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -24,18 +33,41 @@ export default function LuxuryPhoneInput({ value, onChange, required = false, on
     en[country].toLowerCase().includes(search.toLowerCase())
   );
 
-  // Build full number for validation
-  const fullNumber = `+${getCountryCallingCode(selectedCountry)}${value}`;
-  const isValid = !touched || (value.length > 0 && isValidPhoneNumber(fullNumber));
+  const callingCode = `+${getCountryCallingCode(selectedCountry)}`;
+
+  // Ensure phone always starts with country code
+  useEffect(() => {
+    if (!value.startsWith(callingCode)) {
+      onChange(callingCode);
+    }
+  }, [selectedCountry]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let input = e.target.value;
+
+    // Prevent deleting country code
+    if (!input.startsWith(callingCode)) {
+      input = callingCode;
+    }
+
+    onChange(input);
+  };
+
+  const isValid =
+    !touched || (value.length > callingCode.length && isValidPhoneNumber(value));
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
         setOpen(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    return () =>
+      document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   return (
@@ -47,26 +79,28 @@ export default function LuxuryPhoneInput({ value, onChange, required = false, on
             : "border-gray-200 hover:border-[#C9A24D]/50 focus-within:ring-2 focus-within:ring-[#C9A24D]"
         }`}
       >
-        {/* COUNTRY SELECTOR */}
+        {/* FLAG ONLY */}
         <button
           type="button"
           onClick={() => setOpen(!open)}
-          className="flex items-center gap-2 pr-3 border-r border-gray-200"
+          className="flex items-center pr-3 border-r border-gray-200"
         >
-          <ReactCountryFlag countryCode={selectedCountry} svg style={{ width: "1.5em", height: "1.5em" }} />
-          <span className="text-sm font-medium text-gray-700">
-            +{getCountryCallingCode(selectedCountry)}
-          </span>
+          <ReactCountryFlag
+            countryCode={selectedCountry}
+            svg
+            style={{ width: "1.6em", height: "1.6em" }}
+          />
         </button>
 
-        {/* PHONE INPUT */}
-        <PhoneInput
-          country={selectedCountry}
-          international={false}   // ✅ national mode (removes + in input)
+        {/* PHONE INPUT WITH COUNTRY CODE PREFIX */}
+        <input
+          type="tel"
           value={value}
-          onChange={(v) => onChange(v || "")}
-          countrySelectComponent={() => null}
-          onBlur={() => { setTouched(true); onBlur?.(); }}
+          onChange={handleInputChange}
+          onBlur={() => {
+            setTouched(true);
+            onBlur?.();
+          }}
           onFocus={() => setTouched(true)}
           className="flex-1 ml-3 focus:outline-none text-gray-900"
         />
@@ -98,14 +132,23 @@ export default function LuxuryPhoneInput({ value, onChange, required = false, on
                 onClick={() => {
                   setSelectedCountry(country);
                   setOpen(false);
+                  setSearch("");
                 }}
                 className="w-full flex items-center justify-between px-4 py-3 hover:bg-[#FAF7ED] transition-colors"
               >
                 <div className="flex items-center gap-3">
-                  <ReactCountryFlag countryCode={country} svg style={{ width: "1.4em", height: "1.4em" }} />
-                  <span className="text-sm text-gray-800">{en[country]}</span>
+                  <ReactCountryFlag
+                    countryCode={country}
+                    svg
+                    style={{ width: "1.4em", height: "1.4em" }}
+                  />
+                  <span className="text-sm text-gray-800">
+                    {en[country]}
+                  </span>
                 </div>
-                <span className="text-sm text-gray-500">+{getCountryCallingCode(country)}</span>
+                <span className="text-sm text-gray-500">
+                  +{getCountryCallingCode(country)}
+                </span>
               </button>
             ))}
           </div>

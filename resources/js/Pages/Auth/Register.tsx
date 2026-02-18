@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { Inertia } from "@inertiajs/inertia";
 import confetti from "canvas-confetti";
+import { FcGoogle } from "react-icons/fc";
+import { FaFacebook } from "react-icons/fa";
 
 export default function Register() {
   const [username, setUsername] = useState("");
@@ -12,17 +14,39 @@ export default function Register() {
   const [usernameSuggestions, setUsernameSuggestions] = useState<string[]>([]);
   const [signupLoading, setSignupLoading] = useState(false);
   const [success, setSuccess] = useState(false);
-  const [hasSubmitted, setHasSubmitted] = useState(false); // Prevent double POST
+  const [hasSubmitted, setHasSubmitted] = useState(false);
 
-  const passwordRequirements = [
-    { label: "At least 8 characters", test: (pw: string) => pw.length >= 8 },
-    { label: "Contains uppercase letter", test: (pw: string) => /[A-Z]/.test(pw) },
-    { label: "Contains number", test: (pw: string) => /\d/.test(pw) },
-    { label: "Contains special character", test: (pw: string) => /[^A-Za-z0-9]/.test(pw) },
-  ];
+  const gold = "#C6A75E";
 
   // --------------------------
-  // Username validation & check
+  // Password strength
+  // --------------------------
+  const getPasswordStrength = (pw: string) => {
+    let score = 0;
+    if (pw.length >= 8) score++;
+    if (/[A-Z]/.test(pw)) score++;
+    if (/\d/.test(pw)) score++;
+    if (/[^A-Za-z0-9]/.test(pw)) score++;
+
+    switch (score) {
+      case 0:
+      case 1:
+        return { label: "Weak", color: "text-red-500" };
+      case 2:
+        return { label: "Medium", color: "text-orange-500" };
+      case 3:
+        return { label: "Strong", color: "text-green-500" };
+      case 4:
+        return { label: "Very Strong", color: "text-green-700" };
+      default:
+        return { label: "", color: "" };
+    }
+  };
+
+  const passwordStrength = getPasswordStrength(password);
+
+  // --------------------------
+  // Username validation
   // --------------------------
   useEffect(() => {
     if (!username) {
@@ -30,7 +54,6 @@ export default function Register() {
       setSignupErrors((prev: any) => ({ ...prev, username: undefined }));
       return;
     }
-
     if (username.length > 20) {
       setSignupErrors((prev: any) => ({
         ...prev,
@@ -38,7 +61,6 @@ export default function Register() {
       }));
       return;
     }
-
     if (!/^[a-zA-Z0-9_]+$/.test(username)) {
       setSignupErrors((prev: any) => ({
         ...prev,
@@ -74,7 +96,7 @@ export default function Register() {
   }, [username]);
 
   // --------------------------
-  // Email validation & check
+  // Email validation
   // --------------------------
   useEffect(() => {
     if (!email) return;
@@ -135,16 +157,12 @@ export default function Register() {
     setHasSubmitted(true);
     setSignupLoading(true);
 
-    // Client-side validation
     const errors: any = {};
     if (!username) errors.username = "Username is required.";
     if (!email) errors.email = "Email is required.";
     else if (!/^\S+@\S+\.\S+$/.test(email)) errors.email = "Invalid email address.";
     if (!password) errors.password = "Password is required.";
     if (password !== confirmPassword) errors.confirmPassword = "Passwords do not match.";
-
-    const unmet = passwordRequirements.filter((r) => !r.test(password));
-    if (unmet.length > 0) errors.password = "Password does not meet all requirements.";
 
     if (Object.keys(errors).length > 0) {
       setSignupErrors(errors);
@@ -156,7 +174,7 @@ export default function Register() {
     setSignupErrors({});
 
     try {
-      const response = await axios.post("/register", {
+      await axios.post("/register", {
         username,
         email,
         password,
@@ -164,11 +182,7 @@ export default function Register() {
       });
 
       setSuccess(true);
-
-      // Confetti
       confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
-
-      // Redirect to profile edit
       setTimeout(() => Inertia.visit("/profile/edit"), 3000);
     } catch (err: any) {
       const backendErrors = err.response?.data?.errors || {};
@@ -179,19 +193,26 @@ export default function Register() {
     }
   };
 
+  // --------------------------
+  // Social login handlers
+  // --------------------------
+  const handleGoogleLogin = () => {
+    window.location.href = "/auth/google";
+  };
+
+  const handleFacebookLogin = () => {
+    window.location.href = "/auth/facebook";
+  };
+
   if (success) {
     return (
       <div className="fixed inset-0 flex flex-col items-center justify-center bg-black bg-opacity-50 z-50">
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg text-center">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
-            🎉 Account Created! 🎉
-          </h2>
-          <p className="text-gray-700 dark:text-gray-200 mb-4">
-            Your account has been created.
-          </p>
+        <div className="bg-white rounded-2xl p-6 text-center max-w-md w-full">
+          <h2 className="text-2xl font-bold text-gray-900 mb-3">🎉 Account Created! 🎉</h2>
+          <p className="text-gray-700 mb-4">Your account has been created successfully.</p>
           <button
             onClick={() => Inertia.visit("/profile/edit")}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-md"
+            className="px-4 py-2 bg-[#C6A75E] hover:bg-[#b89148] text-white font-semibold rounded-2xl text-lg transition-all duration-300"
           >
             Go to Profile
           </button>
@@ -201,81 +222,92 @@ export default function Register() {
   }
 
   return (
-    <form onSubmit={handleSignup} className="space-y-4">
+    <form onSubmit={handleSignup} className="space-y-4 w-full max-w-2xl mx-auto px-4">
+
+      {/* Social Login */}
+      <div className="flex flex-col gap-3">
+        <button
+          type="button"
+          onClick={handleGoogleLogin}
+          className="flex items-center justify-center gap-2 w-full py-3 rounded-2xl border border-[#C6A75E] hover:shadow-md transition-all duration-200 text-gray-900 font-semibold text-lg"
+        >
+          <FcGoogle size={20} /> Sign up with Google
+        </button>
+
+        <button
+          type="button"
+          onClick={handleFacebookLogin}
+          className="flex items-center justify-center gap-2 w-full py-3 rounded-2xl border border-[#C6A75E] hover:shadow-md transition-all duration-200 text-gray-900 font-semibold text-lg"
+        >
+          <FaFacebook size={20} /> Sign up with Facebook
+        </button>
+      </div>
+
+      <div className="flex items-center my-1">
+        <hr className="flex-1 border-gray-300" />
+        <span className="mx-2 text-gray-400 font-medium">OR</span>
+        <hr className="flex-1 border-gray-300" />
+      </div>
+
       {/* Username */}
       <div>
-        <label className="block text-gray-700 dark:text-gray-200 mb-1">Username</label>
+        <label className="block text-gray-700 mb-1 font-medium text-sm">Username</label>
         <input
           type="text"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
           maxLength={20}
-          className="w-full px-3 py-2 border rounded-md dark:bg-gray-700 dark:text-gray-100"
+          placeholder="Your username"
+          className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#C6A75E] text-base"
         />
-        {signupErrors.username && (
-          <p className="text-red-500 text-sm mt-1">{signupErrors.username}</p>
-        )}
-        {usernameSuggestions.length > 0 && (
-          <p className="text-gray-500 text-sm mt-1">
-            Suggestions: {usernameSuggestions.join(", ")}
-          </p>
-        )}
+        {signupErrors.username && <p className="text-red-500 text-sm mt-1">{signupErrors.username}</p>}
+        {usernameSuggestions.length > 0 && <p className="text-gray-500 text-sm mt-1">Suggestions: {usernameSuggestions.join(", ")}</p>}
       </div>
 
       {/* Email */}
       <div>
-        <label className="block text-gray-700 dark:text-gray-200 mb-1">Email</label>
+        <label className="block text-gray-700 mb-1 font-medium text-sm">Email</label>
         <input
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full px-3 py-2 border rounded-md dark:bg-gray-700 dark:text-gray-100"
+          placeholder="you@example.com"
+          className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#C6A75E] text-base"
         />
         {signupErrors.email && <p className="text-red-500 text-sm mt-1">{signupErrors.email}</p>}
       </div>
 
       {/* Password */}
       <div>
-        <label className="block text-gray-700 dark:text-gray-200 mb-1">Password</label>
+        <label className="block text-gray-700 mb-1 font-medium text-sm">Password</label>
         <input
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="w-full px-3 py-2 border rounded-md dark:bg-gray-700 dark:text-gray-100"
+          placeholder="Enter your password"
+          className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#C6A75E] text-base"
         />
-        {signupErrors.password && (
-          <p className="text-red-500 text-sm mt-1">{signupErrors.password}</p>
-        )}
-        <ul className="mt-2 text-sm">
-          {passwordRequirements.map((req) => (
-            <li
-              key={req.label}
-              className={req.test(password) ? "text-green-600" : "text-gray-500"}
-            >
-              • {req.label}
-            </li>
-          ))}
-        </ul>
+        {signupErrors.password && <p className="text-red-500 text-sm mt-1">{signupErrors.password}</p>}
+        {password && <p className={`mt-1 font-semibold ${passwordStrength.color} text-sm`}>Password Strength: {passwordStrength.label}</p>}
       </div>
 
       {/* Confirm Password */}
       <div>
-        <label className="block text-gray-700 dark:text-gray-200 mb-1">Confirm Password</label>
+        <label className="block text-gray-700 mb-1 font-medium text-sm">Confirm Password</label>
         <input
           type="password"
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
-          className="w-full px-3 py-2 border rounded-md dark:bg-gray-700 dark:text-gray-100"
+          placeholder="Re-enter your password"
+          className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#C6A75E] text-base"
         />
-        {signupErrors.confirmPassword && (
-          <p className="text-red-500 text-sm mt-1">{signupErrors.confirmPassword}</p>
-        )}
+        {signupErrors.confirmPassword && <p className="text-red-500 text-sm mt-1">{signupErrors.confirmPassword}</p>}
       </div>
 
       <button
         type="submit"
         disabled={signupLoading || hasSubmitted}
-        className="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-md"
+        className="w-full py-4 bg-[#C6A75E] hover:bg-[#b89148] text-white font-semibold rounded-2xl text-lg transition-all duration-300"
       >
         {signupLoading ? "Signing up..." : "Sign Up"}
       </button>

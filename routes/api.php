@@ -15,6 +15,9 @@ use Illuminate\Support\Facades\Mail;
 use App\Mail\QuoteMail;
 use App\Http\Controllers\QuoteController;
 
+use App\Http\Controllers\Quote\QuoteRequestController;
+use App\Http\Controllers\Quote\InstantQuoteController;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -125,3 +128,9 @@ Route::middleware(['auth:sanctum', 'admin'])->get('/admin/active-chats', [AdminC
 
 // -- Email
 Route::post('/send-quote', [QuoteController::class, 'sendQuote']);
+
+// -- Quotes
+
+Route::post('/quote-request', [QuoteRequestController::class, 'store']);
+
+Route::post('/instant-quote', [InstantQuoteController::class, 'store']);

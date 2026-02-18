@@ -21,7 +21,8 @@ class ResetPasswordNotification extends Notification
 
     public function toMail($notifiable)
     {
-        return (new ResetPasswordMail($notifiable, $this->token));
+        // Ensure the recipient is explicitly set to avoid Symfony error
+        return (new ResetPasswordMail($notifiable, $this->token))
+                    ->to($notifiable->email);
     }
 }
-
