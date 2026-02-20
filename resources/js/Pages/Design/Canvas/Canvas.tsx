@@ -314,7 +314,9 @@ if (layer.type === "image" && !layer.isClipart) {
           selectedImages={selectedImages}
           canvasRef={drag.selectionBoxProps.canvasRef}
           onDuplicate={handleDuplicateFromSelectionBox}
-          onStartGroupResize={groupResize.startResize}
+          onStartGroupResize={(direction) => {
+            groupResize.startResize(direction);
+          }}
           onDelete={handleDeleteFromSelectionBox}
           onResize={drag.selectionBoxProps.onResize}
           onDeselectAll={drag.selectionBoxProps.onDeselectAll}
