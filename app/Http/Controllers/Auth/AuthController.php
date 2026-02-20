@@ -6,69 +6,80 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
-use App\Models\User;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Auth\Events\Registered;
+use App\Models\User;
 
 class AuthController extends Controller
 {
-    // -----------------------
-    // REGISTER
-    // -----------------------
-    public function register(Request $request)
-    {
-        $messages = [
-            'username.unique' => 'Username already exists',
-            'password.confirmed' => 'Passwords do not match',
-        ];
 
-        $request->validate([
-            'username' => ['required', 'string', 'max:255', 'unique:users,username'],
-            'email'    => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
-            'password' => ['required', 'string', 'min:8', 'confirmed'],
-        ], $messages);
+// -----------------------
+// REGISTER
+// -----------------------
+public function register(Request $request)
+{
+    $request->validate([
+        'username' => ['required', 'string', 'max:255', 'unique:users,username'],
+        'email'    => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
+        'password' => ['required', 'string', 'min:8', 'confirmed'],
+    ], [
+        'username.unique' => 'Username already exists',
+        'password.confirmed' => 'Passwords do not match',
+    ]);
 
-        $user = User::create([
-            'username' => $request->username,
-            'email'    => $request->email,
-            'password' => Hash::make($request->password),
-        ]);
+    $user = User::create([
+        'username' => $request->username,
+        'email'    => $request->email,
+        'password' => Hash::make($request->password),
+    ]);
 
-        Log::info("AuthController: User registered: {$user->email}");
+    Auth::login($user);
 
-        Auth::login($user);
+    // Fire registered event (important for email verification)
+    event(new Registered($user));
 
-        event(new Registered($user));
+    // Explicitly send verification email (safe even with event)
+    $user->sendEmailVerificationNotification();
 
-        return redirect()->route('profile.edit');
-    }
+    // Redirect to verification notice page
+    return redirect()
+        ->route('verification.notice')
+        ->with('just_signed_up', true);
+}
+
 
     // -----------------------
     // LOGIN
     // -----------------------
     public function login(Request $request)
     {
-        $credentials = $request->validate([
+        $request->validate([
             'email'    => ['required', 'email'],
             'password' => ['required', 'string'],
         ]);
 
-        if (Auth::attempt($credentials, $request->boolean('remember'))) {
+        $user = User::where('email', $request->email)->first();
+
+        // Block OAuth users from password login
+        if ($user && $user->is_oauth) {
+            $provider = ucfirst($user->oauth_provider ?? 'Google');
+
+            return back()->withErrors([
+                'email' => "This email is linked to {$provider} login. Please use the {$provider} button."
+            ])->onlyInput('email');
+        }
+
+        if (Auth::attempt($request->only('email', 'password'), $request->boolean('remember'))) {
+
             $request->session()->regenerate();
 
-            $email = Auth::user()->email;
-
             if (Auth::user()->is_admin) {
-                Log::info("AuthController: Admin logged in.", ['email' => $email]);
                 return redirect('/admin/dashboard');
             }
 
-            Log::info("AuthController: Normal user logged in.", ['email' => $email]);
-            return redirect()->intended(route('profile.edit'));
+            return redirect()->intended('/profile');
         }
-
-        Log::warning("AuthController: Failed login attempt.", ['email' => $credentials['email']]);
 
         return back()->withErrors([
             'email' => 'Incorrect email or password.'
@@ -80,15 +91,42 @@ class AuthController extends Controller
     // -----------------------
     public function logout(Request $request)
     {
-        Log::info("AuthController: User logged out.", [
-            'email' => Auth::check() ? Auth::user()->email : null
-        ]);
-
         Auth::logout();
+
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
         return redirect()->route('login');
+    }
+
+    // -----------------------
+    // CHECK EMAIL (for frontend step logic)
+    // -----------------------
+    public function checkEmail(Request $request)
+    {
+        $request->validate(['email' => 'required|email']);
+
+        $user = User::where('email', $request->email)->first();
+
+        $exists = (bool) $user;
+        $oauth = $user && $user->is_oauth
+            ? ($user->oauth_provider ?? 'Google')
+            : null;
+
+        $suggestions = [];
+
+        if ($exists) {
+            $prefix = explode('@', $request->email)[0];
+            for ($i = 1; $i <= 3; $i++) {
+                $suggestions[] = $prefix . $i;
+            }
+        }
+
+        return response()->json([
+            'exists' => $exists,
+            'oauth' => $oauth,
+            'suggestions' => $suggestions,
+        ]);
     }
 
     // -----------------------
@@ -98,15 +136,25 @@ class AuthController extends Controller
     {
         $request->validate(['email' => ['required', 'email']]);
 
-        \DB::table('password_reset_tokens')->where('email', $request->email)->delete();
+        $user = User::where('email', $request->email)->first();
+
+        if ($user && $user->is_oauth) {
+            $provider = ucfirst($user->oauth_provider ?? 'Google');
+
+            return back()->withErrors([
+                'email' => "This email is linked to {$provider} login."
+            ]);
+        }
+
+        \DB::table('password_reset_tokens')
+            ->where('email', $request->email)
+            ->delete();
 
         $status = Password::sendResetLink($request->only('email'));
 
-        if ($status === Password::RESET_LINK_SENT) {
-            return back()->with('status', 'Reset link sent successfully.');
-        }
-
-        return back()->withErrors(['email' => __($status)]);
+        return $status === Password::RESET_LINK_SENT
+            ? back()->with('status', 'Reset link sent successfully.')
+            : back()->withErrors(['email' => __($status)]);
     }
 
     // -----------------------
@@ -120,6 +168,14 @@ class AuthController extends Controller
             'password' => 'required|string|min:8|confirmed',
         ]);
 
+        $user = User::where('email', $request->email)->first();
+
+        if ($user && $user->is_oauth) {
+            return back()->withErrors([
+                'email' => 'This account uses OAuth login.'
+            ]);
+        }
+
         $status = Password::reset(
             $request->only('email', 'password', 'password_confirmation', 'token'),
             function ($user, $password) {
@@ -128,35 +184,8 @@ class AuthController extends Controller
             }
         );
 
-        if ($status === Password::PASSWORD_RESET) {
-            return redirect()->route('login')
-                ->with('status', 'Password reset successful. You can now log in.');
-        }
-
-        return back()->withErrors(['email' => 'Invalid or expired link.']);
-    }
-
-    // -----------------------
-    // CHECK EMAIL
-    // -----------------------
-    public function checkEmail(Request $request)
-    {
-        $request->validate(['email' => 'required|email']);
-
-        $exists = User::where('email', $request->email)->exists();
-
-        // Optional: Suggest usernames based on email prefix if taken
-        $suggestions = [];
-        if ($exists) {
-            $prefix = explode('@', $request->email)[0];
-            for ($i = 1; $i <= 3; $i++) {
-                $suggestions[] = $prefix . $i;
-            }
-        }
-
-        return response()->json([
-            'exists' => $exists,
-            'suggestions' => $suggestions,
-        ]);
+        return $status === Password::PASSWORD_RESET
+            ? redirect()->route('login')->with('status', 'Password reset successful.')
+            : back()->withErrors(['email' => 'Invalid or expired link.']);
     }
 }

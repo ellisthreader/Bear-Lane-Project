@@ -134,3 +134,4 @@ Route::post('/send-quote', [QuoteController::class, 'sendQuote']);
 Route::post('/quote-request', [QuoteRequestController::class, 'store']);
 
 Route::post('/instant-quote', [InstantQuoteController::class, 'store']);
+

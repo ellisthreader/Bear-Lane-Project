@@ -8,7 +8,7 @@ export default function Profile() {
   const user = auth.user;
   const gold = "#C6A75E";
 
-  // Placeholder arrays (replace with real data later)
+  // Placeholder arrays
   const designs: any[] = [];
   const wishlist: any[] = [];
 
@@ -29,7 +29,6 @@ export default function Profile() {
 
       <main className="px-6 md:px-12 pt-10 pb-20 flex-1">
         <div className="max-w-7xl mx-auto space-y-12">
-
           {/* Welcome */}
           <div className="animate-fadeIn">
             <h1 className="text-4xl font-bold text-gray-900">
@@ -39,14 +38,12 @@ export default function Profile() {
 
           {/* PROFILE + ADDRESS/PAYMENT */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-stretch">
-
             {/* PROFILE */}
             <div className="bg-gray-100 rounded-2xl p-10 shadow-sm hover:shadow-md transition animate-fadeIn flex flex-col justify-between">
               <div>
                 <h2 className="text-2xl font-semibold text-gray-900 mb-8">
                   Profile
                 </h2>
-
                 <div className="space-y-6 text-lg">
                   <div>
                     <p className="text-gray-500 text-sm mb-1">Name</p>
@@ -114,9 +111,7 @@ export default function Profile() {
                     Add New
                   </button>
                 </div>
-                <p className="text-gray-500">
-                  No saved payment methods yet.
-                </p>
+                <p className="text-gray-500">No saved payment methods yet.</p>
               </div>
             </div>
           </div>
@@ -132,9 +127,7 @@ export default function Profile() {
           {/* MY DESIGNS */}
           <div className="bg-gray-100 rounded-2xl p-12 shadow-sm hover:shadow-md transition animate-fadeIn">
             <div className="flex justify-between items-center mb-8">
-              <h2 className="text-2xl font-semibold text-gray-900">
-                My Designs
-              </h2>
+              <h2 className="text-2xl font-semibold text-gray-900">My Designs</h2>
               <button
                 onClick={() => router.get("/designer")}
                 className="text-base font-medium underline hover:text-black transition-colors"
@@ -168,9 +161,7 @@ export default function Profile() {
 
           {/* WISHLIST */}
           <div className="bg-gray-100 rounded-2xl p-12 shadow-sm hover:shadow-md transition animate-fadeIn">
-            <h2 className="text-2xl font-semibold text-gray-900 mb-8">
-              Wishlist
-            </h2>
+            <h2 className="text-2xl font-semibold text-gray-900 mb-8">Wishlist</h2>
 
             {wishlist.length === 0 ? (
               <div className="text-center py-16 text-gray-500">
@@ -193,7 +184,6 @@ export default function Profile() {
               </div>
             )}
           </div>
-
         </div>
       </main>
 

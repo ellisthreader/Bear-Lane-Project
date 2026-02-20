@@ -1,13 +1,19 @@
 import React, { useState, useEffect } from "react";
 import { router } from "@inertiajs/react";
 import { Transition } from "@headlessui/react";
+import NavMenu from "@/Components/Menu/NavMenu";
 
 export default function VerifyEmail() {
   const [message, setMessage] = useState<string | null>(null);
   const [isCooldown, setIsCooldown] = useState(false);
   const [remainingSeconds, setRemainingSeconds] = useState(0);
+  const [mounted, setMounted] = useState(false);
 
-  // Countdown timer for resend cooldown
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Cooldown countdown
   useEffect(() => {
     if (!isCooldown || remainingSeconds <= 0) return;
 
@@ -25,7 +31,6 @@ export default function VerifyEmail() {
     return () => clearInterval(interval);
   }, [isCooldown, remainingSeconds]);
 
-  // Handle resend verification link
   const handleResend = () => {
     if (isCooldown) return;
 
@@ -34,20 +39,18 @@ export default function VerifyEmail() {
       {},
       {
         onSuccess: () => {
-          setMessage("✅ Verification link sent! Please check your inbox.");
+          setMessage("Verification link sent successfully. Please check your inbox.");
           setIsCooldown(true);
-          setRemainingSeconds(60); // 1-minute cooldown
+          setRemainingSeconds(60);
         },
         onError: (errors: any) => {
           if (errors?.response?.status === 429) {
-            // Throttle protection
-            setMessage("⏳ Please wait before resending another email.");
+            setMessage("Please wait before requesting another verification email.");
             setIsCooldown(true);
-
             const remaining = errors?.response?.data?.remaining_seconds ?? 60;
             setRemainingSeconds(remaining);
           } else {
-            setMessage("⚠️ Something went wrong. Please try again later.");
+            setMessage("Something went wrong. Please try again later.");
           }
         },
       }
@@ -55,49 +58,87 @@ export default function VerifyEmail() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 px-4">
-      <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md text-center max-w-md w-full relative">
-        <h1 className="text-xl font-bold mb-4 text-gray-900 dark:text-gray-100">
-          Verify Your Email
-        </h1>
+    <>
+      <NavMenu />
 
-        <p className="text-gray-600 dark:text-gray-400 mb-4">
-          Thanks for signing up! Please check your email inbox and verify your account to continue.
-        </p>
+      {/* Main Wrapper — No Scroll */}
+      <div className="relative h-[calc(100vh-80px)] overflow-hidden bg-gradient-to-br from-gray-50 via-white to-gray-100 flex items-center justify-center px-4">
 
-        <button
-          onClick={handleResend}
-          disabled={isCooldown}
-          className={`px-4 py-2 rounded-md text-white font-medium transition ${
-            isCooldown
-              ? "bg-gray-400 cursor-not-allowed"
-              : "bg-blue-600 hover:bg-blue-700"
-          }`}
-        >
-          {isCooldown ? `Sent (${remainingSeconds}s)` : "Resend Verification Email"}
-        </button>
+        {/* Soft Gold Ambient Glow */}
+        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-[#C6A75E]/10 blur-[140px] rounded-full pointer-events-none" />
 
-        {/* Animated feedback message */}
         <Transition
-          show={!!message}
-          enter="transition ease-out duration-300"
-          enterFrom="opacity-0 translate-y-2"
-          enterTo="opacity-100 translate-y-0"
-          leave="transition ease-in duration-500"
-          leaveFrom="opacity-100 translate-y-0"
-          leaveTo="opacity-0 translate-y-2"
+          show={mounted}
+          appear
+          enter="transform transition duration-700 ease-out"
+          enterFrom="opacity-0 translate-y-8 scale-95"
+          enterTo="opacity-100 translate-y-0 scale-100"
         >
-          <div
-            className={`mt-4 font-medium ${
-              message?.includes("✅")
-                ? "text-green-600 dark:text-green-400"
-                : "text-yellow-600 dark:text-yellow-400"
-            }`}
-          >
-            {message}
+          {/* Slightly lifted card */}
+          <div className="relative -mt-12 w-full max-w-xl bg-white rounded-3xl shadow-2xl border border-gray-100 p-12 text-center">
+
+            {/* Logo */}
+            <div className="flex justify-center mb-6">
+              <img
+                src="/images/BL-Logo.png"
+                alt="BL Logo"
+                className="h-14 w-auto object-contain"
+              />
+            </div>
+
+            {/* Title */}
+            <h1 className="text-3xl font-bold text-gray-900 mb-3 tracking-tight">
+              Verify Your Email
+            </h1>
+
+            <p className="text-gray-600 text-base leading-relaxed mb-8 max-w-md mx-auto">
+              We’ve sent a verification link to your email address.
+              Please confirm your email to unlock full access to your account.
+            </p>
+
+            {/* Button */}
+            <button
+              onClick={handleResend}
+              disabled={isCooldown}
+              className={`w-full py-4 rounded-2xl text-lg font-semibold transition-all duration-300
+                ${
+                  isCooldown
+                    ? "bg-gray-300 text-gray-600 cursor-not-allowed"
+                    : "bg-[#C6A75E] hover:bg-[#b89148] text-white hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]"
+                }
+              `}
+            >
+              {isCooldown
+                ? `Resend Available In ${remainingSeconds}s`
+                : "Resend Verification Email"}
+            </button>
+
+            {/* Animated Status */}
+            <Transition
+              show={!!message}
+              enter="transform transition duration-500 ease-out"
+              enterFrom="opacity-0 translate-y-4 scale-95"
+              enterTo="opacity-100 translate-y-0 scale-100"
+              leave="transition duration-300 ease-in"
+              leaveFrom="opacity-100"
+              leaveTo="opacity-0"
+            >
+              <div
+                className={`mt-6 px-6 py-4 rounded-2xl text-sm font-medium border
+                  ${
+                    message?.includes("successfully")
+                      ? "bg-green-50 text-green-700 border-green-200"
+                      : "bg-yellow-50 text-yellow-700 border-yellow-200"
+                  }
+                `}
+              >
+                {message}
+              </div>
+            </Transition>
+
           </div>
         </Transition>
       </div>
-    </div>
+    </>
   );
 }

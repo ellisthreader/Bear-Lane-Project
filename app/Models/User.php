@@ -28,7 +28,8 @@ class User extends Authenticatable implements MustVerifyEmail
         'avatar',
         'last_avatar_generated_at',
         'last_verification_sent_at',
-        'is_admin', // added for admin live chat access
+        'is_admin',   // admin access
+        'is_oauth',   // added for OAuth users
     ];
 
     /**
@@ -51,7 +52,8 @@ class User extends Authenticatable implements MustVerifyEmail
         'last_avatar_generated_at' => 'datetime:UTC',
         'last_verification_sent_at' => 'datetime',
         'password' => 'hashed',
-        'is_admin' => 'boolean', // ensures true/false
+        'is_admin' => 'boolean',
+        'is_oauth' => 'boolean', // ensures true/false for OAuth
     ];
 
     /**
@@ -113,5 +115,13 @@ class User extends Authenticatable implements MustVerifyEmail
     public function isAdmin(): bool
     {
         return (bool) $this->is_admin;
+    }
+
+    /**
+     * Helper to check if the user is an OAuth user.
+     */
+    public function isOauth(): bool
+    {
+        return (bool) $this->is_oauth;
     }
 }

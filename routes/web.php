@@ -18,6 +18,9 @@ use App\Http\Controllers\Admin\ProductController as AdminProductController;
 use App\Http\Controllers\DesignController;
 use App\Http\Controllers\ProductSearchController;
 use App\Http\Controllers\Auth\OAuthController;
+use App\Http\Controllers\Auth\EmailVerificationController;
+use Illuminate\Foundation\Auth\EmailVerificationRequest;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -167,9 +170,9 @@ Route::post('/reset-password', [AuthController::class, 'resetPassword'])->name('
 | USER PROFILE
 |--------------------------------------------------------------------------
 */
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'verified'])->group(function () {
     // Profile page
-    Route::get('/profile', [ProfileController::class, 'index'])->name('profile.index'); 
+    Route::get('/profile', [ProfileController::class, 'index'])->name('profile');
     // Edit profile page
     Route::get('/profile/edit', [ProfileController::class, 'edit'])->name('profile.edit');
     // Update profile
@@ -185,18 +188,38 @@ Route::middleware('auth')->group(function () {
 | EMAIL VERIFICATION
 |--------------------------------------------------------------------------
 */
-Route::get('/email/verify', fn() => Inertia::render('Auth/VerifyEmail'))
-    ->middleware('auth')
-    ->name('verification.notice');
 
-Route::get('/email/verify/{id}/{hash}', fn() =>
-    redirect()->route('profile.edit')->with('verified', 1)
-)->middleware(['auth', 'signed'])
- ->name('verification.verify');
+// Show verification notice page
+Route::get('/email/verify', function () {
+    return Inertia::render('Auth/VerifyEmail');
+})->middleware('auth')->name('verification.notice');
 
-Route::post('/email/verification-notification', fn(Request $request) =>
-    $request->user()->update(['last_verification_sent_at' => now()])
-)->middleware('auth')->name('verification.send');
+
+// Handle verification link (THIS ACTUALLY VERIFIES)
+Route::get('/email/verify/{id}/{hash}', function (EmailVerificationRequest $request) {
+
+    $request->fulfill(); // <-- THIS sets email_verified_at
+
+    return redirect()->route('profile')
+        ->with('verified', 1);
+
+})->middleware(['auth', 'signed', 'throttle:6,1'])
+  ->name('verification.verify');
+
+
+// Resend verification email (THIS ACTUALLY SENDS EMAIL)
+Route::post('/email/verification-notification', function (Request $request) {
+
+    if ($request->user()->hasVerifiedEmail()) {
+        return back();
+    }
+
+    $request->user()->sendEmailVerificationNotification();
+
+    return back()->with('status', 'Verification link sent!');
+
+})->middleware(['auth', 'throttle:6,1'])
+  ->name('verification.send');
 
 /*
 |--------------------------------------------------------------------------
@@ -292,4 +315,9 @@ Route::get('/auth/google/callback', [OAuthController::class, 'handleGoogleCallba
 Route::get('/auth/apple', [OAuthController::class, 'redirectToApple'])->name('auth.apple');
 Route::get('/auth/apple/callback', [OAuthController::class, 'handleAppleCallback']);
 
+
 Route::post('/check-email', [AuthController::class, 'checkEmail']);
+
+Route::post('/oauth/send-code', [EmailVerificationController::class, 'sendCode']);
+Route::post('/oauth/verify-code', [EmailVerificationController::class, 'verifyCode']);
+Route::post('/oauth/resend-code', [EmailVerificationController::class, 'resendCode']);
