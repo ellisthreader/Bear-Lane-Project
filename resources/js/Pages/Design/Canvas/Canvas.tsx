@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import UploadedImagesLayer from "./UploadedImagesLayer";
 import MainProductImage from "./MainProductImage";
 import RestrictedArea from "./RestrictedArea";
@@ -18,59 +18,87 @@ import DraggableText from "./DraggableText";
 import SelectionWatcher from "../Components/SelectionWatcher";
 import { useTextAutoShrink } from "./Hooks/TextAutoShrink";
 
+import GetPriceButton from "../Components/Buttons/GetPriceButton";
+import SaveDesignButton from "../Components/Buttons/SaveDesignButton";
+import ProductViewSelector from "../Components/ProductViewSelector";
+import type { ViewKey } from "../Design";
+
+export type ImageState = {
+  url?: string;
+  type: "image" | "text" | "clipart";
+  rotation?: number;
+  flip?: "none" | "horizontal" | "vertical";
+  size?: { w: number; h: number };
+  color?: string;
+  fontFamily?: string;
+  fontSize?: number;
+  borderColor?: string;
+  borderWidth?: number;
+  text?: string;
+  renderKey?: string;
+  isClipart?: boolean;
+  original?: any;
+  canvasPositions?: Record<string, any>;
+  restrictedBox?: any;
+  isSvg?: boolean;
+  width?: number;
+};
+
+export type PricePreviewLayer = {
+  uid: string;
+  type: "image" | "text" | "clipart";
+  url?: string;
+  text?: string;
+  position: { x: number; y: number };
+  size: { w: number; h: number };
+  rotation: number;
+  flip: "none" | "horizontal" | "vertical";
+  color?: string;
+  borderColor?: string;
+  borderWidth?: number;
+  fontFamily?: string;
+  fontSize?: number;
+};
+
+export type PricePreviewSnapshot = {
+  baseImage: string;
+  canvasWidth: number;
+  canvasHeight: number;
+  restrictedBox: { left: number; top: number; width: number; height: number };
+  layers: PricePreviewLayer[];
+};
+
 export type CanvasProps = {
   canvasRef: React.RefObject<HTMLDivElement>;
   mainImage: string;
   restrictedBox: { left: number; top: number; width: number; height: number };
-
   uploadedImages: string[];
   setUploadedImages: React.Dispatch<React.SetStateAction<string[]>>;
-
-  imageState: Record<string, any>;
-  setImageState: React.Dispatch<any>;
-
-  onDelete?: (uids: string[]) => void;
+  viewImageStates: Record<ViewKey, Record<string, ImageState>>;
+  setViewImageStates: React.Dispatch<
+    React.SetStateAction<Record<ViewKey, Record<string, ImageState>>>
+  >;
+  currentViewKey: ViewKey;
+  setCurrentViewKey: React.Dispatch<React.SetStateAction<ViewKey>>;
+    onDelete?: (uids: string[]) => void;
   onDuplicate?: (uids: string[]) => void;
   onResize?: (uid: string, w: number, h: number) => void;
   onResizeTextCommit: (uid: string, newFontSize: number) => void;
   onReset?: (uids: string[]) => void;
-
   onSelectImage?: (uid: string | null) => void;
   onSelectText?: (uid: string | null) => void;
   onSwitchTab?: (tab: string) => void;
   onSelectionChange?: (uids: string[]) => void;
-   sizes?: Record<string, { w: number; h: number }>;
-  setSizes?: React.Dispatch<React.SetStateAction<Record<string, { w: number; h: number }>>>;
-  canvasPositions?: Record<string, { x: number; y: number; width: number; height: number; scale: number }>;
+  productViewImages?: {
+    front: string;
+    back: string;
+    leftSleeve: string;
+    rightSleeve: string;
+  };
+  onGetPrice?: () => void;
+  onSaveDesign?: () => void;
+  onViewSnapshotChange?: (viewKey: ViewKey, snapshot: PricePreviewSnapshot) => void;
 };
-
-// --------------------- Helper functions ---------------------
-function fitsInRestrictedBox(
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  box: { left: number; top: number; width: number; height: number }
-) {
-  return (
-    x >= box.left &&
-    y >= box.top &&
-    x + w <= box.left + box.width &&
-    y + h <= box.top + box.height
-  );
-}
-
-function rectsIntersect(
-  a: { x: number; y: number; w: number; h: number },
-  b: { left: number; top: number; width: number; height: number }
-) {
-  return !(
-    a.x + a.w < b.left ||
-    a.x > b.left + b.width ||
-    a.y + a.h < b.top ||
-    a.y > b.top + b.height
-  );
-}
 
 export default function Canvas(props: CanvasProps) {
   const {
@@ -78,38 +106,64 @@ export default function Canvas(props: CanvasProps) {
     restrictedBox,
     mainImage,
     uploadedImages,
-    imageState,
+    viewImageStates,
+    setViewImageStates,
+    currentViewKey,
+    setCurrentViewKey,
     onSelectImage,
     onSelectText,
     onSwitchTab,
     onResizeTextCommit,
+    onGetPrice,
+    onSaveDesign,
+    onViewSnapshotChange,
   } = props;
 
-  // --------------------- Latest uploaded image ref ---------------------
   const latestUploadedImageRef = useRef<string | null>(null);
+  const [currentViewImage, setCurrentViewImage] = useState(mainImage);
 
-  // --------------------- Image sizes ---------------------
-  const visualUids = Object.keys(imageState).filter(
-    (uid) => imageState[uid]?.type === "image" || imageState[uid]?.type === "clipart"
+  // ---------------- Current View State ----------------
+  const currentImageState = viewImageStates[currentViewKey] ?? {};
+
+  const updateCurrentImageState: React.Dispatch<
+    React.SetStateAction<Record<string, ImageState>>
+  > = updates => {
+    setViewImageStates(prev => {
+      const current = prev[currentViewKey] ?? {};
+      const nextForView =
+        typeof updates === "function"
+          ? updates(current)
+          : { ...current, ...updates };
+
+      return {
+        ...prev,
+        [currentViewKey]: nextForView,
+      };
+    });
+  };
+
+  // ---------------- Image Sizes ----------------
+  const visualUids = Object.keys(currentImageState).filter(
+    uid => currentImageState[uid]?.type === "image" || currentImageState[uid]?.type === "clipart"
   );
-  const { sizes, setSizes } = useImageSizes(visualUids, imageState);
+  const { sizes, setSizes } = useImageSizes(visualUids, currentImageState);
 
-  // --------------------- Image positions ---------------------
-  const allUids = Object.keys(imageState);
+  // ---------------- Image Positions ----------------
+  const allUids = Object.keys(currentImageState);
   const { positions, setPositions } = useImagePositions(allUids, sizes, restrictedBox);
 
-  // --------------------- Text auto shrink ---------------------
+  // ---------------- Text Auto Shrink ----------------
   useTextAutoShrink({
-    imageState,
+    imageState: currentImageState,
     positions,
     sizes,
     restrictedBox,
     onResizeText: onResizeTextCommit,
   });
 
-  // --------------------- Drag selection ---------------------
+  // ---------------- Drag Selection ----------------
   const drag = useDragSelection({
-    uids: uploadedImages,
+    uids: allUids,
     sizes,
     positions,
     setPositions,
@@ -121,21 +175,13 @@ export default function Canvas(props: CanvasProps) {
     onReset: props.onReset,
     multiDrag: true,
   });
-// Filter only images or clipart
-const selectedImages = drag.selected.filter(
-  (uid) => imageState[uid]?.type === "image" || imageState[uid]?.type === "clipart"
-);
 
-// If you want just a single selected image for SizeControls
-const selectedImageId = selectedImages[0]; // pick the first selected image
+  const selectedImages = drag.selected.filter(
+    uid => currentImageState[uid]?.type === "image" || currentImageState[uid]?.type === "clipart"
+  );
+  const selectedText = drag.selected.filter(uid => currentImageState[uid]?.type === "text");
 
-// Get the actual image object
-const st = selectedImageId ? imageState[selectedImageId] : undefined;
-
-
-  const selectedText = drag.selected.filter((uid) => imageState[uid]?.type === "text");
-
-  // --------------------- Group resize ---------------------
+  // ---------------- Group Resize ----------------
   const groupResize = useGroupResize({
     selected: drag.selected,
     sizes,
@@ -143,21 +189,21 @@ const st = selectedImageId ? imageState[selectedImageId] : undefined;
     setSizes,
     setPositions,
     restrictedBox,
-    setImageState: props.setImageState,
+    setImageState: updateCurrentImageState,
   });
 
-  // --------------------- Marquee selection ---------------------
+  // ---------------- Marquee ----------------
   const marquee = useMarqueeSelection({
     canvasRef,
     uids: allUids,
     onSelect: drag.setSelected,
   });
 
-  // --------------------- Duplicate hook ---------------------
+  // ---------------- Duplicate ----------------
   const duplicateImages = useDuplicateImages({
     setPositions,
     setSizes,
-    setImageState: props.setImageState,
+    setImageState: updateCurrentImageState,
     setUploadedImages: props.setUploadedImages,
   });
 
@@ -176,15 +222,70 @@ const st = selectedImageId ? imageState[selectedImageId] : undefined;
     duplicateImages([drag.selected[0]]);
   };
 
-  // --------------------- Canvas pointer down ---------------------
+  // ---------------- Product View ----------------
+  useEffect(() => {
+    if (mainImage) setCurrentViewImage(mainImage);
+  }, [mainImage]);
+
+  useEffect(() => {
+    if (!onViewSnapshotChange) return;
+    const canvasBounds = canvasRef.current?.getBoundingClientRect();
+    const canvasWidth = canvasBounds?.width ?? 0;
+    const canvasHeight = canvasBounds?.height ?? 0;
+
+    const layers: PricePreviewLayer[] = Object.entries(currentImageState)
+      .map(([uid, layer]) => {
+        const position = positions[uid];
+        const size = sizes[uid] ?? layer.size;
+
+        if (!position || !size) return null;
+
+        return {
+          uid,
+          type:
+            layer.type === "text"
+              ? "text"
+              : layer.isClipart
+              ? "clipart"
+              : "image",
+          url: layer.url,
+          text: layer.text,
+          position,
+          size,
+          rotation: layer.rotation ?? 0,
+          flip: layer.flip ?? "none",
+          color: layer.color,
+          borderColor: layer.borderColor,
+          borderWidth: layer.borderWidth,
+          fontFamily: layer.fontFamily,
+          fontSize: layer.fontSize,
+        };
+      })
+      .filter((layer): layer is PricePreviewLayer => layer !== null);
+
+    onViewSnapshotChange(currentViewKey, {
+      baseImage: currentViewImage,
+      canvasWidth,
+      canvasHeight,
+      restrictedBox,
+      layers,
+    });
+  }, [
+    onViewSnapshotChange,
+    currentViewKey,
+    currentViewImage,
+    currentImageState,
+    positions,
+    sizes,
+    restrictedBox,
+    canvasRef,
+  ]);
+
+  // ---------------- Handlers ----------------
   const handleCanvasPointerDown = (e: React.PointerEvent) => {
     const target = e.target as HTMLElement;
-
     if (target.closest(".selection-button")) return;
-
     const uid = (target.closest("[data-uid]") as HTMLElement)?.dataset.uid;
-
-    // Clicked empty space → start marquee selection
     if (!uid) {
       drag.setSelected([]);
       onSelectImage?.(null);
@@ -193,55 +294,28 @@ const st = selectedImageId ? imageState[selectedImageId] : undefined;
       return;
     }
 
+    const layer = currentImageState[uid];
+    if (!layer) return;
 
-    // Get layer, fallback to latest uploaded image if needed
-    const layer =
-      imageState[uid] ||
-      (uid === latestUploadedImageRef.current ? { type: "image" } : null);
-
-    if (!layer) {
-      console.warn("⚠️ No layer found for UID:", uid);
-      return;
-    }
-
-    // ---------------- TEXT ----------------
-    if (layer.type === "text") {
-      onSelectImage?.(null);
-      onSelectText?.(uid);
-      onSwitchTab?.("text");
-      drag.setSelected([uid]);
-      drag.onPointerDown(e, uid);
-      return;
-    }
-
-// ---------------- UPLOADED IMAGE ----------------
-if (layer.type === "image" && !layer.isClipart) {
-  onSelectText?.(null);
-
-  // Force select immediately
-  onSelectImage?.(uid);
-
-  drag.setSelected([uid]); // still do drag update
-  onSwitchTab?.("upload");
-
-  e.stopPropagation();
-  return;
-}
-
-
-
-    // ---------------- CLIPART ----------------
-    if (layer.type === "image" && layer.isClipart) {
-      onSelectText?.(null);
-      onSelectImage?.(uid);
-      onSwitchTab?.("clipart");
-      drag.setSelected([uid]);
-      drag.onPointerDown(e, uid);
-      return;
+    switch (layer.type) {
+      case "text":
+        onSelectImage?.(null);
+        onSelectText?.(uid);
+        onSwitchTab?.("text");
+        drag.setSelected([uid]);
+        drag.onPointerDown(e, uid);
+        break;
+      case "image":
+        onSelectText?.(null);
+        onSelectImage?.(uid);
+        drag.setSelected([uid]);
+        drag.onPointerDown(e, uid);
+        onSwitchTab?.(layer.isClipart ? "clipart" : "upload");
+        break;
     }
   };
 
-  // --------------------- Render ---------------------
+  // ---------------- Render ----------------
   return (
     <div
       ref={canvasRef}
@@ -249,29 +323,25 @@ if (layer.type === "image" && !layer.isClipart) {
       onPointerDown={handleCanvasPointerDown}
       onPointerMove={marquee.onPointerMove}
     >
-      <MainProductImage src={mainImage} />
-      
+      <MainProductImage src={currentViewImage} />
       <RestrictedArea box={restrictedBox} />
 
-      {/* IMAGES */}
       <UploadedImagesLayer
         uids={visualUids}
         positions={positions}
-        sizes={sizes} // <- this drives the render size
-        imageState={imageState}
+        sizes={sizes}
+        imageState={currentImageState}
         selected={drag.selected}
         hovered={marquee.hovered}
         onPointerDown={drag.onPointerDown}
       />
 
-      {/* TEXT */}
-      {Object.entries(imageState)
+      {Object.entries(currentImageState)
         .filter(([_, layer]) => layer.type === "text")
-        .map(([uid, layer]: any) => {
+        .map(([uid, layer]) => {
           const p = positions[uid] ?? { x: 200, y: 200 };
           const fontSize = layer.fontSize ?? 24;
           const size = sizes[uid] ?? { w: 200, h: fontSize };
-
           return (
             <DraggableText
               key={uid}
@@ -291,39 +361,24 @@ if (layer.type === "image" && !layer.isClipart) {
               fontSize={fontSize}
               onDuplicate={handleDuplicateFromTextProperties}
               onMeasure={(uid, w, h) => {
-                setSizes((prev) => {
-                  const existing = prev[uid];
-                  const roundToTenths = (n: number) => Math.round(n * 10) / 10;
-                  const roundedW = roundToTenths(w);
-                  const roundedH = roundToTenths(h);
-                  const changed =
-                    !existing ||
-                    Math.abs((existing?.w ?? 0) - roundedW) >= 0.1 ||
-                    Math.abs((existing?.h ?? 0) - roundedH) >= 0.1;
-                  if (!changed) return prev;
-                  return { ...prev, [uid]: { w: roundedW, h: roundedH } };
-                });
+                setSizes(prev => ({ ...prev, [uid]: { w, h } }));
               }}
             />
           );
         })}
 
-      {/* IMAGE SELECTION BOX */}
       {selectedImages.length > 0 && (
         <SelectionBox
           selectedImages={selectedImages}
           canvasRef={drag.selectionBoxProps.canvasRef}
           onDuplicate={handleDuplicateFromSelectionBox}
-          onStartGroupResize={(direction) => {
-            groupResize.startResize(direction);
-          }}
+          onStartGroupResize={direction => groupResize.startResize(direction)}
           onDelete={handleDeleteFromSelectionBox}
           onResize={drag.selectionBoxProps.onResize}
           onDeselectAll={drag.selectionBoxProps.onDeselectAll}
         />
       )}
 
-      {/* TEXT SELECTION BOX */}
       {selectedText.length > 0 && (
         <TextSelectionBox
           selectedText={selectedText}
@@ -334,21 +389,35 @@ if (layer.type === "image" && !layer.isClipart) {
           onResizeText={onResizeTextCommit}
           restrictedBox={restrictedBox}
           positions={positions}
-          imageState={imageState}
+          imageState={currentImageState}
           sizes={sizes}
         />
       )}
 
       <SelectionWatcher
         selected={drag.selected}
-        imageState={imageState}
+        imageState={currentImageState}
         onSelectImage={onSelectImage}
         onSelectText={onSelectText}
         onSwitchTab={onSwitchTab}
         onSelectionChange={props.onSelectionChange}
       />
 
+      <ProductViewSelector
+        images={props.productViewImages ?? {}}
+        onSelectView={(imageSrc, key) => {
+          setCurrentViewKey(key);
+          setCurrentViewImage(imageSrc);
+        }}
+      />
+
       <Marquee marquee={marquee.marquee} />
+
+      {/* Bottom Right Buttons */}
+      <div className="absolute bottom-6 right-6 flex gap-4 z-50">
+        <SaveDesignButton onClick={onSaveDesign ?? (() => {})} />
+        <GetPriceButton onClick={onGetPrice ?? (() => {})} />
+      </div>
     </div>
   );
 }

@@ -68,6 +68,7 @@
     "react-scroll": "^1.9.3",
     "react-toastify": "^11.0.5",
     "react-toggle-dark-mode": "^1.1.1",
+    "swr": "^2.4.0",
     "uuid": "^13.0.0",
     "ziggy-js": "^2.6.0"
   }
