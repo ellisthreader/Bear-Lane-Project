@@ -114,7 +114,7 @@ export default function StencilizeUI({
         </div>
 
         {/* Image Requirements */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-blue-900 text-sm">
+        <div className="bg-[#FBF8F1] border border-[#E9DBB6] rounded-lg p-4 text-[#8A6D2B] text-sm">
           <ul className="list-disc ml-5 space-y-1">
             <li>High-resolution images (300 DPI+) look best</li>
             <li>Transparent backgrounds recommended</li>
@@ -137,7 +137,7 @@ export default function StencilizeUI({
                   <div
                     key={uid}
                     onClick={() => onSelectImage?.(uid)}
-                    className="w-full h-32 rounded-lg overflow-hidden border cursor-pointer hover:ring-2 hover:ring-blue-400 transition"
+                    className="w-full h-32 rounded-lg overflow-hidden border cursor-pointer hover:ring-2 hover:ring-[#C6A75E] transition"
                   >
                     <img
                       src={layer.url}

@@ -6,7 +6,7 @@ export default function MultiSelectPanel() {
     <div className="p-6 space-y-6 bg-white dark:bg-gray-900 w-full">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <Layers className="text-blue-500 w-6 h-6" />
+        <Layers className="text-[#8A6D2B] w-6 h-6" />
         <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
           Multiple Objects Selected
         </h3>

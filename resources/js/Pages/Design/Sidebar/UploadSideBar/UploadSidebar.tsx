@@ -41,10 +41,13 @@ type UploadSidebarProps = {
   uploadedImages: Record<string, any>;
   onDuplicateUploadedImage?: (id: string) => void;
   onRemoveUploadedImage?: (id: string) => void;
+  onUpdateImageSize?: (id: string, w: number, h: number) => void;
   onResetImage?: (id: string) => void;
   onRotateImage?: (id: string, rotation: number) => void;
   onFlipImage?: (id: string, flip: "none" | "horizontal" | "vertical") => void;
   canvasRef: React.RefObject<HTMLDivElement>; // ✅ ADD THIS
+  restrictedBox?: { left: number; top: number; width: number; height: number };
+  canvasPositions?: Record<string, { x: number; y: number }>;
 };
 
 // -------------------- COMPONENT --------------------
@@ -62,9 +65,10 @@ export default function UploadSidebar({
   onResetImage,
   onRotateImage,
   onFlipImage,
+  restrictedBox: restrictedBoxProp,
+  canvasPositions = {},
 }: UploadSidebarProps) {
   const [cropMode, setCropMode] = useState(false);
-  const [sizes, setSizes] = useState<Record<string, { w: number; h: number }>>({});
 
   // ------------------- Derived layer -------------------
   const layer = selectedImage ? imageState[selectedImage] : null;
@@ -142,8 +146,11 @@ export default function UploadSidebar({
 
 // ------------------- IMAGE EDITOR -------------------
 if (imagePropertiesOpen && layerExists && selectedImage) {
-  const restrictedBox = layer?.restrictedBox;
-  const positions = layer?.canvasPositions ?? {};
+  const restrictedBox = restrictedBoxProp;
+  const positions =
+    Object.keys(canvasPositions).length > 0
+      ? canvasPositions
+      : layer?.canvasPositions ?? {};
 
   // ✅ Define updateImageSize function
   const updateImageSize = (id: string, w: number, h: number) => {

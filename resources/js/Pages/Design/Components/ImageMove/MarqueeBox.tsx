@@ -10,7 +10,7 @@ interface Props {
 export default function MarqueeBox({ marquee }: Props) {
   return (
     <div
-      className="absolute border-2 border-blue-400 bg-blue-400/10 pointer-events-none"
+      className="absolute border-2 border-[#C6A75E] bg-[#C6A75E]/10 pointer-events-none"
       style={{
         left: marquee.x,
         top: marquee.y,

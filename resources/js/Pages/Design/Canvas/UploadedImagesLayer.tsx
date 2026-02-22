@@ -44,6 +44,7 @@ export default function UploadedImagesLayer({
               highlighted={selected.includes(uid) || hovered[uid]}
               onPointerDown={onPointerDown}
               color={layer?.color ?? "#000000"}
+              isClipart={Boolean(layer?.isClipart)}
             />
           );
         })}

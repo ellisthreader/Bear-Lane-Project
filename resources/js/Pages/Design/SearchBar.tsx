@@ -119,7 +119,7 @@ export default function SearchBar({
         onChange={(e) => setQuery(e.target.value)}
         onFocus={() => results.length > 0 && setShowDropdown(true)}
         className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600
-                  focus:outline-none focus:ring-2 focus:ring-blue-500
+                  focus:outline-none focus:ring-2 focus:ring-[#C6A75E]
                   dark:bg-gray-800 dark:text-white"
       />
 
@@ -150,7 +150,7 @@ export default function SearchBar({
             return (
               <div
                 key={cat.id}
-                className="flex items-center justify-between w-full px-4 py-3 hover:bg-blue-50 dark:hover:bg-gray-700 transition rounded-md"
+                className="flex items-center justify-between w-full px-4 py-3 hover:bg-[#FBF8F1] dark:hover:bg-gray-700 transition rounded-md"
               >
                 <button
                   onClick={() => handleSelect(cat)}

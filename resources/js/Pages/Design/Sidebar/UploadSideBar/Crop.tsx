@@ -278,7 +278,7 @@ export default function Crop({
         )}
       </div>
 
-      <button onClick={applyCrop} className="mt-5 w-full py-3 bg-blue-600 text-white rounded-xl">
+      <button onClick={applyCrop} className="mt-5 w-full py-3 bg-[#C6A75E] text-white rounded-xl">
         Apply Crop
       </button>
     </div>

@@ -20,7 +20,7 @@ export default function ColorPicker({
   return (
     <div className="flex items-center justify-between gap-3">
       {/* Left side label */}
-      <div className="text-base font-semibold">
+      <div className="text-base font-semibold text-gray-900">
         {label}
       </div>
 
@@ -34,7 +34,7 @@ export default function ColorPicker({
           type="color"
           value={color}
           onChange={(e) => onColorChange(e.target.value)}
-          className={`${className} appearance-none cursor-pointer p-0 border-0 bg-transparent`}
+          className={`${className} appearance-none cursor-pointer p-0 border border-[#D7C39A] rounded-md bg-transparent`}
           style={{
             padding: 0,
           }}

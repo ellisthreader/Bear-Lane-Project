@@ -12,7 +12,7 @@ import OutlinePage from "./OutlinePage";
 import FlipControls from "./FlipControls";
 
 
-import { RotateCw, Square, Trash2, Copy } from "lucide-react";
+import { RotateCw, Square, Trash2, Copy, RefreshCw } from "lucide-react";
 
 type Props = {
   textValue: string;
@@ -32,16 +32,20 @@ type Props = {
   onBorderWidthChange: (v: number) => void;
   onBorderColorChange: (v: string) => void;
   onFlipChange: (v: "none" | "horizontal" | "vertical") => void;
+  onReset: () => void;
   onDelete: () => void;
   onDuplicate: () => void;
 
-  restrictedBox: { width: number; height: number };
+  restrictedBox: { left: number; top: number; width: number; height: number };
+  textPosition?: { x: number; y: number };
 };
 
 export default function TextProperties(props: Props) {
   const [panel, setPanel] = useState<"main" | "fonts" | "outline">("main");
   const measureRef = useRef<HTMLSpanElement>(null);
-  const [maxFontSize, setMaxFontSize] = useState(150);
+  const [maxFontSize, setMaxFontSize] = useState(() =>
+    Math.max(8, Math.floor(Math.max(props.restrictedBox.width, props.restrictedBox.height)))
+  );
   
 
   useLayoutEffect(() => {
@@ -56,10 +60,22 @@ export default function TextProperties(props: Props) {
 
     if (textWidth === 0 || textHeight === 0) return;
 
-    const widthLimit = props.restrictedBox.width / textWidth;
-    const heightLimit = props.restrictedBox.height / textHeight;
+    const rightEdge = props.restrictedBox.left + props.restrictedBox.width;
+    const bottomEdge = props.restrictedBox.top + props.restrictedBox.height;
+    const availableWidth = props.textPosition
+      ? Math.max(1, rightEdge - props.textPosition.x)
+      : props.restrictedBox.width;
+    const availableHeight = props.textPosition
+      ? Math.max(1, bottomEdge - props.textPosition.y)
+      : props.restrictedBox.height;
 
-    const newMax = Math.floor(Math.min(widthLimit, heightLimit, 150));
+    const widthLimit = availableWidth / textWidth;
+    const heightLimit = availableHeight / textHeight;
+
+    const nextMax = Math.floor(Math.min(widthLimit, heightLimit));
+    if (!Number.isFinite(nextMax)) return;
+
+    const newMax = Math.max(8, nextMax);
     setMaxFontSize(newMax);
 
     if (props.fontSize > newMax) {
@@ -70,6 +86,7 @@ export default function TextProperties(props: Props) {
     props.fontFamily,
     props.borderWidth,
     props.restrictedBox,
+    props.textPosition,
     props.fontSize,
     
   ]);
@@ -179,6 +196,14 @@ export default function TextProperties(props: Props) {
         >
           <Copy size={18} />
           Duplicate Text
+        </button>
+
+        <button
+          onClick={props.onReset}
+          className="w-full py-3 bg-red-100 text-red-700 rounded-xl flex items-center justify-center gap-2 hover:bg-red-200"
+        >
+          <RefreshCw size={18} />
+          Reset To Original
         </button>
 
         <button

@@ -15,13 +15,13 @@ export default function SidebarHeader({
         sticky top-0 z-20
         flex items-center justify-between
         px-4 py-3
-        bg-white/95 dark:bg-gray-800/95
+        bg-white/95
         backdrop-blur
-        border-b border-gray-200 dark:border-gray-700
+        border-b border-gray-200
         shadow-sm
       "
     >
-      <h2 className="font-semibold text-sm text-gray-900 dark:text-gray-100">
+      <h2 className="font-semibold text-sm text-gray-900">
         {title}
       </h2>
 
@@ -32,9 +32,8 @@ export default function SidebarHeader({
         }}
         className="
           p-1.5 rounded-md
-          text-gray-600 dark:text-gray-300
-          hover:bg-red-100 hover:text-red-600
-          dark:hover:bg-red-900/40 dark:hover:text-red-400
+          text-gray-600
+          hover:bg-[#C6A75E]/15 hover:text-[#8A6D2B]
           transition
         "
         aria-label="Close sidebar"

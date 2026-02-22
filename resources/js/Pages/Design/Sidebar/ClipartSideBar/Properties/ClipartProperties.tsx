@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, Trash2, Copy } from "lucide-react";
+import { ArrowLeft, Trash2, Copy, RefreshCw } from "lucide-react";
 
 import ColorPicker from "./ColorPicker";
 import ChangeArtButton from "./ChangeArtButton";
@@ -34,6 +34,7 @@ type Props = {
   onChangeArt: () => void;
   onChangeColor: (color: string) => void;
   onDelete: () => void;
+  onReset: () => void;
   onDuplicate: () => void; // ✅ New prop
 };
 
@@ -48,6 +49,7 @@ export default function ClipartProperties({
   onChangeArt,
   onChangeColor,
   onDelete,
+  onReset,
   onDuplicate, // ✅ New prop
 }: Props) {
   const isSvg =
@@ -193,6 +195,14 @@ const handleResize = (requestedWidth: number) => {
             Duplicate Clipart
           </button>
         )}
+
+        <button
+          onClick={onReset}
+          className="w-full py-3 bg-red-100 text-red-700 rounded-xl flex items-center justify-center gap-2 hover:bg-red-200"
+        >
+          <RefreshCw size={18} />
+          Reset To Original
+        </button>
 
         {/* Delete Clipart */}
         <button

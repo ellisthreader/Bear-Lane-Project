@@ -44,8 +44,8 @@ export default function DesignImage({
                   }}
                   className={`transition-all duration-200 rounded-lg border
                     ${isSelected
-                      ? "border-blue-500 scale-110 shadow-lg"
-                      : "border-gray-300 hover:border-blue-400 hover:scale-105 shadow-sm"}
+                      ? "border-[#C6A75E] scale-110 shadow-md"
+                      : "border-gray-300 hover:border-[#C6A75E] hover:scale-105 shadow-sm"}
                   `}
                 >
                   <img
@@ -56,7 +56,7 @@ export default function DesignImage({
                 </button>
                 <span
                   className={`text-xs font-medium text-gray-600 ${
-                    isSelected ? "text-blue-600" : ""
+                    isSelected ? "text-[#8A6D2B]" : ""
                   }`}
                 >
                   {labels[index]}

@@ -83,7 +83,7 @@ export default function ClipartItemsPage({
               hover:border-gray-300
               focus:outline-none
               focus:ring-2
-              focus:ring-blue-500
+              focus:ring-[#C6A75E]
             "
           >
             <img

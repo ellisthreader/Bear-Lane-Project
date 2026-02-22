@@ -3,7 +3,7 @@
 export default function RestrictedArea({ box }: { box: any }) {
   return (
     <div
-      className="absolute border-2 border-dashed border-blue-500 pointer-events-none"
+      className="absolute border-2 border-dashed border-[#C6A75E] pointer-events-none"
       style={{
         left: box.left,
         top: box.top,

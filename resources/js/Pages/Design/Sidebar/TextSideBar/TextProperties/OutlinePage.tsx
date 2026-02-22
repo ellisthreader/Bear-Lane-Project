@@ -33,15 +33,15 @@ export default function OutlinePage({
       <div className="flex items-center gap-3">
         <button
           onClick={onBack}
-          className="text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white transition transform hover:scale-110"
+          className="text-[#8A6D2B] hover:text-[#6F5523] transition transform hover:scale-110"
         >
           <ArrowLeft size={24} />
         </button>
-        <h2 className="text-lg font-semibold">Outline</h2>
+        <h2 className="text-lg font-semibold text-gray-900">Outline</h2>
       </div>
 
       {/* Live Preview */}
-      <div className="flex justify-center items-center h-20 bg-gray-100 dark:bg-gray-800 rounded-md mb-4">
+      <div className="flex justify-center items-center h-20 bg-[#FBF8F1] border border-[#E9D9B5] rounded-xl mb-4">
         <span
           style={{
             fontSize: 32,
@@ -65,27 +65,27 @@ export default function OutlinePage({
 
       {/* Width Slider */}
       <div className="space-y-1">
-        <div className="text-sm font-medium text-gray-600 dark:text-gray-300">
+        <div className="text-sm font-medium text-gray-700">
           Width
         </div>
 
         {/* Labels */}
-        <div className="flex justify-between text-xs text-gray-400 dark:text-gray-500">
+        <div className="flex justify-between text-xs text-gray-500">
           <span>No outline</span>
           <span>Thickest</span>
         </div>
 
         {/* Slider track with dots */}
         <div className="relative h-6 flex items-center">
-          <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-1 bg-gray-200 dark:bg-gray-700 rounded-full" />
+          <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-1 bg-[#E9D9B5] rounded-full" />
           <div className="absolute left-0 right-0 flex justify-between pointer-events-none top-1/2 -translate-y-1/2">
             {steps.map((_, i) => (
               <div
                 key={i}
                 className={`h-2 w-2 rounded-full border-2 ${
                   i === stepIndex
-                    ? "bg-gray-800 dark:bg-white border-gray-800 dark:border-white"
-                    : "bg-white dark:bg-gray-600 border-gray-400 dark:border-gray-500"
+                    ? "bg-[#8A6D2B] border-[#8A6D2B]"
+                    : "bg-white border-[#D7C39A]"
                 }`}
               />
             ))}
@@ -110,7 +110,7 @@ export default function OutlinePage({
           {!showCustom ? (
             <button
               onClick={() => setShowCustom(true)}
-              className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+              className="text-xs text-[#8A6D2B] hover:underline"
             >
               Custom…
             </button>
@@ -124,12 +124,12 @@ export default function OutlinePage({
                 onChange={(e) =>
                   onBorderWidthChange(Math.max(0, Number(e.target.value) || 0))
                 }
-                className="w-20 px-2 py-1 text-sm border rounded-md bg-white dark:bg-gray-900 dark:border-gray-700"
+                className="w-20 px-2 py-1 text-sm border border-[#D7C39A] rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-[#C6A75E]/40"
               />
-              <span className="text-xs text-gray-400">px</span>
+              <span className="text-xs text-gray-500">px</span>
               <button
                 onClick={() => setShowCustom(false)}
-                className="text-xs text-gray-400 hover:text-gray-600"
+                className="text-xs text-[#8A6D2B] hover:underline"
               >
                 done
               </button>
@@ -150,13 +150,13 @@ export default function OutlinePage({
       <div className="flex flex-col gap-2 mt-4">
         <button
           onClick={() => onBorderWidthChange(0)}
-          className="w-full py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md transition font-medium"
+          className="w-full py-2 text-gray-800 bg-[#FBF8F1] hover:bg-[#F4EBD7] border border-[#E9D9B5] rounded-md transition font-medium"
         >
           Remove Outline
         </button>
         <button
           onClick={onBack}
-          className="w-full py-2 text-white bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 rounded-md transition font-medium shadow"
+          className="w-full py-2 text-white bg-[#8A6D2B] hover:bg-[#6F5523] rounded-md transition font-medium shadow"
         >
           Done
         </button>
@@ -171,20 +171,20 @@ export default function OutlinePage({
             height: 16px;
             width: 16px;
             border-radius: 50%;
-            background: #4B5563;
+            background: #8A6D2B;
             border: 2px solid white;
             margin-top: -6px;
             cursor: pointer;
             transition: background 0.2s;
           }
           input[type="range"]::-webkit-slider-thumb:hover {
-            background: #111827;
+            background: #6F5523;
           }
           input[type="range"]::-moz-range-thumb {
             height: 16px;
             width: 16px;
             border-radius: 50%;
-            background: #4B5563;
+            background: #8A6D2B;
             border: 2px solid white;
             cursor: pointer;
           }
@@ -192,7 +192,7 @@ export default function OutlinePage({
             height: 16px;
             width: 16px;
             border-radius: 50%;
-            background: #4B5563;
+            background: #8A6D2B;
             border: 2px solid white;
             cursor: pointer;
           }

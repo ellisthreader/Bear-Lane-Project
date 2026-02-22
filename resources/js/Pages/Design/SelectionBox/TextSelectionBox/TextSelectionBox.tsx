@@ -5,6 +5,7 @@ import DeleteButton from "./DeleteButton";
 import DuplicateButton from "./DuplicateButton";
 import ResizeHandle from "./ResizeHandle";
 import { useTextResize } from "./useTextResize";
+import { useBoundingBox } from "./useBoundingBox";
 
 interface Props {
   selectedText: string[];
@@ -35,53 +36,19 @@ export default function TextSelectionBox(props: Props) {
 
   const [hoverLabel, setHoverLabel] = useState<string | null>(null);
   const [labelPos, setLabelPos] = useState<{ left: number; top: number } | null>(null);
+  const hasSelection = selectedText.length > 0;
 
-  if (!selectedText.length) return null;
+  const { box, update } = useBoundingBox(selectedText, canvasRef);
 
-  /* ---------------- Build combined bounding box ---------------- */
-
-  const boxes = selectedText
-    .map(uid => {
-      const pos = positions[uid];
-      const size = sizes[uid];
-
-      if (!pos || !size || size.w === 0 || size.h === 0) return null;
-
-      return {
-        uid,
-        left: pos.x,
-        top: pos.y,
-        right: pos.x + size.w,
-        bottom: pos.y + size.h,
-      };
-    })
-    .filter(Boolean) as {
-      uid: string;
-      left: number;
-      top: number;
-      right: number;
-      bottom: number;
-    }[];
-
-  if (!boxes.length) {
-    console.warn("⏳ Waiting for text measurement", selectedText);
-    return null;
-  }
-
-  const box = {
-    left: Math.min(...boxes.map(b => b.left)),
-    top: Math.min(...boxes.map(b => b.top)),
-    width:
-      Math.max(...boxes.map(b => b.right)) -
-      Math.min(...boxes.map(b => b.left)),
-    height:
-      Math.max(...boxes.map(b => b.bottom)) -
-      Math.min(...boxes.map(b => b.top)),
-  };
+  useEffect(() => {
+    update();
+  }, [positions, sizes, imageState, update]);
 
   /* ---------------- Outside click ---------------- */
 
   useEffect(() => {
+    if (!hasSelection) return;
+
     const onDown = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
 
@@ -100,18 +67,14 @@ export default function TextSelectionBox(props: Props) {
 
   /* ---------------- Resize hook (single text only) ---------------- */
 
-  const canResize = selectedText.length >= 1;
-  const resizeUid = selectedText[0];
-
-  const handleResize = canResize
-    ? useTextResize(
-        resizeUid,
-        canvasRef,
-        restrictedBox,
-        id => imageState[id]?.fontSize ?? 16,
-        onResizeText
-      )
-    : null;
+  const resizeUid = selectedText[0] ?? null;
+  const handleResize = useTextResize(
+    resizeUid,
+    canvasRef,
+    restrictedBox,
+    id => imageState[id]?.fontSize ?? 16,
+    onResizeText
+  );
 
 
 
@@ -131,14 +94,26 @@ const startGroupResize = (e: React.MouseEvent) => {
   const startState = selectedText.map(uid => {
     const size = sizes[uid];
     const pos = positions[uid];
+    const canvasRect = canvasRef.current?.getBoundingClientRect();
+    const el = document.querySelector<HTMLElement>(
+      `[data-uid="${CSS.escape(uid)}"][data-type="text"]`
+    );
+    const elRect = el?.getBoundingClientRect();
+    const fallbackPos =
+      canvasRect && elRect
+        ? { x: elRect.left - canvasRect.left, y: elRect.top - canvasRect.top }
+        : null;
+    const fallbackSize = elRect
+      ? { w: elRect.width, h: elRect.height }
+      : null;
 
     return {
       uid,
       fontSize: imageState[uid]?.fontSize ?? 16,
-      width: size.w,
-      height: size.h,
-      x: pos.x,
-      y: pos.y,
+      width: size?.w ?? fallbackSize?.w ?? 0,
+      height: size?.h ?? fallbackSize?.h ?? 0,
+      x: pos?.x ?? fallbackPos?.x ?? 0,
+      y: pos?.y ?? fallbackPos?.y ?? 0,
     };
   });
 
@@ -185,6 +160,12 @@ const startGroupResize = (e: React.MouseEvent) => {
 
 
   /* ---------------- Render ---------------- */
+  if (!hasSelection) return null;
+
+  if (!box) {
+    console.warn("⏳ Waiting for text measurement", selectedText);
+    return null;
+  }
 
   return (
     <>

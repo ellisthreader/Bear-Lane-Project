@@ -4,12 +4,14 @@ import { FlipHorizontal, FlipVertical } from "lucide-react";
 
 import ActionButtons from "./ActionButtons";
 import ClipartSizeControls from "../ClipartSideBar/Properties/ClipartSizeControls";
+import { getClampedSize } from "../ClipartSideBar/Properties/utils/getClampedSize";
 import type { ImageState } from "./UploadSidebar";
 
 type ImageEditorProps = {
   selectedImage: string;
   layer: ImageState;
   positions: Record<string, { x: number; y: number }>;
+  restrictedBox?: { left: number; top: number; width: number; height: number };
   canvasRef: React.RefObject<HTMLDivElement>;
 
   onResize?: (w: number, h: number) => void;
@@ -21,37 +23,12 @@ type ImageEditorProps = {
   onCrop?: () => void;
 };
 
-/**
- * Compute the max width for the slider based on canvas size,
- * image center, and aspect ratio (matches the clamp)
- */
-function getMaxWidthFromCanvas({
-  canvasRect,
-  center,
-  layer,
-}: {
-  canvasRect: DOMRect;
-  center: { x: number; y: number };
-  layer: ImageState;
-}) {
-  const aspect = layer.size.h / layer.size.w;
-
-  const maxWidthLeft = center.x;
-  const maxWidthRight = canvasRect.width - center.x;
-  const maxWidth = 2 * Math.min(maxWidthLeft, maxWidthRight);
-
-  const maxHeightTop = center.y;
-  const maxHeightBottom = canvasRect.height - center.y;
-  const maxHeightAsWidth = 2 * Math.min(maxHeightTop, maxHeightBottom) / aspect;
-
-  return Math.max(20, Math.min(maxWidth, maxHeightAsWidth));
-}
-
 export default function ImageEditor({
   canvasRef,
   selectedImage,
   layer,
   positions,
+  restrictedBox,
   onResize,
   onRotateImage,
   onFlipImage,
@@ -62,43 +39,54 @@ export default function ImageEditor({
 }: ImageEditorProps) {
   if (!layer || !selectedImage || !canvasRef.current) return null;
 
-  const canvas = canvasRef.current;
-  const center = positions[selectedImage];
-  if (!center) return null;
-
-  const canvasRect = canvas.getBoundingClientRect();
-  const aspect = layer.size.h / layer.size.w;
-
-  /**
-   * ✅ Center-based resize clamp
-   */
-  const handleResize = (requestedWidth: number) => {
-    const requestedHeight = requestedWidth * aspect;
-
-    const maxWidthLeft = center.x;
-    const maxWidthRight = canvasRect.width - center.x;
-    const maxWidth = 2 * Math.min(maxWidthLeft, maxWidthRight);
-
-    const maxHeightTop = center.y;
-    const maxHeightBottom = canvasRect.height - center.y;
-    const maxHeightAsWidth = 2 * Math.min(maxHeightTop, maxHeightBottom) / aspect;
-
-    const scale = Math.min(
-      maxWidth / requestedWidth,
-      maxHeightAsWidth / requestedWidth,
-      1
-    );
-
-    if (scale <= 0 || Number.isNaN(scale)) return;
-
-    onResize?.(requestedWidth * scale, requestedHeight * scale);
+  const fallbackCanvasRect = canvasRef.current.getBoundingClientRect();
+  const box = restrictedBox ?? {
+    left: 0,
+    top: 0,
+    width: fallbackCanvasRect.width,
+    height: fallbackCanvasRect.height,
   };
+  const canvasRect = canvasRef.current.getBoundingClientRect();
+  const selectedEl = canvasRef.current.querySelector<HTMLElement>(
+    `[data-uid="${CSS.escape(selectedImage)}"]`
+  );
+  const livePosition = selectedEl
+    ? {
+        x: selectedEl.getBoundingClientRect().left - canvasRect.left,
+        y: selectedEl.getBoundingClientRect().top - canvasRect.top,
+      }
+    : null;
 
-  const sliderMax = getMaxWidthFromCanvas({
-    canvasRect,
-    center,
-    layer,
-  });
+  const position =
+    livePosition ??
+    positions[selectedImage] ??
+    layer.canvasPositions?.[selectedImage] ?? {
+      x: box.left,
+      y: box.top,
+    };
+  const aspect = layer.size.h / layer.size.w;
+  if (!Number.isFinite(aspect) || aspect <= 0) return null;
+
+  const handleResize = (requestedWidth: number) => {
+    const clampedWidth = Math.max(requestedWidth, 1);
+    const localPosition = {
+      x: position.x - box.left,
+      y: position.y - box.top,
+    };
+
+    const result = getClampedSize({
+      requestedWidth: clampedWidth,
+      currentWidth: layer.size.w,
+      currentHeight: layer.size.h,
+      position: localPosition,
+      restrictedBox: {
+        width: box.width,
+        height: box.height,
+      },
+    });
+    if (!result) return;
+    onResize?.(result.width, result.height);
+  };
 
   return (
     <div className="p-6 space-y-5 h-full overflow-y-auto">
@@ -107,7 +95,7 @@ export default function ImageEditor({
         <ClipartSizeControls
           value={layer.size.w}
           min={20}
-          max={200}
+          max={600}
           onChange={handleResize}
         />
       </div>

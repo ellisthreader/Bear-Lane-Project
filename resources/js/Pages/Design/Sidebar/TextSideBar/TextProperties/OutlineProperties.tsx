@@ -35,17 +35,17 @@ export default function OutlineProperties({
   return (
     <div className="flex items-center justify-between w-full py-2 cursor-pointer">
       {/* Left label */}
-      <div className="text-base font-semibold">
+      <div className="text-base font-semibold text-gray-900">
         Outline
       </div>
 
       <button
         onClick={onOpenOutline}
-        className="flex items-center gap-2 italic text-base text-gray-600 hover:text-black transition"
+        className="flex items-center gap-2 italic text-base text-gray-600 hover:text-gray-900 transition"
       >
         {/* color preview square */}
         <span
-          className="h-4 w-4 rounded border"
+          className="h-4 w-4 rounded border border-[#D7C39A]"
           style={{ backgroundColor: borderColor }}
         />
 

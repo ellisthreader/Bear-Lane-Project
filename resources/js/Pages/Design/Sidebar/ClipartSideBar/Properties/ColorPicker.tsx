@@ -35,7 +35,7 @@ export default function ColorPicker({
 
       <div className="flex items-center gap-4">
         {/* Color swatch */}
-        <label className="relative w-11 h-11 rounded-xl overflow-hidden cursor-pointer bg-gray-100 hover:ring-2 hover:ring-blue-400 transition">
+        <label className="relative w-11 h-11 rounded-xl overflow-hidden cursor-pointer bg-gray-100 hover:ring-2 hover:ring-[#C6A75E] transition">
           <input
             type="color"
             value={color}

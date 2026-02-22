@@ -14,12 +14,13 @@ export default function GetPriceButton({ onClick }: GetPriceButtonProps) {
       className="
         flex items-center gap-2
         px-6 py-3
-        bg-white text-black
-        border border-gray-300
+        bg-white text-[#8A6D2B]
+        border border-[#C6A75E]/50
         rounded-xl
-        shadow-lg
-        hover:scale-105
-        active:scale-95
+        shadow-md
+        hover:bg-[#C6A75E]/10
+        hover:border-[#C6A75E]
+        active:translate-y-[1px]
         transition-all duration-200
       "
     >

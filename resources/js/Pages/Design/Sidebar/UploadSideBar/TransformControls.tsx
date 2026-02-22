@@ -57,7 +57,7 @@ export default function TransformControls({
         <button
           onClick={() => handleFlip("horizontal")}
           className={`p-2 rounded-md border ${
-            image.flip === "horizontal" ? "bg-blue-200" : "bg-gray-200"
+            image.flip === "horizontal" ? "bg-[#C6A75E]/20" : "bg-gray-200"
           }`}
         >
           <FlipHorizontal size={18} />
@@ -66,7 +66,7 @@ export default function TransformControls({
         <button
           onClick={() => handleFlip("vertical")}
           className={`p-2 rounded-md border ${
-            image.flip === "vertical" ? "bg-blue-200" : "bg-gray-200"
+            image.flip === "vertical" ? "bg-[#C6A75E]/20" : "bg-gray-200"
           }`}
         >
           <FlipVertical size={18} />

@@ -14,11 +14,12 @@ export default function SaveDesignButton({ onClick }: SaveDesignButtonProps) {
       className="
         flex items-center gap-2
         px-6 py-3
-        bg-black text-white
+        bg-[#C6A75E] text-white
         rounded-xl
-        shadow-lg
-        hover:scale-105
-        active:scale-95
+        shadow-md
+        hover:bg-[#B8994E]
+        hover:shadow-lg
+        active:translate-y-[1px]
         transition-all duration-200
       "
     >

@@ -6,6 +6,7 @@ type Props = {
   uid: string;
   text: string;
   pos?: { x: number; y: number };
+  restrictedBox?: { left: number; top: number; width: number; height: number };
   fontSize: number;
   rotation?: number;
   flip?: "none" | "horizontal" | "vertical";
@@ -23,6 +24,7 @@ export default function DraggableText({
   uid,
   text,
   pos,
+  restrictedBox,
   fontSize,
   rotation = 0,
   flip = "none",
@@ -43,6 +45,9 @@ export default function DraggableText({
 
   const x = pos?.x ?? 200;
   const y = pos?.y ?? 200;
+  const maxTextWidth = restrictedBox
+    ? Math.max(1, restrictedBox.left + restrictedBox.width - x)
+    : undefined;
 
   const scaleX = flip === "horizontal" ? -1 : 1;
   const scaleY = flip === "vertical" ? -1 : 1;
@@ -57,13 +62,10 @@ useLayoutEffect(() => {
   const el = measureRef.current;
   if (!el) return;
 
-  const range = document.createRange();
-  range.selectNodeContents(el);
-
-  const rect = range.getBoundingClientRect();
-
-  const w = Math.round(rect.width * 10) / 10;
-  const h = Math.round(rect.height * 10) / 10;
+  const rect = el.getBoundingClientRect();
+  const extraStroke = borderWidth * 2;
+  const w = Math.round((rect.width + extraStroke) * 10) / 10;
+  const h = Math.round((rect.height + extraStroke) * 10) / 10;
 
   if (
     !lastMeasured.current ||
@@ -74,7 +76,7 @@ useLayoutEffect(() => {
     setMeasured({ w, h });
     onMeasure?.(uid, w, h);
   }
-}, [text, fontSize, fontFamily, borderWidth]);
+}, [text, fontSize, fontFamily, borderWidth, rotation, flip]);
 
 
 
@@ -93,8 +95,8 @@ useLayoutEffect(() => {
         style={{
           left: x,
           top: y,
-          width: measured.w,
-          height: measured.h,
+          width: measured.w > 0 ? measured.w : "auto",
+          height: measured.h > 0 ? measured.h : "auto",
           zIndex: highlighted ? 200 : 50,
           userSelect: "none",
         }}
@@ -113,6 +115,8 @@ useLayoutEffect(() => {
               fontFamily,
               fontSize: `${fontSize}px`,
               whiteSpace: "pre-wrap",
+              overflowWrap: "break-word",
+              maxWidth: maxTextWidth,
               color,
               display: "block",
               WebkitTextStrokeWidth: `${borderWidth}px`,

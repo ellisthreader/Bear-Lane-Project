@@ -5,7 +5,7 @@ export default function MainProductImage({ src }: { src: string }) {
   if (!src) return null;
 
   return (
-    <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+    <div className="absolute inset-0 pointer-events-none flex items-center justify-center bg-gray-200">
       <img
         key={src}               // 🔥 THIS IS THE FIX
         src={src}

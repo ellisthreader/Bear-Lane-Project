@@ -38,7 +38,7 @@ export default function FontPage({
       <div className="flex items-center gap-3">
         <button
           onClick={onBack}
-          className="hover:text-blue-600 transition"
+          className="hover:text-[#8A6D2B] transition"
         >
           <ArrowLeft size={20} />
         </button>
@@ -52,7 +52,7 @@ export default function FontPage({
         value={search}
         placeholder="Search fonts..."
         onChange={(e) => setSearch(e.target.value)}
-        className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-400 focus:outline-none transition"
+        className="w-full p-2 border rounded-md focus:ring-2 focus:ring-[#C6A75E] focus:outline-none transition"
       />
 
       {/* Font list */}
@@ -60,8 +60,8 @@ export default function FontPage({
         {filtered.map(font => (
           <div
             key={font}
-            className={`p-3 rounded-md cursor-pointer hover:bg-blue-100 transition ${
-              font === activeFont ? "bg-blue-200" : ""
+            className={`p-3 rounded-md cursor-pointer hover:bg-[#C6A75E]/10 transition ${
+              font === activeFont ? "bg-[#C6A75E]/20" : ""
             }`}
             onClick={() => {
               onFontChange(font);

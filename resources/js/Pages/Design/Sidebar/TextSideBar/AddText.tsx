@@ -85,7 +85,7 @@ export default function AddText({
       <input
         type="text"
         placeholder="Enter text here..."
-        className="w-full p-3 text-gray-800 text-sm rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-400 focus:outline-none transition placeholder-gray-400"
+        className="w-full p-3 text-gray-800 text-sm rounded-xl border border-gray-300 focus:ring-2 focus:ring-[#C6A75E] focus:outline-none transition placeholder-gray-400"
         value={text}
         maxLength={MAX_TEXT_LENGTH}
         onChange={(e) =>
@@ -100,7 +100,7 @@ export default function AddText({
 
       {/* Add Button */}
       <button
-        className="w-full py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-semibold rounded-xl transition-transform hover:scale-105"
+        className="w-full py-3 bg-[#C6A75E] text-white font-semibold rounded-xl transition hover:bg-[#B8994E]"
         onClick={handleAddText}
       >
         Add Text

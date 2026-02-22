@@ -10,6 +10,7 @@ type Props = {
   highlighted: boolean;
   onPointerDown: (e: React.PointerEvent, uid: string) => void;
   color?: string; // optional tint/color
+  isClipart?: boolean;
 };
 
 export default function DraggableImage({
@@ -22,12 +23,48 @@ export default function DraggableImage({
   highlighted,
   onPointerDown,
   color = "#fff",
+  isClipart = false,
 }: Props) {
   // Flip around center without changing position
   const scaleX = flip === "horizontal" ? -1 : 1;
   const scaleY = flip === "vertical" ? -1 : 1;
 
   const transform = `translate(${pos.x}px, ${pos.y}px) rotate(${rotation}deg) scaleX(${scaleX}) scaleY(${scaleY})`;
+  const isSvg = /\.svg(?:[?#].*)?$/i.test(url);
+  const shouldTintSvg = isClipart && isSvg;
+
+  if (shouldTintSvg) {
+    return (
+      <div
+        data-uid={uid}
+        onPointerDown={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onPointerDown(e, uid);
+        }}
+        style={{
+          position: "absolute",
+          width: size.w,
+          height: size.h,
+          transform,
+          transformOrigin: "center center",
+          cursor: "grab",
+          zIndex: highlighted ? 1000 : 1,
+          userSelect: "none",
+          pointerEvents: "auto",
+          backgroundColor: color || "#000000",
+          WebkitMaskImage: `url("${url}")`,
+          WebkitMaskRepeat: "no-repeat",
+          WebkitMaskPosition: "center",
+          WebkitMaskSize: "contain",
+          maskImage: `url("${url}")`,
+          maskRepeat: "no-repeat",
+          maskPosition: "center",
+          maskSize: "contain",
+        }}
+      />
+    );
+  }
 
   return (
     <img
@@ -51,7 +88,6 @@ export default function DraggableImage({
         userSelect: "none",
         pointerEvents: "auto",
         objectFit: "contain",
-        filter: color !== "#fff" ? `drop-shadow(0 0 0 ${color})` : undefined,
       }}
       alt=""
     />

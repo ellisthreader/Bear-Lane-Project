@@ -6,13 +6,11 @@ import MainProductImage from "./MainProductImage";
 import RestrictedArea from "./RestrictedArea";
 import Marquee from "./Marquee";
 import SelectionBox from "../SelectionBox";
-import TextSelectionBox from "../SelectionBox/TextSelectionBox/TextSelectionBox";
 
 import { useDragSelection } from "./Hooks/useDragSelection";
 import { useMarqueeSelection } from "./Hooks/useMarqueeSelection";
 import { useImageSizes } from "./Hooks/useImageSizes";
 import { useImagePositions } from "./Hooks/useImagePositions";
-import { useGroupResize } from "./Hooks/useGroupResize";
 import { useDuplicateImages } from "./Hooks/useDuplicateImages";
 import DraggableText from "./DraggableText";
 import SelectionWatcher from "../Components/SelectionWatcher";
@@ -98,6 +96,7 @@ export type CanvasProps = {
   onGetPrice?: () => void;
   onSaveDesign?: () => void;
   onViewSnapshotChange?: (viewKey: ViewKey, snapshot: PricePreviewSnapshot) => void;
+  compactPriceMode?: boolean;
 };
 
 export default function Canvas(props: CanvasProps) {
@@ -117,6 +116,7 @@ export default function Canvas(props: CanvasProps) {
     onGetPrice,
     onSaveDesign,
     onViewSnapshotChange,
+    compactPriceMode = false,
   } = props;
 
   const latestUploadedImageRef = useRef<string | null>(null);
@@ -155,10 +155,27 @@ export default function Canvas(props: CanvasProps) {
   // ---------------- Text Auto Shrink ----------------
   useTextAutoShrink({
     imageState: currentImageState,
+    canvasRef,
     positions,
     sizes,
     restrictedBox,
     onResizeText: onResizeTextCommit,
+    onRepositionText: (uid, next) => {
+      setPositions(prev => {
+        const current = prev[uid];
+        if (
+          current &&
+          Math.abs(current.x - next.x) < 0.1 &&
+          Math.abs(current.y - next.y) < 0.1
+        ) {
+          return prev;
+        }
+        return {
+          ...prev,
+          [uid]: next,
+        };
+      });
+    },
   });
 
   // ---------------- Drag Selection ----------------
@@ -174,22 +191,6 @@ export default function Canvas(props: CanvasProps) {
     onResize: props.onResize,
     onReset: props.onReset,
     multiDrag: true,
-  });
-
-  const selectedImages = drag.selected.filter(
-    uid => currentImageState[uid]?.type === "image" || currentImageState[uid]?.type === "clipart"
-  );
-  const selectedText = drag.selected.filter(uid => currentImageState[uid]?.type === "text");
-
-  // ---------------- Group Resize ----------------
-  const groupResize = useGroupResize({
-    selected: drag.selected,
-    sizes,
-    positions,
-    setSizes,
-    setPositions,
-    restrictedBox,
-    setImageState: updateCurrentImageState,
   });
 
   // ---------------- Marquee ----------------
@@ -217,6 +218,114 @@ export default function Canvas(props: CanvasProps) {
     props.onDelete(uids);
   };
 
+  const handleUnifiedGroupResize = (startClientX: number) => {
+    if (drag.selected.length === 0) return;
+    const canvasRect = canvasRef.current?.getBoundingClientRect();
+    if (!canvasRect) return;
+
+    const startState = drag.selected
+      .map(uid => {
+        const layer = currentImageState[uid];
+        const position = positions[uid];
+        const measuredSize = sizes[uid];
+        const el = document.querySelector<HTMLElement>(`[data-uid="${CSS.escape(uid)}"]`);
+        const rect = el?.getBoundingClientRect();
+        const fallbackSize = rect ? { w: rect.width, h: rect.height } : undefined;
+        const fallbackPosition = rect
+          ? { x: rect.left - canvasRect.left, y: rect.top - canvasRect.top }
+          : undefined;
+
+        const size = measuredSize ?? fallbackSize;
+        const pos = position ?? fallbackPosition;
+        if (!layer || !size || !pos) return null;
+
+        return {
+          uid,
+          type: layer.type,
+          fontSize: layer.fontSize ?? 24,
+          size: { ...size },
+          position: { ...pos },
+        };
+      })
+      .filter((item): item is NonNullable<typeof item> => item !== null);
+
+    if (startState.length === 0) return;
+
+    const boxLeft = Math.min(...startState.map(item => item.position.x));
+    const boxTop = Math.min(...startState.map(item => item.position.y));
+    const boxRight = Math.max(...startState.map(item => item.position.x + item.size.w));
+    const boxBottom = Math.max(...startState.map(item => item.position.y + item.size.h));
+    const boxWidth = boxRight - boxLeft;
+    const boxHeight = boxBottom - boxTop;
+    if (boxWidth <= 0 || boxHeight <= 0) return;
+
+    const onMove = (e: MouseEvent) => {
+      let scale = Math.exp((e.clientX - startClientX) / 200);
+
+      if (restrictedBox) {
+        const right = restrictedBox.left + restrictedBox.width;
+        const bottom = restrictedBox.top + restrictedBox.height;
+        let maxScale = Infinity;
+        maxScale = Math.min(maxScale, (right - boxLeft) / boxWidth);
+        maxScale = Math.min(maxScale, (bottom - boxTop) / boxHeight);
+        maxScale = Math.max(0.01, maxScale);
+        scale = Math.min(scale, maxScale);
+      }
+
+      setSizes(prev => {
+        const next = { ...prev };
+        startState.forEach(item => {
+          next[item.uid] = {
+            w: item.size.w * scale,
+            h: item.size.h * scale,
+          };
+        });
+        return next;
+      });
+
+      setPositions(prev => {
+        const next = { ...prev };
+        startState.forEach(item => {
+          const rx = item.position.x - boxLeft;
+          const ry = item.position.y - boxTop;
+          next[item.uid] = {
+            x: boxLeft + rx * scale,
+            y: boxTop + ry * scale,
+          };
+        });
+        return next;
+      });
+
+      updateCurrentImageState(prev => {
+        const next = { ...prev };
+        startState.forEach(item => {
+          const existing = next[item.uid];
+          if (!existing) return;
+
+          next[item.uid] = {
+            ...existing,
+            size: {
+              w: item.size.w * scale,
+              h: item.size.h * scale,
+            },
+            ...(item.type === "text"
+              ? { fontSize: Math.max(6, Math.round(item.fontSize * scale)) }
+              : {}),
+          };
+        });
+        return next;
+      });
+    };
+
+    const onUp = () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  };
+
   const handleDuplicateFromTextProperties = () => {
     if (drag.selected.length === 0) return;
     duplicateImages([drag.selected[0]]);
@@ -228,7 +337,7 @@ export default function Canvas(props: CanvasProps) {
   }, [mainImage]);
 
   useEffect(() => {
-    if (!onViewSnapshotChange) return;
+    if (!onViewSnapshotChange || compactPriceMode) return;
     const canvasBounds = canvasRef.current?.getBoundingClientRect();
     const canvasWidth = canvasBounds?.width ?? 0;
     const canvasHeight = canvasBounds?.height ?? 0;
@@ -279,6 +388,7 @@ export default function Canvas(props: CanvasProps) {
     sizes,
     restrictedBox,
     canvasRef,
+    compactPriceMode,
   ]);
 
   // ---------------- Handlers ----------------
@@ -319,12 +429,12 @@ export default function Canvas(props: CanvasProps) {
   return (
     <div
       ref={canvasRef}
-      className="flex-1 relative bg-gray-200 dark:bg-gray-800"
+      className="flex-1 relative bg-gray-100"
       onPointerDown={handleCanvasPointerDown}
       onPointerMove={marquee.onPointerMove}
     >
       <MainProductImage src={currentViewImage} />
-      <RestrictedArea box={restrictedBox} />
+      {!compactPriceMode && <RestrictedArea box={restrictedBox} />}
 
       <UploadedImagesLayer
         uids={visualUids}
@@ -348,6 +458,7 @@ export default function Canvas(props: CanvasProps) {
               uid={uid}
               text={layer.text ?? ""}
               pos={p}
+              restrictedBox={restrictedBox}
               size={size}
               rotation={layer.rotation ?? 0}
               flip={layer.flip ?? "none"}
@@ -367,30 +478,15 @@ export default function Canvas(props: CanvasProps) {
           );
         })}
 
-      {selectedImages.length > 0 && (
+      {drag.selected.length > 0 && (
         <SelectionBox
-          selectedImages={selectedImages}
+          selectedImages={drag.selected}
           canvasRef={drag.selectionBoxProps.canvasRef}
           onDuplicate={handleDuplicateFromSelectionBox}
-          onStartGroupResize={direction => groupResize.startResize(direction)}
+          onStartGroupResize={handleUnifiedGroupResize}
           onDelete={handleDeleteFromSelectionBox}
           onResize={drag.selectionBoxProps.onResize}
           onDeselectAll={drag.selectionBoxProps.onDeselectAll}
-        />
-      )}
-
-      {selectedText.length > 0 && (
-        <TextSelectionBox
-          selectedText={selectedText}
-          canvasRef={drag.selectionBoxProps.canvasRef}
-          onDuplicate={handleDuplicateFromSelectionBox}
-          onDelete={handleDeleteFromSelectionBox}
-          onDeselectAll={drag.selectionBoxProps.onDeselectAll}
-          onResizeText={onResizeTextCommit}
-          restrictedBox={restrictedBox}
-          positions={positions}
-          imageState={currentImageState}
-          sizes={sizes}
         />
       )}
 
@@ -403,21 +499,24 @@ export default function Canvas(props: CanvasProps) {
         onSelectionChange={props.onSelectionChange}
       />
 
-      <ProductViewSelector
-        images={props.productViewImages ?? {}}
-        onSelectView={(imageSrc, key) => {
-          setCurrentViewKey(key);
-          setCurrentViewImage(imageSrc);
-        }}
-      />
+      {!compactPriceMode && (
+        <ProductViewSelector
+          images={props.productViewImages ?? {}}
+          onSelectView={(imageSrc, key) => {
+            setCurrentViewKey(key);
+            setCurrentViewImage(imageSrc);
+          }}
+        />
+      )}
 
       <Marquee marquee={marquee.marquee} />
 
-      {/* Bottom Right Buttons */}
-      <div className="absolute bottom-6 right-6 flex gap-4 z-50">
-        <SaveDesignButton onClick={onSaveDesign ?? (() => {})} />
-        <GetPriceButton onClick={onGetPrice ?? (() => {})} />
-      </div>
+      {!compactPriceMode && (
+        <div className="absolute bottom-6 right-6 flex gap-4 z-50">
+          <SaveDesignButton onClick={onSaveDesign ?? (() => {})} />
+          <GetPriceButton onClick={onGetPrice ?? (() => {})} />
+        </div>
+      )}
     </div>
   );
 }

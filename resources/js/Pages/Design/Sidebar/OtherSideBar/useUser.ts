@@ -1,4 +1,4 @@
-import useSWR from "swr";
+import { useEffect, useState } from "react";
 
 const fetcher = (url: string) =>
   fetch(url, { credentials: "include" }).then((res) => {
@@ -7,10 +7,32 @@ const fetcher = (url: string) =>
   });
 
 export function useUser() {
-  const { data, error, isLoading } = useSWR(
-    "http://localhost/api/user",
-    fetcher
-  );
+  const [data, setData] = useState<unknown>(null);
+  const [error, setError] = useState<unknown>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    fetcher("/api/user")
+      .then((response) => {
+        if (!isMounted) return;
+        setData(response);
+        setError(null);
+      })
+      .catch((err) => {
+        if (!isMounted) return;
+        setError(err);
+      })
+      .finally(() => {
+        if (!isMounted) return;
+        setIsLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   return {
     user: data,

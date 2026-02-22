@@ -73,6 +73,11 @@
       rotation: number;
       flip: "none" | "horizontal" | "vertical";
       size: { w: number; h: number };
+      text?: string;
+      fontFamily?: string;
+      fontSize?: number;
+      borderColor?: string;
+      borderWidth?: number;
       color?: string;
       renderKey?: string;
     };
@@ -122,7 +127,11 @@
 
   export default function Design() {
     const { props } = usePage();
-    const { user, isLoading } = useUser(); // ✅ ADD THIS
+    const { user, isLoading, isSignedIn } = useUser(); // ✅ ADD THIS
+    const authUser = (props as any).auth?.user ?? null;
+    const resolvedUser = (user as any) ?? authUser;
+    const isUserSignedIn = Boolean(authUser ?? user ?? isSignedIn);
+    const isUserLoading = !authUser && isLoading;
     const { addToCart } = useCart();
     const [isPricePanelOpen, setIsPricePanelOpen] = React.useState(false);
     
@@ -174,21 +183,54 @@
 
 
     const handleSaveDesign = () => {
-  console.log("Saving design...");
-  // your save logic here
-  
+  setSidebarStack(["my-designs"]);
 };
 
 
   const handleGetPrice = () => {
     console.log("GET PRICE CLICKED");
-    setIsPricePanelOpen(true);
+
+    const initialColour = selectedColour ?? uniqueColours[0] ?? null;
+    if (initialColour && initialColour !== selectedColour) {
+      setSelectedColour(initialColour);
+    }
+
+    const sizesForColour =
+      (initialColour && variantsByColour[initialColour]
+        ? variantsByColour[initialColour]
+            .map(v => v.size)
+            .filter((size): size is string => typeof size === "string" && size.trim().length > 0)
+        : []);
+
+    const fallbackSizes = (safeProduct.sizes ?? []).filter(
+      (size): size is string => typeof size === "string" && size.trim().length > 0
+    );
+
+    const initialSize = selectedSize ?? sizesForColour[0] ?? fallbackSizes[0] ?? null;
+    if (initialSize && initialSize !== selectedSize) {
+      setSelectedSize(initialSize);
+    }
+
+    window.requestAnimationFrame(() => {
+      setIsPricePanelOpen(true);
+    });
   };
 
   const handlePricePreviewUpdate = useCallback((viewKey: ViewKey, snapshot: PricePreviewSnapshot) => {
     const nextSignature = previewSnapshotSignature(snapshot);
 
     setPricePreviewByView(prev => {
+      if (isPricePanelOpen) return prev;
+
+      const existingSnapshot = prev[viewKey];
+      const viewStateLayerCount = Object.keys(viewImageStates[viewKey] ?? {}).length;
+      const isTransientEmptySnapshot =
+        viewStateLayerCount > 0 &&
+        snapshot.layers.length === 0 &&
+        (existingSnapshot?.layers.length ?? 0) > 0;
+
+      if (isTransientEmptySnapshot) return prev;
+
       const currentSignature = previewSnapshotSignature(prev[viewKey]);
       if (currentSignature === nextSignature) return prev;
 
@@ -197,7 +239,7 @@
         [viewKey]: snapshot,
       };
     });
-  }, []);
+  }, [isPricePanelOpen, viewImageStates]);
 
   const handleAddToCartFromPrice = ({
     quantity,
@@ -256,6 +298,7 @@
     const [mainImage, setMainImage] = useState("");
     const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
     const canvasRef = useRef<HTMLDivElement | null>(null);
+    const pricePanelRef = useRef<HTMLDivElement | null>(null);
     const [selectedObjects, setSelectedObjects] = useState<string[]>([]);
     const [replaceClipartId, setReplaceClipartId] = useState<string | null>(null);
     const [positions, setPositions] = useState<Record<string, {
@@ -393,8 +436,13 @@ const pricePanelSides = useMemo(
     const [selectedSize, setSelectedSize] = useState<string | null>(null);
 
 const pricePanelAvailableSizes = useMemo(() => {
-  if (selectedColour && variantsByColour[selectedColour]?.length) {
-    const sizesForColour = variantsByColour[selectedColour]
+  const effectiveColour =
+    selectedColour && variantsByColour[selectedColour]?.length
+      ? selectedColour
+      : uniqueColours[0];
+
+  if (effectiveColour && variantsByColour[effectiveColour]?.length) {
+    const sizesForColour = variantsByColour[effectiveColour]
       .map(v => v.size)
       .filter((size): size is string => typeof size === "string" && size.trim().length > 0);
 
@@ -406,7 +454,7 @@ const pricePanelAvailableSizes = useMemo(() => {
     (size): size is string => typeof size === "string" && size.trim().length > 0
   );
   return Array.from(new Set(fallbackSizes));
-}, [selectedColour, variantsByColour, safeProduct.sizes]);
+}, [selectedColour, uniqueColours, variantsByColour, safeProduct.sizes]);
 
 
 
@@ -439,17 +487,49 @@ const updateCurrentImageState = (
     }
   }, [product, propColour, propSize]);
 
+  useEffect(() => {
+    if (selectedColour || uniqueColours.length === 0) return;
+    const initialColour = uniqueColours[0];
+    setSelectedColour(initialColour);
 
-    useEffect(() => {
-      if (!canvasRef.current) return;
+    const initialSizes = variantsByColour[initialColour]
+      ?.map(v => v.size)
+      .filter((size): size is string => typeof size === "string" && size.trim().length > 0) ?? [];
+
+    if (!selectedSize && initialSizes.length > 0) {
+      setSelectedSize(initialSizes[0]);
+    }
+  }, [selectedColour, selectedSize, uniqueColours, variantsByColour]);
+
+
+  useEffect(() => {
+    if (!canvasRef.current) return;
       const updateSize = () => {
         const { width, height } = canvasRef.current!.getBoundingClientRect();
         setCanvasSize({ width, height });
       };
       updateSize();
       window.addEventListener("resize", updateSize);
-      return () => window.removeEventListener("resize", updateSize);
-    }, []);
+    return () => window.removeEventListener("resize", updateSize);
+  }, []);
+
+  useEffect(() => {
+    if (!isPricePanelOpen) return;
+
+    const handleOutsideDown = (event: MouseEvent | TouchEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+      if (pricePanelRef.current?.contains(target)) return;
+      setIsPricePanelOpen(false);
+    };
+
+    document.addEventListener("mousedown", handleOutsideDown);
+    document.addEventListener("touchstart", handleOutsideDown, { passive: true });
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideDown);
+      document.removeEventListener("touchstart", handleOutsideDown);
+    };
+  }, [isPricePanelOpen]);
 
   useEffect(() => {
     // 🟢 CASE 1: product has NO colour variants
@@ -690,7 +770,7 @@ const handleAddClipart = (src: string) => {
       size,
       color: "#000000",
       renderKey: crypto.randomUUID(),
-      original: { url: src, rotation: 0, flip: "none", size: { ...size } },
+      original: { url: src, rotation: 0, flip: "none", size: { ...size }, color: "#000000" },
     },
   });
   setSelectedUploadedImageWithLog(uid);
@@ -704,7 +784,12 @@ const handleReplaceClipart = (src: string) => {
   const layer = currentImageState[replaceClipartId];
   if (!layer || !layer.isClipart) return;
   updateCurrentImageState({
-    [replaceClipartId]: { ...layer, url: src, color: "#000000", original: { ...layer.original, url: src } },
+    [replaceClipartId]: {
+      ...layer,
+      url: src,
+      color: "#000000",
+      original: { ...layer.original, url: src, color: "#000000" },
+    },
   });
   setSelectedUploadedImageWithLog(replaceClipartId);
   setReplaceClipartId(null);
@@ -842,6 +927,34 @@ const updateTextLayer = (uid: string, updates: Partial<ImageState>) => {
     [uid]: { ...currentImageState[uid], ...updates },
   });
 };
+
+const resetTextLayer = (uid: string) => {
+  const layer = currentImageState[uid];
+  if (!layer || layer.type !== "text") return;
+
+  const original = layer.original ?? {
+    url: "",
+    rotation: 0,
+    flip: "none",
+    size: { w: 0, h: 0 },
+  };
+
+  updateCurrentImageState({
+    [uid]: {
+      ...layer,
+      text: original.text ?? layer.text ?? "",
+      fontFamily: original.fontFamily ?? layer.fontFamily ?? "Arial",
+      fontSize: original.fontSize ?? 24,
+      color: original.color ?? "#000000",
+      borderColor: original.borderColor ?? "#000000",
+      borderWidth: original.borderWidth ?? 0,
+      rotation: original.rotation ?? 0,
+      flip: original.flip ?? "none",
+      size: original.size ?? { w: 0, h: 0 },
+      renderKey: crypto.randomUUID(),
+    },
+  });
+};
   // ---------------- SIDEBAR TITLES ----------------
 const SIDEBAR_TITLES: Record<string, string | ((props: any) => string)> = {
   product: "Product",
@@ -851,7 +964,7 @@ const SIDEBAR_TITLES: Record<string, string | ((props: any) => string)> = {
       ? "Clipart Properties"
       : "Clipart",
   upload: "Upload", // always Upload
-  "my-designs": "My Designs", // ✅ ADD THIS LINE
+  "my-designs": () => (isUserSignedIn ? "My Designs" : "Sign in to access"),
 };
 
 
@@ -927,7 +1040,7 @@ const renderActiveTab = () => {
               text: layer.text,
               rotation: 0,
               flip: "none",
-              size: { w: 200, h: layer.fontSize },
+              size: { w: 0, h: 0 },
               fontFamily: layer.font,
               color: layer.color,
               borderColor: layer.borderColor,
@@ -938,7 +1051,13 @@ const renderActiveTab = () => {
                 url: "",
                 rotation: 0,
                 flip: "none",
-                size: { w: 200, h: layer.fontSize },
+                size: { w: 0, h: 0 },
+                text: layer.text,
+                fontFamily: layer.font,
+                fontSize: layer.fontSize,
+                color: layer.color,
+                borderColor: layer.borderColor,
+                borderWidth: layer.borderWidth,
               },
             },
           });
@@ -971,8 +1090,10 @@ const renderActiveTab = () => {
       flip={textLayer.flip ?? "none"}
       onFlipChange={(val) => updateTextLayer(selectedText, { flip: val })}
       onDuplicate={() => duplicateTextLayer(selectedText)}
+      onReset={() => resetTextLayer(selectedText)}
       onDelete={() => deleteTextLayer(selectedText)}
       restrictedBox={restrictedBox}
+      textPosition={positions[selectedText]}
     />
   );
 }
@@ -989,7 +1110,7 @@ const renderActiveTab = () => {
           <ClipartProperties
             layer={clipartLayer}
             restrictedBox={restrictedBox}
-            canvasPosition={positions[clipartLayer.url]}
+            canvasPosition={positions[selectedUploadedImage!] ?? { x: 0, y: 0 }}
             onRotate={(v) =>
               handleRotateImage(selectedUploadedImage!, v)
             }
@@ -1005,6 +1126,9 @@ const renderActiveTab = () => {
             onChangeArt={handleChangeClipart}
             onDelete={() =>
               handleRemoveUploadedImage(selectedUploadedImage!)
+            }
+            onReset={() =>
+              handleResetImage(selectedUploadedImage!)
             }
             onDuplicate={() =>
               handleDuplicateUploadedImage(selectedUploadedImage!)
@@ -1040,7 +1164,7 @@ const renderActiveTab = () => {
       );
 
     case "my-designs":
-      if (isLoading) {
+      if (isUserLoading) {
         return (
           <div className="p-6 text-center text-gray-400">
             Loading your designs...
@@ -1051,7 +1175,7 @@ const renderActiveTab = () => {
       return (
         <MyDesignsSidebar
           closeSidebar={goBackSidebar}
-          user={user}
+          user={resolvedUser}
           onSelectDesign={handleProductSelect}
         />
       );
@@ -1086,9 +1210,16 @@ const handleResizeText = (uid: string, newFontSize: number) => {
     }
   }));
 };
+
+const handleCloseSidebar = () => {
+  setSelectedObjects([]);
+  setSelectedText(null);
+  setSelectedUploadedImageWithLog(null);
+  setSidebarStack(["blank"]);
+};
   
   return (
-    <div className="min-h-screen bg-gray-200 dark:bg-gray-900 relative disable-selection">
+    <div className="min-h-screen bg-gray-200 relative disable-selection">
       <Head title="Start Designing" />
 
       {isChangeProductModalOpen && (
@@ -1098,21 +1229,21 @@ const handleResizeText = (uid: string, newFontSize: number) => {
         />
       )}
 
-      <div className={isChangeProductModalOpen ? "blur-lg opacity-40" : ""}>
+      <div className={`${isChangeProductModalOpen ? "blur-lg opacity-40" : ""} min-h-screen bg-gray-200`}>
 
         {/* ✅ NEW NAVBAR COMPONENT */}
         <DesignNavbar
           designName={safeName}
-          onOpenMyDesigns={() => setSidebarStack([...sidebarStack, "my-designs"])}
+          myDesignsLabel={isUserSignedIn ? "My Designs" : "Sign in to access"}
         />
 
         {/* CONTENT */}
-        <div className="pt-[96px] flex min-h-screen">
+        <div className="pt-[96px] flex min-h-screen w-full bg-gray-200">
 
       
   {/* LEFT SIDEBAR */}
   <div
-    className={`mt-4 mb-6 bg-neutral-700 shadow-xl border rounded-2xl p-4 flex flex-col gap-4 items-center h-[calc(100vh-160px)] overflow-hidden transition-all duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+    className={`mt-4 mb-6 bg-white shadow-lg border border-gray-200 rounded-2xl p-4 flex flex-col gap-4 items-center h-[calc(100vh-160px)] overflow-hidden transition-all duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] ${
       isPricePanelOpen
         ? "ml-0 w-0 opacity-0 pointer-events-none"
         : "ml-6 w-[140px] opacity-100"
@@ -1136,12 +1267,18 @@ const handleResizeText = (uid: string, newFontSize: number) => {
           // Reset selectedText for non-text tabs
           if (tab.id !== "text") setSelectedText(null);
         }}
-        className={`w-full h-16 flex flex-col items-center justify-center rounded-xl transition ${
-          activeSidebar === tab.id ? "bg-neutral-600" : "bg-neutral-700 hover:bg-neutral-600"
+        className={`w-full h-16 flex flex-col items-center justify-center rounded-xl border transition ${
+          activeSidebar === tab.id
+            ? "border-[#C6A75E] bg-[#C6A75E]/15 shadow-sm"
+            : "border-gray-200 bg-white hover:border-[#C6A75E]/50 hover:bg-[#C6A75E]/10"
         }`}
       >
-        {React.cloneElement(tab.icon, { className: "text-white" })}
-        <span className="text-white text-sm">{tab.label}</span>
+        {React.cloneElement(tab.icon, {
+          className: activeSidebar === tab.id ? "text-[#8A6D2B]" : "text-gray-700",
+        })}
+        <span className={`text-sm ${activeSidebar === tab.id ? "text-[#8A6D2B] font-semibold" : "text-gray-700"}`}>
+          {tab.label}
+        </span>
       </button>
     ))}
   </div>
@@ -1154,23 +1291,25 @@ const handleResizeText = (uid: string, newFontSize: number) => {
         : "ml-4 w-[480px] translate-x-0 opacity-100"
     }`}
   >
-    <div className="bg-white dark:bg-gray-800 shadow-xl border rounded-2xl overflow-y-auto h-full">
+    <div className="bg-white shadow-lg border border-gray-200 rounded-2xl overflow-y-auto h-full">
       {/* ONLY RENDER HEADER IF NOT BLANK */}
       {activeSidebar !== "blank" && (
         <SidebarHeader
           title={
-            sidebarTitleOverride ??
-            (typeof SIDEBAR_TITLES[activeSidebar] === "function"
-              ? SIDEBAR_TITLES[activeSidebar]!({
-                  selectedText,
-                  selectedUploadedImage,
-                  currentImageState,
-                })
-              : SIDEBAR_TITLES[activeSidebar] ?? "")
+            selectedObjects.length > 1
+              ? "Multiple Objects Selected"
+              : sidebarTitleOverride ??
+                (typeof SIDEBAR_TITLES[activeSidebar] === "function"
+                  ? SIDEBAR_TITLES[activeSidebar]!({
+                      selectedText,
+                      selectedUploadedImage,
+                      currentImageState,
+                    })
+                  : SIDEBAR_TITLES[activeSidebar] ?? "")
           }
           canGoBack={canGoBack}
           onBack={goBackSidebar}
-          onClose={() => setSidebarStack(["blank"])}
+          onClose={handleCloseSidebar}
         />
       )}
       <div className="p-4">{renderActiveTab()}</div>
@@ -1179,8 +1318,8 @@ const handleResizeText = (uid: string, newFontSize: number) => {
 
   {/* MAIN CANVAS */}
   <div
-    className={`mt-4 mb-6 h-[calc(100vh-160px)] flex-1 flex transition-all duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] ${
-      isPricePanelOpen ? "ml-2 mr-2" : "ml-0 mr-6"
+    className={`mt-4 mb-6 h-[calc(100vh-160px)] flex-1 flex rounded-2xl overflow-hidden bg-gray-100 transition-all duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+      isPricePanelOpen ? "ml-0 mr-0" : "ml-0 mr-6"
     }`}
   >
     <Canvas
@@ -1216,11 +1355,15 @@ const handleResizeText = (uid: string, newFontSize: number) => {
       setCurrentViewKey={setCurrentViewKey}
       setViewImageStates={setViewImageStates}
       onViewSnapshotChange={handlePricePreviewUpdate}
+      compactPriceMode={isPricePanelOpen}
     />
   </div>
 
   {isPricePanelOpen && (
-    <div className="w-[820px] ml-4 mr-6 mt-4 mb-6 h-[calc(100vh-160px)] transition-all duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]">
+    <div
+      ref={pricePanelRef}
+      className="w-[820px] ml-4 mr-6 mt-4 mb-6 h-[calc(100vh-160px)] rounded-2xl border border-gray-200 shadow-lg bg-white overflow-hidden transition-all duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]"
+    >
       <GetPriceUI
         docked
         onClose={() => setIsPricePanelOpen(false)}

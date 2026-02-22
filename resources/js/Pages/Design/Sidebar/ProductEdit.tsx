@@ -95,12 +95,12 @@ const availableSizes =
     <div className="p-6 w-full max-w-md mx-auto">
       {/* Product Name + Change Product Link */}
       <div className="flex items-center justify-between mb-2">
-        <h1 className="text-3xl font-extrabold text-gray-900 dark:text-gray-100">
+        <h1 className="text-3xl font-extrabold text-gray-900">
           {product?.name ?? "Unknown Product"}
         </h1>
         <button
           onClick={handleChangeProduct}
-          className="text-blue-600 hover:underline font-medium transition"
+          className="text-[#8A6D2B] hover:text-[#C6A75E] hover:underline font-medium transition"
         >
           Change Product
         </button>
@@ -113,21 +113,21 @@ const availableSizes =
             <Star key={i} size={18} className={i < 4 ? "fill-current" : ""} />
           ))}
         </div>
-        <span className="text-gray-600 dark:text-gray-300 font-medium text-sm">
+        <span className="text-gray-600 font-medium text-sm">
           4.7 stars - 1,291 reviews
         </span>
       </div>
 
       {/* Product Description */}
       {product?.description && (
-        <p className="text-gray-700 dark:text-gray-300 mb-6 text-sm leading-relaxed">
+        <p className="text-gray-700 mb-6 text-sm leading-relaxed">
           {product.description}
         </p>
       )}
 
       {/* Colours */}
       <div className="mb-6">
-        <h2 className="text-lg font-semibold mb-2 text-gray-700 dark:text-gray-200">Colours</h2>
+        <h2 className="text-lg font-semibold mb-2 text-gray-700">Colours</h2>
         <div className="grid grid-cols-6 gap-3">
           {uniqueColours
             .concat(Object.keys(colourMap).filter(c => !uniqueColours.includes(c)))
@@ -141,7 +141,7 @@ const availableSizes =
                   key={colour}
                   onClick={() => handleColourClick(colour)}
                   className={`w-10 h-10 rounded-md border-2 transition-all duration-200
-                    ${isSelected ? "border-black shadow-lg" : "border-gray-300 hover:border-gray-500 hover:scale-105"}
+                    ${isSelected ? "border-[#8A6D2B] shadow-md" : "border-gray-300 hover:border-[#C6A75E] hover:scale-105"}
                   `}
                   style={{ backgroundColor: colorCode }}
                   aria-label={colour}
@@ -153,7 +153,7 @@ const availableSizes =
 
       {/* Sizes */}
       <div>
-        <h2 className="text-lg font-semibold mb-2 text-gray-700 dark:text-gray-200">Sizes</h2>
+        <h2 className="text-lg font-semibold mb-2 text-gray-700">Sizes</h2>
         <div className="flex flex-wrap gap-2">
           {availableSizes.map((s) => {
             const isSelected = selectedSize === s;
@@ -163,8 +163,8 @@ const availableSizes =
                 onClick={() => handleSizeClick(s)}
                 className={`px-3 py-1 rounded-lg border-2 font-medium transition-all duration-200
                   ${isSelected
-                    ? "border-blue-500 bg-blue-50 dark:bg-blue-900 text-blue-700 dark:text-blue-300 shadow-md"
-                    : "border-gray-300 hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-800 dark:text-gray-100"
+                    ? "border-[#C6A75E] bg-[#C6A75E]/15 text-[#8A6D2B] shadow-sm"
+                    : "border-gray-300 text-gray-700 hover:border-[#C6A75E] hover:bg-[#C6A75E]/10"
                   }`}
               >
                 {s}

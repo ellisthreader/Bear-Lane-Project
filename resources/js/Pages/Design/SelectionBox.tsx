@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { X, Copy, Move } from "lucide-react";
 
 interface SelectionBoxProps {
@@ -27,7 +27,7 @@ const SelectionBox: React.FC<SelectionBoxProps> = ({
 
   const firstUid = selectedImages.length > 0 ? selectedImages[0] : null;
 
-  const updateBoundingBox = () => {
+  const updateBoundingBox = useCallback(() => {
     if (!canvasRef.current || selectedImages.length === 0) {
       setBox(null);
       return;
@@ -58,15 +58,32 @@ const SelectionBox: React.FC<SelectionBoxProps> = ({
       return;
     }
 
-    setBox({ left: minX, top: minY, width: maxX - minX, height: maxY - minY });
-  };
+    const nextBox = { left: minX, top: minY, width: maxX - minX, height: maxY - minY };
+    setBox(prev => {
+      if (
+        prev &&
+        Math.abs(prev.left - nextBox.left) < 0.5 &&
+        Math.abs(prev.top - nextBox.top) < 0.5 &&
+        Math.abs(prev.width - nextBox.width) < 0.5 &&
+        Math.abs(prev.height - nextBox.height) < 0.5
+      ) {
+        return prev;
+      }
+      return nextBox;
+    });
+  }, [canvasRef, selectedImages]);
+
+  // Keep the box synced with live transforms (drag / resize / rotate) on every render cycle.
+  useLayoutEffect(() => {
+    updateBoundingBox();
+  });
 
   useEffect(() => {
     updateBoundingBox();
     const handleWindowResize = () => updateBoundingBox();
     window.addEventListener("resize", handleWindowResize);
     return () => window.removeEventListener("resize", handleWindowResize);
-  }, [selectedImages, canvasRef]);
+  }, [updateBoundingBox]);
 
   // click outside → deselect
   useEffect(() => {
@@ -166,14 +183,14 @@ const SelectionBox: React.FC<SelectionBoxProps> = ({
       )}
 
       <div
-        className="absolute border-2 border-blue-500 pointer-events-none"
+        className="absolute border-2 border-[#C6A75E] pointer-events-none"
         style={{
           left: box.left,
           top: box.top,
           width: box.width,
           height: box.height,
           zIndex: 300,
-          background: "rgba(59,130,246,0.08)",
+          background: "rgba(198,167,94,0.12)",
         }}
       >
         {/* DELETE */}

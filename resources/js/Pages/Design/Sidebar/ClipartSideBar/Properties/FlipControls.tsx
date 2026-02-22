@@ -22,7 +22,7 @@ export default function FlipControls({
           }
           className={`flex-1 py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition ${
             value === "horizontal"
-              ? "bg-blue-100 text-blue-900"
+              ? "bg-[#C6A75E]/10 text-[#8A6D2B]"
               : "bg-gray-100 hover:bg-gray-200"
           }`}
         >
@@ -36,7 +36,7 @@ export default function FlipControls({
           }
           className={`flex-1 py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition ${
             value === "vertical"
-              ? "bg-blue-100 text-blue-900"
+              ? "bg-[#C6A75E]/10 text-[#8A6D2B]"
               : "bg-gray-100 hover:bg-gray-200"
           }`}
         >

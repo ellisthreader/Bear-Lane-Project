@@ -33,7 +33,7 @@ export default function ClipartSizeControls({
           max={max}
           value={value}
           onChange={(e) => onChange(Number(e.target.value))}
-          className="w-20 border rounded-lg px-3 py-2 tabular-nums text-right focus:ring-2 focus:ring-blue-400"
+          className="w-20 border rounded-lg px-3 py-2 tabular-nums text-right focus:ring-2 focus:ring-[#C6A75E]"
         />
       </div>
     </div>
