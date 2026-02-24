@@ -11,6 +11,7 @@ import { CheckoutProvider } from "@/Context/CheckoutContext";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import "../css/google-autocomplete.css";
+import "../css/checkout-toast.css";
 
 // Import all pages for Vite
 const pages = import.meta.glob("./Pages/**/*.tsx");

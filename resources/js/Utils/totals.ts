@@ -25,9 +25,10 @@ export type AppliedDiscount = {
 export function computeTotalsInCents(args: {
   items: ItemForTotals[];
   shippingCost?: number; // in pounds (£)
+  extraFeeCost?: number; // in pounds (£)
   appliedDiscount?: AppliedDiscount;
 }) {
-  const { items, shippingCost = 0, appliedDiscount = null } = args;
+  const { items, shippingCost = 0, extraFeeCost = 0, appliedDiscount = null } = args;
 
   // --- subtotal in cents
   const subtotal_cents = items.reduce((sum, item) => {
@@ -41,6 +42,7 @@ export function computeTotalsInCents(args: {
 
   // --- shipping in cents
   const shipping_cents = Math.round((Number(shippingCost) || 0) * 100);
+  const extra_fee_cents = Math.round((Number(extraFeeCost) || 0) * 100);
 
   // --- discount applied only to subtotal (not VAT or shipping)
   let discount_cents = 0;
@@ -59,8 +61,11 @@ export function computeTotalsInCents(args: {
   // --- VAT (20% on discounted subtotal only)
   const vat_cents = Math.round(discounted_subtotal_cents * 0.2);
 
-  // --- final total (subtotal - discount + VAT + shipping)
-  const total_cents = Math.max(discounted_subtotal_cents + vat_cents + shipping_cents, 0);
+  // --- final total (subtotal - discount + VAT + shipping + extra fee)
+  const total_cents = Math.max(
+    discounted_subtotal_cents + vat_cents + shipping_cents + extra_fee_cents,
+    0
+  );
 
   // --- return breakdown
   return {
@@ -69,6 +74,7 @@ export function computeTotalsInCents(args: {
     discounted_subtotal_cents,
     vat_cents,
     shipping_cents,
+    extra_fee_cents,
     total_cents,
 
     // Also return readable £ versions for frontend display
@@ -77,6 +83,7 @@ export function computeTotalsInCents(args: {
     discounted_subtotal: (discounted_subtotal_cents / 100).toFixed(2),
     vat: (vat_cents / 100).toFixed(2),
     shipping: (shipping_cents / 100).toFixed(2),
+    extra_fee: (extra_fee_cents / 100).toFixed(2),
     total: (total_cents / 100).toFixed(2),
   };
 }

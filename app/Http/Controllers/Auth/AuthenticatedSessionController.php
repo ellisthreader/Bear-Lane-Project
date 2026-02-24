@@ -14,6 +14,14 @@ use Inertia\Response;
 
 class AuthenticatedSessionController extends Controller
 {
+    private function resolveRedirectPath(?string $redirect, string $fallback = '/profile'): string
+    {
+        $target = trim((string) $redirect);
+        if ($target === '' || !str_starts_with($target, '/')) {
+            return $fallback;
+        }
+        return $target;
+    }
     /**
      * Display the login view.
      */
@@ -33,6 +41,7 @@ class AuthenticatedSessionController extends Controller
         try {
             $request->authenticate();
             $request->session()->regenerate();
+            $redirectPath = $this->resolveRedirectPath($request->input('redirect'));
 
             Log::info('User logged in successfully.', [
                 'email' => $request->email,
@@ -40,8 +49,7 @@ class AuthenticatedSessionController extends Controller
                 'user_agent' => $request->userAgent(),
             ]);
 
-            // Redirect straight to profile
-            return redirect()->intended('/profile');
+            return redirect()->intended($redirectPath);
         } catch (\Exception $e) {
             Log::warning('Failed login attempt.', [
                 'email' => $request->email,

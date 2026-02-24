@@ -24,6 +24,8 @@ interface UseDragSelectionArgs {
   onDuplicate?: (uids: string[]) => void;
   onResize?: (uid: string, w: number, h: number) => void;
   onReset?: (uids: string[]) => void;
+  onGestureStart?: () => void;
+  onGestureEnd?: () => void;
 }
 
 export function useDragSelection(args: UseDragSelectionArgs) {
@@ -36,15 +38,32 @@ export function useDragSelection(args: UseDragSelectionArgs) {
   );
 
   const onPointerDown = (e: React.PointerEvent, uid: string) => {
+    // Only primary button should start drag/select interactions.
+    if (e.button !== 0) return;
     e.stopPropagation();
 
     if (!args.positions[uid]) return;
 
-    // ✅ preserve selection if already selected
-    const multiSelected = selected.includes(uid) ? selected : [uid];
+    const isShiftPressed = e.shiftKey;
+    const isSelected = selected.includes(uid);
+    let multiSelected: string[] = [uid];
+
+    if (isShiftPressed) {
+      multiSelected = isSelected
+        ? selected.filter(item => item !== uid)
+        : [...selected, uid];
+    } else {
+      multiSelected = isSelected ? selected : [uid];
+    }
+
+    if (multiSelected.length === 0) {
+      setSelected([]);
+      return;
+    }
 
     setSelected(multiSelected);
     draggingUids.current = multiSelected;
+    args.onGestureStart?.();
 
     dragStartPointer.current = {
       x: e.clientX,
@@ -133,6 +152,7 @@ export function useDragSelection(args: UseDragSelectionArgs) {
 
     window.removeEventListener("pointermove", onPointerMove);
     window.removeEventListener("pointerup", onPointerUp);
+    args.onGestureEnd?.();
   };
 
   // 🔒 Cleanup

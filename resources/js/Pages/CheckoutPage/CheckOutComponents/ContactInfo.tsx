@@ -1,45 +1,46 @@
 import React from "react";
-import { useDarkMode } from "@/Context/DarkModeContext";
 import { useCheckout } from "@/Context/CheckoutContext";
+import type { CheckoutFieldErrors, CheckoutFieldKey } from "../CheckoutForm";
 
-export default function ContactInfo() {
-  const { darkMode } = useDarkMode();
+type ContactInfoProps = {
+  invalidFields?: Set<CheckoutFieldKey>;
+  fieldErrors?: CheckoutFieldErrors;
+  onFieldValueChange?: (field: CheckoutFieldKey, value: string) => void;
+};
+
+export default function ContactInfo({
+  invalidFields = new Set<CheckoutFieldKey>(),
+  fieldErrors = {},
+  onFieldValueChange,
+}: ContactInfoProps) {
   const { email, setEmail } = useCheckout();
-
-  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    console.log("[ContactInfo] Email changed:", e.target.value);
-    setEmail(e.target.value);
-  };
+  const emailInvalid = invalidFields.has("email");
 
   return (
-    <div
-      className={`p-6 rounded-xl shadow transition-colors ${
-        darkMode ? "bg-gray-900 text-white" : "bg-white text-gray-900"
-      }`}
-    >
-      <h2 className="text-xl font-semibold mb-4">Contact Information</h2>
+    <div className="p-0">
+      <h3 className="text-xl font-semibold mb-4 text-gray-900">Contact</h3>
 
-      <div className="space-y-4">
-        {/* EMAIL */}
-        <div>
-          <label className="block text-sm font-medium mb-1" htmlFor="email">
-            Email Address
-          </label>
-          <input
-            id="email"
-            type="email"
-            className={`w-full rounded-lg border p-3 transition-colors duration-200 focus:ring-2 focus:ring-indigo-500 ${
-              darkMode
-                ? "bg-gray-800 border-gray-700 text-gray-100 placeholder-gray-400"
-                : "bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-500"
-            }`}
-            placeholder="you@example.com"
-            value={email}
-            onChange={handleEmailChange}
-            required
-          />
-        </div>
-      </div>
+      <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="checkout-email">
+        Email address
+      </label>
+      <input
+        id="checkout-email"
+        type="email"
+        className={`w-full rounded-xl border bg-white px-4 py-3 text-gray-900 focus:outline-none ${
+          emailInvalid
+            ? "checkout-field-error checkout-field-shake border-red-400 ring-2 ring-red-200"
+            : "border-gray-300 focus:border-[#C6A75E] focus:ring-2 focus:ring-[#C6A75E]/25"
+        }`}
+        placeholder="you@example.com"
+        value={email}
+        onChange={(e) => {
+          const value = e.target.value;
+          setEmail(value);
+          onFieldValueChange?.("email", value);
+        }}
+        required
+      />
+      {fieldErrors.email && !email && <p className="mt-1.5 text-sm text-red-600">{fieldErrors.email}</p>}
     </div>
   );
 }

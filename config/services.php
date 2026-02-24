@@ -52,7 +52,7 @@ return [
     // Shippo API
     // ---------------------------
     'shippo' => [
-        'token' => env('SHIPPO_TOKEN'),
+        'token' => env('SHIPPO_API_KEY', env('SHIPPO_TOKEN')),
     ],
 
     // ---------------------------
@@ -68,6 +68,12 @@ return [
         'client_id' => env('APPLE_CLIENT_ID'),
         'client_secret' => env('APPLE_CLIENT_SECRET'),
         'redirect' => env('APPLE_REDIRECT_URI'), // e.g., https://yourapp.com/auth/apple/callback
+    ],
+
+    'facebook' => [
+        'client_id' => env('FACEBOOK_CLIENT_ID'),
+        'client_secret' => env('FACEBOOK_CLIENT_SECRET'),
+        'redirect' => env('FACEBOOK_REDIRECT_URI'),
     ],
 
 ];

@@ -12,7 +12,18 @@ import OutlinePage from "./OutlinePage";
 import FlipControls from "./FlipControls";
 
 
-import { RotateCw, Square, Trash2, Copy, RefreshCw } from "lucide-react";
+import {
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  RotateCw,
+  Square,
+  Trash2,
+  Copy,
+  RefreshCw,
+} from "lucide-react";
+
+import type { TextAlign } from "../../../../Types/Text";
 
 type Props = {
   textValue: string;
@@ -35,6 +46,8 @@ type Props = {
   onReset: () => void;
   onDelete: () => void;
   onDuplicate: () => void;
+  textAlign: TextAlign;
+  onTextAlignChange: (align: TextAlign) => void;
 
   restrictedBox: { left: number; top: number; width: number; height: number };
   textPosition?: { x: number; y: number };
@@ -43,53 +56,75 @@ type Props = {
 export default function TextProperties(props: Props) {
   const [panel, setPanel] = useState<"main" | "fonts" | "outline">("main");
   const measureRef = useRef<HTMLSpanElement>(null);
-  const [maxFontSize, setMaxFontSize] = useState(() =>
-    Math.max(8, Math.floor(Math.max(props.restrictedBox.width, props.restrictedBox.height)))
-  );
-  
+  const [measuredSize, setMeasuredSize] = useState({ w: 0.5, h: 0.5 });
+  const MIN_FONT_SIZE = 4;
+  const MAX_FONT_SIZE_CAP = 600;
+  const alignmentOptions: {
+    value: TextAlign;
+    Icon: React.ComponentType<{ size?: number }>;
+    label: string;
+  }[] = [
+    { value: "left", Icon: AlignLeft, label: "Align left" },
+    { value: "center", Icon: AlignCenter, label: "Align center" },
+    { value: "right", Icon: AlignRight, label: "Align right" },
+  ];
 
   useLayoutEffect(() => {
-    if (!measureRef.current || !props.restrictedBox) return;
-
     const span = measureRef.current;
+    if (!span) return;
+
     span.style.fontSize = "1px";
+    span.style.whiteSpace = "pre";
+    span.style.display = "block";
+    span.style.visibility = "hidden";
 
     const rect = span.getBoundingClientRect();
-    const textWidth = rect.width + props.borderWidth * 2;
-    const textHeight = rect.height + props.borderWidth * 2;
+    setMeasuredSize({
+      w: Math.max(0.5, rect.width + props.borderWidth * 2),
+      h: Math.max(0.5, rect.height + props.borderWidth * 2),
+    });
+  }, [props.textValue, props.fontFamily, props.borderWidth]);
 
-    if (textWidth === 0 || textHeight === 0) return;
-
+  const { availableWidth, availableHeight } = React.useMemo(() => {
     const rightEdge = props.restrictedBox.left + props.restrictedBox.width;
     const bottomEdge = props.restrictedBox.top + props.restrictedBox.height;
-    const availableWidth = props.textPosition
-      ? Math.max(1, rightEdge - props.textPosition.x)
-      : props.restrictedBox.width;
-    const availableHeight = props.textPosition
-      ? Math.max(1, bottomEdge - props.textPosition.y)
-      : props.restrictedBox.height;
+    const startX = props.textPosition?.x ?? props.restrictedBox.left;
+    const startY = props.textPosition?.y ?? props.restrictedBox.top;
+    return {
+      availableWidth: Math.max(1, rightEdge - startX),
+      availableHeight: Math.max(1, bottomEdge - startY),
+    };
+  }, [props.restrictedBox, props.textPosition]);
 
-    const widthLimit = availableWidth / textWidth;
-    const heightLimit = availableHeight / textHeight;
+  const derivedMaxFontSize = React.useMemo(() => {
+    const widthLimit = availableWidth / Math.max(measuredSize.w, 0.01);
+    const heightLimit = availableHeight / Math.max(measuredSize.h, 0.01);
+    const candidate = Math.min(widthLimit, heightLimit, MAX_FONT_SIZE_CAP);
+    if (!Number.isFinite(candidate) || candidate <= 0) return MAX_FONT_SIZE_CAP;
+    return Math.max(MIN_FONT_SIZE, candidate);
+  }, [availableWidth, availableHeight, measuredSize]);
 
-    const nextMax = Math.floor(Math.min(widthLimit, heightLimit));
-    if (!Number.isFinite(nextMax)) return;
+  const clampFontSize = React.useCallback(
+    (value: number) => {
+      const next = Math.max(MIN_FONT_SIZE, Math.min(value, derivedMaxFontSize));
+      return Math.round(next * 100) / 100;
+    },
+    [derivedMaxFontSize]
+  );
 
-    const newMax = Math.max(8, nextMax);
-    setMaxFontSize(newMax);
-
-    if (props.fontSize > newMax) {
-      props.onFontSizeChange(newMax);
+  React.useEffect(() => {
+    const clamped = clampFontSize(props.fontSize);
+    if (clamped !== props.fontSize) {
+      props.onFontSizeChange(clamped);
     }
-  }, [
-    props.textValue,
-    props.fontFamily,
-    props.borderWidth,
-    props.restrictedBox,
-    props.textPosition,
-    props.fontSize,
-    
-  ]);
+  }, [clampFontSize, props.fontSize, props.onFontSizeChange]);
+
+  const sliderMax = Math.max(MIN_FONT_SIZE, Math.ceil(derivedMaxFontSize));
+  const sliderDisplayMax = Math.max(sliderMax, Math.ceil(props.fontSize));
+  const handleFontSizeChange = React.useCallback(
+    (value: number) => props.onFontSizeChange(clampFontSize(value)),
+    [clampFontSize, props.onFontSizeChange]
+  );
 
   if (panel === "fonts") {
     return (
@@ -151,12 +186,10 @@ export default function TextProperties(props: Props) {
       {/* Text Size Slider */}
       <RangeSlider
         label="Text Size"
-        min={8}
-        max={maxFontSize}
+        min={MIN_FONT_SIZE}
+        max={sliderDisplayMax}
         value={props.fontSize}
-        onChange={(v) =>
-          props.onFontSizeChange(Math.min(v, maxFontSize))
-        }
+        onChange={handleFontSizeChange}
         icon={<Square size={20} />}
       />
 
@@ -182,6 +215,33 @@ export default function TextProperties(props: Props) {
         borderWidth={props.borderWidth}
         borderColor={props.borderColor}
       />
+
+      {/* Alignment controls */}
+      <div className="space-y-2">
+        <div className="text-xs font-semibold text-gray-500 uppercase tracking-[0.2em]">
+          Alignment
+        </div>
+        <div className="flex gap-2">
+          {alignmentOptions.map(option => {
+            const isActive = props.textAlign === option.value;
+            return (
+              <button
+                key={option.value}
+                type="button"
+                title={option.label}
+                onClick={() => props.onTextAlignChange(option.value)}
+                className={`w-10 h-10 rounded-xl border transition flex items-center justify-center ${
+                  isActive
+                    ? "border-[#C6A75E] bg-[#C6A75E]/15 text-[#8A6D2B]"
+                    : "border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-700"
+                }`}
+              >
+                <option.Icon size={18} />
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
       {/* Bottom Controls: Flip + Duplicate + Delete */}
       <div className="flex flex-col gap-3">

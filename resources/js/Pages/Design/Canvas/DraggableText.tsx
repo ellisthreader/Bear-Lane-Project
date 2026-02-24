@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useRef, useLayoutEffect, useState } from "react";
+import type { TextAlign } from "../Types/Text";
 
 type Props = {
   uid: string;
@@ -18,6 +19,8 @@ type Props = {
   selected?: string[];
   onPointerDown: (e: React.PointerEvent, uid: string, multi: boolean) => void;
   onMeasure?: (uid: string, w: number, h: number) => void;
+  zIndex?: number;
+  textAlign?: TextAlign;
 };
 
 export default function DraggableText({
@@ -36,6 +39,8 @@ export default function DraggableText({
   selected = [],
   onPointerDown,
   onMeasure,
+  zIndex = 50,
+  textAlign,
 }: Props) {
   const measureRef = useRef<HTMLSpanElement>(null);
   const isMultiSelected = selected.includes(uid);
@@ -45,9 +50,6 @@ export default function DraggableText({
 
   const x = pos?.x ?? 200;
   const y = pos?.y ?? 200;
-  const maxTextWidth = restrictedBox
-    ? Math.max(1, restrictedBox.left + restrictedBox.width - x)
-    : undefined;
 
   const scaleX = flip === "horizontal" ? -1 : 1;
   const scaleY = flip === "vertical" ? -1 : 1;
@@ -97,7 +99,7 @@ useLayoutEffect(() => {
           top: y,
           width: measured.w > 0 ? measured.w : "auto",
           height: measured.h > 0 ? measured.h : "auto",
-          zIndex: highlighted ? 200 : 50,
+          zIndex: highlighted ? zIndex + 10000 : zIndex,
           userSelect: "none",
         }}
       >
@@ -112,17 +114,19 @@ useLayoutEffect(() => {
           <span
             ref={measureRef}
             style={{
-              fontFamily,
-              fontSize: `${fontSize}px`,
-              whiteSpace: "pre-wrap",
-              overflowWrap: "break-word",
-              maxWidth: maxTextWidth,
-              color,
-              display: "block",
-              WebkitTextStrokeWidth: `${borderWidth}px`,
-              WebkitTextStrokeColor: borderColor,
-              WebkitTextFillColor: color,
-            }}
+            fontFamily,
+            fontSize: `${fontSize}px`,
+            whiteSpace: "pre",
+            overflowWrap: "normal",
+            wordBreak: "normal",
+            maxWidth: "none",
+            color,
+            display: "block",
+            textAlign: textAlign ?? "left",
+            WebkitTextStrokeWidth: `${borderWidth}px`,
+            WebkitTextStrokeColor: borderColor,
+            WebkitTextFillColor: color,
+          }}
           >
             {text || "Text"}
           </span>

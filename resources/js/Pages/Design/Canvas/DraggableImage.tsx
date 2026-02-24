@@ -11,6 +11,7 @@ type Props = {
   onPointerDown: (e: React.PointerEvent, uid: string) => void;
   color?: string; // optional tint/color
   isClipart?: boolean;
+  zIndex?: number;
 };
 
 export default function DraggableImage({
@@ -24,6 +25,7 @@ export default function DraggableImage({
   onPointerDown,
   color = "#fff",
   isClipart = false,
+  zIndex = 1,
 }: Props) {
   // Flip around center without changing position
   const scaleX = flip === "horizontal" ? -1 : 1;
@@ -49,7 +51,7 @@ export default function DraggableImage({
           transform,
           transformOrigin: "center center",
           cursor: "grab",
-          zIndex: highlighted ? 1000 : 1,
+          zIndex: highlighted ? zIndex + 10000 : zIndex,
           userSelect: "none",
           pointerEvents: "auto",
           backgroundColor: color || "#000000",
@@ -84,7 +86,7 @@ export default function DraggableImage({
         transform,
         transformOrigin: "center center",
         cursor: "grab",
-        zIndex: highlighted ? 1000 : 1,
+        zIndex: highlighted ? zIndex + 10000 : zIndex,
         userSelect: "none",
         pointerEvents: "auto",
         objectFit: "contain",

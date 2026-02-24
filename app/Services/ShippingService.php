@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Log;
 
 class ShippingService
 {
-    protected string $shippoToken;
+    protected ?string $shippoToken;
 
     public function __construct()
     {
@@ -25,6 +25,10 @@ class ShippingService
      */
     public function getRates(array $fromAddress, array $toAddress, array $parcel): array
     {
+        if (empty($this->shippoToken)) {
+            throw new \RuntimeException('Shippo token is missing. Please set SHIPPO_TOKEN in your .env file.');
+        }
+
         try {
             $payload = [
                 'address_from' => $fromAddress,
@@ -52,14 +56,19 @@ class ShippingService
                     'status' => $response->status(),
                     'body'   => $response->body(),
                 ]);
-                return [];
+                $message = 'Shippo request failed.';
+                $body = $response->json();
+                if (is_array($body) && !empty($body['detail'])) {
+                    $message = (string) $body['detail'];
+                }
+                throw new \RuntimeException($message);
             }
 
             $data = $response->json();
 
             if (!isset($data['rates']) || !is_array($data['rates'])) {
                 Log::warning('Shippo response does not contain "rates"', $data);
-                return [];
+                throw new \RuntimeException('Shippo response did not include rates.');
             }
 
             return $data['rates'];

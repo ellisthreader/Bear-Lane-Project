@@ -6,9 +6,11 @@ export function clampPosition(
   h: number,
   box: { left: number; top: number; width: number; height: number }
 ) {
+  const maxX = box.left + Math.max(box.width - w, 0);
+  const maxY = box.top + Math.max(box.height - h, 0);
   return {
-    x: Math.min(Math.max(x, box.left), box.left + box.width - w),
-    y: Math.min(Math.max(y, box.top), box.top + box.height - h),
+    x: Math.min(Math.max(x, box.left), maxX),
+    y: Math.min(Math.max(y, box.top), maxY),
   };
 }
 

@@ -4,11 +4,14 @@ import {
   Images,
   Palette,
   Ruler,
+  ShieldCheck,
   Shirt,
   Sticker,
   Type,
 } from "lucide-react";
 import type { PricePreviewSnapshot } from "../Canvas/Canvas";
+
+import DesignPreview from "./DesignPreview";
 
 type SideStatus = {
   key: "front" | "back" | "rightSleeve" | "leftSleeve";
@@ -34,10 +37,14 @@ interface GetPriceUIProps {
   onAddToCart?: (payload: {
     quantity: number;
     sizeBreakdown: Record<string, number>;
+    unitPrice: number;
+    previewSnapshot?: PricePreviewSnapshot;
   }) => void;
   onBuyNow?: (payload: {
     quantity: number;
     sizeBreakdown: Record<string, number>;
+    unitPrice: number;
+    previewSnapshot?: PricePreviewSnapshot;
   }) => void;
 }
 
@@ -52,108 +59,6 @@ function parsePrice(price: number | string | undefined): number {
 
 function formatGBP(value: number): string {
   return `£${value.toFixed(2)}`;
-}
-
-function DesignPreview({
-  snapshot,
-  fallbackImage,
-  width,
-  alt,
-}: {
-  snapshot?: PricePreviewSnapshot;
-  fallbackImage?: string;
-  width: number;
-  alt: string;
-}) {
-  const canvasWidth = snapshot?.canvasWidth && snapshot.canvasWidth > 0 ? snapshot.canvasWidth : 1000;
-  const canvasHeight = snapshot?.canvasHeight && snapshot.canvasHeight > 0 ? snapshot.canvasHeight : 1000;
-  const height = width * (canvasHeight / canvasWidth);
-  const scale = width / canvasWidth;
-
-  return (
-    <div
-      className="relative overflow-hidden rounded-xl border bg-white"
-      style={{ width, height }}
-    >
-      {(fallbackImage || snapshot?.baseImage) && (
-        <img
-          src={fallbackImage || snapshot?.baseImage}
-          alt={alt}
-          className="absolute inset-0 h-full w-full object-contain"
-        />
-      )}
-
-      {snapshot?.layers.map(layer => {
-        const scaleX = layer.flip === "horizontal" ? -1 : 1;
-        const scaleY = layer.flip === "vertical" ? -1 : 1;
-        const layerStyle: React.CSSProperties = {
-          position: "absolute",
-          left: layer.position.x * scale,
-          top: layer.position.y * scale,
-          width: layer.size.w * scale,
-          height: layer.size.h * scale,
-          transform: `rotate(${layer.rotation}deg) scale(${scaleX}, ${scaleY})`,
-          transformOrigin: "center center",
-        };
-
-        if (layer.type === "text") {
-          return (
-            <div key={layer.uid} style={layerStyle}>
-              <span
-                style={{
-                  fontFamily: layer.fontFamily ?? "Arial",
-                  fontSize: `${(layer.fontSize ?? 24) * scale}px`,
-                  whiteSpace: "pre-wrap",
-                  color: layer.color ?? "#000000",
-                  WebkitTextStrokeColor: layer.borderColor ?? "#000000",
-                  WebkitTextStrokeWidth: `${(layer.borderWidth ?? 0) * scale}px`,
-                  WebkitTextFillColor: layer.color ?? "#000000",
-                  lineHeight: 1,
-                }}
-              >
-                {layer.text || "Text"}
-              </span>
-            </div>
-          );
-        }
-
-        const isSvgClipart =
-          layer.type === "clipart" &&
-          typeof layer.url === "string" &&
-          /\.svg(?:[?#].*)?$/i.test(layer.url);
-
-        if (isSvgClipart) {
-          return (
-            <div
-              key={layer.uid}
-              style={{
-                ...layerStyle,
-                backgroundColor: layer.color ?? "#000000",
-                WebkitMaskImage: `url("${layer.url}")`,
-                WebkitMaskRepeat: "no-repeat",
-                WebkitMaskPosition: "center",
-                WebkitMaskSize: "contain",
-                maskImage: `url("${layer.url}")`,
-                maskRepeat: "no-repeat",
-                maskPosition: "center",
-                maskSize: "contain",
-              }}
-            />
-          );
-        }
-
-        return (
-          <img
-            key={layer.uid}
-            src={layer.url}
-            alt=""
-            style={layerStyle}
-            className="object-contain"
-          />
-        );
-      })}
-    </div>
-  );
 }
 
 const GetPriceUI: React.FC<GetPriceUIProps> = ({
@@ -223,6 +128,15 @@ const GetPriceUI: React.FC<GetPriceUIProps> = ({
     if (selectedSize?.trim()) return [selectedSize];
     return ["One Size"];
   }, [availableSizes, sizeBreakdown, selectedSize]);
+
+  const sizeSummaryItems = sizeList
+    .map(size => {
+      const qty = sizeBreakdown[size] ?? 0;
+      return qty > 0 ? `${size}: ${qty}` : null;
+    })
+    .filter(Boolean) as string[];
+  const sizeSummary =
+    sizeSummaryItems.length > 0 ? sizeSummaryItems.join(" • ") : "No quantities selected yet";
 
   const editedCount = sides.filter(side => side.edited).length;
   const frontSide = sides.find(side => side.key === "front") ?? sides[0];
@@ -307,6 +221,8 @@ const GetPriceUI: React.FC<GetPriceUIProps> = ({
   const actionPayload = {
     quantity: Math.max(totalQuantity, 1),
     sizeBreakdown: availableSizes.length ? sizeBreakdown : {},
+    unitPrice,
+    previewSnapshot: frontSide?.preview,
   };
 
   const wrapperClass = docked
@@ -314,51 +230,42 @@ const GetPriceUI: React.FC<GetPriceUIProps> = ({
     : "fixed inset-0 z-[9999] flex items-center justify-center bg-black/35 backdrop-blur-[2px] p-4";
   const panelClass = docked
     ? "h-full w-full rounded-3xl border border-gray-100 bg-white shadow-[0_15px_50px_rgba(0,0,0,0.06)] flex flex-col overflow-hidden"
-    : "max-h-[92vh] w-[1080px] max-w-[98vw] overflow-y-auto rounded-3xl border border-gray-100 bg-white shadow-[0_15px_50px_rgba(0,0,0,0.06)]";
+    : "max-h-[92vh] w-[1080px] max-w-[98vw] overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-[0_15px_50px_rgba(0,0,0,0.06)] flex flex-col";
   const headerClass = docked
     ? "sticky top-0 z-20 flex items-center justify-between px-4 py-3 bg-white/95 backdrop-blur border-b border-gray-200 shadow-sm"
     : "flex items-center justify-between border-b p-6";
   const mutedTextClass = "text-gray-600";
-  const cardClass = "rounded-2xl border border-gray-200 bg-white p-5 shadow-sm";
   const inputClass = "w-full rounded-lg border bg-white px-3 py-2";
   const tagClass = "inline-flex items-center gap-1 rounded-full border bg-white px-3 py-1 text-xs font-medium shadow-sm";
-  const frontPreviewWidth = docked ? 150 : 220;
+  const orderImageSize = docked ? 160 : 180;
 
   return (
     <div className={wrapperClass}>
       <div className={panelClass}>
         <div className={headerClass}>
-          <div className="space-y-2">
-            <h2 className="text-xl font-semibold">
-              {step === "configure" ? "Confirm Product Setup" : "Pricing Summary"}
-            </h2>
-            <p className={`text-sm ${mutedTextClass}`}>
-              {selectedColour ? `${selectedColour} ${productName}` : productName}
-            </p>
-            <div className="inline-flex bg-gray-50 rounded-full p-1 border border-gray-200">
-              <button
-                type="button"
-                onClick={() => setStep("configure")}
-                className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all ${
-                  step === "configure"
-                    ? "bg-[#C6A75E] text-white shadow-sm"
-                    : "text-gray-600 hover:text-black"
-                }`}
-              >
-                Configure
-              </button>
-              <button
-                type="button"
-                onClick={() => setStep("summary")}
-                className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all ${
-                  step === "summary"
-                    ? "bg-[#C6A75E] text-white shadow-sm"
-                    : "text-gray-600 hover:text-black"
-                }`}
-              >
-                Summary
-              </button>
-            </div>
+          <div className="inline-flex bg-gray-50 rounded-full p-1 border border-gray-200">
+            <button
+              type="button"
+              onClick={() => setStep("configure")}
+              className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all ${
+                step === "configure"
+                  ? "bg-[#C6A75E] text-white shadow-sm"
+                  : "text-gray-600 hover:text-black"
+              }`}
+            >
+              Configure
+            </button>
+            <button
+              type="button"
+              onClick={() => setStep("summary")}
+              className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all ${
+                step === "summary"
+                  ? "bg-[#C6A75E] text-white shadow-sm"
+                  : "text-gray-600 hover:text-black"
+              }`}
+            >
+              Summary
+            </button>
           </div>
           <button
             onClick={onClose}
@@ -369,81 +276,73 @@ const GetPriceUI: React.FC<GetPriceUIProps> = ({
           </button>
         </div>
 
-        {step === "configure" && (
-          <div
-            className={
-              docked
-                ? "flex-1 min-h-0 p-4 overflow-hidden flex flex-col gap-4"
-                : "space-y-5 p-6"
-            }
-          >
-            <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-              <div className="grid gap-3 md:grid-cols-[240px_1fr]">
-                <div>
-                  <p className="mb-2 text-sm text-gray-500">Front Preview</p>
-                  <DesignPreview
-                    snapshot={frontSide?.preview}
-                    fallbackImage={frontSide?.imageSrc}
-                    width={frontPreviewWidth}
-                    alt="Front preview"
-                  />
+        <div className="flex-1 min-h-0 overflow-hidden">
+          {step === "configure" ? (
+            <div className="flex h-full flex-col gap-5 overflow-hidden px-6 py-5">
+              <div className="flex gap-4">
+                <div className="h-32 w-32 overflow-hidden rounded-2xl bg-gray-100">
+                  {(frontSide?.imageSrc || orderedSides[0]?.imageSrc) && (
+                    <img
+                      src={frontSide?.imageSrc || orderedSides[0]?.imageSrc}
+                      alt={`${productName}`}
+                      className="h-full w-full object-cover"
+                    />
+                  )}
                 </div>
-
-                <div className="space-y-3">
+                <div className="flex-1 flex flex-col justify-between">
                   <div>
-                    <p className="text-xs uppercase tracking-wide text-gray-500">Product</p>
-                    <p className="text-xl font-semibold">
-                      {selectedColourValue} {productName}
+                    <p className="text-xs uppercase tracking-[0.3em] text-gray-500">Product</p>
+                    <p className="text-2xl font-semibold text-gray-900">{productName}</p>
+                    <p className="mt-1 text-sm text-gray-500">
+                      Colour: {selectedColourValue} • Size: {selectedSizeValue}
                     </p>
                   </div>
-
-                  <label className="block">
-                    <span className="mb-1 flex items-center gap-2 text-sm text-gray-700">
-                      <Palette size={14} />
-                      Colour
-                    </span>
-                    <select
-                      value={selectedColourValue}
-                      onChange={e => onColourChange?.(e.target.value)}
-                      className={inputClass}
-                    >
-                      {(availableColours.length ? availableColours : [selectedColourValue]).map(colour => (
-                        <option key={colour} value={colour}>
-                          {colour}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <label className="block">
-                    <span className="mb-1 flex items-center gap-2 text-sm text-gray-700">
-                      <Ruler size={14} />
-                      Size
-                    </span>
-                    <select
-                      value={selectedSizeValue}
-                      onChange={e => onSizeChange?.(e.target.value)}
-                      className={inputClass}
-                    >
-                      {(availableSizes.length ? availableSizes : [selectedSizeValue]).map(size => (
-                        <option key={size} value={size}>
-                          {size}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <div className="rounded-xl border bg-white p-3">
-                    <p className={`text-sm ${mutedTextClass}`}>Edited sides</p>
-                    <p className="text-lg font-semibold">{editedCount} / {sides.length}</p>
-                  </div>
+                  <p className="text-sm font-medium text-gray-700">
+                    Edited sides: {editedCount} / {sides.length}
+                  </p>
                 </div>
               </div>
-            </div>
 
-            <div className={docked ? "shrink-0" : ""}>
-              <div className={cardClass}>
-                <p className="mb-3 font-medium">Set quantity by size</p>
+              <div className="grid gap-3 md:grid-cols-2">
+                <label className="block">
+                  <span className="mb-1 flex items-center gap-2 text-sm text-gray-700">
+                    <Palette size={14} />
+                    Colour
+                  </span>
+                  <select
+                    value={selectedColourValue}
+                    onChange={e => onColourChange?.(e.target.value)}
+                    className={inputClass}
+                  >
+                    {(availableColours.length ? availableColours : [selectedColourValue]).map(colour => (
+                      <option key={colour} value={colour}>
+                        {colour}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="block">
+                  <span className="mb-1 flex items-center gap-2 text-sm text-gray-700">
+                    <Ruler size={14} />
+                    Size
+                  </span>
+                  <select
+                    value={selectedSizeValue}
+                    onChange={e => onSizeChange?.(e.target.value)}
+                    className={inputClass}
+                  >
+                    {(availableSizes.length ? availableSizes : [selectedSizeValue]).map(size => (
+                      <option key={size} value={size}>
+                        {size}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              <div className="rounded-3xl border border-dashed border-gray-200 bg-white/80 p-5 shadow-sm flex flex-col gap-3">
+                <p className="text-sm font-medium">Set quantity by size</p>
                 <div className="overflow-x-auto">
                   <div className="flex min-w-max items-end gap-3">
                     {sizeList.map(size => (
@@ -472,127 +371,113 @@ const GetPriceUI: React.FC<GetPriceUIProps> = ({
                   </div>
                 </div>
               </div>
-            </div>
 
-            <div className="mt-4 flex shrink-0 justify-end border-t bg-white pt-4">
-              <button
-                onClick={handleContinue}
-                disabled={loadingPrice || totalQuantity <= 0}
-                className="rounded-xl bg-[#C6A75E] px-6 py-3 font-semibold text-white hover:bg-[#B8994E] disabled:cursor-not-allowed disabled:bg-gray-400"
-              >
-                {loadingPrice ? "Loading price..." : "Continue"}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {step === "summary" && (
-          <div
-            className={
-              docked
-                ? "flex-1 min-h-0 p-4 overflow-hidden flex flex-col gap-4"
-                : "space-y-6 p-6"
-            }
-          >
-            <div className={docked ? "min-h-0 flex-1 overflow-y-auto space-y-4 pr-1" : "space-y-6"}>
-              <div className={cardClass}>
-                <p className={`text-sm ${mutedTextClass}`}>Price per product (base + design complexity)</p>
-                <p className="text-2xl font-semibold">
-                  {formatGBP(unitPrice)} each {productName}
-                </p>
-                <p className="mt-1 text-xs text-gray-500">
-                  Base {formatGBP(baseUnitPrice)} + Design {formatGBP(designSurchargePerItem)}
-                </p>
-                <p className={`mt-1 text-sm ${mutedTextClass}`}>
-                  Total: {Math.max(totalQuantity, 1)} item(s) • {formatGBP(totalPrice)}
-                </p>
+              <div className="mt-auto flex justify-end">
+                <button
+                  onClick={handleContinue}
+                  disabled={loadingPrice || totalQuantity <= 0}
+                  className="rounded-xl bg-[#C6A75E] px-6 py-3 font-semibold text-white shadow-lg hover:bg-[#B8994E] disabled:cursor-not-allowed disabled:bg-gray-400"
+                >
+                  {loadingPrice ? "Loading price..." : "Continue"}
+                </button>
               </div>
-
-              <div className="-mt-2 flex flex-wrap gap-2 px-1">
-                {designTags.length > 0 ? (
-                  designTags.map(tag => (
-                    <span
-                      key={tag.key}
-                      className={tagClass}
-                    >
-                      {tag.icon}
-                      {tag.label}
+            </div>
+          ) : (
+            <div className="flex h-full flex-col gap-5 overflow-y-auto px-6 py-5">
+              <div className="space-y-3">
+                <p className="text-xs uppercase tracking-[0.4em] text-gray-500">Price per item</p>
+                <div className="text-5xl font-bold text-gray-900">{formatGBP(unitPrice)}</div>
+                <span className="text-sm text-gray-500">each {productName}</span>
+                <p className="text-sm text-gray-600">
+                  Total {Math.max(totalQuantity, 1)} item(s): {formatGBP(totalPrice)}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {designTags.length > 0 ? (
+                    designTags.map(tag => (
+                      <span key={tag.key} className={tagClass}>
+                        {tag.icon}
+                        {tag.label}
+                      </span>
+                    ))
+                  ) : (
+                    <span className={tagClass}>
+                      <CircleDollarSign size={14} />
+                      No design extras added
                     </span>
-                  ))
-                ) : (
-                  <span className={tagClass}>
-                    <CircleDollarSign size={14} />
-                    No design extras added
-                  </span>
-                )}
-              </div>
-
-              <div className="rounded-2xl border p-4">
-                <div className="mb-3 flex items-center justify-between">
-                  <h3 className="font-semibold">Product card</h3>
-                  <p className="text-sm font-medium">
-                    Qty {Math.max(totalQuantity, 1)} • {formatGBP(totalPrice)}
-                  </p>
-                </div>
-
-                <div className="space-y-3">
-                  <div className="rounded-xl border border-gray-200 bg-white p-3 text-sm">
-                    <p className="font-semibold">{productName}</p>
-                    <p className={mutedTextClass}>
-                      Colour: {selectedColourValue} • Size: {selectedSizeValue} • Price each: {formatGBP(unitPrice)}
-                    </p>
-                  </div>
-
-                  <div className="rounded-xl border p-3">
-                    <div className="mb-2 flex items-center justify-between">
-                      <p className="text-sm font-medium">Design Preview</p>
-                      <p className="text-sm font-semibold">{formatGBP(unitPrice)}</p>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      {orderedSides.map(side => (
-                        <button
-                          key={side.key}
-                          type="button"
-                          onClick={() => setZoomedSide(side)}
-                          className="rounded-lg border border-gray-200 bg-white p-2 text-left transition hover:border-[#C6A75E]/60 hover:bg-gray-50"
-                        >
-                          <p className="mb-2 text-xs font-medium text-gray-600">{side.label}</p>
-                          <DesignPreview
-                            snapshot={side.preview}
-                            fallbackImage={side.imageSrc}
-                            width={docked ? 150 : 190}
-                            alt={`${side.label} preview`}
-                          />
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+                  )}
                 </div>
               </div>
-            </div>
 
-            <div className="mt-auto flex flex-wrap justify-end gap-3 border-t pt-4">
-              <button
-                onClick={() => setStep("configure")}
-                className="rounded-xl border border-gray-300 px-5 py-2 font-medium hover:border-[#C6A75E] hover:bg-[#C6A75E]/10"
-              >
-                Edit quantity / sizes
-              </button>
-              <button
-                onClick={() => onAddToCart?.(actionPayload)}
-                className="rounded-xl bg-[#8A6D2B] px-5 py-2 font-semibold text-white hover:bg-[#755A22]"
-              >
-                Add to Cart
-              </button>
-              <button
-                onClick={() => onBuyNow?.(actionPayload)}
-                className="rounded-xl bg-[#C6A75E] px-5 py-2 font-semibold text-white hover:bg-[#B8994E]"
-              >
-                Buy Now
-              </button>
+              <div className="rounded-3xl border border-[#DAC885]/60 bg-gradient-to-br from-white via-white/90 to-[#FDFBF6] px-6 py-5 shadow-[0_25px_65px_rgba(198,167,94,0.25)] w-full">
+                <div className="flex items-center justify-between text-gray-500">
+                  <p className="text-[10px] uppercase tracking-[0.5em]">Your Order</p>
+                  <span className="text-[10px] uppercase tracking-[0.5em]">Qty {Math.max(totalQuantity, 1)}</span>
+                </div>
+                <div className="mt-2 flex flex-col gap-1 text-sm">
+                  <p className="text-lg font-semibold text-gray-900">{productName}</p>
+                  <p className="text-sm text-gray-500">Colour: {selectedColourValue}</p>
+                </div>
+                <div className="flex flex-wrap items-start gap-3 overflow-x-auto">
+                  {orderedSides.map(side => (
+                    <div
+                      key={side.key}
+                      className="flex flex-col items-center gap-2 rounded-2xl border border-gray-200 bg-gray-50/80 p-2"
+                      style={{ width: orderImageSize }}
+                    >
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-gray-500">
+                        {side.label}
+                      </p>
+                      <DesignPreview
+                        snapshot={side.preview}
+                        fallbackImage={side.imageSrc}
+                        width={orderImageSize}
+                        fixedSize={orderImageSize}
+                        alt={`${side.label} preview`}
+                        className="h-[160px] w-full"
+                        noFrame
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex justify-center">
+                <div className="flex items-center gap-4">
+                  <img
+                    src="/images/BLSatisfaction.png"
+                    alt="Satisfaction badge"
+                    className="h-20 w-20 object-contain"
+                  />
+                  <div className="flex flex-col">
+                    <p className="text-base font-semibold text-[#C6A75E]">100% Satisfaction Guarantee</p>
+                    <p className="text-xs text-gray-500">We deliver excellence.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-end gap-3">
+                <button
+                  onClick={() => setStep("configure")}
+                  className="rounded-xl border border-gray-300 px-5 py-2 font-medium text-gray-700 hover:border-[#C6A75E] hover:bg-[#C6A75E]/10"
+                >
+                  Edit quantity / sizes
+                </button>
+                <button
+                  onClick={() => onAddToCart?.(actionPayload)}
+                  className="rounded-xl bg-[#8A6D2B] px-5 py-2 font-semibold text-white hover:bg-[#755A22]"
+                >
+                  Add to Cart
+                </button>
+                <button
+                  onClick={() => onBuyNow?.(actionPayload)}
+                  className="rounded-xl bg-[#C6A75E] px-5 py-2 font-semibold text-white hover:bg-[#B8994E]"
+                >
+                  Buy Now
+                </button>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {zoomedSide && (

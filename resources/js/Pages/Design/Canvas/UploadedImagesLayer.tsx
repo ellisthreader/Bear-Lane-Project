@@ -23,7 +23,10 @@ export default function UploadedImagesLayer({
   return (
     <>
       {uids
-        .filter((uid) => imageState[uid]?.type === "image")
+        .filter((uid) => {
+          const type = imageState[uid]?.type;
+          return type === "image" || type === "clipart";
+        })
         .map((uid) => {
           const size = sizes[uid];
           const pos = positions[uid];
@@ -45,6 +48,7 @@ export default function UploadedImagesLayer({
               onPointerDown={onPointerDown}
               color={layer?.color ?? "#000000"}
               isClipart={Boolean(layer?.isClipart)}
+              zIndex={layer?.zIndex ?? 1}
             />
           );
         })}

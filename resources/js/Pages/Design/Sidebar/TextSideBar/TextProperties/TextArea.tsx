@@ -2,7 +2,7 @@
 
 import React from "react";
 
-const MAX_TEXT_LENGTH = 260;
+const MAX_TEXT_LENGTH = 65;
 
 type Props = {
   textValue: string;

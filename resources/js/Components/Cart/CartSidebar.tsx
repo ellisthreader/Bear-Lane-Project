@@ -5,9 +5,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Plus, Minus, Trash2, ChevronDown } from "lucide-react";
 import { useCart } from "@/Context/CartContext";
 import { router } from "@inertiajs/react";
+import DesignPreview from "@/Pages/Design/Components/DesignPreview";
 
-// ✅ Import CartItem type from your CartContext
-import type { CartItem } from "@/Context/CartContext";
+// ✅ Import CartItem + AddToCartPayload types from your CartContext
+import type { AddToCartPayload, CartItem } from "@/Context/CartContext";
 
 type SuggestedProduct = {
   id: number;
@@ -50,14 +51,14 @@ const SizeDropdown = ({
     <div ref={wrapperRef} className="relative w-32 text-sm">
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex justify-between items-center px-3 py-2 border border-gray-400 dark:border-gray-600 bg-white dark:bg-gray-800 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-600"
+        className="w-full flex justify-between items-center px-3 py-2 border border-gray-300 bg-white rounded-lg focus:outline-none focus:ring-2 focus:ring-[#C6A75E]/30 focus:border-[#C6A75E] transition"
       >
         <span>{value}</span>
         <ChevronDown className="w-4 h-4" />
       </button>
 
       {open && (
-        <div className="absolute z-50 mt-1 w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md shadow-lg">
+        <div className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg">
           <ul className="max-h-48 overflow-y-auto">
             {options.map((opt) => (
               <li
@@ -66,8 +67,8 @@ const SizeDropdown = ({
                   onChange(opt);
                   setOpen(false);
                 }}
-                className={`px-3 py-2 cursor-pointer hover:bg-blue-600 hover:text-white dark:hover:bg-blue-600 dark:hover:text-white ${
-                  value === opt ? "bg-gray-100 dark:bg-gray-700" : ""
+                className={`px-3 py-2 cursor-pointer hover:bg-[#C6A75E]/15 hover:text-[#8A6D2B] ${
+                  value === opt ? "bg-[#C6A75E]/10 text-[#8A6D2B]" : ""
                 }`}
               >
                 {opt}
@@ -111,7 +112,7 @@ const CartSidebar = () => {
     ) => void;
     totalPrice: number;
     openCart: () => void;
-    addToCart: (item: CartItem) => void;
+    addToCart: (item: AddToCartPayload) => void;
   } = useCart();
 
   const [page, setPage] = useState(0);
@@ -124,8 +125,8 @@ const CartSidebar = () => {
     };
   }, [showCart]);
 
-  const goal = 50;
-  const progress = Math.min(totalPrice / goal, 1) * 100;
+  const freeShippingGoal = 50;
+  const progress = Math.min(totalPrice / freeShippingGoal, 1) * 100;
 
   // ===== Handlers =====
   const handleIncrease = (item: CartItem) => {
@@ -181,63 +182,82 @@ const CartSidebar = () => {
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            className="fixed top-0 right-0 h-full w-[30rem] shadow-xl z-50 bg-white dark:bg-gray-900 text-black dark:text-white flex flex-col"
+            className="fixed top-0 right-0 h-full w-[30rem] shadow-2xl z-50 bg-[#FAFAF7] text-gray-900 flex flex-col border-l border-[#C6A75E]/25"
           >
             {/* HEADER */}
-            <div className="flex justify-between items-center p-4 border-b border-gray-300 dark:border-gray-700">
-              <h2 className="text-lg font-semibold">Your Cart</h2>
-              <button onClick={toggleCart}>
-                <X className="w-5 h-5" />
+            <div className="flex justify-between items-center px-5 py-4 border-b border-[#C6A75E]/25 bg-gradient-to-r from-[#F8F3E6] via-[#FCFAF2] to-white">
+              <h2 className="text-lg font-semibold tracking-tight">Your Cart</h2>
+              <button
+                onClick={toggleCart}
+                className="rounded-full p-1.5 hover:bg-gray-200/70 transition"
+              >
+                <X className="w-5 h-5 text-gray-700" />
               </button>
             </div>
 
             {/* PROGRESS BAR */}
-            <div className="p-4 border-b border-gray-300 dark:border-gray-700">
-              <div className="w-full h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+            <div className="p-4 border-b border-[#C6A75E]/20  bg-[#FAFAF7]">
+              <div className="w-full h-2.5 bg-[#EFE9DA] rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-blue-600 transition-all duration-300"
+                  className="h-full bg-gradient-to-r from-[#C6A75E] to-[#B8994E] transition-all duration-300"
                   style={{ width: `${progress}%` }}
                 />
               </div>
 
-              <p className="mt-2 text-sm text-center">
-                {totalPrice >= goal ? (
-                  <>
-                    You unlocked a <span className="font-bold">mystery gift!</span>
-                  </>
-                ) : (
-                  <>
-                    Spend £{(goal - totalPrice).toFixed(2)} more to get a{" "}
-                    <span className="font-bold">mystery gift</span>
-                  </>
-                )}
-              </p>
+              <div className="mt-3 rounded-xl border border-[#C6A75E]/30 bg-[#FAFAF7] px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_1px_6px_rgba(198,167,94,0.08)]">
+                <p className="text-sm text-center text-gray-700">
+                  {totalPrice >= freeShippingGoal ? (
+                    <>
+                      You unlocked <span className="font-semibold text-[#8A6D2B]">free shipping!</span>
+                    </>
+                  ) : (
+                    <>
+                      Spend £{(freeShippingGoal - totalPrice).toFixed(2)} more to get{" "}
+                      <span className="font-semibold text-[#8A6D2B]">free shipping</span>
+                    </>
+                  )}
+                </p>
+              </div>
             </div>
 
             {/* CART ITEMS */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-6">
+            <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-6">
               {cart.length === 0 ? (
-                <p className="text-gray-500 dark:text-gray-400">Your cart is empty</p>
+                <p className="text-gray-500">Your cart is empty</p>
               ) : (
                 cart.map((item: CartItem) => (
                   <div
                     key={`${item.slug}-${item.colour}-${item.size}`}
-                    className="flex justify-between items-start space-x-3 border-b border-gray-300 dark:border-gray-700 pb-3"
+                    className="flex justify-between items-start space-x-3 border-b border-gray-200 pb-4"
                   >
-                    <img
-                      src={item.image}
-                      alt={item.title}
-                      className="w-20 h-20 object-cover rounded"
-                    />
+                    <div className="w-24 h-24 flex-shrink-0">
+                      {item.previewSnapshot ? (
+                        <DesignPreview
+                          snapshot={item.previewSnapshot}
+                          fallbackImage={item.image}
+                          width={96}
+                          fixedSize={96}
+                          alt={`${item.title} preview`}
+                          className="h-full w-full rounded-xl border border-gray-200 bg-white"
+                          noFrame
+                        />
+                      ) : (
+                        <img
+                          src={item.image}
+                          alt={item.title}
+                          className="w-full h-full object-cover rounded-xl border border-gray-200 bg-white"
+                        />
+                      )}
+                    </div>
 
                     <div className="flex-1 flex flex-col text-sm">
-                      <p className="font-bold leading-tight">{item.brand}</p>
-                      <p className="font-bold mb-1">{item.title}</p>
+                      <p className="font-semibold leading-tight text-gray-800">{item.brand}</p>
+                      <p className="font-semibold mb-1">{item.title}</p>
                       <p className="mb-1">
-                        Colour: <span className="font-normal">{item.colour}</span>
+                        Colour: <span className="font-normal text-gray-700">{item.colour}</span>
                       </p>
 
-                      <p className="mb-1">Size:</p>
+                      <p className="mb-1 text-gray-700">Size:</p>
 
                       <SizeDropdown
                         value={item.size}
@@ -247,13 +267,13 @@ const CartSidebar = () => {
                         options={item.availableSizes}
                       />
 
-                      <p className="mt-2">£{item.price.toFixed(2)}</p>
+                      <p className="mt-2 text-gray-800">£{item.price.toFixed(2)}</p>
 
                       {/* QUANTITY */}
                       <div className="flex items-center space-x-2 mt-2">
                         <button
                           onClick={() => handleDecrease(item)}
-                          className="p-1 border border-gray-400 dark:border-gray-600 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition"
+                          className="p-1.5 border border-gray-300 rounded-lg hover:bg-[#C6A75E]/10 hover:border-[#C6A75E]/40 transition"
                         >
                           <Minus className="w-3 h-3" />
                         </button>
@@ -262,7 +282,7 @@ const CartSidebar = () => {
 
                         <button
                           onClick={() => handleIncrease(item)}
-                          className="p-1 border border-gray-400 dark:border-gray-600 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition"
+                          className="p-1.5 border border-gray-300 rounded-lg hover:bg-[#C6A75E]/10 hover:border-[#C6A75E]/40 transition"
                         >
                           <Plus className="w-3 h-3" />
                         </button>
@@ -290,9 +310,9 @@ const CartSidebar = () => {
               {/* SUGGESTED PRODUCTS */}
               {suggestedProducts.length > 0 && (
                 <div className="mt-6">
-                  <h3 className="text-lg font-semibold mb-3">You may also like</h3>
+                  <h3 className="text-lg font-semibold mb-3 tracking-tight">You may also like</h3>
 
-                  <div className="relative">
+                  <div className="relative overflow-hidden">
                     <AnimatePresence mode="wait">
                       <motion.div
                         key={page}
@@ -300,24 +320,25 @@ const CartSidebar = () => {
                         animate={{ x: 0, opacity: 1 }}
                         exit={{ x: -100, opacity: 0 }}
                         transition={{ duration: 0.4 }}
-                        className="flex gap-4"
+                        className="flex gap-4 w-max"
+                        style={{ touchAction: "pan-y" }}
                       >
                         {visibleProducts.map((product: SuggestedProduct) => (
                           <div
                             key={product.id}
-                            className="p-3 border border-gray-300 dark:border-gray-700 rounded-lg flex flex-col items-center text-center w-36 flex-shrink-0"
+                            className="p-3 border border-gray-200 rounded-xl bg-white flex flex-col items-center text-center w-36 flex-shrink-0"
                           >
                             <img
                               src={product.image}
                               alt={product.title}
-                              className="w-20 h-20 object-cover rounded mb-2"
+                              className="w-20 h-20 object-cover rounded-lg mb-2 border border-gray-200"
                             />
 
                             <p className="font-medium text-sm line-clamp-2">
                               {product.title}
                             </p>
 
-                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                            <p className="text-sm text-gray-500">
                               £{product.price}
                             </p>
 
@@ -336,7 +357,7 @@ const CartSidebar = () => {
                                   quantity: 1,
                                 })
                               }
-                              className="mt-2 px-3 py-1 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition"
+                              className="mt-2 px-3 py-1 bg-[#C6A75E] text-white rounded-lg text-sm hover:bg-[#B8994E] transition"
                             >
                               Add
                             </button>
@@ -353,8 +374,8 @@ const CartSidebar = () => {
                           onClick={() => setPage(idx)}
                           className={`w-3 h-3 rounded-full transition ${
                             page === idx
-                              ? "bg-blue-600"
-                              : "bg-gray-400 dark:bg-gray-600 hover:bg-blue-400"
+                              ? "bg-[#C6A75E]"
+                              : "bg-gray-300 hover:bg-[#C6A75E]/70"
                           }`}
                         />
                       ))}
@@ -365,10 +386,10 @@ const CartSidebar = () => {
             </div>
 
             {/* FOOTER TOTAL */}
-            <div className="p-4 border-t border-gray-300 dark:border-gray-700 space-y-3">
+            <div className="p-4 border-t border-[#C6A75E]/20 bg-white space-y-3">
               <div className="flex justify-between font-semibold text-lg">
                 <span>Total:</span>
-                <span>£{totalPrice.toFixed(2)}</span>
+                <span className="text-[#8A6D2B]">£{totalPrice.toFixed(2)}</span>
               </div>
 
               {/* CHECKOUT */}
@@ -377,8 +398,8 @@ const CartSidebar = () => {
                 disabled={cart.length === 0}
                 className={`w-full py-3 rounded-lg text-white transition ${
                   cart.length === 0
-                    ? "bg-gray-400 dark:bg-gray-700 cursor-not-allowed"
-                    : "bg-blue-600 hover:bg-blue-700"
+                    ? "bg-gray-400 cursor-not-allowed"
+                    : "bg-[#C6A75E] hover:bg-[#B8994E]"
                 }`}
               >
                 Checkout
@@ -387,7 +408,7 @@ const CartSidebar = () => {
               {/* CLOSE */}
               <button
                 onClick={toggleCart}
-                className="w-full py-2 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition"
+                className="w-full py-2 text-gray-700 rounded-lg hover:bg-gray-100 transition"
               >
                 Close
               </button>

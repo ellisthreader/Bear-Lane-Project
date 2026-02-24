@@ -12,7 +12,7 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        // Example: $schedule->command('inspire')->hourly();
+        $schedule->command('delivery:cleanup-expired-reservations')->everyMinute();
     }
 
     /**

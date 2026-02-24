@@ -7,12 +7,13 @@ export default function SelectionBoundingBox({
 }) {
   return (
     <div
-      className="absolute border-2 border-purple-500 pointer-events-none"
+      className="absolute border-2 border-[#C6A75E] pointer-events-none"
       style={{
         left: box.left,
         top: box.top,
         width: box.width,
         height: box.height,
+        background: "rgba(198,167,94,0.12)",
         zIndex: 310
       }}
     >

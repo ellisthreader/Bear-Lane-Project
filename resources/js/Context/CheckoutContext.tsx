@@ -11,13 +11,16 @@ interface Address {
   addressLine1: string;
   addressLine2: string;
   city: string;
+  county: string;
   postcode: string;
 }
 
 interface ShippingService {
-  code: string;
-  name: string;
-  cost: number;
+  object_id: string;
+  provider: string;
+  servicelevel?: { name: string };
+  amount: string;
+  estimated_days?: number;
 }
 
 interface DiscountData {
@@ -81,6 +84,7 @@ export const CheckoutProvider = ({ children }: { children: ReactNode }) => {
     addressLine1: "",
     addressLine2: "",
     city: "",
+    county: "",
     postcode: "",
   });
   const [country, setCountry] = useState("United Kingdom");

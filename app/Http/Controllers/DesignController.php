@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Product;
 use App\Models\Category;
+use App\Models\SavedDesign;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Log;
@@ -19,6 +20,7 @@ class DesignController extends Controller
     {
         $selectedColour = $request->query('colour');
         $selectedSize   = $request->query('size');
+        $savedDesignId  = $request->query('savedDesign');
 
         // Fetch product by slug instead of default ID binding
         $product = Product::with(['images', 'variants.images', 'categories'])
@@ -93,6 +95,49 @@ class DesignController extends Controller
             ->where('id', '!=', $product->id)
             ->get();
 
+        $savedDesigns = [];
+        $initialSavedDesign = null;
+
+        if ($request->user()) {
+            $savedDesigns = SavedDesign::with(['product.images'])
+                ->where('user_id', $request->user()->id)
+                ->latest('updated_at')
+                ->get()
+                ->map(function (SavedDesign $savedDesign) {
+                    return [
+                        'id' => $savedDesign->id,
+                        'name' => $savedDesign->name,
+                        'product' => [
+                            'id' => $savedDesign->product?->id,
+                            'name' => $savedDesign->product?->name,
+                            'slug' => $savedDesign->product?->slug,
+                            'images' => $savedDesign->product?->images
+                                ? $savedDesign->product->images->pluck('url')->values()->all()
+                                : [],
+                        ],
+                        'previewImage' => $savedDesign->product?->images?->first()?->url,
+                        'updatedAt' => $savedDesign->updated_at?->toIso8601String(),
+                        'payload' => $savedDesign->design_payload,
+                    ];
+                })
+                ->values()
+                ->all();
+
+            if ($savedDesignId) {
+                $matchedSavedDesign = SavedDesign::where('user_id', $request->user()->id)
+                    ->where('id', $savedDesignId)
+                    ->first();
+
+                if ($matchedSavedDesign) {
+                    $initialSavedDesign = [
+                        'id' => $matchedSavedDesign->id,
+                        'name' => $matchedSavedDesign->name,
+                        'payload' => $matchedSavedDesign->design_payload,
+                    ];
+                }
+            }
+        }
+
         return Inertia::render('Design/Design', [
             'product'         => $product,
             'selectedColour'  => $selectedColour,
@@ -100,6 +145,8 @@ class DesignController extends Controller
             'adultCategories' => $adultCategories,
             'kidsCategories'  => $kidsCategories,
             'relatedProducts' => $relatedProducts,
+            'savedDesigns' => $savedDesigns,
+            'initialSavedDesign' => $initialSavedDesign,
         ]);
     }
 

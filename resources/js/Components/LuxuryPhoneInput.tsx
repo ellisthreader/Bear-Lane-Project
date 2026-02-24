@@ -4,6 +4,7 @@ import {
   getCountryCallingCode,
   isValidPhoneNumber,
 } from "react-phone-number-input";
+import { AsYouType, type CountryCode } from "libphonenumber-js";
 import en from "react-phone-number-input/locale/en.json";
 import ReactCountryFlag from "react-country-flag";
 import "react-phone-number-input/style.css";
@@ -13,6 +14,8 @@ type Props = {
   onChange: (value: string) => void;
   required?: boolean;
   onBlur?: () => void;
+  className?: string;
+  forceError?: boolean;
 };
 
 export default function LuxuryPhoneInput({
@@ -20,6 +23,8 @@ export default function LuxuryPhoneInput({
   onChange,
   required = false,
   onBlur,
+  className = "",
+  forceError = false,
 }: Props) {
   const [selectedCountry, setSelectedCountry] = useState<string>("GB");
   const [open, setOpen] = useState(false);
@@ -35,9 +40,28 @@ export default function LuxuryPhoneInput({
 
   const callingCode = `+${getCountryCallingCode(selectedCountry)}`;
 
+  const formatNumber = (input: string, country: string) => {
+    const numeric = input.replace(/[^\d]/g, "");
+    const normalized = `+${numeric}`;
+    const formatter = new AsYouType(country as CountryCode);
+    const formatted = formatter.input(normalized);
+    return formatted.startsWith("+") ? formatted : `+${formatted}`;
+  };
+
   // Ensure phone always starts with country code
   useEffect(() => {
-    if (!value.startsWith(callingCode)) {
+    if (!value) {
+      onChange(callingCode);
+      return;
+    }
+
+    const formatted = formatNumber(value, selectedCountry);
+    if (formatted !== value) {
+      onChange(formatted);
+      return;
+    }
+
+    if (!formatted.startsWith(callingCode)) {
       onChange(callingCode);
     }
   }, [selectedCountry]);
@@ -50,11 +74,11 @@ export default function LuxuryPhoneInput({
       input = callingCode;
     }
 
-    onChange(input);
+    onChange(formatNumber(input, selectedCountry));
   };
 
-  const isValid =
-    !touched || (value.length > callingCode.length && isValidPhoneNumber(value));
+  const isValid = !touched || (value.length > callingCode.length && isValidPhoneNumber(value));
+  const showError = forceError || !isValid;
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -71,10 +95,10 @@ export default function LuxuryPhoneInput({
   }, []);
 
   return (
-    <div className="relative w-full" ref={dropdownRef}>
+    <div className={`relative w-full ${className}`.trim()} ref={dropdownRef}>
       <div
         className={`flex items-center border rounded-2xl px-4 py-3 bg-white transition-all ${
-          !isValid
+          showError
             ? "border-red-400 ring-2 ring-red-200"
             : "border-gray-200 hover:border-[#C9A24D]/50 focus-within:ring-2 focus-within:ring-[#C9A24D]"
         }`}
@@ -106,7 +130,7 @@ export default function LuxuryPhoneInput({
         />
       </div>
 
-      {!isValid && touched && (
+      {!forceError && !isValid && touched && (
         <p className="text-red-500 text-sm mt-1">
           Please enter a valid phone number.
         </p>
@@ -114,7 +138,7 @@ export default function LuxuryPhoneInput({
 
       {/* DROPDOWN */}
       {open && (
-        <div className="absolute z-50 mt-2 w-full max-h-80 overflow-y-auto bg-white rounded-2xl shadow-xl border border-gray-200">
+        <div className="absolute z-50 mt-2 w-full overflow-hidden bg-white rounded-2xl shadow-xl border border-gray-200">
           <div className="p-3 border-b border-gray-100">
             <input
               type="text"
@@ -124,7 +148,7 @@ export default function LuxuryPhoneInput({
               className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#C9A24D]"
             />
           </div>
-          <div className="max-h-64 overflow-y-auto">
+          <div className="max-h-48 overflow-y-auto">
             {filteredCountries.map((country) => (
               <button
                 key={country}

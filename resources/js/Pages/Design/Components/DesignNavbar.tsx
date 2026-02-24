@@ -3,6 +3,7 @@
 import React from "react";
 import { Link } from "@inertiajs/react";
 import { ShoppingCart, User, Heart, ChevronRight, Folder } from "lucide-react";
+import { useCart } from "@/Context/CartContext";
 
 type DesignNavbarProps = {
   designName?: string;
@@ -16,6 +17,7 @@ export default function DesignNavbar({
   myDesignsLabel = "My Designs",
 }: DesignNavbarProps) {
   const canOpenMyDesigns = typeof onOpenMyDesigns === "function";
+  const { openCart } = useCart();
 
   return (
     <nav
@@ -53,7 +55,7 @@ export default function DesignNavbar({
           <span className="uppercase text-gray-500">{myDesignsLabel}</span>
           <ChevronRight className="w-4 h-4 text-gray-400" />
           <span className="font-semibold text-gray-900">
-            {designName}
+            {`'${designName}'`}
           </span>
         </div>
       </div>
@@ -68,9 +70,13 @@ export default function DesignNavbar({
           <Heart className="w-5 h-5 cursor-pointer hover:text-[#C6A75E] transition" />
         </Link>
 
-        <Link href="/cart">
+        <button
+          onClick={openCart}
+          className="flex items-center justify-center rounded-full p-1.5 transition hover:bg-[#F2EAD6]"
+          aria-label="Open cart"
+        >
           <ShoppingCart className="w-5 h-5 cursor-pointer hover:text-[#C6A75E] transition" />
-        </Link>
+        </button>
       </div>
     </nav>
   );

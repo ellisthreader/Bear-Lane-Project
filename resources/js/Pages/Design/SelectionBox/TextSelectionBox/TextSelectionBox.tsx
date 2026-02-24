@@ -38,7 +38,7 @@ export default function TextSelectionBox(props: Props) {
   const [labelPos, setLabelPos] = useState<{ left: number; top: number } | null>(null);
   const hasSelection = selectedText.length > 0;
 
-  const { box, update } = useBoundingBox(selectedText, canvasRef);
+  const { box, update } = useBoundingBox(selectedText, canvasRef, positions, sizes);
 
   useEffect(() => {
     update();

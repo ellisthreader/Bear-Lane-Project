@@ -8,6 +8,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use App\Notifications\ResetPasswordNotification;
 use Illuminate\Support\Carbon;
+use App\Models\SavedDesign;
 
 class User extends Authenticatable implements MustVerifyEmail
 {
@@ -29,6 +30,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'last_avatar_generated_at',
         'last_verification_sent_at',
         'is_admin',   // admin access
+        'is_member',
         'is_oauth',   // added for OAuth users
     ];
 
@@ -53,6 +55,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'last_verification_sent_at' => 'datetime',
         'password' => 'hashed',
         'is_admin' => 'boolean',
+        'is_member' => 'boolean',
         'is_oauth' => 'boolean', // ensures true/false for OAuth
     ];
 
@@ -107,6 +110,11 @@ class User extends Authenticatable implements MustVerifyEmail
     public function chats()
     {
         return $this->belongsToMany(Chat::class, 'chat_user', 'user_id', 'chat_id');
+    }
+
+    public function savedDesigns()
+    {
+        return $this->hasMany(SavedDesign::class);
     }
 
     /**

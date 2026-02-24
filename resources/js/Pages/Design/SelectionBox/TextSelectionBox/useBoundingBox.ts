@@ -7,16 +7,61 @@ type Box = {
   height: number;
 };
 
+const EPSILON = 0.25;
+const boxesAreEqual = (a: Box | null, b: Box) =>
+  Boolean(
+    a &&
+      Math.abs(a.left - b.left) < EPSILON &&
+      Math.abs(a.top - b.top) < EPSILON &&
+      Math.abs(a.width - b.width) < EPSILON &&
+      Math.abs(a.height - b.height) < EPSILON
+  );
+
 export function useBoundingBox(
   selectedText: string[],
-  canvasRef: React.RefObject<HTMLDivElement>
+  canvasRef: React.RefObject<HTMLDivElement>,
+  positions: Record<string, { x: number; y: number }>,
+  sizes: Record<string, { w: number; h: number }>
 ) {
   const [box, setBox] = useState<Box | null>(null);
   const selectedKey = useMemo(() => selectedText.join("|"), [selectedText]);
 
+  const computeStateBox = useCallback((): Box | null => {
+    if (selectedText.length === 0) return null;
+    let minX = Infinity,
+      minY = Infinity,
+      maxX = -Infinity,
+      maxY = -Infinity;
+
+    selectedText.forEach(uid => {
+      const pos = positions[uid];
+      const size = sizes[uid];
+      if (!pos || !size) return;
+      minX = Math.min(minX, pos.x);
+      minY = Math.min(minY, pos.y);
+      maxX = Math.max(maxX, pos.x + size.w);
+      maxY = Math.max(maxY, pos.y + size.h);
+    });
+
+    if (minX === Infinity) return null;
+
+    return {
+      left: minX,
+      top: minY,
+      width: maxX - minX,
+      height: maxY - minY,
+    };
+  }, [selectedText, positions, sizes]);
+
   const update = useCallback(() => {
     if (!canvasRef.current || selectedText.length === 0) {
       setBox(null);
+      return;
+    }
+
+    const stateBox = computeStateBox();
+    if (stateBox) {
+      setBox(prev => (boxesAreEqual(prev, stateBox) ? prev : stateBox));
       return;
     }
 
@@ -52,26 +97,15 @@ export function useBoundingBox(
       left: minX,
       top: minY,
       width: maxX - minX,
-      height: maxY - minY
+      height: maxY - minY,
     };
 
-    setBox(prev => {
-      if (
-        prev &&
-        Math.abs(prev.left - next.left) < 0.25 &&
-        Math.abs(prev.top - next.top) < 0.25 &&
-        Math.abs(prev.width - next.width) < 0.25 &&
-        Math.abs(prev.height - next.height) < 0.25
-      ) {
-        return prev;
-      }
-      return next;
-    });
-  }, [canvasRef, selectedText]);
+    setBox(prev => (boxesAreEqual(prev, next) ? prev : next));
+  }, [canvasRef, selectedText, computeStateBox]);
 
   useLayoutEffect(() => {
     update();
-  }, [update, selectedKey]);
+  }, [update, selectedKey, computeStateBox]);
 
   useEffect(() => {
     const handle = () => update();

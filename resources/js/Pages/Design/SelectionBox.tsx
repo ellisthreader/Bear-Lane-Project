@@ -1,20 +1,27 @@
 import React, { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { X, Copy, Move } from "lucide-react";
+import type { ImageState } from "./Design";
 
 interface SelectionBoxProps {
   selectedImages: string[]; // uids
   canvasRef: React.RefObject<HTMLDivElement>;
+  positions: Record<string, { x: number; y: number }>;
+  sizes: Record<string, { w: number; h: number }>;
   onDelete: (uids: string[]) => void;
   onDuplicate: (uids: string[]) => void;
   onResize: (imageUid: string, width: number, height: number) => void;
   onStartGroupResize?: (startClientX: number) => any;
   onReset?: (uids: string[]) => void;
   onDeselectAll?: () => void;
+  imageState?: Record<string, ImageState>;
 }
 
 const SelectionBox: React.FC<SelectionBoxProps> = ({
   selectedImages,
   canvasRef,
+  positions,
+  sizes,
+  imageState,
   onDelete,
   onDuplicate,
   onResize,
@@ -40,17 +47,43 @@ const SelectionBox: React.FC<SelectionBoxProps> = ({
       maxY = -Infinity;
 
     selectedImages.forEach((uid) => {
+      const layer = imageState?.[uid];
+      const clipartBounds = layer?.isClipart && sizes[uid] && positions[uid];
+
+      if (clipartBounds) {
+        const pos = positions[uid];
+        const sz = sizes[uid];
+        const x = pos.x;
+        const y = pos.y;
+        minX = Math.min(minX, x);
+        minY = Math.min(minY, y);
+        maxX = Math.max(maxX, x + sz.w);
+        maxY = Math.max(maxY, y + sz.h);
+        return;
+      }
+
       const el = document.querySelector<HTMLElement>(`[data-uid="${CSS.escape(uid)}"]`);
-      if (!el) return;
+      if (el) {
+        const r = el.getBoundingClientRect();
+        const x = r.left - canvasRect.left;
+        const y = r.top - canvasRect.top;
+        minX = Math.min(minX, x);
+        minY = Math.min(minY, y);
+        maxX = Math.max(maxX, x + r.width);
+        maxY = Math.max(maxY, y + r.height);
+        return;
+      }
 
-      const r = el.getBoundingClientRect();
-      const x = r.left - canvasRect.left;
-      const y = r.top - canvasRect.top;
-
-      minX = Math.min(minX, x);
-      minY = Math.min(minY, y);
-      maxX = Math.max(maxX, x + r.width);
-      maxY = Math.max(maxY, y + r.height);
+      const sz = sizes[uid];
+      const pos = positions[uid];
+      if (pos && sz) {
+        const x = pos.x;
+        const y = pos.y;
+        minX = Math.min(minX, x);
+        minY = Math.min(minY, y);
+        maxX = Math.max(maxX, x + sz.w);
+        maxY = Math.max(maxY, y + sz.h);
+      }
     });
 
     if (minX === Infinity) {
@@ -71,7 +104,7 @@ const SelectionBox: React.FC<SelectionBoxProps> = ({
       }
       return nextBox;
     });
-  }, [canvasRef, selectedImages]);
+  }, [canvasRef, selectedImages, positions, sizes]);
 
   // Keep the box synced with live transforms (drag / resize / rotate) on every render cycle.
   useLayoutEffect(() => {

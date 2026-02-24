@@ -16,9 +16,20 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Barryvdh\DomPDF\Facade\Pdf;
+use App\Services\DeliverySlotService;
+use App\Services\DeliveryOptionService;
+use App\Services\ShippoLabelService;
 
 class CheckoutController extends Controller
 {
+    public function __construct(
+        private readonly DeliverySlotService $deliverySlotService,
+        private readonly DeliveryOptionService $deliveryOptionService,
+        private readonly ShippoLabelService $shippoLabelService,
+    )
+    {
+    }
+
     /**
      * Create a Stripe PaymentIntent
      */
@@ -27,8 +38,9 @@ class CheckoutController extends Controller
         $validator = Validator::make($request->all(), [
             'items' => 'required|array|min:1',
             'email' => 'required|email',
-            'shipping.cost' => 'nullable|numeric',
+            'shipping.method' => 'nullable|string',
             'discount_code' => 'nullable|string',
+            'payment_type' => 'nullable|string|in:CARD,KLARNA,PAYPAL,APPLE_PAY,GOOGLE_PAY',
         ]);
 
         if ($validator->fails()) {
@@ -38,7 +50,11 @@ class CheckoutController extends Controller
         try {
             $data = $request->all();
             $items = $data['items'] ?? [];
-            $shipping_cents = isset($data['shipping']['cost']) ? intval($data['shipping']['cost']) : 0;
+            $paymentType = strtoupper((string) ($data['payment_type'] ?? 'CARD'));
+            $shippingMethod = (string) data_get($data, 'shipping.method', 'STANDARD');
+            $deliveryType = str_starts_with($shippingMethod, 'TIMED:') ? 'TIMED' : strtoupper($shippingMethod);
+            $shippingPrice = $this->deliveryOptionService->resolvePrice($deliveryType, auth()->user());
+            $shipping_cents = (int) round($shippingPrice * 100);
 
             $subtotal_cents = 0;
             foreach ($items as $it) {
@@ -65,16 +81,25 @@ class CheckoutController extends Controller
             $vat_cents = intval(round($discounted_subtotal_cents * 0.2));
             $total_cents = $discounted_subtotal_cents + $vat_cents + $shipping_cents;
 
+            $paymentMethodTypes = match ($paymentType) {
+                'KLARNA' => ['klarna'],
+                'PAYPAL' => ['paypal'],
+                // Apple Pay / Google Pay are wallet rails over card.
+                'APPLE_PAY', 'GOOGLE_PAY', 'CARD' => ['card'],
+                default => ['card'],
+            };
+
             Stripe::setApiKey(env('STRIPE_SECRET'));
 
             $paymentIntent = PaymentIntent::create([
                 'amount' => $total_cents,
                 'currency' => 'gbp',
-                'automatic_payment_methods' => ['enabled' => true],
+                'payment_method_types' => $paymentMethodTypes,
                 'metadata' => [
                     'email' => $data['email'] ?? '',
                     'discount_code' => $discount_code ?? '',
                     'user_id' => optional(auth()->user())->id,
+                    'payment_type' => $paymentType,
                 ],
             ]);
 
@@ -111,6 +136,10 @@ class CheckoutController extends Controller
             'delivery.country' => 'nullable|string',
             'payment_intent_id' => 'nullable|string',
             'discount_code' => 'nullable|string',
+            'options.reservation_id' => 'nullable|integer|exists:reservations,id',
+            'options.delivery_type' => 'nullable|string|in:STANDARD,NEXT_DAY,TIMED',
+            'options.delivery_price' => 'nullable|numeric|min:0',
+            'options.shipping_rate' => 'nullable|string|max:120',
         ]);
 
         if ($validator->fails()) {
@@ -121,6 +150,8 @@ class CheckoutController extends Controller
 
         try {
             $data = $request->all();
+            $deliveryType = strtoupper((string) data_get($data, 'options.delivery_type', 'STANDARD'));
+            $deliveryPrice = $this->deliveryOptionService->resolvePrice($deliveryType, auth()->user());
 
             // Create order
             $order = Order::create([
@@ -143,7 +174,33 @@ class CheckoutController extends Controller
                 'city' => $data['delivery']['city'] ?? null,
                 'postcode' => $data['delivery']['postcode'] ?? null,
                 'country' => $data['delivery']['country'] ?? null,
+                'delivery_type' => $deliveryType,
+                'delivery_price' => $deliveryPrice,
+                'shipping_rate' => $data['options']['shipping_rate'] ?? null,
             ]);
+
+            if (!empty($data['options']['reservation_id'])) {
+                $confirmedShippingRate = $deliveryType === 'TIMED'
+                    ? null
+                    : ($data['options']['shipping_rate'] ?? null);
+
+                $this->deliverySlotService->confirmReservation(
+                    (int) $data['options']['reservation_id'],
+                    (int) $order->id,
+                    $confirmedShippingRate,
+                );
+                $order->refresh();
+            }
+
+            if ($deliveryType === 'TIMED') {
+                $labelData = $this->shippoLabelService->purchaseTimedLabelForOrder(
+                    $order,
+                    $order->shipping_rate
+                );
+
+                $order->fill($labelData);
+                $order->save();
+            }
 
             // Save items
             foreach ($data['items'] as $itemPayload) {
@@ -159,6 +216,10 @@ class CheckoutController extends Controller
 
                 if (!$product && isset($itemPayload['slug'])) {
                     $product = Product::where('slug', $itemPayload['slug'])->first();
+                }
+
+                if (!$product && !empty($itemPayload['title'])) {
+                    $product = Product::where('name', $itemPayload['title'])->first();
                 }
 
                 if (!$product) {
@@ -255,6 +316,24 @@ class CheckoutController extends Controller
         $orderArr = $order->toArray();
         $orderArr['items'] = $items;
         $orderArr['invoice_url'] = $order->invoice_path ? asset('storage/' . $order->invoice_path) : null;
+        $orderArr['payment_type'] = 'CARD';
+
+        if (!empty($order->payment_intent_id)) {
+            try {
+                Stripe::setApiKey(env('STRIPE_SECRET'));
+                $paymentIntent = PaymentIntent::retrieve($order->payment_intent_id);
+                $metadataType = strtoupper((string) data_get($paymentIntent, 'metadata.payment_type', ''));
+                if (!empty($metadataType)) {
+                    $orderArr['payment_type'] = $metadataType;
+                }
+            } catch (\Throwable $e) {
+                Log::warning('[orderConfirmed] Unable to resolve payment intent metadata', [
+                    'order_number' => $order->order_number,
+                    'payment_intent_id' => $order->payment_intent_id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
 
         return Inertia::render('OrderConfirmed', ['order' => $orderArr]);
     }

@@ -15,27 +15,30 @@ export default function ClipartSection({
     <button
       onClick={onClick}
       className="
+        group relative
         flex flex-col items-center justify-between
         p-4 w-full h-36
-        bg-white dark:bg-gray-800
-        rounded-xl
-        shadow-md hover:shadow-lg
-        transition
-        border
+        bg-white
+        rounded-2xl
+        shadow-sm hover:shadow-md
+        hover:-translate-y-1
+        transition-all duration-300
+        border border-gray-200
       "
     >
       <div className="
         flex items-center justify-center
-        w-16 h-16
+        w-12 h-12
         rounded-full
-        bg-gray-100 dark:bg-gray-700
-        text-gray-700
+        bg-gradient-to-br from-[#F7F1E2] to-[#E9DBB6]
+        text-[#8A6D2B]
         text-3xl
+        group-hover:scale-110 transition-transform
       ">
         {icon}
       </div>
 
-      <h3 className="font-semibold text-sm text-center">
+      <h3 className="font-semibold text-sm text-center text-gray-900">
         {title}
       </h3>
     </button>

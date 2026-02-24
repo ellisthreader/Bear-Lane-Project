@@ -1,8 +1,9 @@
 "use client";
 
 import React, { createContext, useContext, useState, ReactNode } from "react";
+import type { PricePreviewSnapshot } from "@/Pages/Design/Canvas/Canvas";
 
-type CartItem = {
+export type CartItem = {
   slug: string;
   title: string;
   price: number;
@@ -11,9 +12,10 @@ type CartItem = {
   size: string;
   image?: string;
   availableSizes: string[]; // sizes user can choose
+  previewSnapshot?: PricePreviewSnapshot;
 };
 
-type AddToCartPayload = {
+export type AddToCartPayload = {
   slug: string;
   title: string;
   price: number | string;
@@ -21,6 +23,8 @@ type AddToCartPayload = {
   size: string;
   image?: string;
   availableSizes?: string[];
+  quantity?: number;
+  previewSnapshot?: PricePreviewSnapshot;
 };
 
 type CartContextType = {
@@ -52,6 +56,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   const addToCart = (item: AddToCartPayload) => {
     const price = normalizePrice(item.price);
     const availableSizes = item.availableSizes || [item.size];
+    const quantityToAdd = Math.max(1, Math.floor(item.quantity ?? 1));
 
     setCart((prev) => {
       const existing = prev.find(
@@ -60,11 +65,11 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       if (existing) {
         return prev.map((i) =>
           i.slug === item.slug && i.colour === item.colour && i.size === item.size
-            ? { ...i, quantity: i.quantity + 1 }
+            ? { ...i, quantity: i.quantity + quantityToAdd }
             : i
         );
       }
-      return [...prev, { ...item, price, quantity: 1, availableSizes }];
+      return [...prev, { ...item, price, quantity: quantityToAdd, availableSizes }];
     });
     openCart();
   };

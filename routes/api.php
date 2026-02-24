@@ -6,6 +6,9 @@ use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ShippingController;
+use App\Http\Controllers\DeliverySlotController;
+use App\Http\Controllers\DeliveryOptionController;
+use App\Http\Controllers\ShippingRateController;
 use App\Http\Controllers\CouponController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\Admin\AdminChatController;
@@ -96,6 +99,13 @@ Route::post('/discount/validate', [CouponController::class, 'apply']);
 // Shipping
 // -----------------------------
 Route::post('/shipping/rates', [ShippingController::class, 'rates']);
+Route::get('/shipping-rates', [ShippingRateController::class, 'index']);
+Route::get('/delivery-options', [DeliveryOptionController::class, 'index']);
+
+Route::get('/delivery-slots', [DeliverySlotController::class, 'index']);
+Route::post('/reserve-slot', [DeliverySlotController::class, 'reserve']);
+Route::post('/confirm-order', [DeliverySlotController::class, 'confirm']);
+Route::post('/cancel-reservation', [DeliverySlotController::class, 'cancel']);
 
 // -----------------------------
 // Authentication
@@ -134,4 +144,3 @@ Route::post('/send-quote', [QuoteController::class, 'sendQuote']);
 Route::post('/quote-request', [QuoteRequestController::class, 'store']);
 
 Route::post('/instant-quote', [InstantQuoteController::class, 'store']);
-

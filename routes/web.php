@@ -16,6 +16,7 @@ use App\Http\Controllers\ProductController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\Admin\ProductController as AdminProductController;
 use App\Http\Controllers\DesignController;
+use App\Http\Controllers\SavedDesignController;
 use App\Http\Controllers\ProductSearchController;
 use App\Http\Controllers\Auth\OAuthController;
 use App\Http\Controllers\Auth\EmailVerificationController;
@@ -300,6 +301,11 @@ Route::get('/design/{slug}', [DesignController::class, 'show'])->name('design.sh
 Route::get('/design/change-product/{product}', [DesignController::class, 'changeProduct'])
      ->name('design.changeProduct');
 
+Route::middleware('auth')->group(function () {
+    Route::post('/design/saved', [SavedDesignController::class, 'store'])->name('design.saved.store');
+    Route::delete('/design/saved/{savedDesign}', [SavedDesignController::class, 'destroy'])->name('design.saved.destroy');
+});
+
 /*
 |--------------------------------------------------------------------------
 | CATEGORY PRODUCTS PAGE
@@ -311,6 +317,9 @@ Route::get('/category-products/{slug}', [ProductController::class, 'categoryProd
 // -- Sign in with google / apple (OAuth)
 Route::get('/auth/google', [OAuthController::class, 'redirectToGoogle'])->name('auth.google');
 Route::get('/auth/google/callback', [OAuthController::class, 'handleGoogleCallback']);
+
+Route::get('/auth/facebook', [OAuthController::class, 'redirectToFacebook'])->name('auth.facebook');
+Route::get('/auth/facebook/callback', [OAuthController::class, 'handleFacebookCallback']);
 
 Route::get('/auth/apple', [OAuthController::class, 'redirectToApple'])->name('auth.apple');
 Route::get('/auth/apple/callback', [OAuthController::class, 'handleAppleCallback']);

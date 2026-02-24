@@ -13,6 +13,14 @@ use App\Models\User;
 
 class AuthController extends Controller
 {
+private function resolveRedirectPath(?string $redirect, string $fallback = '/profile'): string
+{
+    $target = trim((string) $redirect);
+    if ($target === '' || !str_starts_with($target, '/')) {
+        return $fallback;
+    }
+    return $target;
+}
 
 // -----------------------
 // REGISTER
@@ -57,6 +65,7 @@ public function register(Request $request)
         $request->validate([
             'email'    => ['required', 'email'],
             'password' => ['required', 'string'],
+            'redirect' => ['nullable', 'string'],
         ]);
 
         $user = User::where('email', $request->email)->first();
@@ -73,12 +82,13 @@ public function register(Request $request)
         if (Auth::attempt($request->only('email', 'password'), $request->boolean('remember'))) {
 
             $request->session()->regenerate();
+            $redirectPath = $this->resolveRedirectPath($request->input('redirect'));
 
             if (Auth::user()->is_admin) {
                 return redirect('/admin/dashboard');
             }
 
-            return redirect()->intended('/profile');
+            return redirect()->intended($redirectPath);
         }
 
         return back()->withErrors([

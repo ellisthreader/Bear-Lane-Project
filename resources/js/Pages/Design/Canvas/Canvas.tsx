@@ -16,6 +16,8 @@ import DraggableText from "./DraggableText";
 import SelectionWatcher from "../Components/SelectionWatcher";
 import { useTextAutoShrink } from "./Hooks/TextAutoShrink";
 
+import { DEFAULT_TEXT_ALIGN, type TextAlign } from "../Types/Text";
+
 import GetPriceButton from "../Components/Buttons/GetPriceButton";
 import SaveDesignButton from "../Components/Buttons/SaveDesignButton";
 import ProductViewSelector from "../Components/ProductViewSelector";
@@ -40,6 +42,7 @@ export type ImageState = {
   restrictedBox?: any;
   isSvg?: boolean;
   width?: number;
+  textAlign?: TextAlign;
 };
 
 export type PricePreviewLayer = {
@@ -150,7 +153,13 @@ export default function Canvas(props: CanvasProps) {
 
   // ---------------- Image Positions ----------------
   const allUids = Object.keys(currentImageState);
-  const { positions, setPositions } = useImagePositions(allUids, sizes, restrictedBox);
+  const { positions, setPositions } = useImagePositions(
+    allUids,
+    sizes,
+    restrictedBox,
+    currentImageState,
+    currentViewKey
+  );
 
   // ---------------- Text Auto Shrink ----------------
   useTextAutoShrink({
@@ -159,6 +168,7 @@ export default function Canvas(props: CanvasProps) {
     positions,
     sizes,
     restrictedBox,
+    compactPriceMode,
     onResizeText: onResizeTextCommit,
     onRepositionText: (uid, next) => {
       setPositions(prev => {
@@ -216,6 +226,7 @@ export default function Canvas(props: CanvasProps) {
   const handleDeleteFromSelectionBox = (uids: string[]) => {
     if (!props.onDelete) return;
     props.onDelete(uids);
+    drag.setSelected([]);
   };
 
   const handleUnifiedGroupResize = (startClientX: number) => {
@@ -469,6 +480,7 @@ export default function Canvas(props: CanvasProps) {
               highlighted={drag.selected.includes(uid)}
               selected={drag.selected}
               onPointerDown={drag.onPointerDown}
+              textAlign={layer.textAlign ?? DEFAULT_TEXT_ALIGN}
               fontSize={fontSize}
               onDuplicate={handleDuplicateFromTextProperties}
               onMeasure={(uid, w, h) => {
@@ -479,15 +491,18 @@ export default function Canvas(props: CanvasProps) {
         })}
 
       {drag.selected.length > 0 && (
-        <SelectionBox
-          selectedImages={drag.selected}
-          canvasRef={drag.selectionBoxProps.canvasRef}
-          onDuplicate={handleDuplicateFromSelectionBox}
-          onStartGroupResize={handleUnifiedGroupResize}
-          onDelete={handleDeleteFromSelectionBox}
-          onResize={drag.selectionBoxProps.onResize}
-          onDeselectAll={drag.selectionBoxProps.onDeselectAll}
-        />
+      <SelectionBox
+        selectedImages={drag.selected}
+        canvasRef={drag.selectionBoxProps.canvasRef}
+        positions={positions}
+        sizes={sizes}
+        imageState={currentImageState}
+        onDuplicate={handleDuplicateFromSelectionBox}
+        onStartGroupResize={handleUnifiedGroupResize}
+        onDelete={handleDeleteFromSelectionBox}
+        onResize={drag.selectionBoxProps.onResize}
+        onDeselectAll={drag.selectionBoxProps.onDeselectAll}
+      />
       )}
 
       <SelectionWatcher
@@ -510,6 +525,10 @@ export default function Canvas(props: CanvasProps) {
       )}
 
       <Marquee marquee={marquee.marquee} />
+
+      {compactPriceMode && (
+        <div className="absolute inset-0 z-40 pointer-events-auto" />
+      )}
 
       {!compactPriceMode && (
         <div className="absolute bottom-6 right-6 flex gap-4 z-50">

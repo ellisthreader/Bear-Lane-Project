@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
+use App\Models\DeliverySlot;
 
 class Order extends Model
 {
@@ -32,7 +33,23 @@ class Order extends Model
         'city',
         'postcode',
         'country',
+        'delivery_slot_id',
+        'delivery_type',
+        'delivery_price',
+        'shipping_rate',
+        'selected_delivery_date',
+        'calculated_ship_date',
+        'shippo_transaction_id',
+        'shippo_label_url',
+        'shippo_tracking_number',
+        'shippo_selected_rate_id',
+        'shippo_selected_service',
         'invoice_path', // store PDF location
+    ];
+
+    protected $casts = [
+        'selected_delivery_date' => 'date',
+        'calculated_ship_date' => 'date',
     ];
 
     // Append computed attributes automatically
@@ -49,6 +66,11 @@ class Order extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function deliverySlot()
+    {
+        return $this->belongsTo(DeliverySlot::class, 'delivery_slot_id');
     }
 
     /**

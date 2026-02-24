@@ -8,19 +8,36 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
 use App\Models\User;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Http\Request;
 
 class OAuthController extends Controller
 {
+    private function resolveRedirectPath(?string $redirect, string $fallback = '/profile'): string
+    {
+        $target = trim((string) $redirect);
+        if ($target === '' || !str_starts_with($target, '/')) {
+            return $fallback;
+        }
+        return $target;
+    }
+
+    private function oauthSuccessRedirect(Request $request): string
+    {
+        $target = $this->resolveRedirectPath($request->session()->pull('oauth_redirect', '/profile'));
+        return $target;
+    }
+
     // -------------------
     // Google
     // -------------------
-    public function redirectToGoogle()
+    public function redirectToGoogle(Request $request)
     {
+        $request->session()->put('oauth_redirect', $this->resolveRedirectPath($request->query('redirect')));
         Log::info("Redirecting user to Google OAuth");
         return Socialite::driver('google')->redirect();
     }
 
-    public function handleGoogleCallback()
+    public function handleGoogleCallback(Request $request)
     {
         Log::info("Google OAuth callback triggered");
 
@@ -42,7 +59,7 @@ class OAuthController extends Controller
                 'is_oauth' => $user->is_oauth,
             ]);
 
-            return redirect('/profile');
+            return redirect($this->oauthSuccessRedirect($request));
         } catch (\Exception $e) {
             Log::error("Google OAuth login failed", ['error' => $e->getMessage()]);
             return redirect('/login')->withErrors(['email' => 'Failed to login with Google.']);
@@ -52,13 +69,14 @@ class OAuthController extends Controller
     // -------------------
     // Apple
     // -------------------
-    public function redirectToApple()
+    public function redirectToApple(Request $request)
     {
+        $request->session()->put('oauth_redirect', $this->resolveRedirectPath($request->query('redirect')));
         Log::info("Redirecting user to Apple OAuth");
         return Socialite::driver('apple')->redirect();
     }
 
-    public function handleAppleCallback()
+    public function handleAppleCallback(Request $request)
     {
         Log::info("Apple OAuth callback triggered");
 
@@ -80,10 +98,48 @@ class OAuthController extends Controller
                 'is_oauth' => $user->is_oauth,
             ]);
 
-            return redirect('/profile');
+            return redirect($this->oauthSuccessRedirect($request));
         } catch (\Exception $e) {
             Log::error("Apple OAuth login failed", ['error' => $e->getMessage()]);
             return redirect('/login')->withErrors(['email' => 'Failed to login with Apple.']);
+        }
+    }
+
+    // -------------------
+    // Facebook
+    // -------------------
+    public function redirectToFacebook(Request $request)
+    {
+        $request->session()->put('oauth_redirect', $this->resolveRedirectPath($request->query('redirect')));
+        Log::info("Redirecting user to Facebook OAuth");
+        return Socialite::driver('facebook')->redirect();
+    }
+
+    public function handleFacebookCallback(Request $request)
+    {
+        Log::info("Facebook OAuth callback triggered");
+
+        try {
+            $facebookUser = Socialite::driver('facebook')->stateless()->user();
+            Log::info("Facebook user data received", [
+                'email' => $facebookUser->getEmail(),
+                'id' => $facebookUser->getId(),
+                'name' => $facebookUser->getName(),
+            ]);
+
+            $user = $this->findOrCreateOAuthUser($facebookUser);
+            Auth::login($user);
+
+            Log::info("User logged in via Facebook OAuth", [
+                'id' => $user->id,
+                'email' => $user->email,
+                'is_oauth' => $user->is_oauth,
+            ]);
+
+            return redirect($this->oauthSuccessRedirect($request));
+        } catch (\Exception $e) {
+            Log::error("Facebook OAuth login failed", ['error' => $e->getMessage()]);
+            return redirect('/login')->withErrors(['email' => 'Failed to login with Facebook.']);
         }
     }
 

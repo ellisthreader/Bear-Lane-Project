@@ -2,111 +2,132 @@
 <html>
 <head>
     <meta charset="UTF-8">
+    <title>Invoice #{{ $order->order_number }}</title>
 
-    {{-- Force Landscape Page --}}
     <style>
         @page {
-            size: A4 landscape;
-            margin: 20px;
+            size: A4;
+            margin: 12mm;
         }
 
         body {
             font-family: DejaVu Sans, sans-serif;
             margin: 0;
             padding: 0;
-            background: #f2f4f8;
-            color: #333;
-            font-size: 13px;
+            background: #fff;
+            color: #2f2f2f;
+            font-size: 11px;
         }
 
         .invoice-wrapper {
             background: #fff;
-            padding: 25px 35px;
-            border-radius: 10px;
-            width: 100%;
-            min-height: 100%;
-            box-sizing: border-box;
-            border: 1px solid #dce3eb;
+            padding: 12px;
+            width: auto;
+            border: 1px solid #dbc27d;
+            overflow: hidden;
         }
 
         .header {
-            border-bottom: 3px solid #4a90e2;
-            padding-bottom: 12px;
-            margin-bottom: 30px;
+            border-bottom: 2px solid #c9a24d;
+            padding-bottom: 8px;
+            margin-bottom: 10px;
         }
 
-        .header h1 {
-            font-size: 26px;
+        .brand {
+            font-size: 14px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: #8a6d2b;
+            margin-bottom: 4px;
+            font-weight: 700;
+        }
+
+        .header-title {
+            font-size: 18px;
             margin: 0;
-            color: #4a90e2;
+            color: #111827;
+            font-weight: 700;
+        }
+
+        .muted {
+            color: #6b7280;
         }
 
         .two-col {
             width: 100%;
+            border-collapse: collapse;
+            margin-top: 4px;
+            table-layout: fixed;
         }
         .two-col td {
             vertical-align: top;
             padding: 3px 0;
+            word-wrap: break-word;
         }
 
         .section-title {
-            font-size: 17px;
+            font-size: 12px;
             font-weight: bold;
-            margin: 25px 0 10px;
-            color: #444;
-            border-left: 4px solid #4a90e2;
-            padding-left: 10px;
+            margin: 12px 0 6px;
+            color: #8a6d2b;
+            border-left: 3px solid #c9a24d;
+            padding-left: 6px;
         }
 
         .items-table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 10px;
-            margin-bottom: 25px;
+            margin-top: 6px;
+            margin-bottom: 10px;
+            table-layout: fixed;
         }
 
         .items-table th {
-            background: #4a90e2;
-            color: #fff;
-            padding: 10px;
-            font-size: 13px;
+            background: #f8efdb;
+            color: #6f5724;
+            padding: 6px;
+            font-size: 10px;
             text-align: left;
+            border-bottom: 1px solid #e8dcc0;
+            word-wrap: break-word;
         }
 
         .items-table td {
-            border-bottom: 1px solid #e6e6e6;
-            padding: 9px 10px;
+            border-bottom: 1px solid #ececec;
+            padding: 6px;
+            word-wrap: break-word;
         }
 
         .summary-table {
-            width: 35%;
+            width: 48%;
             margin-left: auto;
             border-collapse: collapse;
+            background: #fcfaf5;
+            border: 1px solid #eadcb9;
         }
 
         .summary-table td {
-            padding: 7px 0;
+            padding: 5px 8px;
         }
 
         .summary-label {
             font-weight: bold;
-            color: #444;
+            color: #374151;
         }
 
         .summary-total {
-            font-size: 18px;
+            font-size: 13px;
             font-weight: bold;
-            border-top: 2px solid #4a90e2;
-            padding-top: 10px;
+            border-top: 1px solid #d9c28b;
             color: #000;
         }
 
         .footer {
-            text-align: center;
-            font-size: 12px;
-            margin-top: 30px;
-            padding-top: 10px;
-            border-top: 1px solid #ccc;
+            text-align: left;
+            font-size: 10px;
+            margin-top: 8px;
+            padding-top: 6px;
+            border-top: 1px solid #e8dcc0;
             color: #666;
         }
     </style>
@@ -116,14 +137,13 @@
 
 <div class="invoice-wrapper">
 
-    <!-- HEADER -->
     <div class="header">
-        <h1>Invoice #{{ $order->order_number }}</h1>
-        <p style="margin:5px 0 0; color:#666;">Date: {{ $order->created_at->format('d M Y') }}</p>
+        <div class="brand">Bear Lane</div>
+        <h1 class="header-title">Invoice #{{ $order->order_number }}</h1>
+        <p style="margin:6px 0 0;" class="muted">Date: {{ $order->created_at->format('d M Y') }}</p>
     </div>
 
 
-    <!-- CUSTOMER DETAILS -->
     <div class="section-title">Billing Information</div>
 
     <table class="two-col">
@@ -141,7 +161,6 @@
         </tr>
     </table>
 
-    <!-- ORDER ITEMS -->
     <div class="section-title">Order Details</div>
 
     <table class="items-table">
@@ -167,7 +186,6 @@
     </table>
 
 
-    <!-- TOTALS -->
     <table class="summary-table">
         <tr>
             <td class="summary-label">Subtotal:</td>
@@ -197,10 +215,9 @@
         </tr>
     </table>
 
-    <!-- FOOTER -->
     <div class="footer">
-        Thank you for shopping with us!  
-        <br>For support contact <strong>support@example.com</strong>
+        Thank you for shopping with Bear Lane.
+        <br>For support contact <strong>support@bearlane.co.uk</strong>
     </div>
 
 </div>
