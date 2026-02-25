@@ -1,0 +1,116 @@
+.stacked-section {
+  padding: 6rem 1rem;
+  background: #ffffff;
+}
+
+.section-title {
+  text-align: center;
+  font-size: 2.5rem;
+  margin-bottom: 4rem;
+}
+
+.card-stack {
+  position: relative;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.card {
+  position: sticky;
+  top: var(--top);
+  background: #ededed;
+  border-radius: 20px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.08);
+}
+
+/* Horizontal layout */
+.card.horizontal {
+  display: flex;
+  align-items: center;
+  gap: 2.5rem;
+}
+
+/* ✅ STANDARDISED IMAGE CONTAINER */
+.card-image {
+  flex: 0 0 50%;
+  aspect-ratio: 4 / 3; /* 🔒 all images same size */
+  border-radius: 14px;
+  overflow: hidden;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.card-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Content */
+.card-content {
+  flex: 0 0 50%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Gold number badge */
+.card-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #ffffff;
+
+  background: linear-gradient(
+    135deg,
+    #f7dd93,
+    #c9a24d,
+    #9f7c2f
+  );
+
+  box-shadow: 0 10px 25px rgba(201, 162, 77, 0.45);
+  margin-bottom: 1.25rem;
+  align-self: flex-start;
+}
+
+.card-title {
+  font-size: 1.75rem;
+  margin-bottom: 1rem;
+}
+
+.card-description {
+  font-size: 1.05rem;
+  line-height: 1.6;
+  color: #555;
+}
+
+/* 📱 Mobile */
+@media (max-width: 768px) {
+  .card.horizontal {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .card-image {
+    width: 100%;
+    aspect-ratio: 16 / 10;
+  }
+
+  .card-content {
+    align-items: center;
+  }
+
+  .card-number {
+    align-self: center;
+  }
+}

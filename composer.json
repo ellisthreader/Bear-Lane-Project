@@ -7,10 +7,19 @@
     "license": "MIT",
     "require": {
         "php": "^8.2",
+        "barryvdh/laravel-dompdf": "^3.1",
+        "guzzlehttp/guzzle": "^7.10",
         "inertiajs/inertia-laravel": "^2.0",
+        "laravel/fortify": "^1.30",
         "laravel/framework": "^12.0",
         "laravel/sanctum": "^4.0",
+        "laravel/socialite": "^5.24",
         "laravel/tinker": "^2.10.1",
+        "paypal/paypal-checkout-sdk": "^1.0",
+        "paypal/rest-api-sdk-php": "^1.6",
+        "pusher/pusher-php-server": "^7.2",
+        "shippo/shippo-php": "^2.0",
+        "stripe/stripe-php": "^17.6",
         "tightenco/ziggy": "^2.0"
     },
     "require-dev": {

@@ -3,6 +3,8 @@ import laravel from "laravel-vite-plugin";
 import react from "@vitejs/plugin-react";
 import path from "path";
 
+const port = parseInt(process.env.VITE_PORT) || 5175;
+
 export default defineConfig({
   plugins: [
     laravel({
@@ -18,8 +20,10 @@ export default defineConfig({
     extensions: [".ts", ".tsx", ".js", ".jsx"],
   },
   server: {
-    host: "127.0.0.1", // ensure same host for CORS-free dev
-    strictPort: true,   // fail if port is taken
-    cors: true,         // allow cross-origin requests if needed
+    host: "localhost",
+    port,
+    strictPort: true,
+    cors: true,
+    https: false,
   },
 });

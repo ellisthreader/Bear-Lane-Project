@@ -10,6 +10,7 @@ import {
   MouseConstraint,
   Vector,
 } from "matter-js";
+import { motion } from "framer-motion";
 
 type ShapeType = "circle" | "square" | "rectangle" | "triangle";
 
@@ -25,7 +26,6 @@ const colors = ["#EF4444", "#F59E0B", "#10B981", "#3B82F6", "#8B5CF6", "#F43F5E"
 
 export default function ShapePlayground() {
   const [shapes, setShapes] = useState<Shape[]>([]);
-  const [showSettings, setShowSettings] = useState(true);
   const [activeShapeId, setActiveShapeId] = useState<number | null>(null);
   const [selectedShape, setSelectedShape] = useState<ShapeType>("rectangle");
   const [selectedColor, setSelectedColor] = useState("#3B82F6");
@@ -93,25 +93,44 @@ export default function ShapePlayground() {
     };
   }, []);
 
+  // Add a new shape
   const addShape = () => {
     if (shapes.length >= 10) return;
 
     const engine = engineRef.current;
     const world = engine.world;
 
+    const renderOpts = {
+      fillStyle: selectedColor,
+      strokeStyle: selectedColor,
+      lineWidth: 0,
+    };
+
     let body;
     switch (selectedShape) {
       case "circle":
-        body = Bodies.circle(350, 50, selectedSize / 2, { restitution: 0.5 });
+        body = Bodies.circle(350, 50, selectedSize / 2, {
+          restitution: 0.5,
+          render: renderOpts,
+        });
         break;
       case "square":
-        body = Bodies.rectangle(350, 50, selectedSize, selectedSize, { restitution: 0.5 });
+        body = Bodies.rectangle(350, 50, selectedSize, selectedSize, {
+          restitution: 0.5,
+          render: renderOpts,
+        });
         break;
       case "rectangle":
-        body = Bodies.rectangle(350, 50, selectedSize * 1.5, selectedSize, { restitution: 0.5 });
+        body = Bodies.rectangle(350, 50, selectedSize * 1.5, selectedSize, {
+          restitution: 0.5,
+          render: renderOpts,
+        });
         break;
       case "triangle":
-        body = Bodies.polygon(350, 50, 3, selectedSize, { restitution: 0.5 });
+        body = Bodies.polygon(350, 50, 3, selectedSize, {
+          restitution: 0.5,
+          render: renderOpts,
+        });
         break;
     }
 
@@ -129,6 +148,7 @@ export default function ShapePlayground() {
     }
   };
 
+  // Remove the last shape
   const removeShape = () => {
     if (shapes.length === 0) return;
 
@@ -142,7 +162,7 @@ export default function ShapePlayground() {
     setShapes((prev) => prev.slice(0, prev.length - 1));
   };
 
-  // Hover-based responsive physics
+  // Hover-based physics
   useEffect(() => {
     const interval = setInterval(() => {
       shapes.forEach((shape) => {
@@ -155,8 +175,8 @@ export default function ShapePlayground() {
         const dy = mousePos.y - pos.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
 
-        if (distance < 100) { // smaller radius for hover effect
-          const force = 0.0015; // smaller, smoother push
+        if (distance < 100) {
+          const force = 0.0015;
           const direction = Vector.normalise({ x: dx, y: dy });
           Body.applyForce(shape.body, pos, Vector.mult(direction, force));
 
@@ -167,7 +187,6 @@ export default function ShapePlayground() {
           });
         }
 
-        // Add subtle air friction to stabilize motion
         shape.body.frictionAir = 0.05;
       });
     }, 16);
@@ -176,16 +195,29 @@ export default function ShapePlayground() {
   }, [shapes]);
 
   return (
-    <div className="flex flex-col items-center gap-4 w-full">
-      {/* Settings menu */}
-      <div className="w-[700px] bg-gray-100 dark:bg-gray-800 p-4 rounded-lg shadow-lg flex flex-wrap gap-4 items-center justify-between">
-        {/* Shape */}
+    <motion.div
+      className="flex flex-col items-center gap-8 w-full relative"
+      initial={{ opacity: 0, y: -30 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.7, ease: "easeOut" }}
+      viewport={{ once: true, amount: 0.2 }}
+    >
+
+
+      {/* Settings Menu */}
+      <motion.div
+        className="w-[700px] bg-white/20 dark:bg-gray-900/40 backdrop-blur-xl border border-white/20 dark:border-gray-700/40 p-6 rounded-3xl shadow-lg flex flex-wrap gap-6 items-center justify-between"
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.5 }}
+      >
+        {/* Shape Selection */}
         <div>
-          <label className="block mb-1 text-sm font-medium dark:text-white">Shape:</label>
+          <label className="block mb-2 text-sm font-semibold dark:text-white">Shape</label>
           <select
             value={selectedShape}
             onChange={(e) => setSelectedShape(e.target.value as ShapeType)}
-            className="p-2 rounded border dark:bg-gray-700 dark:text-white"
+            className="p-2 rounded-lg border dark:bg-gray-800 dark:text-white focus:ring-2 focus:ring-blue-500"
           >
             <option value="circle">Circle</option>
             <option value="square">Square</option>
@@ -194,16 +226,18 @@ export default function ShapePlayground() {
           </select>
         </div>
 
-        {/* Colour */}
+        {/* Colour Selection */}
         <div>
-          <label className="block mb-1 text-sm font-medium dark:text-white">Colour:</label>
-          <div className="flex gap-2">
+          <label className="block mb-2 text-sm font-semibold dark:text-white">Colour</label>
+          <div className="flex gap-3">
             {colors.map((color) => (
-              <button
+              <motion.button
                 key={color}
+                whileHover={{ scale: 1.15 }}
+                whileTap={{ scale: 0.9 }}
                 style={{ backgroundColor: color }}
-                className={`w-8 h-8 rounded-full border-2 border-gray-300 ${
-                  selectedColor === color ? "ring-2 ring-black" : ""
+                className={`w-8 h-8 rounded-full border-2 transition-all ${
+                  selectedColor === color ? "ring-2 ring-blue-500" : "border-gray-300"
                 }`}
                 onClick={() => setSelectedColor(color)}
               />
@@ -211,40 +245,49 @@ export default function ShapePlayground() {
           </div>
         </div>
 
-        {/* Size */}
-        <div>
-          <label className="block mb-1 text-sm font-medium dark:text-white">Size:</label>
+        {/* Size Slider */}
+        <div className="flex flex-col w-40">
+          <label className="mb-2 text-sm font-semibold dark:text-white">Size</label>
           <input
             type="range"
             min={20}
             max={120}
             value={selectedSize}
             onChange={(e) => setSelectedSize(Number(e.target.value))}
+            className="accent-blue-500"
           />
         </div>
 
-        {/* Add / Remove */}
-        <div className="flex gap-2 mt-4 sm:mt-0">
-          <button
+        {/* Add / Remove Buttons */}
+        <div className="flex gap-3 mt-4 sm:mt-0">
+          <motion.button
             onClick={addShape}
-            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="px-5 py-2 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-lg shadow hover:from-blue-600 hover:to-indigo-600"
           >
             Add
-          </button>
-          <button
+          </motion.button>
+          <motion.button
             onClick={removeShape}
-            className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="px-5 py-2 bg-gradient-to-r from-red-500 to-pink-500 text-white rounded-lg shadow hover:from-red-600 hover:to-pink-600"
           >
             Remove
-          </button>
+          </motion.button>
         </div>
-      </div>
+      </motion.div>
 
       {/* Playground */}
-      <div
+      <motion.div
         ref={sceneRef}
-        className="relative w-[700px] h-[450px] border-2 border-dashed border-gray-400 rounded-lg bg-transparent"
+        className="relative w-[700px] h-[450px] rounded-3xl shadow-2xl 
+                   bg-white/10 dark:bg-gray-900/20 border border-white/20 dark:border-gray-700/40 overflow-hidden"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.3, duration: 0.6 }}
       />
-    </div>
+    </motion.div>
   );
 }

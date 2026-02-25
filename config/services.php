@@ -8,9 +8,8 @@ return [
     |--------------------------------------------------------------------------
     |
     | This file is for storing the credentials for third party services such
-    | as Mailgun, Postmark, AWS and more. This file provides the de facto
-    | location for this type of information, allowing packages to have
-    | a conventional file to locate the various service credentials.
+    | as Mailgun, Postmark, AWS, Stripe, OAuth providers, and more. This file
+    | provides a conventional location for packages to locate credentials.
     |
     */
 
@@ -33,6 +32,48 @@ return [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),
             'channel' => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),
         ],
+    ],
+
+    // ---------------------------
+    // Unsplash API
+    // ---------------------------
+    'unsplash' => [
+        'access_key' => env('UNSPLASH_ACCESS_KEY'),
+    ],
+
+    // ---------------------------
+    // Stripe API
+    // ---------------------------
+    'stripe' => [
+        'secret' => env('STRIPE_SECRET'),
+    ],
+
+    // ---------------------------
+    // Shippo API
+    // ---------------------------
+    'shippo' => [
+        'token' => env('SHIPPO_API_KEY', env('SHIPPO_TOKEN')),
+    ],
+
+    // ---------------------------
+    // OAuth Providers
+    // ---------------------------
+    'google' => [
+        'client_id' => env('GOOGLE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+        'redirect' => env('GOOGLE_REDIRECT_URI'), // e.g., https://yourapp.com/auth/google/callback
+    ],
+
+    'apple' => [
+        'client_id' => env('APPLE_CLIENT_ID'),
+        'client_secret' => env('APPLE_CLIENT_SECRET'),
+        'redirect' => env('APPLE_REDIRECT_URI'), // e.g., https://yourapp.com/auth/apple/callback
+    ],
+
+    'facebook' => [
+        'client_id' => env('FACEBOOK_CLIENT_ID'),
+        'client_secret' => env('FACEBOOK_CLIENT_SECRET'),
+        'redirect' => env('FACEBOOK_REDIRECT_URI'),
     ],
 
 ];

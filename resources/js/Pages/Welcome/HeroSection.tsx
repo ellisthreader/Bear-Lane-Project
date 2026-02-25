@@ -1,91 +1,123 @@
-// HeroSection.tsx
-import { HiHand } from "react-icons/hi";
-import { motion } from "framer-motion";
-import { FaGithub, FaLinkedin, FaTwitter, FaInstagram } from "react-icons/fa";
-import { HiLocationMarker, HiPhone } from "react-icons/hi";
+"use client";
+
+import React, { useState, useEffect, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+
+const images = [
+  "/images/HeroSection/hero-clothing1.jpeg",
+  "/images/HeroSection/hero-clothing2.jpeg",
+  "/images/HeroSection/hero-clothing3.jpeg",
+  "/images/HeroSection/hero-clothing4.png",
+];
 
 export default function HeroSection() {
-  const socialIcons = [
-    { icon: FaLinkedin, url: "https://www.linkedin.com/in/ellis-threader-25036b320/" },
-    { icon: FaGithub, url: "https://github.com/ellisthreader" },
-    { icon: FaTwitter, url: "https://x.com/Mighty90000" },
-    { icon: FaInstagram, url: "https://www.instagram.com/e_llis1/?hl=en" },
-  ];
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [direction, setDirection] = useState(1);
+  const [isDisabled, setIsDisabled] = useState(false);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  const resetAutoSlide = () => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    intervalRef.current = setInterval(() => {
+      handleNext(true);
+    }, 5000);
+  };
+
+  useEffect(() => {
+    resetAutoSlide();
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, []);
+
+  const handleNext = (auto = false) => {
+    if (isDisabled && !auto) return; // prevent spam clicks
+    setDirection(1);
+    setCurrentIndex((prev) => (prev + 1) % images.length);
+    if (!auto) {
+      setIsDisabled(true);
+      setTimeout(() => setIsDisabled(false), 800);
+      resetAutoSlide();
+    }
+  };
+
+  const handlePrev = () => {
+    if (isDisabled) return;
+    setDirection(-1);
+    setCurrentIndex((prev) =>
+      prev === 0 ? images.length - 1 : prev - 1
+    );
+    setIsDisabled(true);
+    setTimeout(() => setIsDisabled(false), 800);
+    resetAutoSlide();
+  };
 
   return (
-    <section className="relative flex flex-col items-center justify-center min-h-screen text-center px-4 gap-6
-      bg-gradient-to-br from-indigo-100 via-pink-100 to-yellow-100
-      dark:bg-gradient-to-br dark:from-gray-800 dark:via-gray-900 dark:to-black
-      text-gray-900 dark:text-gray-100 transition-colors duration-500"
-    >
-      <h1 className="text-6xl font-extrabold md:text-7xl flex items-center justify-center gap-4
-        bg-clip-text text-transparent bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500
-        dark:from-blue-400 dark:via-purple-400 dark:to-pink-400"
-      >
-        <motion.span
-          animate={{ rotate: [0, 15, -15, 15, 0] }}
-          transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
-          className="inline-block"
-        >
-          <HiHand className="text-yellow-400" />
-        </motion.span>
-        Ellis Threader
-      </h1>
-
-
-      <p className="mt-2 md:text-xl flex items-center justify-center gap-4 text-gray-700 dark:text-gray-300">
-        <HiLocationMarker className="text-red-500" /> Chelmsford, Essex <HiPhone className="text-green-500" /> +44 7853 077766
-      </p>
-
-
-      <p className="mt-4 mb-6 text-xl md:text-2xl max-w-2xl">
-        A developer specializing in modern web applications with <span className="font-semibold text-blue-600 dark:text-blue-400">Laravel</span> and <span className="font-semibold text-green-600 dark:text-green-400">React</span>.
-      </p>
-
-      {/* Social Icons */}
-      <div className="flex gap-6 mb-6 text-3xl">
-        {socialIcons.map(({ icon: Icon, url }, index) => (
-          <motion.a
-            key={index}
-            href={url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-gray-700 dark:text-gray-200 hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
-            whileHover={{ scale: 1.3, y: -5 }}
-            whileTap={{ scale: 0.9 }}
-          >
-            <Icon />
-          </motion.a>
-        ))}
-      </div>
-
-      {/* Profile Image with float animation */}
-      <motion.div
-        className="w-96 h-96"
-        animate={{ y: [0, -15, 0, 15, 0] }}
-        transition={{ repeat: Infinity, duration: 6, ease: "easeInOut" }}
-      >
-        <img
-          src="/images/profile.jpg"
-          alt="Ellis Threader"
-          className="w-full h-full object-cover rounded-full border-4 border-gray-200 dark:border-gray-700 shadow-lg dark:shadow-gray-700"
-        />
-      </motion.div>
-
-      {/* Bottom Wave */}
-      <div className="absolute bottom-0 w-full overflow-hidden leading-none rotate-180">
-        <svg
-          className="relative block w-full h-20"
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 1200 120"
-          preserveAspectRatio="none"
-        >
-          <path
-            d="M0,0 C600,120 600,0 1200,120 L1200,0 L0,0 Z"
-            className="fill-current text-white dark:text-gray-900"
+    <div className="relative w-full" style={{ paddingTop: "px" }}>
+      {/* Hero container */}
+      <div className="relative w-full aspect-video max-h-[91vh] overflow-hidden">
+        <AnimatePresence initial={false} custom={direction}>
+          <motion.img
+            key={currentIndex}
+            src={images[currentIndex]}
+            alt={`Hero image ${currentIndex + 1}`}
+            custom={direction}
+            initial={{ x: direction > 0 ? "100%" : "-100%" }}
+            animate={{ x: 0 }}
+            exit={{ x: direction > 0 ? "-100%" : "100%" }}
+            transition={{ duration: 0.7, ease: "easeInOut" }}
+            className="absolute top-0 left-0 w-full h-full object-cover"
           />
-        </svg>
+        </AnimatePresence>
+
+        {/* Backup image to prevent white flash */}
+        <img
+          src={
+            images[
+              (currentIndex - direction + images.length) % images.length
+            ]
+          }
+          alt="Previous hero"
+          className="absolute top-0 left-0 w-full h-full object-cover -z-10"
+        />
+
+        {/* Left Arrow */}
+        <button
+          onClick={handlePrev}
+          disabled={isDisabled}
+          className={`absolute left-6 top-1/2 -translate-y-1/2 bg-white/70 hover:bg-white text-gray-900 p-3 rounded-full shadow-md transition z-20 ${
+            isDisabled ? "opacity-50 cursor-not-allowed" : ""
+          }`}
+        >
+          <ChevronLeft className="w-6 h-6" />
+        </button>
+
+        {/* Right Arrow */}
+        <button
+          onClick={() => handleNext()}
+          disabled={isDisabled}
+          className={`absolute right-6 top-1/2 -translate-y-1/2 bg-white/70 hover:bg-white text-gray-900 p-3 rounded-full shadow-md transition z-20 ${
+            isDisabled ? "opacity-50 cursor-not-allowed" : ""
+          }`}
+        >
+          <ChevronRight className="w-6 h-6" />
+        </button>
+
+        {/* Dots (non-clickable visual indicators) */}
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-20">
+          {images.map((_, idx) => (
+            <div
+              key={idx}
+              className={`w-3 h-3 rounded-full transition-all duration-300 ${
+                idx === currentIndex
+                  ? "bg-gray-900 scale-110"
+                  : "bg-gray-400/50"
+              }`}
+            />
+          ))}
+        </div>
       </div>
-    </section>
+    </div>
   );
 }

@@ -1,0 +1,48 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('messages', function (Blueprint $table) {
+            $table->id();
+
+            // Chat relation
+            $table->unsignedBigInteger('chat_id');
+            $table->foreign('chat_id')
+                  ->references('id')
+                  ->on('chats')
+                  ->onDelete('cascade');
+
+            // User relation (nullable for guests)
+            $table->unsignedBigInteger('user_id')->nullable();
+            $table->foreign('user_id')
+                  ->references('id')
+                  ->on('users')
+                  ->onDelete('set null');
+
+            // ✅ Must match controller values: 'user' | 'guest'
+            $table->string('sender_type')->nullable();
+
+            // ✅ Required to store the message text
+            $table->text('content');
+
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('messages');
+    }
+};

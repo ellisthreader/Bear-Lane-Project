@@ -1,100 +1,226 @@
-import Checkbox from '@/Components/Checkbox';
-import InputError from '@/Components/InputError';
-import InputLabel from '@/Components/InputLabel';
-import PrimaryButton from '@/Components/PrimaryButton';
-import TextInput from '@/Components/TextInput';
-import GuestLayout from '@/Layouts/GuestLayout';
-import { Head, Link, useForm } from '@inertiajs/react';
+import React, { useState } from "react";
+import axios from "axios";
+import { router } from "@inertiajs/react";
+import { FcGoogle } from "react-icons/fc";
+import { FaFacebookF } from "react-icons/fa";
+import Register from "./Register";
+import ForgotPassword from "./ForgotPassword";
+import OAuthVerify from "./OAuthVerify";
+import NavMenu from "@/Components/Menu/NavMenu";
 
-export default function Login({ status, canResetPassword }) {
-    const { data, setData, post, processing, errors, reset } = useForm({
-        email: '',
-        password: '',
-        remember: false,
-    });
+export default function AuthPage() {
+  const [email, setEmail] = useState("");
+  const [step, setStep] = useState<"email" | "password" | "register" | "oauth">("email");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [oauthProvider, setOauthProvider] = useState<string | null>(null);
 
-    const submit = (e) => {
-        e.preventDefault();
+  const gold = "#C6A75E";
 
-        post(route('login'), {
-            onFinish: () => reset('password'),
-        });
-    };
+  // -----------------------
+  // Handle email step
+  // -----------------------
+  const handleEmailSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    if (!email) return;
+    setLoading(true);
 
-    return (
-        <GuestLayout>
-            <Head title="Log in" />
+    try {
+      const res = await axios.post("/check-email", { email });
 
-            {status && (
-                <div className="mb-4 text-sm font-medium text-green-600">
-                    {status}
-                </div>
-            )}
+      if (res.data.exists) {
+        if (res.data.oauth) {
+          // OAuth detected: go directly to OAuthVerify step
+          setOauthProvider(res.data.oauth); // e.g., "google" or "apple"
+          setStep("oauth");
+        } else {
+          // Regular password login
+          setStep("password");
+        }
+      } else {
+        // New user → register step
+        setStep("register");
+      }
+    } catch (err) {
+      console.error(err);
+      setError("Error checking email. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-            <form onSubmit={submit}>
-                <div>
-                    <InputLabel htmlFor="email" value="Email" />
+  // -----------------------
+  // Handle password login
+  // -----------------------
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
 
-                    <TextInput
-                        id="email"
-                        type="email"
-                        name="email"
-                        value={data.email}
-                        className="mt-1 block w-full"
-                        autoComplete="username"
-                        isFocused={true}
-                        onChange={(e) => setData('email', e.target.value)}
-                    />
-
-                    <InputError message={errors.email} className="mt-2" />
-                </div>
-
-                <div className="mt-4">
-                    <InputLabel htmlFor="password" value="Password" />
-
-                    <TextInput
-                        id="password"
-                        type="password"
-                        name="password"
-                        value={data.password}
-                        className="mt-1 block w-full"
-                        autoComplete="current-password"
-                        onChange={(e) => setData('password', e.target.value)}
-                    />
-
-                    <InputError message={errors.password} className="mt-2" />
-                </div>
-
-                <div className="mt-4 block">
-                    <label className="flex items-center">
-                        <Checkbox
-                            name="remember"
-                            checked={data.remember}
-                            onChange={(e) =>
-                                setData('remember', e.target.checked)
-                            }
-                        />
-                        <span className="ms-2 text-sm text-gray-600">
-                            Remember me
-                        </span>
-                    </label>
-                </div>
-
-                <div className="mt-4 flex items-center justify-end">
-                    {canResetPassword && (
-                        <Link
-                            href={route('password.request')}
-                            className="rounded-md text-sm text-gray-600 underline hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                        >
-                            Forgot your password?
-                        </Link>
-                    )}
-
-                    <PrimaryButton className="ms-4" disabled={processing}>
-                        Log in
-                    </PrimaryButton>
-                </div>
-            </form>
-        </GuestLayout>
+    router.post(
+      "/login",
+      { email, password },
+      {
+        preserveScroll: true,
+        onError: (errors) => {
+          if (errors.password) setError(errors.password);
+          else if (errors.email) setError(errors.email);
+          else setError("Invalid credentials. Please try again.");
+        },
+        onFinish: () => setLoading(false),
+      }
     );
+  };
+
+  // -----------------------
+  // OAuth redirects
+  // -----------------------
+  const handleGoogleLogin = () => (window.location.href = "/auth/google");
+  const handleFacebookLogin = () => (window.location.href = "/auth/facebook");
+
+  return (
+    <div className="min-h-screen flex flex-col overflow-hidden bg-white">
+      <NavMenu />
+
+      <main className="flex h-screen items-stretch overflow-hidden">
+        {/* Left Side */}
+        <div className="w-full md:w-1/2 flex flex-col justify-start items-center max-h-screen pt-16 md:pt-24">
+          <div className="flex flex-col justify-start items-center w-full max-w-md space-y-6">
+            {/* Logo */}
+            <div className="flex justify-center mb-4">
+              <img src="/images/BL-Logo.png" alt="Logo" className="w-44 h-auto" />
+            </div>
+
+            {/* Forgot Password */}
+            {showForgotPassword ? (
+              <div className="w-full animate-fadeIn">
+                <ForgotPassword email={email} />
+                <div className="text-center mt-4 text-gray-500">
+                  <button
+                    type="button"
+                    onClick={() => setShowForgotPassword(false)}
+                    className="underline hover:text-gray-900 text-lg transition-colors"
+                  >
+                    Back to Login
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* Email Step */}
+                {step === "email" && (
+                  <div className="w-full space-y-6 animate-fadeIn">
+                    <h2 className="text-4xl font-bold text-gray-900 text-center">Hi There!</h2>
+                    <p className="text-gray-700 text-center mt-2 text-lg">
+                      Enter your email to sign in or join.
+                    </p>
+                    <form onSubmit={handleEmailSubmit} className="space-y-6">
+                      <input
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="you@example.com"
+                        required
+                        className="w-full rounded-2xl border border-gray-200 px-6 py-6 text-gray-900 text-xl focus:outline-none focus:ring-2 focus:ring-[#C6A75E] transition-all duration-200"
+                      />
+                      {error && <p className="text-red-500 text-sm">{error}</p>}
+                      <button
+                        type="submit"
+                        disabled={loading}
+                        className="w-full py-5 text-white font-semibold text-xl rounded-2xl shadow-md hover:shadow-lg transition-all duration-300"
+                        style={{ background: gold, opacity: loading ? 0.8 : 1, cursor: loading ? "not-allowed" : "pointer" }}
+                      >
+                        {loading ? "Checking..." : "Continue"}
+                      </button>
+                    </form>
+
+                    <div className="flex items-center my-6">
+                      <hr className="flex-1 border-gray-300" />
+                      <span className="mx-2 text-gray-400 font-medium">OR</span>
+                      <hr className="flex-1 border-gray-300" />
+                    </div>
+
+                    <div className="flex justify-center gap-6">
+                      <button
+                        type="button"
+                        onClick={handleGoogleLogin}
+                        className="w-16 h-16 flex items-center justify-center rounded-lg shadow hover:shadow-md transition-all duration-200 border border-gray-200 bg-white"
+                      >
+                        <FcGoogle size={32} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleFacebookLogin}
+                        className="w-16 h-16 flex items-center justify-center rounded-lg shadow hover:shadow-md transition-all duration-200 border border-gray-200 bg-white text-blue-600"
+                      >
+                        <FaFacebookF size={28} />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Password Step */}
+                {step === "password" && (
+                  <div className="w-full space-y-6 animate-fadeIn">
+                    <h2 className="text-4xl font-bold text-gray-900 text-center">Welcome Back!</h2>
+                    <p className="text-gray-700 text-center mt-2 text-lg">Enter your password to sign in.</p>
+                    <form onSubmit={handleLogin} className="space-y-6">
+                      <input
+                        type="password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="Enter your password"
+                        required
+                        className="w-full rounded-2xl border border-gray-200 px-6 py-6 text-gray-900 text-xl focus:outline-none focus:ring-2 focus:ring-[#C6A75E] transition-all duration-200"
+                      />
+                      {error && <p className="text-red-500 text-sm">{error}</p>}
+                      <button
+                        type="submit"
+                        disabled={loading}
+                        className="w-full py-5 text-white font-semibold text-xl rounded-2xl shadow-md hover:shadow-lg transition-all duration-300"
+                        style={{ background: gold, opacity: loading ? 0.8 : 1, cursor: loading ? "not-allowed" : "pointer" }}
+                      >Verify OAuth Login
+                        {loading ? "Logging in..." : "Login"}
+                      </button>
+                    </form>
+                    <div className="text-center mt-4 text-gray-500">
+                      <button
+                        type="button"
+                        onClick={() => setShowForgotPassword(true)}
+                        className="underline hover:text-gray-900 text-lg transition-colors"
+                      >
+                        Forgot Password?
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Register Step */}
+                {step === "register" && <Register email={email} />}
+
+                {/* OAuth Verify Step */}
+                {step === "oauth" && oauthProvider && (
+                  <div className="w-full animate-fadeIn">
+                    <OAuthVerify email={email} />
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Right Side */}
+        <div className="hidden md:flex md:w-1/2 items-stretch overflow-hidden">
+          <img
+            src="images/Login-Art.png"
+            alt="Decorative"
+            className="w-full h-full object-cover animate-fadeInRight"
+          />
+        </div>
+      </main>
+    </div>
+  );
 }

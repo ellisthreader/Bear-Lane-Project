@@ -3,49 +3,66 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Password;
-use Illuminate\Validation\ValidationException;
-use Inertia\Inertia;
-use Inertia\Response;
+use Illuminate\Support\Facades\Log;
 
 class PasswordResetLinkController extends Controller
 {
     /**
-     * Display the password reset link request view.
-     */
-    public function create(): Response
-    {
-        return Inertia::render('Auth/ForgotPassword', [
-            'status' => session('status'),
-        ]);
-    }
-
-    /**
      * Handle an incoming password reset link request.
-     *
-     * @throws \Illuminate\Validation\ValidationException
      */
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request)
     {
         $request->validate([
             'email' => 'required|email',
         ]);
 
-        // We will send the password reset link to this user. Once we have attempted
-        // to send the link, we will examine the response then see the message we
-        // need to show to the user. Finally, we'll send out a proper response.
-        $status = Password::sendResetLink(
-            $request->only('email')
-        );
-
-        if ($status == Password::RESET_LINK_SENT) {
-            return back()->with('status', __($status));
-        }
-
-        throw ValidationException::withMessages([
-            'email' => [trans($status)],
+        Log::info('Password reset request received.', [
+            'email' => $request->email,
         ]);
+
+        try {
+            // Delete old tokens for this email
+            $deleted = DB::table('password_reset_tokens')->where('email', $request->email)->delete();
+            Log::info("Old tokens deleted for email.", [
+                'email' => $request->email,
+                'deleted_rows' => $deleted
+            ]);
+
+            // Send reset link using Laravel's default broker
+            $status = Password::broker('users')->sendResetLink(
+                $request->only('email')
+            );
+
+            Log::info('Password broker status:', ['status' => $status]);
+
+            if ($status === Password::RESET_LINK_SENT) {
+                return response()->json([
+                    'status' => 'Reset link sent successfully.',
+                ], 200);
+            }
+
+            Log::warning('Failed to send reset link.', ['status' => $status]);
+
+            return response()->json([
+                'errors' => [
+                    'email' => __($status)
+                ]
+            ], 422);
+
+        } catch (\Exception $e) {
+            Log::error('Exception in password reset request.', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'errors' => [
+                    'email' => 'Something went wrong. Check logs for details.'
+                ]
+            ], 500);
+        }
     }
 }

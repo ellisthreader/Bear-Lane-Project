@@ -1,0 +1,41 @@
+[90m= [39m[34;4mIlluminate\Database\Eloquent\Collection[39;24m {#6276
+    [34mall[39m: [
+      [34;4mApp\Models\ProductVariant[39;24m {#6285
+        [34mid[39m: [35m1[39m,
+        [34mproduct_id[39m: [35m1[39m,
+        [34msku[39m: "[32mTR0X3VA1NM[39m",
+        [34mcolour[39m: "[32mBlack[39m",
+        [34msize[39m: "[32m7[39m",
+        [34mprice[39m: "[32m160.00[39m",
+        [34moriginal_price[39m: [36mnull[39m,
+        [34mstock[39m: [35m10[39m,
+        [34mcreated_at[39m: "[32m2025-11-26 15:34:35[39m",
+        [34mupdated_at[39m: "[32m2025-11-26 15:34:35[39m",
+      },
+      [34;4mApp\Models\ProductVariant[39;24m {#5596
+        [34mid[39m: [35m2[39m,
+        [34mproduct_id[39m: [35m1[39m,
+        [34msku[39m: "[32mHJGIAGL8S3[39m",
+        [34mcolour[39m: "[32mBlack[39m",
+        [34msize[39m: "[32m9[39m",
+        [34mprice[39m: "[32m160.00[39m",
+        [34moriginal_price[39m: [36mnull[39m,
+        [34mstock[39m: [35m10[39m,
+        [34mcreated_at[39m: "[32m2025-11-26 15:34:35[39m",
+        [34mupdated_at[39m: "[32m2025-11-26 15:34:35[39m",
+      },
+      [34;4mApp\Models\ProductVariant[39;24m {#5584
+        [34mid[39m: [35m3[39m,
+        [34mproduct_id[39m: [35m1[39m,
+        [34msku[39m: "[32m0J6S8UNXYG[39m",
+        [34mcolour[39m: "[32mBlack[39m",
+        [34msize[39m: "[32m11[39m",
+        [34mprice[39m: "[32m160.00[39m",
+        [34moriginal_price[39m: [36mnull[39m,
+        [34mstock[39m: [35m10[39m,
+        [34mcreated_at[39m: "[32m2025-11-26 15:34:35[39m",
+        [34mupdated_at[39m: "[32m2025-11-26 15:34:35[39m",
+      },
+    ],
+  }
+
