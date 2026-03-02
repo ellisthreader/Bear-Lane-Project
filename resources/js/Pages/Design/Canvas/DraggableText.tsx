@@ -48,8 +48,8 @@ export default function DraggableText({
   const [measured, setMeasured] = useState({ w: 0, h: 0 });
   const lastMeasured = useRef<{ w: number; h: number } | null>(null);
 
-  const x = pos?.x ?? 200;
-  const y = pos?.y ?? 200;
+  const x = pos?.x ?? 0;
+  const y = pos?.y ?? 0;
 
   const scaleX = flip === "horizontal" ? -1 : 1;
   const scaleY = flip === "vertical" ? -1 : 1;

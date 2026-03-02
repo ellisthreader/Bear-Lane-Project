@@ -1,22 +1,12 @@
 import React from "react";
 import { CardCvcElement, CardExpiryElement, CardNumberElement } from "@stripe/react-stripe-js";
 import { Autocomplete, useLoadScript } from "@react-google-maps/api";
-import { FaApple, FaCreditCard, FaGoogle, FaPaypal } from "react-icons/fa";
+import { FaApple, FaCreditCard, FaPaypal } from "react-icons/fa";
+import { FcGoogle } from "react-icons/fc";
 import { getCountryCode } from "@/Utils/countryCodes";
+import { useCheckoutPayment } from "../context/CheckoutPaymentContext";
+import type { BillingAddress, PaymentType } from "../types";
 import { showCheckoutError } from "../checkoutToasts";
-
-type PaymentType = "KLARNA" | "CARD" | "PAYPAL" | "APPLE_PAY" | "GOOGLE_PAY";
-
-type BillingAddress = {
-  firstName: string;
-  lastName: string;
-  line1: string;
-  line2: string;
-  city: string;
-  county: string;
-  postcode: string;
-  country: string;
-};
 type SavedBillingAddress = BillingAddress & { id: string };
 type BillingModalField = "firstName" | "lastName" | "country" | "line1" | "city" | "postcode";
 const GOOGLE_MAPS_LIBRARIES: ("places")[] = ["places"];
@@ -71,33 +61,26 @@ const BILLING_COUNTRIES = [
   "Vietnam",
 ];
 
-type PaymentSectionProps = {
-  paymentType: PaymentType | null;
-  onPaymentTypeChange: (value: PaymentType | null) => void;
-  cardholderName: string;
-  onCardholderNameChange: (value: string) => void;
-  useDeliveryAddressAsBilling: boolean;
-  onUseDeliveryAddressAsBillingChange: (value: boolean) => void;
-  deliveryAddressSummary: string;
-  billingAddress: BillingAddress;
-  onBillingAddressChange: (value: BillingAddress) => void;
-  termsAccepted: boolean;
-  onTermsAcceptedChange: (value: boolean) => void;
-};
-
-export default function PaymentSection({
-  paymentType,
-  onPaymentTypeChange,
-  cardholderName,
-  onCardholderNameChange,
-  useDeliveryAddressAsBilling,
-  onUseDeliveryAddressAsBillingChange,
-  deliveryAddressSummary,
-  billingAddress,
-  onBillingAddressChange,
-  termsAccepted,
-  onTermsAcceptedChange,
-}: PaymentSectionProps) {
+export default function PaymentSection() {
+  const {
+    paymentType,
+    setPaymentType,
+    orderTotalCents,
+    savedPaymentMethods,
+    selectedSavedPaymentMethodId,
+    setSelectedSavedPaymentMethodId,
+    cardholderName,
+    setCardholderName,
+    savedCardCvcComplete,
+    setSavedCardCvcComplete,
+    useDeliveryAddressAsBilling,
+    setUseDeliveryAddressAsBilling,
+    deliveryAddressSummary,
+    billingAddress,
+    setBillingAddress,
+    termsAccepted,
+    setTermsAccepted,
+  } = useCheckoutPayment();
   const DEFAULT_BILLING_KEY = "billing-default";
   const [isAddingNewBilling, setIsAddingNewBilling] = React.useState(false);
   const [draftBillingAddress, setDraftBillingAddress] = React.useState<BillingAddress>(billingAddress);
@@ -108,6 +91,10 @@ export default function PaymentSection({
   const [billingManualEntry, setBillingManualEntry] = React.useState(false);
   const [modalInvalidFields, setModalInvalidFields] = React.useState<Set<BillingModalField>>(new Set());
   const [modalFieldErrors, setModalFieldErrors] = React.useState<Partial<Record<BillingModalField, string>>>({});
+  const [walletInfoModalOpen, setWalletInfoModalOpen] = React.useState(false);
+  const [pendingWalletSelection, setPendingWalletSelection] = React.useState<number | "new" | null>(null);
+  const [walletSelectionMode, setWalletSelectionMode] = React.useState<"saved" | "new" | null>(null);
+  const sectionRootRef = React.useRef<HTMLDivElement | null>(null);
 
   const { isLoaded: isGoogleLoaded } = useLoadScript({
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string,
@@ -169,6 +156,12 @@ export default function PaymentSection({
     };
   }, [isAddingNewBilling]);
 
+  React.useEffect(() => {
+    if (paymentType !== "PAYPAL" && paymentType !== "KLARNA") {
+      setWalletSelectionMode(null);
+    }
+  }, [paymentType]);
+
   const cardStyle = {
     style: {
       base: {
@@ -184,14 +177,14 @@ export default function PaymentSection({
   const cardFieldClass =
     "w-full rounded-xl border border-[#C6A75E]/35 bg-white px-4 py-3 text-gray-900 focus-within:border-[#C6A75E] focus-within:ring-2 focus-within:ring-[#C6A75E]/25";
 
-  const paymentTypeButtonClass = (type: PaymentType, compact = false) =>
+  const paymentTypeButtonClass = (type: PaymentType, size: "default" | "short" = "default") =>
     `flex w-full items-center gap-3 rounded-md border px-4 text-left transition ${
       paymentType === type
         ? "border-[#C6A75E] bg-[#FCF7EB] text-[#8A6D2B] ring-2 ring-[#C6A75E]/25"
         : "border-gray-300 bg-white text-gray-700 hover:border-[#C6A75E]/60"
-    } ${compact ? "min-h-[50px] py-1.5" : "min-h-[88px] py-4"}`;
+    } ${size === "short" ? "min-h-[52px] py-2" : "min-h-[88px] py-4"}`;
 
-  const symbolWrapClass = "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#F5E6BF] text-[#6F5724]";
+  const symbolWrapClass = "flex h-8 w-8 shrink-0 items-center justify-center";
   const deliveryLines = deliveryAddressSummary
     .split(",")
     .map((line) => line.trim())
@@ -203,6 +196,43 @@ export default function PaymentSection({
         ? "border-[#C6A75E] ring-2 ring-[#C6A75E]/20"
         : "border-gray-300 hover:border-[#C6A75E]/60"
     }`;
+
+  const gbpFormatter = React.useMemo(
+    () =>
+      new Intl.NumberFormat("en-GB", {
+        style: "currency",
+        currency: "GBP",
+      }),
+    []
+  );
+  const selectedSavedPaymentMethod = React.useMemo(
+    () =>
+      selectedSavedPaymentMethodId
+        ? savedPaymentMethods.find((method) => method.id === selectedSavedPaymentMethodId) || null
+        : null,
+    [savedPaymentMethods, selectedSavedPaymentMethodId]
+  );
+  const savedCardMethods = React.useMemo(
+    () => savedPaymentMethods.filter((method) => (method.provider_type || "card") === "card"),
+    [savedPaymentMethods]
+  );
+  const savedWalletMethods = React.useMemo(() => {
+    if (paymentType === "PAYPAL") {
+      return savedPaymentMethods.filter((method) => method.provider_type === "paypal");
+    }
+    if (paymentType === "KLARNA") {
+      return savedPaymentMethods.filter((method) => method.provider_type === "klarna");
+    }
+    return [];
+  }, [paymentType, savedPaymentMethods]);
+
+  const klarnaInstallmentLabel = React.useMemo(() => {
+    if (!Number.isFinite(orderTotalCents) || orderTotalCents <= 0) {
+      return gbpFormatter.format(0);
+    }
+    const installmentCents = Math.max(0, Math.round(orderTotalCents / 3));
+    return gbpFormatter.format(installmentCents / 100);
+  }, [gbpFormatter, orderTotalCents]);
 
   const openAddBillingModal = () => {
     setDraftBillingAddress({
@@ -224,12 +254,12 @@ export default function PaymentSection({
 
   const selectDefaultBilling = () => {
     setSelectedBillingKey(DEFAULT_BILLING_KEY);
-    onUseDeliveryAddressAsBillingChange(true);
+    setUseDeliveryAddressAsBilling(true);
   };
 
   const selectSavedBilling = (entry: SavedBillingAddress) => {
     setSelectedBillingKey(entry.id);
-    onBillingAddressChange({
+    setBillingAddress({
       firstName: entry.firstName,
       lastName: entry.lastName,
       line1: entry.line1,
@@ -239,7 +269,7 @@ export default function PaymentSection({
       postcode: entry.postcode,
       country: entry.country,
     });
-    onUseDeliveryAddressAsBillingChange(false);
+    setUseDeliveryAddressAsBilling(false);
   };
 
   const saveDraftBillingAddress = () => {
@@ -306,7 +336,7 @@ export default function PaymentSection({
       .join("|");
 
     if (normalizedDraft === normalizedDefaultBilling) {
-      onUseDeliveryAddressAsBillingChange(true);
+      setUseDeliveryAddressAsBilling(true);
       setSelectedBillingKey(DEFAULT_BILLING_KEY);
       setIsAddingNewBilling(false);
       return;
@@ -345,8 +375,8 @@ export default function PaymentSection({
       return [...prev, newEntry];
     });
 
-    onBillingAddressChange(draftBillingAddress);
-    onUseDeliveryAddressAsBillingChange(false);
+    setBillingAddress(draftBillingAddress);
+    setUseDeliveryAddressAsBilling(false);
     if (selectedId) {
       setSelectedBillingKey(selectedId);
     }
@@ -417,57 +447,278 @@ export default function PaymentSection({
     setBillingLookupValue(place.formatted_address || line1);
   };
 
+  const handlePayPalPick = () => {
+    setPaymentType("PAYPAL");
+    setSelectedSavedPaymentMethodId(null);
+    setSavedCardCvcComplete(false);
+    setPendingWalletSelection(null);
+    setWalletSelectionMode(null);
+    setWalletInfoModalOpen(false);
+  };
+
+  const handleWalletDirectPick = (type: "APPLE_PAY" | "GOOGLE_PAY") => {
+    setWalletInfoModalOpen(false);
+    setPaymentType(type);
+  };
+
+  const continueWalletPayment = () => {
+    if (pendingWalletSelection === "new") {
+      setSelectedSavedPaymentMethodId(null);
+      setWalletSelectionMode("new");
+    } else if (typeof pendingWalletSelection === "number") {
+      setSelectedSavedPaymentMethodId(pendingWalletSelection);
+      setWalletSelectionMode("saved");
+    }
+    setSavedCardCvcComplete(false);
+    setWalletInfoModalOpen(false);
+    setPendingWalletSelection(null);
+    const parentForm = sectionRootRef.current?.closest("form");
+    if (parentForm) {
+      parentForm.requestSubmit();
+    }
+  };
+
   return (
-    <div className="p-0">
+    <div ref={sectionRootRef} className="p-0">
       <h2 className="text-xl font-semibold mb-4 text-gray-900">Choose a payment type</h2>
 
       <div className="mb-6 grid grid-cols-1 gap-3 md:grid-cols-2">
-        <button type="button" className={paymentTypeButtonClass("KLARNA", true)} onClick={() => onPaymentTypeChange("KLARNA")}>
-          <span className={symbolWrapClass}>
-            <span className="text-base font-bold">K</span>
-          </span>
-          <span className="block text-sm font-semibold">Klarna</span>
-        </button>
+        <div className="md:col-start-1">
+          <div
+            className={`overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+              paymentType === "KLARNA"
+                ? "max-h-0 -translate-y-2 opacity-0"
+                : "max-h-[88px] translate-y-0 opacity-100"
+            }`}
+          >
+            <button
+              type="button"
+              className={paymentTypeButtonClass("KLARNA", "short")}
+              onClick={() => setPaymentType("KLARNA")}
+            >
+              <span className="flex items-center gap-2">
+                <span className="block text-sm font-semibold">Pay with</span>
+                <span className="rounded-md bg-[#FFB3C7] px-2 py-1 text-[10px] font-black uppercase tracking-wide text-black">
+                  Klarna
+                </span>
+              </span>
+            </button>
+          </div>
+
+          <div
+            className={`grid transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+              paymentType === "KLARNA" ? "mt-0 grid-rows-[1fr] opacity-100" : "mt-0 grid-rows-[0fr] opacity-0"
+            }`}
+          >
+            <div className="overflow-hidden">
+              <div className="rounded-xl border border-[#C6A75E]/30 bg-[#FFFCF3] p-4">
+                <div className="mb-3">
+                  <span className="inline-block rounded-md bg-[#FFB3C7] px-2 py-1 text-[10px] font-black uppercase tracking-wide text-black">
+                    Klarna
+                  </span>
+                </div>
+                <p className="text-sm font-semibold text-gray-900">
+                  3 payments of {klarnaInstallmentLabel} at 0% interest with Klarna
+                </p>
+                <button
+                  type="submit"
+                  className="mt-3 w-full rounded-lg bg-[#FFB3C7] px-4 py-2.5 text-sm font-semibold text-black transition hover:bg-[#ff9fbb]"
+                >
+                  Pay with Klarna
+                </button>
+                <p className="mt-2 text-xs leading-relaxed text-gray-600">
+                  You will be redirected to Klarna, where you can complete your purchase securely. For orders paid with Klarna, returns must be made by post.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
         <div className="hidden md:block" />
 
-        <button type="button" className={paymentTypeButtonClass("CARD")} onClick={() => onPaymentTypeChange("CARD")}>
-          <span className={symbolWrapClass}>
-            <FaCreditCard size={20} />
+        <button type="button" className={paymentTypeButtonClass("CARD")} onClick={() => setPaymentType("CARD")}>
+          <span className={`${symbolWrapClass} text-black`}>
+            <FaCreditCard size={19} />
           </span>
           <span>
             <span className="block text-sm font-semibold">Credit or debit card</span>
           </span>
         </button>
-        <button type="button" className={paymentTypeButtonClass("PAYPAL")} onClick={() => onPaymentTypeChange("PAYPAL")}>
-          <span className={symbolWrapClass}>
+        <button type="button" className={paymentTypeButtonClass("PAYPAL")} onClick={handlePayPalPick}>
+          <span className={`${symbolWrapClass} text-[#003087]`}>
             <FaPaypal size={21} />
           </span>
           <span className="block text-sm font-semibold">PayPal</span>
         </button>
-        <button type="button" className={paymentTypeButtonClass("APPLE_PAY")} onClick={() => onPaymentTypeChange("APPLE_PAY")}>
-          <span className={symbolWrapClass}>
+        <button type="button" className={paymentTypeButtonClass("APPLE_PAY")} onClick={() => handleWalletDirectPick("APPLE_PAY")}>
+          <span className={`${symbolWrapClass} text-black`}>
             <FaApple size={21} />
           </span>
           <span className="block text-sm font-semibold">Apple Pay</span>
         </button>
-        <button type="button" className={paymentTypeButtonClass("GOOGLE_PAY")} onClick={() => onPaymentTypeChange("GOOGLE_PAY")}>
+        <button type="button" className={paymentTypeButtonClass("GOOGLE_PAY")} onClick={() => handleWalletDirectPick("GOOGLE_PAY")}>
           <span className={symbolWrapClass}>
-            <FaGoogle size={19} />
+            <FcGoogle size={18} />
           </span>
           <span className="block text-sm font-semibold">Google Pay</span>
         </button>
       </div>
 
-      {paymentType && paymentType !== "CARD" && (
-        <div className="mb-6 rounded-xl border border-[#C6A75E]/25 bg-[#FFFCF3] px-4 py-3 text-sm text-[#6F5724]">
-          {paymentType === "KLARNA" || paymentType === "PAYPAL"
-            ? "You will be redirected to complete this payment and returned to checkout automatically."
-            : "This wallet payment will open a secure sheet on supported devices and browsers."}
+      {walletInfoModalOpen && paymentType === "PAYPAL" && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
+          <div className="w-full max-w-xl overflow-hidden rounded-2xl border border-[#C6A75E]/35 bg-white shadow-[0_24px_80px_rgba(0,0,0,0.24)]">
+            <div className="border-b border-[#C6A75E]/25 bg-gradient-to-r from-[#FFFCF3] to-white px-6 py-4">
+              <h3 className="text-2xl font-semibold text-gray-900">Making payments with PayPal</h3>
+            </div>
+            <div className="space-y-4 px-6 py-5">
+              <p className="text-sm leading-relaxed text-gray-700">
+                PayPal refunds differ depending on how you return your item(s) to Bear Lane.
+              </p>
+              <a
+                href="/help/returns#return-policy"
+                className="inline-block text-sm font-semibold text-[#8A6D2B] underline underline-offset-4"
+              >
+                PayPal returns policy
+              </a>
+              <p className="text-sm leading-relaxed text-gray-700">
+                Orders paid for by PayPal and returned by post will be returned to the same PayPal account.
+              </p>
+              <p className="text-sm leading-relaxed text-gray-700">
+                See our full returns policy{" "}
+                <a href="/help/returns" className="font-semibold text-[#8A6D2B] underline underline-offset-4">
+                  here
+                </a>.
+              </p>
+            </div>
+            <div className="flex items-center justify-between border-t border-[#C6A75E]/25 bg-[#FFFCF3] px-6 py-4">
+              <button
+                type="button"
+                onClick={() => {
+                  setWalletInfoModalOpen(false);
+                  setPendingWalletSelection(null);
+                }}
+                className="rounded-lg border border-[#C6A75E]/45 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:border-[#C6A75E]/80"
+              >
+                No, cancel
+              </button>
+              <button
+                type="button"
+                onClick={continueWalletPayment}
+                className="rounded-lg bg-[#C6A75E] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#B8994E]"
+              >
+                Continue To PayPal
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {(paymentType === "PAYPAL" || paymentType === "KLARNA") && savedWalletMethods.length > 0 && (
+        <div className="mb-6">
+          <p className="mb-3 text-sm font-semibold text-gray-900">
+            Saved {paymentType === "PAYPAL" ? "PayPal" : "Klarna"} methods
+          </p>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            {savedWalletMethods.map((method) => {
+              const isSelected = selectedSavedPaymentMethodId === method.id;
+              return (
+                <button
+                  key={method.id}
+                  type="button"
+                  onClick={() => {
+                    if (paymentType === "PAYPAL") {
+                      setPendingWalletSelection(method.id);
+                      setWalletInfoModalOpen(true);
+                      return;
+                    }
+                    setSelectedSavedPaymentMethodId(method.id);
+                    setWalletSelectionMode("saved");
+                    setSavedCardCvcComplete(false);
+                  }}
+                  className={`rounded-xl border bg-white p-3 text-left transition ${
+                    isSelected
+                      ? "border-[#C6A75E] ring-2 ring-[#C6A75E]/20"
+                      : "border-[#C6A75E]/30 hover:border-[#C6A75E]/60"
+                  }`}
+                >
+                  <p className="text-sm font-semibold text-gray-900">
+                    {(method.provider_type || "").toUpperCase()} linked account
+                  </p>
+                  {method.is_default && <p className="mt-1 text-xs font-medium text-[#8A6D2B]">Default method</p>}
+                </button>
+              );
+            })}
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              if (paymentType === "PAYPAL") {
+                setPendingWalletSelection("new");
+                setWalletInfoModalOpen(true);
+                return;
+              }
+              setSelectedSavedPaymentMethodId(null);
+              setWalletSelectionMode("new");
+              setSavedCardCvcComplete(false);
+            }}
+            className={`mt-3 rounded-lg border px-3 py-2 text-sm font-medium transition ${
+              walletSelectionMode === "new"
+                ? "border-[#C6A75E] bg-[#FCF7EB] text-[#8A6D2B]"
+                : "border-gray-300 bg-white text-gray-700 hover:border-[#C6A75E]/60"
+            }`}
+          >
+            Use a new {paymentType === "PAYPAL" ? "PayPal" : "Klarna"} account
+          </button>
         </div>
       )}
 
       {paymentType === "CARD" && (
       <>
+      {savedCardMethods.length > 0 && (
+        <div className="mb-6">
+          <p className="mb-3 text-sm font-semibold text-gray-900">Saved cards</p>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            {savedCardMethods.map((method) => {
+              const isSelected = selectedSavedPaymentMethodId === method.id;
+              return (
+                <button
+                  key={method.id}
+                  type="button"
+                  onClick={() => setSelectedSavedPaymentMethodId(method.id)}
+                  className={`rounded-xl border bg-white p-3 text-left transition ${
+                    isSelected
+                      ? "border-[#C6A75E] ring-2 ring-[#C6A75E]/20"
+                      : "border-[#C6A75E]/30 hover:border-[#C6A75E]/60"
+                  }`}
+                >
+                  <p className="text-sm font-semibold text-gray-900">
+                    {method.brand ? method.brand.toUpperCase() : "Card"} •••• {method.last4 || "----"}
+                  </p>
+                  <p className="mt-1 text-xs text-gray-600">
+                    Expires {String(method.exp_month || "--").padStart(2, "0")}/{method.exp_year || "----"}
+                  </p>
+                  {method.is_default && <p className="mt-1 text-xs font-medium text-[#8A6D2B]">Default card</p>}
+                </button>
+              );
+            })}
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedSavedPaymentMethodId(null);
+              setSavedCardCvcComplete(false);
+              setCardholderName("");
+            }}
+            className={`mt-3 rounded-lg border px-3 py-2 text-sm font-medium transition ${
+              selectedSavedPaymentMethodId === null
+                ? "border-[#C6A75E] bg-[#FCF7EB] text-[#8A6D2B]"
+                : "border-gray-300 bg-white text-gray-700 hover:border-[#C6A75E]/60"
+            }`}
+          >
+            Use a new card
+          </button>
+        </div>
+      )}
+
       <div className="mb-6">
         <p className="mb-3 text-sm font-semibold text-gray-900">Billing address</p>
 
@@ -710,28 +961,55 @@ export default function PaymentSection({
         </div>
       )}
 
-      <div className="mb-6 space-y-3">
-        <input
-          type="text"
-          value={cardholderName}
-          onChange={(e) => onCardholderNameChange(e.target.value)}
-          placeholder="Cardholder Name"
-          className="w-full rounded-xl border border-[#C6A75E]/35 bg-white px-4 py-3 text-gray-900 focus:border-[#C6A75E] focus:outline-none"
-        />
-
-        <div className={cardFieldClass}>
-          <CardNumberElement options={cardStyle} />
+      {selectedSavedPaymentMethod ? (
+        <div className="mb-6 rounded-xl border border-[#C6A75E]/30 bg-[#FFFCF3] p-4">
+          <p className="text-sm font-semibold text-gray-900">
+            {(selectedSavedPaymentMethod.provider_type || "card") === "card"
+              ? `Using saved card: ${selectedSavedPaymentMethod.brand?.toUpperCase() || "Card"} •••• ${selectedSavedPaymentMethod.last4 || "----"}`
+              : `Using linked ${(selectedSavedPaymentMethod.provider_type || "").toUpperCase()} account`}
+          </p>
+          <p className="mt-1 text-xs text-gray-600">
+            You can switch to a new payment method anytime.
+          </p>
+          {(selectedSavedPaymentMethod.provider_type || "card") === "card" && (
+            <div className="mt-4 space-y-2">
+              <p className="text-sm font-semibold text-gray-900">Confirm CVC</p>
+              <div className={cardFieldClass}>
+                <CardCvcElement
+                  options={cardStyle}
+                  onChange={(event) => setSavedCardCvcComplete(Boolean(event.complete))}
+                />
+              </div>
+              {!savedCardCvcComplete && (
+                <p className="text-xs text-[#8A6D2B]">Enter your 3-digit CVC to continue.</p>
+              )}
+            </div>
+          )}
         </div>
+      ) : (
+        <div className="mb-6 space-y-3">
+          <input
+            type="text"
+            value={cardholderName}
+            onChange={(e) => setCardholderName(e.target.value)}
+            placeholder="Cardholder Name"
+            className="w-full rounded-xl border border-[#C6A75E]/35 bg-white px-4 py-3 text-gray-900 focus:border-[#C6A75E] focus:outline-none"
+          />
 
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <div className={cardFieldClass}>
-            <CardExpiryElement options={cardStyle} />
+            <CardNumberElement options={cardStyle} />
           </div>
-          <div className={cardFieldClass}>
-            <CardCvcElement options={cardStyle} />
+
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <div className={cardFieldClass}>
+              <CardExpiryElement options={cardStyle} />
+            </div>
+            <div className={cardFieldClass}>
+              <CardCvcElement options={cardStyle} />
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       </>
       )}
@@ -739,11 +1017,30 @@ export default function PaymentSection({
         <input
           type="checkbox"
           checked={termsAccepted}
-          onChange={(e) => onTermsAcceptedChange(e.target.checked)}
+          onChange={(e) => setTermsAccepted(e.target.checked)}
           className="mt-1"
         />
         <span>I have read the terms and conditions.</span>
       </label>
+
+      {(paymentType === "APPLE_PAY" || paymentType === "GOOGLE_PAY") && (
+        <div className="mb-6">
+          <button
+            type="submit"
+            disabled={!termsAccepted}
+            className="flex w-full items-center justify-center gap-2 rounded-lg border border-[#C6A75E]/40 bg-white px-4 py-3 text-sm font-semibold text-gray-900 transition hover:border-[#C6A75E] hover:bg-[#FFFCF3] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <span>Continue with</span>
+            {paymentType === "APPLE_PAY" ? <FaApple size={16} /> : <FcGoogle size={16} />}
+            <span>Pay</span>
+          </button>
+          <p className="mt-2 text-xs text-gray-600">
+            {termsAccepted
+              ? "You will continue in a secure payment sheet."
+              : "Please accept the terms and conditions to continue."}
+          </p>
+        </div>
+      )}
     </div>
   );
 }

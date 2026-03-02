@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Log;
 use App\Models\Chat;
 use App\Models\Message;
 use App\Events\MessageSent;
+use App\Services\OpenAiModerationService;
 
 class ChatController extends Controller
 {
@@ -83,15 +84,55 @@ class ChatController extends Controller
     /**
      * Send a message for the current chat session
      */
-    public function send(Request $request)
+    public function send(Request $request, OpenAiModerationService $moderationService)
     {
         try {
             $validated = $request->validate([
                 'content' => 'required|string|max:2000',
             ]);
 
-            $chat = $this->getActiveChat($request);
             $user = Auth::user();
+            $content = (string) $validated['content'];
+
+            try {
+                $moderation = $moderationService->moderate($content);
+            } catch (\Throwable $exception) {
+                Log::error('ChatController@send moderation failed', [
+                    'error' => $exception->getMessage(),
+                    'user_id' => $user?->id,
+                    'guest_id' => (string) ($request->cookie('chat_session_id') ?? ''),
+                    'ip' => $request->ip(),
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Message moderation is temporarily unavailable. Please try again.',
+                ], 503);
+            }
+
+            if (!empty($moderation['blocked'])) {
+                $moderationService->logFlaggedMessage($content, $moderation, [
+                    'user_id' => $user?->id,
+                    'guest_id' => (string) ($request->cookie('chat_session_id') ?? ''),
+                    'ip' => $request->ip(),
+                    'endpoint' => '/api/chat/send',
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'warning' => true,
+                    'message' => OpenAiModerationService::FLAGGED_WARNING_MESSAGE,
+                ], 422);
+            }
+
+            $chat = $this->getActiveChat($request);
+
+            if ((bool) ($chat->is_archived ?? false)) {
+                $chat->update([
+                    'is_archived' => false,
+                    'archived_at' => null,
+                ]);
+            }
 
             // Upgrade guest chat to user if logged in
             if ($user && !$chat->user_id) {
@@ -106,7 +147,7 @@ class ChatController extends Controller
                 'chat_id' => $chat->id,
                 'user_id' => $user?->id,
                 'sender_type' => $user ? 'user' : 'guest',
-                'content' => $validated['content'],
+                'content' => $content,
             ]);
 
             event(new MessageSent($message));

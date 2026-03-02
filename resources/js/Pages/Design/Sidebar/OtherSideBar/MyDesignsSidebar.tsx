@@ -22,6 +22,7 @@ type SavedDesign = {
   payload?: {
     viewImageStates?: Record<string, Record<string, any>>;
     baseViewImages?: Partial<Record<"front" | "back" | "leftSleeve" | "rightSleeve", string>>;
+    compositePngByView?: Partial<Record<"front" | "back" | "leftSleeve" | "rightSleeve", string>>;
     previewByView?: Partial<
       Record<
         "front" | "back" | "leftSleeve" | "rightSleeve",
@@ -63,7 +64,8 @@ type MyDesignsSidebarProps = {
 
 type ViewKey = "front" | "back" | "leftSleeve" | "rightSleeve";
 
-const ORDERED_VIEWS: ViewKey[] = ["front", "back", "rightSleeve", "leftSleeve"];
+const ORDERED_VIEWS: ViewKey[] = ["front", "back", "leftSleeve", "rightSleeve"];
+const MAX_VISIBLE_SAVED_DESIGNS = 10;
 
 function renderLayerPreview(layer: any, uid: string, scale: number, canvasWidth: number, canvasHeight: number) {
   const type = layer?.type ?? "image";
@@ -142,6 +144,11 @@ function renderLayerPreview(layer: any, uid: string, scale: number, canvasWidth:
 }
 
 function getViewBaseImage(design: SavedDesign, view: ViewKey): string | null {
+  const fromCompositePng = design.payload?.compositePngByView?.[view];
+  if (fromCompositePng) return fromCompositePng;
+
+  if (view === "front" && design.previewImage) return design.previewImage;
+
   const fromPreviewSnapshot = design.payload?.previewByView?.[view]?.baseImage;
   if (fromPreviewSnapshot) return fromPreviewSnapshot;
 
@@ -152,10 +159,10 @@ function getViewBaseImage(design: SavedDesign, view: ViewKey): string | null {
   const mapByView: Record<ViewKey, string | undefined> = {
     front: fromProduct[0],
     back: fromProduct[1],
-    rightSleeve: fromProduct[2],
-    leftSleeve: fromProduct[3],
+    leftSleeve: fromProduct[2],
+    rightSleeve: fromProduct[3],
   };
-  return mapByView[view] ?? design.previewImage ?? null;
+  return mapByView[view] ?? null;
 }
 
 function getFallbackLayersFromState(design: SavedDesign, view: ViewKey) {
@@ -206,7 +213,9 @@ export default function MyDesignsSidebar({
   const [newDesignName, setNewDesignName] = React.useState("Untitled Design");
   const [createError, setCreateError] = React.useState<string | null>(null);
   const [activeViewByDesign, setActiveViewByDesign] = React.useState<Record<number, number>>({});
+  const [expandedPreview, setExpandedPreview] = React.useState<{ src: string; name: string } | null>(null);
   const loginUrl = "http://localhost/login";
+  const visibleDesigns = designs.slice(0, MAX_VISIBLE_SAVED_DESIGNS);
 
   // 🔹 Not signed in
   if (!user) {
@@ -228,7 +237,7 @@ export default function MyDesignsSidebar({
   }
   return (
     <div className="flex flex-col h-full p-6 bg-white">
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-5">
         <button
           type="button"
           onClick={() => {
@@ -245,20 +254,19 @@ export default function MyDesignsSidebar({
           <span className="text-xs text-gray-600 mt-1 text-center">Add name and start designing</span>
         </button>
 
-        {designs.map((design) => {
+        {visibleDesigns.map((design) => {
           const viewIndex = activeViewByDesign[design.id] ?? 0;
           const viewKey = ORDERED_VIEWS[viewIndex] ?? "front";
+          const hasCompositePreview = Boolean(design.payload?.compositePngByView?.[viewKey]);
           const snapshot = design.payload?.previewByView?.[viewKey];
           const fallbackLayers = getFallbackLayersFromState(design, viewKey);
-          const layers = snapshot?.layers?.length ? snapshot.layers : fallbackLayers;
-          const fallbackWidth = Math.max(
-            1000,
-            ...layers.map(layer => layer.position.x + layer.size.w)
-          );
-          const fallbackHeight = Math.max(
-            1000,
-            ...layers.map(layer => layer.position.y + layer.size.h)
-          );
+          const layers = hasCompositePreview
+            ? []
+            : snapshot?.layers?.length
+            ? snapshot.layers
+            : fallbackLayers;
+          const fallbackWidth = Math.max(1000, ...layers.map(layer => layer.position.x + layer.size.w));
+          const fallbackHeight = Math.max(1000, ...layers.map(layer => layer.position.y + layer.size.h));
           const canvasWidth = snapshot?.canvasWidth && snapshot.canvasWidth > 0 ? snapshot.canvasWidth : fallbackWidth;
           const canvasHeight = snapshot?.canvasHeight && snapshot.canvasHeight > 0 ? snapshot.canvasHeight : fallbackHeight;
           const scale = Math.min(128 / canvasWidth, 128 / canvasHeight);
@@ -276,7 +284,7 @@ export default function MyDesignsSidebar({
               }}
               role="button"
               tabIndex={0}
-              className={`relative isolate flex flex-col items-center justify-center p-4 rounded-2xl border transition duration-300 cursor-pointer group overflow-hidden ${
+              className={`relative isolate flex flex-col items-center justify-center p-5 rounded-2xl border transition duration-300 cursor-pointer group overflow-hidden ${
                 selectedDesignId === design.id
                   ? "bg-[#F8F3E4] border-[#C6A75E] shadow-md ring-2 ring-[#C6A75E]/25"
                   : "bg-[#FBF8F1] border-gray-200 shadow-sm hover:shadow-md hover:border-[#D9C18A]"
@@ -295,22 +303,34 @@ export default function MyDesignsSidebar({
                 ×
               </button>
 
-              <div className="relative z-0 mb-3 w-full h-32 overflow-hidden rounded-xl border border-gray-200 bg-white">
+              <div className="relative z-0 mb-4 w-full h-40 overflow-hidden rounded-xl border border-gray-200 bg-white">
                 {baseImage ? (
-                  <img
-                    src={baseImage}
-                    alt={design.name}
-                    className="absolute inset-0 h-full w-full object-contain"
-                  />
+                  <button
+                    type="button"
+                    onClick={e => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setExpandedPreview({ src: baseImage, name: design.name });
+                    }}
+                    className="absolute inset-0"
+                    aria-label="Expand design preview"
+                  >
+                    <img
+                      src={baseImage}
+                      alt={design.name}
+                      className="absolute inset-0 h-full w-full object-contain p-1"
+                    />
+                  </button>
                 ) : (
                   <div className="absolute inset-0 flex items-center justify-center text-gray-400 text-xs">
                     No Preview
                   </div>
                 )}
 
-                {layers.map(layer =>
-                  renderLayerPreview(layer, layer.uid, scale, canvasWidth, canvasHeight)
-                )}
+                {!hasCompositePreview &&
+                  layers.map(layer =>
+                    renderLayerPreview(layer, layer.uid, scale, canvasWidth, canvasHeight)
+                  )}
 
                 <button
                   type="button"
@@ -357,6 +377,35 @@ export default function MyDesignsSidebar({
           );
         })}
       </div>
+
+      {designs.length > MAX_VISIBLE_SAVED_DESIGNS && (
+        <div className="pt-4 text-xs text-gray-500 text-center">
+          Showing the latest {MAX_VISIBLE_SAVED_DESIGNS} designs.
+        </div>
+      )}
+
+      {expandedPreview && (
+        <div
+          className="fixed inset-0 z-[10060] bg-black/70 backdrop-blur-[2px] p-4 flex items-center justify-center"
+          onClick={() => setExpandedPreview(null)}
+        >
+          <div className="relative max-w-[95vw] max-h-[95vh]" onClick={e => e.stopPropagation()}>
+            <button
+              type="button"
+              onClick={() => setExpandedPreview(null)}
+              className="absolute -top-3 -right-3 h-9 w-9 rounded-full bg-white text-gray-800 shadow-md"
+              aria-label="Close image preview"
+            >
+              ×
+            </button>
+            <img
+              src={expandedPreview.src}
+              alt={expandedPreview.name}
+              className="max-w-[95vw] max-h-[95vh] object-contain rounded-lg bg-white"
+            />
+          </div>
+        </div>
+      )}
 
       {designs.length === 0 && (
         <div className="flex items-center justify-center py-6 text-gray-400 text-center text-lg">

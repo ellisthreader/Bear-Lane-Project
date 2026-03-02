@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { X, Copy, Move } from "lucide-react";
-import type { ImageState } from "./Design";
+import type { ImageState } from "./types/designTypes";
 
 interface SelectionBoxProps {
   selectedImages: string[]; // uids
@@ -201,6 +201,7 @@ const SelectionBox: React.FC<SelectionBoxProps> = ({
     <>
       {hoverLabel && labelPos && (
         <div
+          data-export-ignore="true"
           className="absolute bg-black text-white text-xs px-2 py-1 rounded"
           style={{
             left: labelPos.left,
@@ -216,6 +217,7 @@ const SelectionBox: React.FC<SelectionBoxProps> = ({
       )}
 
       <div
+        data-export-ignore="true"
         className="absolute border-2 border-[#C6A75E] pointer-events-none"
         style={{
           left: box.left,

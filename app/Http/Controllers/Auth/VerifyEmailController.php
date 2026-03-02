@@ -21,7 +21,7 @@ class VerifyEmailController extends Controller
 
         // If already verified, just redirect
         if ($user->hasVerifiedEmail()) {
-            return redirect()->route('profile.edit')->with('verified', 1);
+            return redirect()->route('profile')->with('verified', 1);
         }
 
         // Mark email as verified and fire Verified event
@@ -29,6 +29,6 @@ class VerifyEmailController extends Controller
             event(new Verified($user));
         }
 
-        return redirect()->route('profile.edit')->with('verified', 1);
+        return redirect()->route('profile')->with('verified', 1);
     }
 }

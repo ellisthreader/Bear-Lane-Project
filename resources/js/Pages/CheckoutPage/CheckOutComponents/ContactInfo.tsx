@@ -1,6 +1,6 @@
 import React from "react";
 import { useCheckout } from "@/Context/CheckoutContext";
-import type { CheckoutFieldErrors, CheckoutFieldKey } from "../CheckoutForm";
+import type { CheckoutFieldErrors, CheckoutFieldKey } from "../types";
 
 type ContactInfoProps = {
   invalidFields?: Set<CheckoutFieldKey>;

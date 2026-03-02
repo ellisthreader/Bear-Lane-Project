@@ -81,16 +81,6 @@ export default function UploadSidebar({
       !layer?.isClipart
   );
 
-  // ------------------- Debug -------------------
-  useEffect(() => {
-    console.log("📌 UploadSidebar render", {
-      selectedImage,
-      layer,
-      cropMode,
-      imagePropertiesOpen,
-    });
-  }, [selectedImage, layer, cropMode, imagePropertiesOpen]);
-
   // ------------------- Filter recent images -------------------
   const uploadOnlyImages = useMemo(
     () => recentImages.filter((uid) => !imageState[uid]?.isClipart),

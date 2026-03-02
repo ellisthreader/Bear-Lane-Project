@@ -28,7 +28,10 @@ const ProductViewSelector: React.FC<ProductViewSelectorProps> = ({
   };
 
   return (
-    <div className="absolute top-1/2 right-6 transform -translate-y-1/2 flex flex-col gap-4 bg-white p-3 rounded-xl shadow-md border border-gray-200 z-40">
+    <div
+      data-export-ignore="true"
+      className="absolute top-1/2 right-6 transform -translate-y-1/2 flex flex-col gap-4 bg-white p-3 rounded-xl shadow-md border border-gray-200 z-40"
+    >
       {Object.entries(images).map(([key, src]) => {
         const viewKey = key as keyof typeof images;
         const isSelected = selected === viewKey;

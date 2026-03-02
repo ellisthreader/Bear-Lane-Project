@@ -9,9 +9,23 @@ class Image extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['imageable_id', 'imageable_type', 'path'];
+    protected $fillable = [
+        'imageable_id',
+        'imageable_type',
+        'path',
+        'restricted_left',
+        'restricted_top',
+        'restricted_width',
+        'restricted_height',
+    ];
 
     public $timestamps = false;
+    protected $casts = [
+        'restricted_left' => 'float',
+        'restricted_top' => 'float',
+        'restricted_width' => 'float',
+        'restricted_height' => 'float',
+    ];
 
     // Always include a `url` attribute for frontend
     protected $appends = ['url'];

@@ -16,9 +16,13 @@ export default function Marquee({ marquee }: Props) {
   return (
     <>
       {/* MUST NOT BLOCK MOUSE EVENTS */}
-      <div className="absolute inset-0 z-[9999] pointer-events-none cursor-crosshair" />
+      <div
+        data-export-ignore="true"
+        className="absolute inset-0 z-[9999] pointer-events-none cursor-crosshair"
+      />
 
       <div
+        data-export-ignore="true"
         className="absolute border-2 border-[#C6A75E] bg-[#C6A75E]/20 z-[10000] pointer-events-none"
         style={{
           left: marquee.x,

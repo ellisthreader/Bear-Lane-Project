@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { router } from "@inertiajs/react";
+import { router, usePage } from "@inertiajs/react";
 import { Transition } from "@headlessui/react";
 import NavMenu from "@/Components/Menu/NavMenu";
 
 export default function VerifyEmail() {
+  const { props } = usePage<{ auth?: { user?: { email_verified_at?: string | null } } }>();
+  const isAlreadyVerified = Boolean(props?.auth?.user?.email_verified_at);
   const [message, setMessage] = useState<string | null>(null);
   const [isCooldown, setIsCooldown] = useState(false);
   const [remainingSeconds, setRemainingSeconds] = useState(0);
@@ -11,6 +13,51 @@ export default function VerifyEmail() {
 
   useEffect(() => {
     setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isAlreadyVerified) return;
+    router.visit("/profile");
+  }, [isAlreadyVerified]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const checkVerificationStatus = async () => {
+      try {
+        const response = await fetch("/email/verification-status", {
+          method: "GET",
+          headers: { Accept: "application/json" },
+          credentials: "same-origin",
+        });
+        if (!response.ok) return;
+
+        const data = await response.json();
+        if (!cancelled && data?.verified) {
+          router.visit("/profile");
+        }
+      } catch {
+        // Silent fail: we'll retry on next interval/focus.
+      }
+    };
+
+    const intervalId = window.setInterval(checkVerificationStatus, 3000);
+    const onVisibilityOrFocus = () => {
+      if (document.visibilityState === "visible") {
+        checkVerificationStatus();
+      }
+    };
+
+    window.addEventListener("focus", onVisibilityOrFocus);
+    document.addEventListener("visibilitychange", onVisibilityOrFocus);
+    checkVerificationStatus();
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", onVisibilityOrFocus);
+      document.removeEventListener("visibilitychange", onVisibilityOrFocus);
+    };
   }, []);
 
   // Cooldown countdown

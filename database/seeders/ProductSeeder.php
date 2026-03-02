@@ -151,7 +151,7 @@ class ProductSeeder extends Seeder
                 'price'          => 25.99,
                 'original_price' => null,
                 'is_trending'    => false,
-                'categories'     => ['men-clothing-t-shirts'],
+                'categories'     => ['men/t-shirt'],
                 'images' => [
                     'images/Products/WhiteTee1.png',
                     'images/Products/WhiteTee2.png',
@@ -261,7 +261,167 @@ class ProductSeeder extends Seeder
                     ],
                 ],
             ],
+            [
+                'brand'          => 'Urban Thread',
+                'name'           => 'Essential Cotton Tee',
+                'slug'           => 'men-essential-cotton-tee',
+                'description'    => 'Soft everyday T-shirt with a relaxed fit.',
+                'price'          => 22.00,
+                'original_price' => null,
+                'is_trending'    => false,
+                'categories'     => ['men/t-shirt'],
+                'images' => [
+                    'images/Products/WhiteTee1.png',
+                    'images/Products/WhiteTee2.png',
+                ],
+                'variants' => [
+                    [
+                        'colour' => 'White',
+                        'sizes'  => ['S','M','L','XL'],
+                        'images' => [
+                            'images/Products/WhiteTee1.png',
+                            'images/Products/WhiteTee2.png',
+                            'images/Products/WhiteTee3.png',
+                            'images/Products/WhiteTee4.png',
+                        ],
+                    ],
+                ],
+            ],
+            [
+                'brand'          => 'North Ridge',
+                'name'           => 'Classic Crew T-Shirt',
+                'slug'           => 'men-classic-crew-t-shirt',
+                'description'    => 'Clean-cut crew neck tee built for daily wear.',
+                'price'          => 28.00,
+                'original_price' => 34.00,
+                'is_trending'    => true,
+                'categories'     => ['men/t-shirt'],
+                'images' => [
+                    'images/Products/BlueTee1.png',
+                    'images/Products/BlueTee2.png',
+                ],
+                'variants' => [
+                    [
+                        'colour' => 'Blue',
+                        'sizes'  => ['S','M','L','XL'],
+                        'images' => [
+                            'images/Products/BlueTee1.png',
+                            'images/Products/BlueTee2.png',
+                            'images/Products/BlueTee3.png',
+                            'images/Products/BlueTee4.png',
+                        ],
+                    ],
+                ],
+            ],
+            [
+                'brand'          => 'Bearlane Studio',
+                'name'           => 'Oversized Street Tee',
+                'slug'           => 'men-oversized-street-tee',
+                'description'    => 'Oversized silhouette with a premium jersey finish.',
+                'price'          => 32.00,
+                'original_price' => null,
+                'is_trending'    => true,
+                'categories'     => ['men/t-shirt'],
+                'images' => [
+                    'images/Products/BWhiteTee1.png',
+                    'images/Products/WhiteTee1.png',
+                ],
+                'variants' => [
+                    [
+                        'colour' => 'Black',
+                        'sizes'  => ['M','L','XL','XXL'],
+                        'images' => [
+                            'images/Products/WhiteTee1.png',
+                            'images/Products/WhiteTee1.png',
+                            'images/Products/WhiteTee1.png',
+                            'images/Products/WhiteTee1.png',
+                        ],
+                    ],
+                ],
+            ],
+            [
+                'brand'          => 'Harbor Wear',
+                'name'           => 'Washed Heavyweight Tee',
+                'slug'           => 'men-washed-heavyweight-tee',
+                'description'    => 'Heavyweight cotton tee with washed texture.',
+                'price'          => 35.00,
+                'original_price' => 42.00,
+                'is_trending'    => false,
+                'categories'     => ['men/t-shirt'],
+                'images' => [
+                    'images/Products/WhiteTee1.png',
+                    'images/Products/WhiteTee1.png',
+                ],
+                'variants' => [
+                    [
+                        'colour' => 'White',
+                        'sizes'  => ['S','M','L','XL'],
+                        'images' => [
+                            'images/Products/WhiteTee1.png',
+                            'images/Products/WhiteTee1.png',
+                            'images/Products/WhiteTee1.png',
+                            'images/Products/WhiteTee1.png',
+                        ],
+                    ],
+                ],
+            ],
+            [
+                'brand'          => 'Coastline',
+                'name'           => 'Minimal Logo T-Shirt',
+                'slug'           => 'men-minimal-logo-t-shirt',
+                'description'    => 'Minimal logo tee with modern tailored fit.',
+                'price'          => 26.00,
+                'original_price' => null,
+                'is_trending'    => false,
+                'categories'     => ['men/t-shirt'],
+                'images' => [
+                    'images/Products/WhiteTee1.pngg',
+                    'images/Products/WhiteTee1.png',
+                ],
+                'variants' => [
+                    [
+                        'colour' => 'White',
+                        'sizes'  => ['S','M','L','XL'],
+                        'images' => [
+                            'images/Products/WhiteTee1.png',
+                            'images/Products/WhiteTee1.png',
+                            'images/Products/WhiteTee1.png',
+                            'images/Products/WhiteTee1.png',
+                        ],
+                    ],
+                ],
+            ],
         ];
+
+        $whiteTeeImages = [
+            'images/Products/WhiteTee1.png',
+            'images/Products/WhiteTee2.png',
+            'images/Products/WhiteTee3.png',
+            'images/Products/WhiteTee4.png',
+        ];
+
+        for ($i = 1; $i <= 50; $i++) {
+            $suffix = str_pad((string) $i, 2, '0', STR_PAD_LEFT);
+
+            $products[] = [
+                'brand'          => 'Basic Apparel',
+                'name'           => "White Tee {$suffix}",
+                'slug'           => "men-white-tee-{$i}",
+                'description'    => 'Classic white T-shirt for everyday wear.',
+                'price'          => 25.99,
+                'original_price' => null,
+                'is_trending'    => false,
+                'categories'     => ['men/t-shirt'],
+                'images'         => $whiteTeeImages,
+                'variants'       => [
+                    [
+                        'colour' => 'White',
+                        'sizes'  => ['XS', 'S', 'M', 'L', 'XL', 'XXL'],
+                        'images' => $whiteTeeImages,
+                    ],
+                ],
+            ];
+        }
 
         // ------------------------------------------------------------
         // CREATE PRODUCTS + CATEGORY LINKS + IMAGES + VARIANTS

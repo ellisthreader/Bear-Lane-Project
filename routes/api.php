@@ -11,7 +11,6 @@ use App\Http\Controllers\DeliveryOptionController;
 use App\Http\Controllers\ShippingRateController;
 use App\Http\Controllers\CouponController;
 use App\Http\Controllers\ChatController;
-use App\Http\Controllers\Admin\AdminChatController;
 use App\Models\Order;
 
 use Illuminate\Support\Facades\Mail;
@@ -126,15 +125,6 @@ Route::middleware('auth:sanctum')->group(function () {
 // -----------------------------
 Route::get('/chat', [ChatController::class, 'index']);
 Route::post('/chat/send', [ChatController::class, 'send']);
-
-// -----------------------------
-// Admin livechat (active chats)
-// -----------------------------
-// For now, just require auth:sanctum.
-// You can later add 'admin' middleware if you have an admin role
-Route::middleware(['auth:sanctum', 'admin'])->get('/admin/active-chats', [AdminChatController::class, 'activeChats']);
-
-
 
 // -- Email
 Route::post('/send-quote', [QuoteController::class, 'sendQuote']);

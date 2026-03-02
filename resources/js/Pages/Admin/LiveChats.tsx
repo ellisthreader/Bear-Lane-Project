@@ -2,9 +2,10 @@
 
 import React, { useEffect, useState } from "react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
+import AdminTopNav from "@/Components/Admin/AdminTopNav";
 import { usePage, router } from "@inertiajs/react";
 
-import { FiArrowLeftCircle, FiMail, FiEdit, FiTrash2 } from "react-icons/fi";
+import { FiMail, FiEdit, FiTrash2 } from "react-icons/fi";
 import { BsCircleFill, BsCircle } from "react-icons/bs";
 import axios from "axios";
 
@@ -113,26 +114,17 @@ export default function LiveChats() {
 
   return (
     <AuthenticatedLayout>
+      <AdminTopNav />
       <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-        <nav className="bg-white dark:bg-gray-900 shadow px-6 py-4 flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <FiArrowLeftCircle
-              className="h-6 w-6 text-gray-600 dark:text-gray-300 cursor-pointer hover:text-indigo-500 transition-colors"
-              onClick={() => router.get("/admin/dashboard")}
-            />
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white">Admin Panel</h2>
-          </div>
-          <div className="text-gray-700 dark:text-gray-300">
-            Logged in as <span className="font-semibold">{user?.username}</span>
-          </div>
-        </nav>
-
         <header className="px-8 py-6">
           <h1 className="text-4xl font-extrabold text-gray-900 dark:text-white mb-2">
             Live Chat Manager
           </h1>
           <p className="text-gray-600 dark:text-gray-400 text-lg">
             Monitor active chats in real time.
+          </p>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            Logged in as <span className="font-semibold">{user?.username}</span>
           </p>
         </header>
 

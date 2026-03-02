@@ -68,19 +68,15 @@ export default function ClipartProperties({
 
 const handleResize = (requestedWidth: number) => {
   console.group("[CLIPART] handleResize");
-  console.log("Slider input:", requestedWidth);
 
   // ✅ Prevent invalid values
   const clampedWidth = Math.max(requestedWidth, 1);
-  console.log("Clamped width (min 1):", clampedWidth);
 
   // Current position
   const pos = canvasPosition ?? { x: 0, y: 0 };
-  console.log("Canvas position:", pos);
 
   // Current layer size
   const currentSize = layer.size;
-  console.log("Current layer size:", currentSize);
 
   // Normalized restricted box
   const normalizedRestrictedBox = {
@@ -89,7 +85,6 @@ const handleResize = (requestedWidth: number) => {
     width: restrictedBox.width ?? 600,
     height: restrictedBox.height ?? 600,
   };
-  console.log("Restricted box:", normalizedRestrictedBox);
 
   // Call clamp utility
   const result = getClampedSize({
@@ -100,7 +95,6 @@ const handleResize = (requestedWidth: number) => {
     restrictedBox: normalizedRestrictedBox,
   });
 
-  console.log("Clamp result:", result);
 
   if (!result) {
     console.warn("[CLIPART] getClampedSize returned null — cannot resize without breaking constraints");
@@ -124,7 +118,6 @@ const handleResize = (requestedWidth: number) => {
   }
 
   // Update the size
-  console.log("Updating clipart size to:", result.width, result.height);
   onResize(result.width, result.height);
 
   console.groupEnd();

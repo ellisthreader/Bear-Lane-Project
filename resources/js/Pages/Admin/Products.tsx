@@ -1,617 +1,404 @@
-import React, { useState } from "react";
-import { useForm } from "@inertiajs/react";
+import React, { useMemo, useState } from "react";
+import { router } from "@inertiajs/react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
+import AdminTopNav from "@/Components/Admin/AdminTopNav";
 
-export default function Products({ categories, auth }: any) {
-  // 🔥 Log what the backend sends
-  console.log("Frontend categories:", categories);
+type Category = {
+  id: number;
+  name: string;
+  slug: string;
+  parent_id: number | null;
+};
 
-  const [name, setName] = useState("");
-  const { post, delete: destroy, processing } = useForm();
+type Props = {
+  categories: Category[];
+  products?: unknown[];
+};
 
-  const addCategory = (e: any) => {
-    e.preventDefault();
-    post("/admin/categories", {
-      data: { name },
-      onSuccess: () => setName(""),
-    });
+type CategoryTreeNode = Category & { children: CategoryTreeNode[] };
+
+const SECTION_TABS = [
+  { key: "men", label: "MEN", image: "/images/Admin/MenCategory.jpeg" },
+  { key: "women", label: "WOMEN", image: "/images/Admin/WomenCategory.jpeg" },
+  { key: "kids", label: "KIDS", image: "/images/Admin/KidsCategory.jpeg" },
+  { key: "sale", label: "SALE", image: "/images/Admin/SaleCategory.jpeg" },
+] as const;
+
+const getCsrfToken = () =>
+  document.querySelector('meta[name="csrf-token"]')?.getAttribute("content") || "";
+
+function buildTree(categories: Category[]): CategoryTreeNode[] {
+  const map = new Map<number, CategoryTreeNode>();
+  categories.forEach((category) => map.set(category.id, { ...category, children: [] }));
+
+  const roots: CategoryTreeNode[] = [];
+  map.forEach((node) => {
+    if (node.parent_id && map.has(node.parent_id)) {
+      map.get(node.parent_id)!.children.push(node);
+      return;
+    }
+    roots.push(node);
+  });
+
+  const sortNodes = (nodes: CategoryTreeNode[]) => {
+    nodes.sort((a, b) => a.name.localeCompare(b.name));
+    nodes.forEach((node) => sortNodes(node.children));
+  };
+  sortNodes(roots);
+  return roots;
+}
+
+export default function Products({ categories }: Props) {
+  const [activeSection, setActiveSection] = useState<string>("men");
+  const [expandedCategoryIds, setExpandedCategoryIds] = useState<number[]>([]);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editName, setEditName] = useState("");
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [newSubByCategory, setNewSubByCategory] = useState<Record<number, { name: string }>>({});
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const tree = useMemo(() => buildTree(categories), [categories]);
+  const rootBySlug = useMemo(() => {
+    const map = new Map<string, CategoryTreeNode>();
+    tree.forEach((node) => map.set(node.slug.toLowerCase(), node));
+    return map;
+  }, [tree]);
+
+  const activeRoot = rootBySlug.get(activeSection.toLowerCase()) ?? null;
+  const sectionCategories = activeRoot?.children ?? [];
+
+  const reload = () => router.reload({ only: ["categories"] });
+
+  const resetFeedback = () => {
+    setError(null);
+    setMessage(null);
   };
 
-  const removeCategory = (id: number) => {
-    destroy(`/admin/categories/${id}`);
+  const toggleCategory = (categoryId: number) => {
+    setExpandedCategoryIds((prev) =>
+      prev.includes(categoryId) ? prev.filter((id) => id !== categoryId) : [...prev, categoryId],
+    );
   };
 
-  // -------------------------------
-  // ⭐ FILTERS
-  // -------------------------------
-  const kidsCategories = categories.filter(
-    (cat: any) => cat.age_group !== null && cat.age_group !== undefined
-  );
+  const startEdit = (category: Category) => {
+    setEditingId(category.id);
+    setEditName(category.name);
+  };
 
-  const menCategories = categories.filter(
-    (cat: any) => !cat.age_group && cat.section === "Men"
-  );
+  const saveEdit = async () => {
+    if (!editingId) return;
+    setLoading(true);
+    resetFeedback();
+    try {
+      const response = await fetch(`/admin/categories/${editingId}`, {
+        method: "PATCH",
+        credentials: "same-origin",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          "X-CSRF-TOKEN": getCsrfToken(),
+          "X-Requested-With": "XMLHttpRequest",
+        },
+        body: JSON.stringify({ name: editName }),
+      });
+      if (!response.ok) throw new Error("Unable to update category.");
+      setEditingId(null);
+      setMessage("Saved changes.");
+      reload();
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Unable to update category.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const womenCategories = categories.filter(
-    (cat: any) => !cat.age_group && cat.section === "Women"
-  );
+  const removeCategory = async (categoryId: number) => {
+    if (!confirm("Delete this category?")) return;
+    setLoading(true);
+    resetFeedback();
+    try {
+      const response = await fetch(`/admin/categories/${categoryId}`, {
+        method: "DELETE",
+        credentials: "same-origin",
+        headers: {
+          Accept: "application/json",
+          "X-CSRF-TOKEN": getCsrfToken(),
+          "X-Requested-With": "XMLHttpRequest",
+        },
+      });
+      if (!response.ok) throw new Error("Unable to delete category.");
+      setExpandedCategoryIds((prev) => prev.filter((id) => id !== categoryId));
+      setMessage("Category deleted.");
+      reload();
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Unable to delete category.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  // -------------------------------
-  // ⭐ GROUP HELPERS
-  // -------------------------------
-  const groupByAge = (items: any[]) =>
-    items.reduce((acc: any, cat: any) => {
-      const age = cat.age_group || "Unknown Age Group";
-      if (!acc[age]) acc[age] = [];
-      acc[age].push(cat);
-      return acc;
-    }, {});
+  const createCategory = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!activeRoot) {
+      setError(`Section root "${activeSection}" does not exist in DB.`);
+      return;
+    }
+    setLoading(true);
+    resetFeedback();
+    try {
+      const response = await fetch("/admin/categories", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          "X-CSRF-TOKEN": getCsrfToken(),
+          "X-Requested-With": "XMLHttpRequest",
+        },
+        body: JSON.stringify({
+          name: newCategoryName,
+          parent_id: activeRoot.id,
+        }),
+      });
+      if (!response.ok) throw new Error("Unable to add category.");
+      setNewCategoryName("");
+      setMessage("Category added.");
+      reload();
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Unable to add category.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const groupBySection = (items: any[]) =>
-    items.reduce((acc: any, cat: any) => {
-      const sec = cat.section || "Unknown Section";
-      if (!acc[sec]) acc[sec] = [];
-      acc[sec].push(cat);
-      return acc;
-    }, {});
-
-  const groupBySubsection = (items: any[]) =>
-    items.reduce((acc: any, cat: any) => {
-      const sub = cat.subsection || "Other";
-      if (!acc[sub]) acc[sub] = [];
-      acc[sub].push(cat);
-      return acc;
-    }, {});
-
-  // -------------------------------
-  // ⭐ OPEN STATES
-  // -------------------------------
-  const [openAge, setOpenAge] = useState<string | null>(null);
-  const [openSection, setOpenSection] = useState<string | null>(null);
-  const [openSub, setOpenSub] = useState<string | null>(null);
-
-  const [openMen, setOpenMen] = useState<string | null>(null);
-  const [openWomen, setOpenWomen] = useState<string | null>(null);
-
-  const [openProducts, setOpenProducts] = useState<number | null>(null);
-
-  // Price formatter
-  const fmtCurrency = (value: any) => {
-    const num = Number(value);
-    if (Number.isNaN(num)) return value ?? "";
-    return new Intl.NumberFormat("en-GB", {
-      style: "currency",
-      currency: "GBP",
-    }).format(num);
+  const createSubcategory = async (parentCategoryId: number) => {
+    const payload = newSubByCategory[parentCategoryId];
+    if (!payload?.name?.trim()) return;
+    setLoading(true);
+    resetFeedback();
+    try {
+      const response = await fetch("/admin/categories", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          "X-CSRF-TOKEN": getCsrfToken(),
+          "X-Requested-With": "XMLHttpRequest",
+        },
+        body: JSON.stringify({
+          name: payload.name,
+          parent_id: parentCategoryId,
+        }),
+      });
+      if (!response.ok) throw new Error("Unable to add subcategory.");
+      setNewSubByCategory((prev) => ({
+        ...prev,
+        [parentCategoryId]: { name: "" },
+      }));
+      setExpandedCategoryIds((prev) => (prev.includes(parentCategoryId) ? prev : [...prev, parentCategoryId]));
+      setMessage("Subcategory added.");
+      reload();
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Unable to add subcategory.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <AuthenticatedLayout>
-      <div className="min-h-screen bg-gray-100 dark:bg-gray-900 p-10">
-        <h1 className="text-4xl font-bold mb-10 text-center text-gray-900 dark:text-white">
-          Manage Categories
-        </h1>
+      <AdminTopNav />
+      <div className="min-h-screen bg-[#FAF8F2] px-6 py-10 text-[#2D2515] sm:px-10">
+        <div className="mx-auto w-full max-w-6xl rounded-3xl border border-[#E5D4AF] bg-white p-6 shadow-sm">
+          <h1 className="text-2xl font-bold">Product Navbar Categories</h1>
+          <p className="mt-1 text-sm text-[#6B5A34]">
+            Slugs are generated automatically in path format, for example: `men/accessories/bears`.
+          </p>
 
-        <div className="max-w-5xl mx-auto bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-xl">
-          <h2 className="text-2xl font-semibold mb-4 text-gray-900 dark:text-white">
-            Add Category
-          </h2>
+          <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {SECTION_TABS.map((tab) => (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => setActiveSection(tab.key)}
+                className={`group relative h-28 overflow-hidden rounded-2xl border text-center transition sm:h-32 ${
+                  activeSection === tab.key
+                    ? "border-[#D1B46F] ring-2 ring-[#E8D39B]"
+                    : "border-[#E5D4AF] hover:border-[#D7BE84]"
+                }`}
+              >
+                <img src={tab.image} alt={tab.label} className="absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:scale-105" />
+                <div className="absolute inset-0 bg-black/45 transition duration-300 group-hover:bg-black/38" />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-base font-extrabold tracking-[0.18em] text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)]">
+                    {tab.label}
+                  </span>
+                </div>
+              </button>
+            ))}
+          </div>
 
-          <form onSubmit={addCategory} className="flex gap-3 mb-10">
+          <form onSubmit={createCategory} className="mt-5 grid grid-cols-1 gap-3 rounded-2xl border border-[#E5D4AF] bg-[#FFFDF7] p-4 md:grid-cols-2">
             <input
-              type="text"
-              className="flex-1 px-4 py-2 rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white"
-              placeholder="Category name..."
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+              value={newCategoryName}
+              onChange={(event) => setNewCategoryName(event.target.value)}
+              placeholder={`Add category to ${activeSection.toUpperCase()} (e.g. Accessories)`}
+              className="rounded-xl border border-[#DCC99D] bg-white px-3 py-2 text-sm"
+              required
             />
             <button
-              disabled={processing}
-              className="px-6 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition"
+              type="submit"
+              disabled={loading || newCategoryName.trim() === ""}
+              className="rounded-xl border border-[#D7BE84] bg-[#FFFCF4] px-4 py-2 text-sm font-semibold text-[#7B6530] disabled:opacity-60"
             >
-              Add
+              Add Category
             </button>
           </form>
 
-          {/* ============================= */}
-          {/*        KIDS CATEGORIES        */}
-          {/* ============================= */}
+          {message ? <p className="mt-3 text-sm text-[#3E6A1B]">{message}</p> : null}
+          {error ? <p className="mt-3 text-sm text-[#8C3232]">{error}</p> : null}
 
-          <h2 className="text-2xl font-semibold mb-4 text-gray-900 dark:text-white">
-            Kids Categories
-          </h2>
+          <div className="mt-6 space-y-3">
+            {sectionCategories.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-[#DCC99D] bg-[#FFFEFA] p-4 text-sm text-[#7B6530]">
+                No categories yet in {activeSection.toUpperCase()}.
+              </div>
+            ) : (
+              sectionCategories.map((category) => {
+                const isExpanded = expandedCategoryIds.includes(category.id);
+                const subForm = newSubByCategory[category.id] || { name: "" };
 
-          <div className="space-y-5">
-            {Object.keys(groupByAge(kidsCategories)).map((age) => {
-              const ageMap = groupByAge(kidsCategories);
-              const ageSections = groupBySection(ageMap[age] || []);
-
-              return (
-                <div
-                  key={age}
-                  className="border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 rounded-xl shadow"
-                >
-                  {/* AGE HEADER */}
-                  <button
-                    onClick={() => {
-                      setOpenAge(openAge === age ? null : age);
-                      setOpenSection(null);
-                      setOpenSub(null);
-                    }}
-                    className="w-full flex justify-between items-center p-5 text-xl font-semibold text-gray-900 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700 transition"
-                  >
-                    {age}
-                    <span
-                      className={`transition transform ${
-                        openAge === age ? "rotate-90" : ""
-                      }`}
+                return (
+                  <div key={category.id} className="rounded-2xl border border-[#E5D4AF] bg-[#FFFEFA] p-4">
+                    <div
+                      className="flex cursor-pointer flex-wrap items-center justify-between gap-3"
+                      onClick={() => toggleCategory(category.id)}
                     >
-                      ▶
-                    </span>
-                  </button>
-
-                  {openAge === age && (
-                    <div className="px-6 pb-4 space-y-3">
-                      {Object.keys(ageSections).map((section) => {
-                        const subsections = groupBySubsection(
-                          ageSections[section] || []
-                        );
-
-                        return (
-                          <div key={section}>
+                      <div>
+                        <p className="text-base font-semibold text-[#3B2F16]">{category.name}</p>
+                        <p className="text-xs text-[#7A6640]">/category/{category.slug}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="rounded-lg border border-[#D7BE84] bg-[#FFFCF4] px-3 py-1 text-xs font-semibold text-[#7B6530]">
+                          {isExpanded ? "Hide Subcategories" : "Show Subcategories"}
+                        </span>
+                        {editingId === category.id ? (
+                          <>
+                            <input
+                              value={editName}
+                              onChange={(event) => setEditName(event.target.value)}
+                              onClick={(event) => event.stopPropagation()}
+                              className="w-40 rounded-lg border border-[#DCC99D] px-2 py-1 text-xs"
+                              placeholder="Name"
+                            />
                             <button
-                              onClick={() =>
-                                setOpenSection(
-                                  openSection === section ? null : section
-                                )
-                              }
-                              className="w-full flex justify-between items-center p-3 text-lg bg-gray-100 dark:bg-gray-700 rounded-xl text-gray-900 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-600 transition"
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                saveEdit();
+                              }}
+                              disabled={loading}
+                              className="rounded-lg border border-[#D7BE84] bg-[#FFFCF4] px-3 py-1 text-xs font-semibold text-[#7B6530]"
                             >
-                              {section}
-                              <span
-                                className={`transition transform ${
-                                  openSection === section ? "rotate-90" : ""
-                                }`}
-                              >
-                                ▶
-                              </span>
+                              Save
                             </button>
+                          </>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              startEdit(category);
+                            }}
+                            className="rounded-lg border border-[#D7BE84] bg-white px-3 py-1 text-xs font-semibold text-[#7B6530]"
+                          >
+                            Edit
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            removeCategory(category.id);
+                          }}
+                          className="rounded-lg border border-[#E3B9B9] bg-[#FFF3F3] px-3 py-1 text-xs font-semibold text-[#8C3232]"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
 
-                            {/* SUBSECTIONS */}
-                            {openSection === section && (
-                              <div className="ml-6 mt-2 space-y-2">
-                                {Object.keys(subsections).map((sub) => (
-                                  <div key={sub}>
-                                    <button
-                                      onClick={() =>
-                                        setOpenSub(openSub === sub ? null : sub)
-                                      }
-                                      className="w-full flex justify-between items-center p-3 text-md bg-gray-200 dark:bg-gray-600 rounded-xl text-gray-900 dark:text-white hover:bg-gray-300 dark:hover:bg-gray-500 transition"
-                                    >
-                                      {sub}
-                                      <span
-                                        className={`transition transform ${
-                                          openSub === sub ? "rotate-90" : ""
-                                        }`}
-                                      >
-                                        ▶
-                                      </span>
-                                    </button>
+                    {isExpanded && (
+                      <div className="mt-4 space-y-3 border-t border-[#EFE4CC] pt-4">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-[#8A6D2B]">Subcategories</p>
 
-                                    {openSub === sub && (
-                                      <div className="ml-6 mt-2 space-y-2">
-                                        {subsections[sub].map((cat: any) => (
-                                          <div
-                                            key={cat.id}
-                                            className="p-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl"
-                                          >
-                                            <div className="flex justify-between items-start">
-                                              <div>
-                                                <p className="font-medium text-gray-900 dark:text-white">
-                                                  {cat.name}
-                                                </p>
-                                                <p className="text-gray-500 dark:text-gray-400 text-sm">
-                                                  Slug: {cat.slug}
-                                                </p>
-                                              </div>
-
-                                              <div className="flex flex-col items-end gap-2">
-                                                <button
-                                                  onClick={() =>
-                                                    setOpenProducts(
-                                                      openProducts === cat.id
-                                                        ? null
-                                                        : cat.id
-                                                    )
-                                                  }
-                                                  className="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-sm"
-                                                >
-                                                  {openProducts === cat.id
-                                                    ? "Hide Products"
-                                                    : "Show Products"}
-                                                </button>
-
-                                                <button
-                                                  onClick={() =>
-                                                    removeCategory(cat.id)
-                                                  }
-                                                  className="px-3 py-1 bg-red-500 hover:bg-red-600 text-white rounded-xl text-sm"
-                                                >
-                                                  Delete
-                                                </button>
-                                              </div>
-                                            </div>
-
-                                            {/* PRODUCT DROPDOWN */}
-                                            {openProducts === cat.id && (
-                                              <div className="mt-3 ml-3 space-y-3 border-l border-gray-300 dark:border-gray-600 pl-3">
-                                                {(!cat.products ||
-                                                  cat.products.length ===
-                                                    0) && (
-                                                  <p className="text-gray-500 dark:text-gray-400 text-sm">
-                                                    No products in this category.
-                                                  </p>
-                                                )}
-
-                                                {cat.products &&
-                                                  cat.products.map(
-                                                    (product: any) => (
-                                                      <div
-                                                        key={product.id}
-                                                        className="p-3 bg-gray-100 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600"
-                                                      >
-                                                        <div className="flex justify-between items-start">
-                                                          <div>
-                                                            <p className="font-semibold text-gray-900 dark:text-white">
-                                                              {
-                                                                product.brand
-                                                              }{" "}
-                                                              —{" "}
-                                                              {product.name}
-                                                            </p>
-                                                            <p className="text-sm text-gray-500 dark:text-gray-300">
-                                                              Slug:{" "}
-                                                              {product.slug}
-                                                            </p>
-                                                          </div>
-
-                                                          <div className="text-right">
-                                                            <p className="font-medium text-gray-900 dark:text-white">
-                                                              {fmtCurrency(
-                                                                product.price
-                                                              )}
-                                                            </p>
-                                                            {product.original_price && (
-                                                              <p className="text-sm line-through text-gray-500 dark:text-gray-400">
-                                                                {fmtCurrency(
-                                                                  product.original_price
-                                                                )}
-                                                              </p>
-                                                            )}
-                                                          </div>
-                                                        </div>
-
-                                                        {product.description && (
-                                                          <p className="mt-2 text-sm text-gray-700 dark:text-gray-300">
-                                                            {
-                                                              product.description
-                                                            }
-                                                          </p>
-                                                        )}
-
-                                                        <div className="mt-2 flex items-center gap-3">
-                                                          {product.is_trending && (
-                                                            <span className="text-xs bg-yellow-300 text-yellow-900 px-2 py-1 rounded-full">
-                                                              Trending
-                                                            </span>
-                                                          )}
-                                                          {product.is_sale && (
-                                                            <span className="text-xs bg-red-600 text-white px-2 py-1 rounded-full">
-                                                              On Sale
-                                                            </span>
-                                                          )}
-                                                        </div>
-                                                      </div>
-                                                    )
-                                                  )}
-                                              </div>
-                                            )}
-                                          </div>
-                                        ))}
-                                      </div>
-                                    )}
-                                  </div>
-                                ))}
+                        {category.children.length === 0 ? (
+                          <p className="text-sm text-[#7B6530]">No subcategories yet.</p>
+                        ) : (
+                          <div className="space-y-2">
+                            {category.children.map((sub) => (
+                              <div key={sub.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[#EBDDBF] bg-[#FFFDF7] px-3 py-2">
+                                <div>
+                                  <p className="text-sm font-medium text-[#3B2F16]">{sub.name}</p>
+                                  <p className="text-xs text-[#7A6640]">/category/{sub.slug}</p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <a
+                                    href={`/category/${sub.slug}?product_mode=1`}
+                                    className="rounded-lg border border-[#D7BE84] bg-[#FFFCF4] px-2 py-1 text-xs font-semibold text-[#7B6530]"
+                                  >
+                                    Edit Products
+                                  </a>
+                                  <button
+                                    type="button"
+                                    onClick={() => startEdit(sub)}
+                                    className="rounded-lg border border-[#D7BE84] bg-white px-2 py-1 text-xs font-semibold text-[#7B6530]"
+                                  >
+                                    Edit
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => removeCategory(sub.id)}
+                                    className="rounded-lg border border-[#E3B9B9] bg-[#FFF3F3] px-2 py-1 text-xs font-semibold text-[#8C3232]"
+                                  >
+                                    Delete
+                                  </button>
+                                </div>
                               </div>
-                            )}
+                            ))}
                           </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                        )}
 
-          {/* MEN */}
-          <h2 className="text-2xl font-semibold mt-12 mb-4 text-gray-900 dark:text-white">
-            Men Categories
-          </h2>
-
-          <div className="space-y-5">
-            {Object.keys(groupBySubsection(menCategories)).map((sub) => {
-              const catList = groupBySubsection(menCategories)[sub];
-
-              return (
-                <div
-                  key={sub}
-                  className="border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 rounded-xl shadow"
-                >
-                  <button
-                    onClick={() =>
-                      setOpenMen(openMen === sub ? null : sub)
-                    }
-                    className="w-full flex justify-between items-center p-5 text-xl font-semibold text-gray-900 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700 transition"
-                  >
-                    {sub}
-                    <span
-                      className={`transition transform ${
-                        openMen === sub ? "rotate-90" : ""
-                      }`}
-                    >
-                      ▶
-                    </span>
-                  </button>
-
-                  {openMen === sub && (
-                    <div className="ml-6 mt-2 space-y-2">
-                      {catList.map((cat: any) => (
-                        <div
-                          key={cat.id}
-                          className="p-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl"
-                        >
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <p className="font-medium text-gray-900 dark:text-white">
-                                {cat.name}
-                              </p>
-                              <p className="text-gray-500 dark:text-gray-400 text-sm">
-                                Slug: {cat.slug}
-                              </p>
-                            </div>
-
-                            <div className="flex flex-col items-end gap-2">
-                              <button
-                                onClick={() =>
-                                  setOpenProducts(
-                                    openProducts === cat.id ? null : cat.id
-                                  )
-                                }
-                                className="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-sm"
-                              >
-                                {openProducts === cat.id
-                                  ? "Hide Products"
-                                  : "Show Products"}
-                              </button>
-
-                              <button
-                                onClick={() => removeCategory(cat.id)}
-                                className="px-3 py-1 bg-red-500 hover:bg-red-600 text-white rounded-xl text-sm"
-                              >
-                                Delete
-                              </button>
-                            </div>
-                          </div>
-
-                          {openProducts === cat.id && (
-                            <div className="mt-3 ml-3 space-y-3 border-l border-gray-300 dark:border-gray-600 pl-3">
-                              {(!cat.products ||
-                                cat.products.length === 0) && (
-                                <p className="text-gray-500 dark:text-gray-400 text-sm">
-                                  No products in this category.
-                                </p>
-                              )}
-
-                              {cat.products &&
-                                cat.products.map((product: any) => (
-                                  <div
-                                    key={product.id}
-                                    className="p-3 bg-gray-100 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600"
-                                  >
-                                    <div className="flex justify-between items-start">
-                                      <div>
-                                        <p className="font-semibold text-gray-900 dark:text-white">
-                                          {product.brand} — {product.name}
-                                        </p>
-                                        <p className="text-sm text-gray-500 dark:text-gray-300">
-                                          Slug: {product.slug}
-                                        </p>
-                                      </div>
-
-                                      <div className="text-right">
-                                        <p className="font-medium text-gray-900 dark:text-white">
-                                          {fmtCurrency(product.price)}
-                                        </p>
-                                        {product.original_price && (
-                                          <p className="text-sm line-through text-gray-500 dark:text-gray-400">
-                                            {fmtCurrency(
-                                              product.original_price
-                                            )}
-                                          </p>
-                                        )}
-                                      </div>
-                                    </div>
-
-                                    {product.description && (
-                                      <p className="mt-2 text-sm text-gray-700 dark:text-gray-300">
-                                        {product.description}
-                                      </p>
-                                    )}
-
-                                    <div className="mt-2 flex items-center gap-3">
-                                      {product.is_trending && (
-                                        <span className="text-xs bg-yellow-300 text-yellow-900 px-2 py-1 rounded-full">
-                                          Trending
-                                        </span>
-                                      )}
-                                      {product.is_sale && (
-                                        <span className="text-xs bg-red-600 text-white px-2 py-1 rounded-full">
-                                          On Sale
-                                        </span>
-                                      )}
-                                    </div>
-                                  </div>
-                                ))}
-                            </div>
-                          )}
+                        <div className="grid grid-cols-1 gap-2 rounded-xl border border-[#E5D4AF] bg-white p-3 sm:grid-cols-2">
+                          <input
+                            value={subForm.name}
+                            onChange={(event) =>
+                              setNewSubByCategory((prev) => ({
+                                ...prev,
+                                [category.id]: { name: event.target.value },
+                              }))
+                            }
+                            placeholder="Add subcategory (e.g. Bears)"
+                            className="rounded-lg border border-[#DCC99D] px-2 py-2 text-sm"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => createSubcategory(category.id)}
+                            disabled={loading || !subForm.name?.trim()}
+                            className="rounded-lg border border-[#D7BE84] bg-[#FFFCF4] px-3 py-2 text-sm font-semibold text-[#7B6530] disabled:opacity-60"
+                          >
+                            Add Subcategory
+                          </button>
                         </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-
-          {/* WOMEN */}
-          <h2 className="text-2xl font-semibold mt-12 mb-4 text-gray-900 dark:text-white">
-            Women Categories
-          </h2>
-
-          <div className="space-y-5">
-            {Object.keys(groupBySubsection(womenCategories)).map((sub) => {
-              const catList = groupBySubsection(womenCategories)[sub];
-
-              return (
-                <div
-                  key={sub}
-                  className="border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 rounded-xl shadow"
-                >
-                  <button
-                    onClick={() =>
-                      setOpenWomen(openWomen === sub ? null : sub)
-                    }
-                    className="w-full flex justify-between items-center p-5 text-xl font-semibold text-gray-900 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700 transition"
-                  >
-                    {sub}
-                    <span
-                      className={`transition transform ${
-                        openWomen === sub ? "rotate-90" : ""
-                      }`}
-                    >
-                      ▶
-                    </span>
-                  </button>
-
-                  {openWomen === sub && (
-                    <div className="ml-6 mt-2 space-y-2">
-                      {catList.map((cat: any) => (
-                        <div
-                          key={cat.id}
-                          className="p-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl"
-                        >
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <p className="font-medium text-gray-900 dark:text-white">
-                                {cat.name}
-                              </p>
-                              <p className="text-gray-500 dark:text-gray-400 text-sm">
-                                Slug: {cat.slug}
-                              </p>
-                            </div>
-
-                            <div className="flex flex-col items-end gap-2">
-                              <button
-                                onClick={() =>
-                                  setOpenProducts(
-                                    openProducts === cat.id ? null : cat.id
-                                  )
-                                }
-                                className="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-sm"
-                              >
-                                {openProducts === cat.id
-                                  ? "Hide Products"
-                                  : "Show Products"}
-                              </button>
-
-                              <button
-                                onClick={() => removeCategory(cat.id)}
-                                className="px-3 py-1 bg-red-500 hover:bg-red-600 text-white rounded-xl text-sm"
-                              >
-                                Delete
-                              </button>
-                            </div>
-                          </div>
-
-                          {openProducts === cat.id && (
-                            <div className="mt-3 ml-3 space-y-3 border-l border-gray-300 dark:border-gray-600 pl-3">
-                              {(!cat.products ||
-                                cat.products.length === 0) && (
-                                <p className="text-gray-500 dark:text-gray-400 text-sm">
-                                  No products in this category.
-                                </p>
-                              )}
-
-                              {cat.products &&
-                                cat.products.map((product: any) => (
-                                  <div
-                                    key={product.id}
-                                    className="p-3 bg-gray-100 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600"
-                                  >
-                                    <div className="flex justify-between items-start">
-                                      <div>
-                                        <p className="font-semibold text-gray-900 dark:text-white">
-                                          {product.brand} — {product.name}
-                                        </p>
-                                        <p className="text-sm text-gray-500 dark:text-gray-300">
-                                          Slug: {product.slug}
-                                        </p>
-                                      </div>
-
-                                      <div className="text-right">
-                                        <p className="font-medium text-gray-900 dark:text-white">
-                                          {fmtCurrency(product.price)}
-                                        </p>
-                                        {product.original_price && (
-                                          <p className="text-sm line-through text-gray-500 dark:text-gray-400">
-                                            {fmtCurrency(
-                                              product.original_price
-                                            )}
-                                          </p>
-                                        )}
-                                      </div>
-                                    </div>
-
-                                    {product.description && (
-                                      <p className="mt-2 text-sm text-gray-700 dark:text-gray-300">
-                                        {product.description}
-                                      </p>
-                                    )}
-
-                                    <div className="mt-2 flex items-center gap-3">
-                                      {product.is_trending && (
-                                        <span className="text-xs bg-yellow-300 text-yellow-900 px-2 py-1 rounded-full">
-                                          Trending
-                                        </span>
-                                      )}
-                                      {product.is_sale && (
-                                        <span className="text-xs bg-red-600 text-white px-2 py-1 rounded-full">
-                                          On Sale
-                                        </span>
-                                      )}
-                                    </div>
-                                  </div>
-                                ))}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
       </div>

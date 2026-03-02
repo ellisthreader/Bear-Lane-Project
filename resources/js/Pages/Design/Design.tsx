@@ -2,7 +2,6 @@
 
 import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
   import { Head, usePage, router } from "@inertiajs/react";
-  import { ArrowLeft, ArrowRight, X, Shirt, Upload as UploadIcon, Type, Image as ClipartIcon } from "lucide-react";
   import { route } from "ziggy-js";
 
 
@@ -15,13 +14,28 @@ import React, { useState, useMemo, useEffect, useRef, useCallback } from "react"
 import Canvas from "./Canvas/Canvas";
 import { clampPositionAndSize } from "./Canvas/Utils/clampPosition";
 import type { PricePreviewSnapshot } from "./Canvas/Canvas";
+import type {
+  CanvasPosition,
+  CanvasSnapshot,
+  HistorySnapshot,
+  ImageState,
+  Product,
+  ProductVariantOption,
+  SavedDesign,
+  SidebarView,
+  ViewImages,
+  ViewKey,
+} from "./types/designTypes";
 
 import DesignPreview from "./Components/DesignPreview";
+import DesignSidebars from "./Components/DesignSidebars";
+import DesignWorkspaceLayout from "./Components/DesignWorkspaceLayout";
+import SaveDesignDialog from "./Components/SaveDesignDialog";
+import { DesignPageProvider } from "./Context/DesignPageContext";
 import TextProperties from "./Sidebar/TextSideBar/TextProperties/TextProperties";
 import { DEFAULT_TEXT_ALIGN, type TextAlign } from "./Types/Text";
   import MultiSelectPanel from "./Sidebar/MultiSelectPanel";
   import ClipartProperties from "./Sidebar/ClipartSideBar/Properties/ClipartProperties";
-  import SidebarHeader from "./Components/SidebarHeader";
   import ClipartSectionsPage from "./Sidebar/ClipartSideBar/UI/ClipartSectionsPage";
   import BlankSidebar from "./Sidebar/BlankSidebar";
   import DesignNavbar from "./Components/DesignNavbar";
@@ -30,157 +44,48 @@ import { useUser } from "./Sidebar/OtherSideBar/useUser";
 import GetPriceUI from "./Components/GetPriceUI";
 import { useCart } from "../../Context/CartContext";
 import CartSidebar from "@/Components/Cart/CartSidebar";
- 
+import { EMPTY_VIEW_IMAGE_STATES, MAX_DESIGN_NAME_LENGTH, MAX_SAVED_DESIGNS } from "./constants/designConstants";
+import { createEmptyPricePreviewByView } from "./constants/pricePreviewDefaults";
+import { getSidebarTitle } from "./config/sidebarTitles";
+import { deepCloneValue } from "./utils/deepCloneValue";
+import { buildVariantsByColour, getPricePanelAvailableSizes } from "./utils/designVariants";
+import { getSafeProduct } from "./utils/getSafeProduct";
+import { normalizeDesignImages } from "./utils/normalizeDesignImages";
+import { previewSnapshotSignature } from "./utils/previewSnapshotSignature";
+import { buildPricePanelSides } from "./utils/pricePanelSides";
+import { captureCanvasCompositePng } from "./utils/captureCanvasCompositePng";
+import { renderSnapshotToPng } from "./utils/renderSnapshotToPng";
 
+type RestrictedBoxRatio = { left: number; top: number; width: number; height: number };
+type ImageNaturalSize = { width: number; height: number };
 
-
-  export interface Product {
-    id: number;
-    name: string;
-    slug: string;
-    brand?: string;
-    price?: number | string;
-    original_price?: number | string | null;
-    images?: any[];
-    image?: string;
-    colourProducts?: any[];
-    sizes?: string[];
-    categories?: any[];
-  }
-
-
-
-  export type CanvasPosition = {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-    scale: number;
-  };
-
-export type ImageState = {
-  url: string;
-  type: "image" | "text";
-  isClipart?: boolean;
-  isSvg?: boolean;
-  text?: string;
-  fontFamily?: string;
-  rotation: number;
-  flip: "none" | "horizontal" | "vertical";
-  size: { w: number; h: number };
-  color?: string;
-  borderColor?: string;
-  borderWidth?: number;
-  canvasPositions?: Record<string, CanvasPosition>;
-  restrictedBox?: { x: number; y: number; w: number; h: number };
-  original: {
-    url: string;
-    rotation: number;
-    flip: "none" | "horizontal" | "vertical";
-    size: { w: number; h: number };
-    text?: string;
-    fontFamily?: string;
-    fontSize?: number;
-    borderColor?: string;
-    borderWidth?: number;
-    color?: string;
-    renderKey?: string;
-    textAlign?: TextAlign;
-  };
-  fontSize?: number;
-  textAlign?: TextAlign;
-  width?: number;
-  renderKey?: string;
+const normalizeImageBoxKey = (value: unknown): string => {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "";
+  return raw.replace(/^https?:\/\/[^/]+/i, "");
 };
 
-  export type ViewKey = "front" | "back" | "leftSleeve" | "rightSleeve";
-  const MAX_DESIGN_NAME_LENGTH = 60;
-
-  type SavedDesignPayload = {
-    viewImageStates: Record<ViewKey, Record<string, ImageState>>;
-    positions: Record<string, CanvasPosition>;
-    sizes: Record<string, { w: number; h: number }>;
-    uploadedImages: string[];
-    currentViewKey: ViewKey;
-    selectedColour: string | null;
-    selectedSize: string | null;
-    baseViewImages?: Partial<Record<ViewKey, string>>;
-    previewByView?: Partial<Record<ViewKey, PricePreviewSnapshot>>;
-  };
-
-  type SavedDesign = {
-    id: number;
-    name: string;
-    product: {
-      id: number;
-      name: string;
-      slug: string;
-      images?: string[];
-    } | null;
-    previewImage?: string | null;
-    updatedAt?: string;
-    payload?: SavedDesignPayload;
-  };
-
-  const EMPTY_VIEW_IMAGE_STATES: Record<ViewKey, Record<string, ImageState>> = {
-    front: {},
-    back: {},
-    leftSleeve: {},
-    rightSleeve: {},
-  };
-
-  type CanvasSnapshot = {
-    positions: Record<string, CanvasPosition>;
-    sizes: Record<string, { w: number; h: number }>;
-    viewImageStates: Record<ViewKey, Record<string, ImageState>>;
-    currentViewKey: ViewKey;
-    selectedUploadedImage: string | null;
-    selectedText: string | null;
-  };
-
-  const deepCloneValue = <T,>(value: T): T => {
-    if (typeof structuredClone === "function") {
-      return structuredClone(value);
-    }
-    return JSON.parse(JSON.stringify(value));
-  };
-
-  type SidebarView =
-    | "blank"
-    | "product"
-    | "upload"
-    | "text"
-    | "clipart"
-    | "clipart-sections"
-    | "clipart-properties"
-    | "my-designs";
-
-  function previewSnapshotSignature(snapshot?: PricePreviewSnapshot): string {
-    if (!snapshot) return "";
-
-    return JSON.stringify({
-      baseImage: snapshot.baseImage,
-      canvasWidth: snapshot.canvasWidth,
-      canvasHeight: snapshot.canvasHeight,
-      restrictedBox: snapshot.restrictedBox,
-      layers: snapshot.layers.map(layer => ({
-        uid: layer.uid,
-        type: layer.type,
-        url: layer.url ?? "",
-        text: layer.text ?? "",
-        position: layer.position,
-        size: layer.size,
-        rotation: layer.rotation,
-        flip: layer.flip,
-        color: layer.color ?? "",
-        borderColor: layer.borderColor ?? "",
-        borderWidth: layer.borderWidth ?? 0,
-        fontFamily: layer.fontFamily ?? "",
-        fontSize: layer.fontSize ?? 0,
-      })),
-    });
+const isRestrictedBoxRatioValid = (value: unknown): value is RestrictedBoxRatio => {
+  if (!value || typeof value !== "object") return false;
+  const box = value as RestrictedBoxRatio;
+  if (![box.left, box.top, box.width, box.height].every((part) => Number.isFinite(Number(part)))) {
+    return false;
   }
-    
+
+  const left = Number(box.left);
+  const top = Number(box.top);
+  const width = Number(box.width);
+  const height = Number(box.height);
+
+  if (left < 0 || top < 0 || width <= 0 || height <= 0) return false;
+  if (left >= 1 || top >= 1 || width > 1 || height > 1) return false;
+  if (left + width > 1 || top + height > 1) return false;
+  return true;
+};
+
+const isNaturalSizeValid = (size: ImageNaturalSize | undefined): size is ImageNaturalSize =>
+  Boolean(size && size.width > 0 && size.height > 0);
+ 
 
   export default function Design() {
     const { props } = usePage();
@@ -207,25 +112,15 @@ export type ImageState = {
   const [currentProduct, setCurrentProduct] = useState<Product | null>(product ?? null);
 
   // 2️⃣ Create safeProduct after currentProduct exists
-  const safeProduct: Product = currentProduct ?? {
-    id: 0,
-    name: "Unknown",
-    brand: "",
-    slug: "",
-    images: [],
-    sizes: [],
-    colourProducts: [],
-    categories: [],
-  };
+  const safeProduct: Product = getSafeProduct(currentProduct);
 
   // 3️⃣ Optional: safe name
   const safeName: string = safeProduct.name ?? "Unknown";
 
 
     // ---------------- STATES ----------------
-    const [currentViewKey, setCurrentViewKey] = useState<"front" | "back" | "leftSleeve" | "rightSleeve">("front");
+    const [currentViewKey, setCurrentViewKey] = useState<ViewKey>("front");
     const [isChangeProductModalOpen, setIsChangeProductModalOpen] = useState(false);
-    type ViewKey = "front" | "back" | "leftSleeve" | "rightSleeve";
 
     const [viewImageStates, setViewImageStates] = useState<Record<ViewKey, Record<string, ImageState>>>(EMPTY_VIEW_IMAGE_STATES);
     const [savedDesigns, setSavedDesigns] = useState<SavedDesign[]>(Array.isArray(propSavedDesigns) ? propSavedDesigns : []);
@@ -309,15 +204,83 @@ export type ImageState = {
     if (!ok) return;
   }
 
+  if (mode === "new" && savedDesigns.length >= MAX_SAVED_DESIGNS) {
+    setSaveDialogError(`You can only save up to ${MAX_SAVED_DESIGNS} designs. Delete one to save a new design.`);
+    return;
+  }
+
   setIsSavingDesign(true);
   setSaveDialogError(null);
+  // Let any pending drag/resize state propagation settle before snapshotting.
+  await new Promise<void>(resolve => {
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => resolve());
+    });
+  });
 
   const persistedViewImageStates = structuredClone(viewImageStates) as Record<
     ViewKey,
     Record<string, ImageState>
   >;
 
+  const bakeLiveTextPositions = () => {
+    const canvasRect = canvasRef.current?.getBoundingClientRect();
+    if (!canvasRect) return;
+
+    const currentViewState = persistedViewImageStates[currentViewKey] ?? {};
+    const nextViewState = { ...currentViewState };
+
+    Object.entries(currentViewState).forEach(([uid, layer]) => {
+      if (layer?.type !== "text") return;
+      const element = document.querySelector<HTMLElement>(
+        `[data-uid="${CSS.escape(uid)}"][data-type="text"]`
+      );
+      if (!element) return;
+
+      const rect = element.getBoundingClientRect();
+      const x = Number((rect.left - canvasRect.left).toFixed(2));
+      const y = Number((rect.top - canvasRect.top).toFixed(2));
+      const width = Number(rect.width.toFixed(1));
+      const height = Number(rect.height.toFixed(1));
+
+      nextViewState[uid] = {
+        ...layer,
+        size: { w: width, h: height },
+        canvasPositions: {
+          ...(layer.canvasPositions ?? {}),
+          [currentViewKey]: {
+            ...(layer.canvasPositions?.[currentViewKey] ?? {}),
+            x,
+            y,
+            width,
+            height,
+            scale: layer.canvasPositions?.[currentViewKey]?.scale ?? 1,
+            relX:
+              restrictedBox.width > 0
+                ? (x - restrictedBox.left) / restrictedBox.width
+                : undefined,
+            relY:
+              restrictedBox.height > 0
+                ? (y - restrictedBox.top) / restrictedBox.height
+                : undefined,
+            relW:
+              restrictedBox.width > 0 ? width / restrictedBox.width : undefined,
+            relH:
+              restrictedBox.height > 0 ? height / restrictedBox.height : undefined,
+          },
+        },
+      };
+    });
+
+    persistedViewImageStates[currentViewKey] = nextViewState;
+  };
+
+  // Source of truth is the live per-view canvasPositions kept in viewImageStates by Canvas.
+  // Do not overwrite with parent-level positions state, which can lag during drag interactions.
+  bakeLiveTextPositions();
+
   (Object.keys(pricePreviewByView) as ViewKey[]).forEach(view => {
+    if (view === currentViewKey) return;
     const snapshot = pricePreviewByView[view];
     if (!snapshot?.layers?.length) return;
 
@@ -360,6 +323,181 @@ export type ImageState = {
     });
   });
 
+  const canonicalCurrentViewPositions = Object.entries(
+    persistedViewImageStates[currentViewKey] ?? {}
+  ).reduce<Record<string, CanvasPosition>>((acc, [uid, layer]) => {
+    const position = layer?.canvasPositions?.[currentViewKey];
+    if (!position) return acc;
+    acc[uid] = {
+      x: Number(position.x),
+      y: Number(position.y),
+      width: Number(position.width),
+      height: Number(position.height),
+      scale: Number(position.scale ?? 1),
+      ...(typeof (position as any).relX === "number"
+        ? {
+            relX: Number((position as any).relX),
+            relY: Number((position as any).relY),
+            relW: Number((position as any).relW),
+            relH: Number((position as any).relH),
+          }
+        : {}),
+    };
+    return acc;
+  }, {});
+
+  const canonicalCurrentViewSizes = Object.entries(
+    persistedViewImageStates[currentViewKey] ?? {}
+  ).reduce<Record<string, { w: number; h: number }>>((acc, [uid, layer]) => {
+    const position = layer?.canvasPositions?.[currentViewKey];
+    if (position?.width && position?.height) {
+      acc[uid] = { w: Number(position.width), h: Number(position.height) };
+      return acc;
+    }
+    if (layer?.size?.w && layer?.size?.h) {
+      acc[uid] = { w: Number(layer.size.w), h: Number(layer.size.h) };
+    }
+    return acc;
+  }, {});
+
+  const currentViewSnapshot: PricePreviewSnapshot = {
+    baseImage: viewImages[currentViewKey] ?? "",
+    canvasWidth: Math.max(1, Math.round(canvasSize.width || 0)),
+    canvasHeight: Math.max(1, Math.round(canvasSize.height || 0)),
+    restrictedBox: {
+      left: restrictedBox.left,
+      top: restrictedBox.top,
+      width: restrictedBox.width,
+      height: restrictedBox.height,
+    },
+    layers: Object.entries(persistedViewImageStates[currentViewKey] ?? {})
+      .map(([uid, layer]) => {
+        const canonicalPosition = canonicalCurrentViewPositions[uid];
+        const savedCanvasPosition = layer?.canvasPositions?.[currentViewKey];
+        const sizeFromCanonical = canonicalCurrentViewSizes[uid];
+        const sizeFromLayer = layer?.size;
+        const width = Number(
+          sizeFromCanonical?.w ??
+            savedCanvasPosition?.width ??
+            sizeFromLayer?.w ??
+            0
+        );
+        const height = Number(
+          sizeFromCanonical?.h ??
+            savedCanvasPosition?.height ??
+            sizeFromLayer?.h ??
+            0
+        );
+        const x = Number(canonicalPosition?.x ?? savedCanvasPosition?.x ?? 0);
+        const y = Number(canonicalPosition?.y ?? savedCanvasPosition?.y ?? 0);
+
+        if (width <= 0 || height <= 0) return null;
+
+        return {
+          uid,
+          type:
+            layer.type === "text"
+              ? "text"
+              : layer.isClipart
+              ? "clipart"
+              : "image",
+          url: layer.url,
+          text: layer.text,
+          position: { x, y },
+          size: { w: width, h: height },
+          rotation: Number(layer.rotation ?? 0),
+          flip: layer.flip ?? "none",
+          color: layer.color,
+          borderColor: layer.borderColor,
+          borderWidth: layer.borderWidth,
+          fontFamily: layer.fontFamily,
+          fontSize: layer.fontSize,
+          textAlign: layer.textAlign,
+        };
+      })
+      .filter((layer): layer is NonNullable<typeof layer> => layer !== null),
+  };
+
+  const buildViewSnapshotForSave = (viewKey: ViewKey): PricePreviewSnapshot => {
+    const seeded = pricePreviewByView[viewKey];
+    const viewState = persistedViewImageStates[viewKey] ?? {};
+
+    const layers = Object.entries(viewState)
+      .map(([uid, layer]) => {
+        const savedCanvasPosition = layer?.canvasPositions?.[viewKey];
+        const width = Number(savedCanvasPosition?.width ?? layer?.size?.w ?? 0);
+        const height = Number(savedCanvasPosition?.height ?? layer?.size?.h ?? 0);
+        const x = Number(savedCanvasPosition?.x ?? 0);
+        const y = Number(savedCanvasPosition?.y ?? 0);
+        if (width <= 0 || height <= 0) return null;
+
+        return {
+          uid,
+          type:
+            layer.type === "text"
+              ? "text"
+              : layer.isClipart
+              ? "clipart"
+              : "image",
+          url: layer.url,
+          text: layer.text,
+          position: { x, y },
+          size: { w: width, h: height },
+          rotation: Number(layer.rotation ?? 0),
+          flip: layer.flip ?? "none",
+          color: layer.color,
+          borderColor: layer.borderColor,
+          borderWidth: layer.borderWidth,
+          fontFamily: layer.fontFamily,
+          fontSize: layer.fontSize,
+          textAlign: layer.textAlign,
+        };
+      })
+      .filter((layer): layer is NonNullable<typeof layer> => layer !== null);
+
+    return {
+      baseImage: viewImages[viewKey] ?? seeded?.baseImage ?? "",
+      canvasWidth: Math.max(1, Math.round(canvasSize.width || seeded?.canvasWidth || 0)),
+      canvasHeight: Math.max(1, Math.round(canvasSize.height || seeded?.canvasHeight || 0)),
+      restrictedBox: seeded?.restrictedBox ?? {
+        left: restrictedBox.left,
+        top: restrictedBox.top,
+        width: restrictedBox.width,
+        height: restrictedBox.height,
+      },
+      layers: layers.length > 0 ? layers : seeded?.layers ?? [],
+    };
+  };
+
+  const previewByViewForSave: Record<ViewKey, PricePreviewSnapshot | undefined> = {
+    front: buildViewSnapshotForSave("front"),
+    back: buildViewSnapshotForSave("back"),
+    leftSleeve: buildViewSnapshotForSave("leftSleeve"),
+    rightSleeve: buildViewSnapshotForSave("rightSleeve"),
+  };
+  previewByViewForSave[currentViewKey] = currentViewSnapshot;
+  const compositePngByView: Partial<Record<ViewKey, string>> = {};
+  const orderedViews: ViewKey[] = ["front", "back", "leftSleeve", "rightSleeve"];
+  const exactCurrentViewPng = await captureCanvasCompositePng(canvasRef.current);
+  if (exactCurrentViewPng) {
+    compositePngByView[currentViewKey] = exactCurrentViewPng;
+  }
+
+  for (const viewKey of orderedViews) {
+    if (compositePngByView[viewKey]) continue;
+    const snapshot = previewByViewForSave[viewKey] ?? buildViewSnapshotForSave(viewKey);
+    const snapshotPng = await renderSnapshotToPng(snapshot);
+    if (snapshotPng) {
+      compositePngByView[viewKey] = snapshotPng;
+    }
+  }
+
+  if (!compositePngByView[currentViewKey]) {
+    setSaveDialogError("Could not capture the current side PNG. Please try again.");
+    setIsSavingDesign(false);
+    return;
+  }
+
   const csrfToken = document
     .querySelector('meta[name="csrf-token"]')
     ?.getAttribute("content");
@@ -382,14 +520,15 @@ export type ImageState = {
         product_id: safeProduct.id,
         payload: {
           viewImageStates: persistedViewImageStates,
-          positions,
-          sizes,
+          positions: canonicalCurrentViewPositions,
+          sizes: canonicalCurrentViewSizes,
           uploadedImages,
           currentViewKey,
           selectedColour,
           selectedSize,
           baseViewImages: viewImages,
-          previewByView: pricePreviewByView,
+          previewByView: previewByViewForSave,
+          compositePngByView,
         },
       }),
     });
@@ -439,8 +578,6 @@ export type ImageState = {
 
 
   const handleGetPrice = () => {
-    console.log("GET PRICE CLICKED");
-
     const initialColour = selectedColour ?? uniqueColours[0] ?? null;
     if (initialColour && initialColour !== selectedColour) {
       setSelectedColour(initialColour);
@@ -499,11 +636,13 @@ export type ImageState = {
     sizeBreakdown,
     unitPrice,
     previewSnapshot,
+    previewByView,
   }: {
     quantity: number;
     sizeBreakdown: Record<string, number>;
     unitPrice: number;
     previewSnapshot?: PricePreviewSnapshot;
+    previewByView?: Partial<Record<ViewKey, PricePreviewSnapshot>>;
   }) => {
     const sizeEntries = Object.entries(sizeBreakdown).filter(([, qty]) => qty > 0);
     const fallbackSize = selectedSize ?? safeProduct.sizes?.[0] ?? "One Size";
@@ -520,6 +659,7 @@ export type ImageState = {
           availableSizes: safeProduct.sizes ?? [],
           quantity: qty,
           previewSnapshot,
+          previewByView,
         });
       });
     } else {
@@ -533,10 +673,11 @@ export type ImageState = {
         availableSizes: safeProduct.sizes ?? [],
         quantity: Math.max(quantity, 1),
         previewSnapshot,
+        previewByView,
       });
     }
 
-    setIsPricePanelOpen(false);
+    closePricePanel();
   };
 
   const handleBuyNowFromPrice = ({
@@ -544,13 +685,15 @@ export type ImageState = {
     sizeBreakdown,
     unitPrice,
     previewSnapshot,
+    previewByView,
   }: {
     quantity: number;
     sizeBreakdown: Record<string, number>;
     unitPrice: number;
     previewSnapshot?: PricePreviewSnapshot;
+    previewByView?: Partial<Record<ViewKey, PricePreviewSnapshot>>;
   }) => {
-    handleAddToCartFromPrice({ quantity, sizeBreakdown, unitPrice, previewSnapshot });
+    handleAddToCartFromPrice({ quantity, sizeBreakdown, unitPrice, previewSnapshot, previewByView });
     router.get("/checkout");
   };
 
@@ -563,7 +706,7 @@ export type ImageState = {
     const pricePanelRef = useRef<HTMLDivElement | null>(null);
     const canvasResizeGuardRef = useRef(isPricePanelOpen);
     const triggerCanvasResizeRef = useRef<() => void>(() => {});
-    const [selectedObjects, setSelectedObjects] = useState<string[]>([]);
+  const [selectedObjects, setSelectedObjects] = useState<string[]>([]);
     const [replaceClipartId, setReplaceClipartId] = useState<string | null>(null);
     const [positions, setPositions] = useState<Record<string, {
       
@@ -580,73 +723,139 @@ export type ImageState = {
     const [sizes, setSizes] = useState<Record<string, { w: number; h: number }>>({});
     const canvasSnapshotRef = useRef<CanvasSnapshot | null>(null);
 
-    const normalizeImages = (images: any[]) =>
-    (images ?? []).map(img => (typeof img === "string" ? img : img.url ?? img.path ?? ""));
-
   const [displayImages, setDisplayImages] = useState<string[]>(
-    normalizeImages(currentProduct?.images ?? [])
+    normalizeDesignImages(currentProduct?.images ?? [])
   );
   
   // === ADD THIS ===
-const viewImages = useMemo(() => {
+const viewImages = useMemo<ViewImages>(() => {
   return {
     front: displayImages[0] ?? "",
     back: displayImages[1] ?? "",
-    rightSleeve: displayImages[2] ?? "",
-    leftSleeve: displayImages[3] ?? "",
+    leftSleeve: displayImages[2] ?? "",
+    rightSleeve: displayImages[3] ?? "",
   };
 }, [displayImages]);
 
-const [pricePreviewByView, setPricePreviewByView] = useState<Record<ViewKey, PricePreviewSnapshot | undefined>>({
-  front: undefined,
-  back: undefined,
-  leftSleeve: undefined,
-  rightSleeve: undefined,
-});
+const [viewImageNaturalSizes, setViewImageNaturalSizes] = useState<Record<string, ImageNaturalSize>>({});
+
+useEffect(() => {
+  const sources = Object.values(viewImages).filter(Boolean);
+  if (sources.length === 0) return;
+
+  let cancelled = false;
+  sources.forEach((src) => {
+    const key = normalizeImageBoxKey(src);
+    if (!key || isNaturalSizeValid(viewImageNaturalSizes[key])) return;
+
+    const img = new window.Image();
+    img.onload = () => {
+      if (cancelled) return;
+      const width = Number(img.naturalWidth || 0);
+      const height = Number(img.naturalHeight || 0);
+      if (width <= 0 || height <= 0) return;
+
+      setViewImageNaturalSizes((prev) => {
+        if (isNaturalSizeValid(prev[key])) return prev;
+        return {
+          ...prev,
+          [key]: { width, height },
+        };
+      });
+    };
+    img.src = src;
+  });
+
+  return () => {
+    cancelled = true;
+  };
+}, [viewImages, viewImageNaturalSizes]);
+
+const [pricePreviewByView, setPricePreviewByView] =
+  useState<Record<ViewKey, PricePreviewSnapshot | undefined>>(createEmptyPricePreviewByView);
 
 const pricePanelSides = useMemo(
-  () => [
-    {
-      key: "front" as const,
-      pictureNumber: 1 as const,
-      label: "Front",
-      edited: Object.keys(viewImageStates.front ?? {}).length > 0,
-      imageSrc: viewImages.front,
-      preview: pricePreviewByView.front,
-    },
-    {
-      key: "back" as const,
-      pictureNumber: 2 as const,
-      label: "Back",
-      edited: Object.keys(viewImageStates.back ?? {}).length > 0,
-      imageSrc: viewImages.back,
-      preview: pricePreviewByView.back,
-    },
-    {
-      key: "rightSleeve" as const,
-      pictureNumber: 3 as const,
-      label: "Right Sleeve",
-      edited: Object.keys(viewImageStates.rightSleeve ?? {}).length > 0,
-      imageSrc: viewImages.rightSleeve,
-      preview: pricePreviewByView.rightSleeve,
-    },
-    {
-      key: "leftSleeve" as const,
-      pictureNumber: 4 as const,
-      label: "Left Sleeve",
-      edited: Object.keys(viewImageStates.leftSleeve ?? {}).length > 0,
-      imageSrc: viewImages.leftSleeve,
-      preview: pricePreviewByView.leftSleeve,
-    },
-  ],
+  () => buildPricePanelSides(viewImageStates, viewImages, pricePreviewByView),
   [viewImageStates, viewImages, pricePreviewByView]
 );
 
   const captureCanvasSnapshot = useCallback(() => {
+    const canonicalPositions = deepCloneValue(positions);
+    const canonicalSizes = deepCloneValue(sizes);
+    const canonicalViewImageStates = deepCloneValue(viewImageStates);
+    const currentViewState = canonicalViewImageStates[currentViewKey] ?? {};
+    const canvasRect = canvasRef.current?.getBoundingClientRect();
+
+    Object.entries(currentViewState).forEach(([uid, layer]) => {
+      const existingPosition = canonicalPositions[uid];
+      const fallbackSize = canonicalSizes[uid] ?? layer.size;
+      const existingScale =
+        layer.canvasPositions?.[currentViewKey]?.scale ??
+        existingPosition?.scale ??
+        1;
+
+      let x = layer.canvasPositions?.[currentViewKey]?.x ?? existingPosition?.x;
+      let y = layer.canvasPositions?.[currentViewKey]?.y ?? existingPosition?.y;
+      let width =
+        layer.canvasPositions?.[currentViewKey]?.width ??
+        fallbackSize?.w ??
+        existingPosition?.width;
+      let height =
+        layer.canvasPositions?.[currentViewKey]?.height ??
+        fallbackSize?.h ??
+        existingPosition?.height;
+
+      if (layer.type === "text" && canvasRect) {
+        const element = document.querySelector<HTMLElement>(
+          `[data-uid="${CSS.escape(uid)}"][data-type="text"]`
+        );
+        if (element) {
+          const rect = element.getBoundingClientRect();
+          x = Number((rect.left - canvasRect.left).toFixed(2));
+          y = Number((rect.top - canvasRect.top).toFixed(2));
+          width = Number(rect.width.toFixed(1));
+          height = Number(rect.height.toFixed(1));
+        }
+      }
+
+      if (
+        x === undefined ||
+        y === undefined ||
+        width === undefined ||
+        height === undefined
+      ) {
+        return;
+      }
+
+      canonicalPositions[uid] = {
+        x,
+        y,
+        width,
+        height,
+        scale: existingScale,
+      };
+      canonicalSizes[uid] = { w: width, h: height };
+      currentViewState[uid] = {
+        ...layer,
+        size: { w: width, h: height },
+        canvasPositions: {
+          ...(layer.canvasPositions ?? {}),
+          [currentViewKey]: {
+            ...(layer.canvasPositions?.[currentViewKey] ?? {}),
+            x,
+            y,
+            width,
+            height,
+            scale: existingScale,
+          },
+        },
+      };
+    });
+
     canvasSnapshotRef.current = {
-      positions: deepCloneValue(positions),
-      sizes: deepCloneValue(sizes),
-      viewImageStates: deepCloneValue(viewImageStates),
+      positions: canonicalPositions,
+      sizes: canonicalSizes,
+      viewImageStates: canonicalViewImageStates,
       currentViewKey,
       selectedUploadedImage,
       selectedText,
@@ -658,6 +867,7 @@ const pricePanelSides = useMemo(
     currentViewKey,
     selectedUploadedImage,
     selectedText,
+    canvasRef,
   ]);
 
   const applyCanvasSnapshot = useCallback(
@@ -686,13 +896,18 @@ const pricePanelSides = useMemo(
     ]
   );
 
-  const restoreCanvasSnapshot = useCallback(() => {
-    applyCanvasSnapshot(true);
+  const closePricePanel = useCallback(() => {
+    setIsPricePanelOpen(false);
+    window.requestAnimationFrame(() => {
+      applyCanvasSnapshot(true);
+      window.requestAnimationFrame(() => {
+        triggerCanvasResizeRef.current();
+      });
+    });
   }, [applyCanvasSnapshot]);
 
   // ---------------- UTILS ----------------
   const setSelectedUploadedImageWithLog = (uid: string | null) => {
-    console.log("🟢 setSelectedUploadedImage called:", uid);
     setSelectedUploadedImage(uid);
 
     // If an uploaded image is selected, always switch sidebar to Upload
@@ -701,14 +916,94 @@ const pricePanelSides = useMemo(
     }
   };
 
+    const restrictedBoxesByImageKey = useMemo<Record<string, RestrictedBoxRatio>>(() => {
+      const merged: Record<string, RestrictedBoxRatio> = {};
+      const attachBox = (rawKey: unknown, rawBox: unknown) => {
+        const key = normalizeImageBoxKey(rawKey);
+        if (!key || !isRestrictedBoxRatioValid(rawBox)) return;
+        merged[key] = {
+          left: Number(rawBox.left),
+          top: Number(rawBox.top),
+          width: Number(rawBox.width),
+          height: Number(rawBox.height),
+        };
+      };
+
+      const productImageBoxes = (currentProduct as any)?.image_boxes ?? {};
+      Object.entries(productImageBoxes).forEach(([key, box]) => attachBox(key, box));
+
+      const colourProducts = (currentProduct as any)?.colourProducts ?? [];
+      colourProducts.forEach((colourProduct: any) => {
+        Object.entries(colourProduct?.image_boxes ?? {}).forEach(([key, box]) => attachBox(key, box));
+      });
+
+      return merged;
+    }, [currentProduct]);
+
+    const activeViewImage = viewImages[currentViewKey] ?? "";
+    const activeViewImageKey = normalizeImageBoxKey(activeViewImage);
+    const activeRestrictedBoxRatio = useMemo<RestrictedBoxRatio | null>(() => {
+      if (!activeViewImage) return null;
+      if (activeViewImageKey && restrictedBoxesByImageKey[activeViewImageKey]) {
+        return restrictedBoxesByImageKey[activeViewImageKey];
+      }
+      return null;
+    }, [activeViewImage, activeViewImageKey, restrictedBoxesByImageKey]);
+
+    const renderedImageRect = useMemo(() => {
+      const canvasWidth = canvasSize.width;
+      const canvasHeight = canvasSize.height;
+      const fallback = {
+        left: 0,
+        top: 0,
+        width: canvasWidth,
+        height: canvasHeight,
+      };
+
+      if (canvasWidth <= 0 || canvasHeight <= 0) {
+        return fallback;
+      }
+
+      const naturalSize = activeViewImageKey ? viewImageNaturalSizes[activeViewImageKey] : undefined;
+      if (!isNaturalSizeValid(naturalSize)) {
+        return fallback;
+      }
+
+      const imageAspect = naturalSize.width / naturalSize.height;
+      const canvasAspect = canvasWidth / canvasHeight;
+      if (!Number.isFinite(imageAspect) || imageAspect <= 0 || !Number.isFinite(canvasAspect) || canvasAspect <= 0) {
+        return fallback;
+      }
+
+      if (imageAspect > canvasAspect) {
+        const width = canvasWidth;
+        const height = width / imageAspect;
+        return {
+          left: 0,
+          top: (canvasHeight - height) / 2,
+          width,
+          height,
+        };
+      }
+
+      const height = canvasHeight;
+      const width = height * imageAspect;
+      return {
+        left: (canvasWidth - width) / 2,
+        top: 0,
+        width,
+        height,
+      };
+    }, [activeViewImageKey, canvasSize.height, canvasSize.width, viewImageNaturalSizes]);
+
     const restrictedBox = useMemo(
       () => ({
-        left: canvasSize.width * 0.367,
-        top: canvasSize.height * 0.1,
-        width: canvasSize.width * 0.26,
-        height: canvasSize.height * 0.65,
+        left: renderedImageRect.left + renderedImageRect.width * (activeRestrictedBoxRatio?.left ?? 0),
+        top: renderedImageRect.top + renderedImageRect.height * (activeRestrictedBoxRatio?.top ?? 0),
+        width: renderedImageRect.width * (activeRestrictedBoxRatio?.width ?? 1),
+        height: renderedImageRect.height * (activeRestrictedBoxRatio?.height ?? 1),
       }),
-      [canvasSize]
+      [activeRestrictedBoxRatio, renderedImageRect]
     );
     const isRestrictedBoxReady = restrictedBox.width > 0 && restrictedBox.height > 0;
 
@@ -901,24 +1196,10 @@ const pricePanelSides = useMemo(
       setSidebarStack(["blank"]);
     };
 
-  const variantsByColour = useMemo(() => {
-    const grouped: Record<string, any[]> = {};
-    if (!currentProduct) return grouped;
-
-    (currentProduct.colourProducts ?? []).forEach(cp => {
-      const colour = cp.colour;
-      const sizes = cp.sizes ?? [];
-      const images = cp.images ?? currentProduct.images ?? [];
-      if (!grouped[colour]) grouped[colour] = [];
-      if (sizes.length) {
-        sizes.forEach(s => grouped[colour].push({ colour, size: s, images }));
-      } else {
-        grouped[colour].push({ colour, size: undefined, images });
-      }
-    });
-
-    return grouped;
-  }, [currentProduct]);
+  const variantsByColour = useMemo<Record<string, ProductVariantOption[]>>(
+    () => buildVariantsByColour(currentProduct),
+    [currentProduct]
+  );
 
 
 
@@ -926,26 +1207,16 @@ const pricePanelSides = useMemo(
     const [selectedColour, setSelectedColour] = useState<string | null>(null);
     const [selectedSize, setSelectedSize] = useState<string | null>(null);
 
-const pricePanelAvailableSizes = useMemo(() => {
-  const effectiveColour =
-    selectedColour && variantsByColour[selectedColour]?.length
-      ? selectedColour
-      : uniqueColours[0];
-
-  if (effectiveColour && variantsByColour[effectiveColour]?.length) {
-    const sizesForColour = variantsByColour[effectiveColour]
-      .map(v => v.size)
-      .filter((size): size is string => typeof size === "string" && size.trim().length > 0);
-
-    const deduped = Array.from(new Set(sizesForColour));
-    if (deduped.length > 0) return deduped;
-  }
-
-  const fallbackSizes = (safeProduct.sizes ?? []).filter(
-    (size): size is string => typeof size === "string" && size.trim().length > 0
-  );
-  return Array.from(new Set(fallbackSizes));
-}, [selectedColour, uniqueColours, variantsByColour, safeProduct.sizes]);
+const pricePanelAvailableSizes = useMemo(
+  () =>
+    getPricePanelAvailableSizes(
+      selectedColour,
+      uniqueColours,
+      variantsByColour,
+      safeProduct.sizes ?? []
+    ),
+  [selectedColour, uniqueColours, variantsByColour, safeProduct.sizes]
+);
 
 
 
@@ -975,6 +1246,8 @@ const pricePanelAvailableSizes = useMemo(() => {
   }, [initialSavedDesign, safeName]);
 
   const hasAppliedInitialSavedDesign = useRef(false);
+  const loadDiagnosticLoggedRef = useRef(false);
+  const lastAppliedPropSelectionKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     const payload = (initialSavedDesign as SavedDesign | null)?.payload;
@@ -1009,22 +1282,31 @@ const pricePanelAvailableSizes = useMemo(() => {
         const relH =
           snapshot.restrictedBox.height > 0 ? layer.size.h / snapshot.restrictedBox.height : 0;
 
+        const existingCanvasPosition = existing.canvasPositions?.[viewKey];
         hydratedViewImageStates[viewKey][layer.uid] = {
           ...existing,
           size: { w: layer.size.w, h: layer.size.h },
           canvasPositions: {
             ...(existing.canvasPositions ?? {}),
-            [viewKey]: {
-              x: layer.position.x,
-              y: layer.position.y,
-              width: layer.size.w,
-              height: layer.size.h,
-              scale: 1,
-              relX,
-              relY,
-              relW,
-              relH,
-            },
+            [viewKey]: existingCanvasPosition
+              ? {
+                  ...existingCanvasPosition,
+                  relX,
+                  relY,
+                  relW,
+                  relH,
+                }
+              : {
+                  x: layer.position.x,
+                  y: layer.position.y,
+                  width: layer.size.w,
+                  height: layer.size.h,
+                  scale: 1,
+                  relX,
+                  relY,
+                  relW,
+                  relH,
+                },
           },
           ...(existing.type === "text" && layer.fontSize
             ? { fontSize: layer.fontSize }
@@ -1057,34 +1339,104 @@ const pricePanelAvailableSizes = useMemo(() => {
     }
 
     const mergedPositions = {
-      ...(payload.positions ?? {}),
       ...seededPositionsFromPreview,
+      ...(payload.positions ?? {}),
     };
     const mergedSizes = {
-      ...(payload.sizes ?? {}),
       ...seededSizesFromPreview,
+      ...(payload.sizes ?? {}),
     };
 
-    console.groupCollapsed("[Design Restore] Hydrating saved design payload");
-    console.log("savedDesignId:", (initialSavedDesign as SavedDesign | null)?.id ?? null);
-    console.log("views in payload.viewImageStates:", Object.keys(payload.viewImageStates ?? {}));
-    console.log("views in payload.previewByView:", Object.keys(payload.previewByView ?? {}));
-    console.log(
-      "layer counts by view:",
-      (Object.keys(hydratedViewImageStates) as ViewKey[]).reduce<Record<string, number>>(
-        (acc, key) => {
-          acc[key] = Object.keys(hydratedViewImageStates[key] ?? {}).length;
-          return acc;
-        },
-        {}
-      )
-    );
-    console.log("front snapshot seeded positions:", Object.keys(seededPositionsFromPreview).length);
-    console.groupEnd();
+    const viewKeyForPersistedPositions: ViewKey = payload.currentViewKey ?? "front";
+    const applyPersistedCanvasMetadata = (
+      state: Record<string, ImageState>,
+      viewKey: ViewKey
+    ) => {
+      const nextState: Record<string, ImageState> = {};
+      Object.entries(state).forEach(([uid, layer]) => {
+        const savedPosition = mergedPositions[uid];
+        const savedSize = mergedSizes[uid];
+        const nextLayer: ImageState = { ...layer };
+        const existingViewCanvasPosition = layer?.canvasPositions?.[viewKey];
 
-    setViewImageStates(hydratedViewImageStates);
-    setPositions(mergedPositions);
-    setSizes(mergedSizes);
+        if (savedSize) {
+          nextLayer.size = { ...savedSize };
+        } else if (!nextLayer.size && savedPosition) {
+          nextLayer.size = { w: savedPosition.width, h: savedPosition.height };
+        }
+
+        if (savedPosition && !existingViewCanvasPosition) {
+          nextLayer.canvasPositions = {
+            ...(layer?.canvasPositions ?? {}),
+            [viewKey]: savedPosition,
+          };
+        }
+
+        nextState[uid] = nextLayer;
+      });
+      return nextState;
+    };
+
+    const hydratedWithCanvasMetadata = {
+      ...hydratedViewImageStates,
+      [viewKeyForPersistedPositions]: applyPersistedCanvasMetadata(
+        hydratedViewImageStates[viewKeyForPersistedPositions] ?? {},
+        viewKeyForPersistedPositions
+      ),
+    };
+
+    const restoredCurrentView = hydratedWithCanvasMetadata[viewKeyForPersistedPositions] ?? {};
+    const restoredPositionsFromView = Object.entries(restoredCurrentView).reduce<
+      Record<string, { x: number; y: number; width: number; height: number; scale: number }>
+    >((acc, [uid, layer]) => {
+      const saved = layer?.canvasPositions?.[viewKeyForPersistedPositions];
+      if (!saved) return acc;
+      const width = Number(saved.width ?? layer?.size?.w ?? 0);
+      const height = Number(saved.height ?? layer?.size?.h ?? 0);
+      if (width <= 0 || height <= 0) return acc;
+      acc[uid] = {
+        x: Number(saved.x ?? 0),
+        y: Number(saved.y ?? 0),
+        width,
+        height,
+        scale: Number(saved.scale ?? 1),
+      };
+      return acc;
+    }, {});
+    const restoredSizesFromView = Object.entries(restoredCurrentView).reduce<
+      Record<string, { w: number; h: number }>
+    >((acc, [uid, layer]) => {
+      const saved = layer?.canvasPositions?.[viewKeyForPersistedPositions];
+      const width = Number(saved?.width ?? layer?.size?.w ?? 0);
+      const height = Number(saved?.height ?? layer?.size?.h ?? 0);
+      if (width <= 0 || height <= 0) return acc;
+      acc[uid] = { w: width, h: height };
+      return acc;
+    }, {});
+
+    setViewImageStates(hydratedWithCanvasMetadata);
+    setPositions(
+      Object.keys(restoredPositionsFromView).length > 0
+        ? restoredPositionsFromView
+        : mergedPositions
+    );
+    if (!loadDiagnosticLoggedRef.current) {
+      const frontLayers = hydratedWithCanvasMetadata.front ?? {};
+      const frontCanvasPositions = Object.fromEntries(
+        Object.entries(frontLayers).map(([uid, layer]) => [
+          uid,
+          layer?.canvasPositions?.front,
+        ])
+      );
+      console.log("[Design Load] front canvasPositions", frontCanvasPositions);
+      console.log("[Design Load] merged positions", mergedPositions);
+      loadDiagnosticLoggedRef.current = true;
+    }
+    setSizes(
+      Object.keys(restoredSizesFromView).length > 0
+        ? restoredSizesFromView
+        : mergedSizes
+    );
     setUploadedImages(Array.isArray(payload.uploadedImages) ? payload.uploadedImages : []);
 
     // Always open restored designs on the first product view so
@@ -1108,16 +1460,39 @@ const pricePanelAvailableSizes = useMemo(() => {
   useEffect(() => {
     if (!product) return;
 
-    setCurrentProduct(product);
+    const incomingSelectionKey = `${String(product?.id ?? "")}|${String(propColour ?? "")}|${String(propSize ?? "")}`;
+    if (lastAppliedPropSelectionKeyRef.current === incomingSelectionKey) {
+      return;
+    }
 
-    if (propColour) {
-      setSelectedColour(propColour);
+    setCurrentProduct(product);
+    const resolvedColour = (() => {
+      if (!propColour || uniqueColours.length === 0) return propColour ?? null;
+      const incomingColour = String(propColour).trim().toLowerCase();
+      return uniqueColours.find((colour) => colour.trim().toLowerCase() === incomingColour) ?? propColour;
+    })();
+
+    if (resolvedColour) {
+      setSelectedColour(resolvedColour);
     }
 
     if (propSize) {
-      setSelectedSize(propSize);
+      const incomingSize = String(propSize).trim().toLowerCase();
+      const candidateSizesForColour =
+        resolvedColour && variantsByColour[resolvedColour]
+          ? variantsByColour[resolvedColour]
+              .map((variant) => variant.size)
+              .filter((size): size is string => typeof size === "string" && size.trim().length > 0)
+          : [];
+      const fallbackSizes =
+        safeProduct.sizes?.filter((size): size is string => typeof size === "string" && size.trim().length > 0) ?? [];
+      const sizePool = candidateSizesForColour.length > 0 ? candidateSizesForColour : fallbackSizes;
+      const matchedSize = sizePool.find((size) => size.trim().toLowerCase() === incomingSize) ?? propSize;
+      setSelectedSize(matchedSize);
     }
-  }, [product, propColour, propSize]);
+
+    lastAppliedPropSelectionKeyRef.current = incomingSelectionKey;
+  }, [product, propColour, propSize, safeProduct.sizes, uniqueColours, variantsByColour]);
 
   useEffect(() => {
     if (selectedColour || uniqueColours.length === 0) return;
@@ -1132,6 +1507,41 @@ const pricePanelAvailableSizes = useMemo(() => {
       setSelectedSize(initialSizes[0]);
     }
   }, [selectedColour, selectedSize, uniqueColours, variantsByColour]);
+
+  useEffect(() => {
+    if (!selectedColour || !variantsByColour[selectedColour]) return;
+
+    const sizesForColour = Array.from(
+      new Set(
+        variantsByColour[selectedColour]
+          .map((variant) => variant.size)
+          .filter((size): size is string => typeof size === "string" && size.trim().length > 0)
+      )
+    );
+
+    if (sizesForColour.length === 0) {
+      if (selectedSize !== null) setSelectedSize(null);
+      return;
+    }
+
+    if (!selectedSize) {
+      setSelectedSize(sizesForColour[0]);
+      return;
+    }
+
+    const normalizedSelectedSize = selectedSize.trim().toLowerCase();
+    const matchedSize =
+      sizesForColour.find((size) => size.trim().toLowerCase() === normalizedSelectedSize) ?? null;
+
+    if (!matchedSize) {
+      setSelectedSize(sizesForColour[0]);
+      return;
+    }
+
+    if (matchedSize !== selectedSize) {
+      setSelectedSize(matchedSize);
+    }
+  }, [selectedColour, selectedSize, variantsByColour]);
 
 
   useEffect(() => {
@@ -1179,7 +1589,7 @@ const pricePanelAvailableSizes = useMemo(() => {
       const target = event.target as Node | null;
       if (!target) return;
       if (pricePanelRef.current?.contains(target)) return;
-      setIsPricePanelOpen(false);
+      closePricePanel();
     };
 
     document.addEventListener("mousedown", handleOutsideDown);
@@ -1188,54 +1598,9 @@ const pricePanelAvailableSizes = useMemo(() => {
       document.removeEventListener("mousedown", handleOutsideDown);
       document.removeEventListener("touchstart", handleOutsideDown);
     };
-  }, [isPricePanelOpen]);
+  }, [isPricePanelOpen, closePricePanel]);
 
   useEffect(() => {
-    if (!isPricePanelOpen) return;
-
-    let rafId: number;
-    const tick = () => {
-      applyCanvasSnapshot(false);
-      rafId = window.requestAnimationFrame(tick);
-    };
-
-    tick();
-
-    return () => {
-      window.cancelAnimationFrame(rafId);
-    };
-  }, [isPricePanelOpen, applyCanvasSnapshot]);
-
-  useEffect(() => {
-    if (isPricePanelOpen) return;
-    if (!canvasSnapshotRef.current) return;
-
-    restoreCanvasSnapshot();
-  }, [isPricePanelOpen, restoreCanvasSnapshot]);
-
-  useEffect(() => {
-    // 🟢 CASE 1: product has NO colour variants
-    if (!selectedColour || !variantsByColour[selectedColour]) {
-      const fallbackImages = normalizeImages(currentProduct?.images ?? []);
-      setDisplayImages(fallbackImages);
-      setMainImage(fallbackImages[0] ?? "");
-      return;
-    }
-
-    // 🟢 CASE 2: product HAS colour variants
-    const colourVariants = variantsByColour[selectedColour];
-    const variant =
-      colourVariants.find(v => v.size === selectedSize) ?? colourVariants[0];
-
-      
-
-
-    const sorted = normalizeImages(variant?.images ?? []);
-  }, [currentProduct, selectedColour, selectedSize, variantsByColour]);
-
-
-
-    useEffect(() => {
     if (
       selectedUploadedImage &&
       currentImageState[selectedUploadedImage]?.type === "image" &&
@@ -1245,14 +1610,6 @@ const pricePanelAvailableSizes = useMemo(() => {
     } else {
       setSidebarTitleOverride(null); // revert to default title
     }
-
-    console.group("🟡 DESIGN IMAGE STATE");
-    console.log("currentProduct:", currentProduct);
-    console.log("selectedColour:", selectedColour);
-    console.log("selectedSize:", selectedSize);
-    console.log("displayImages:", displayImages);
-    console.log("mainImage:", mainImage);
-    console.groupEnd();
   }, [selectedUploadedImage, currentImageState]);
 
 
@@ -1261,19 +1618,6 @@ useEffect(() => {
     setMainImage(displayImages[0]); // default to the first image immediately
   }
 }, [displayImages]);
-
-
-
-
-  // ---------- TYPES ----------
-  type HistorySnapshot = {
-    product: Product | null;
-    imageState: Record<string, ImageState>;
-    positions: Record<string, CanvasPosition>;
-    sizes: Record<string, { w: number; h: number }>;
-    selectedColour: string | null;
-    selectedSize: string | null;
-  };
 
   // ---------- STATES ----------
 
@@ -1309,12 +1653,6 @@ useEffect(() => {
       selectedSize,
     };
 
-    console.groupCollapsed("%c🌱 SEED HISTORY", "color:#3b82f6;font-weight:bold");
-    console.log("product →", currentProduct?.slug);
-    console.log("colour →", selectedColour);
-    console.log("size →", selectedSize);
-    console.groupEnd();
-
     setHistory([snapshot]);
     setHistoryIndex(0);
     hasSeededHistory.current = true;
@@ -1325,16 +1663,33 @@ useEffect(() => {
     if (colour === selectedColour) return;
     setSelectedColour(colour);
 
-    // Reset size to first available for this colour
+    // Keep current size if available in this colour, else fallback to first colour size.
     const variants = variantsByColour[colour];
     if (variants?.length) {
-      setSelectedSize(variants[0].size ?? null);
-      const images = normalizeImages(variants[0].images ?? []);
+      const availableSizes = Array.from(
+        new Set(
+          variants
+            .map((variant) => variant.size)
+            .filter((size): size is string => typeof size === "string" && size.trim().length > 0)
+        )
+      );
+      const normalizedSelectedSize = selectedSize?.trim().toLowerCase() ?? "";
+      const nextSize =
+        availableSizes.find((size) => size.trim().toLowerCase() === normalizedSelectedSize) ??
+        availableSizes[0] ??
+        null;
+      setSelectedSize(nextSize);
+
+      const nextVariant = (nextSize
+        ? variants.find((variant) => variant.size === nextSize)
+        : undefined) ?? variants[0];
+      const images = normalizeDesignImages(nextVariant?.images ?? []);
       setDisplayImages(images);
+      setMainImage(images[0] ?? "");
     } else {
       // fallback
       setSelectedSize(null);
-      const fallbackImages = normalizeImages(currentProduct?.images ?? []);
+      const fallbackImages = normalizeDesignImages(currentProduct?.images ?? []);
       setDisplayImages(fallbackImages);
       setMainImage(fallbackImages[0] ?? "");
     }
@@ -1381,10 +1736,7 @@ useEffect(() => {
     setSelectedText(null);
     setSelectedObjects([]);
     setPricePreviewByView({
-      front: undefined,
-      back: undefined,
-      leftSleeve: undefined,
-      rightSleeve: undefined,
+      ...createEmptyPricePreviewByView(),
     });
     setCurrentSavedDesignId(null);
     setCurrentDesignName(trimmed);
@@ -1430,7 +1782,7 @@ useEffect(() => {
 
     // No colour selected → fallback to product images
     if (!selectedColour || !variantsByColour[selectedColour]) {
-      const fallbackImages = normalizeImages(currentProduct?.images ?? []);
+      const fallbackImages = normalizeDesignImages(currentProduct?.images ?? []);
       setDisplayImages(fallbackImages);
       setMainImage(fallbackImages[0] ?? "");
       return;
@@ -1442,7 +1794,7 @@ useEffect(() => {
     // Pick the variant that matches selectedSize, fallback to first
     const variant = colourVariants.find(v => v.size === selectedSize) ?? colourVariants[0];
 
-    const images = normalizeImages(variant?.images ?? []);
+    const images = normalizeDesignImages(variant?.images ?? []);
     setDisplayImages(images);
     setMainImage(images[0] ?? "");
   }, [currentProduct, selectedColour, selectedSize, variantsByColour]);
@@ -1571,7 +1923,7 @@ const handleUpload = (url: string) => {
       flip: "none",
       size: defaultSize,
       canvasPositions: {
-        [uid]: { x: 100, y: 100, width: defaultSize.w, height: defaultSize.h, scale: 1 },
+        [currentViewKey]: { x: 100, y: 100, width: defaultSize.w, height: defaultSize.h, scale: 1 },
       },
       restrictedBox: { x: 0, y: 0, w: 600, h: 600 },
       original: { url, rotation: 0, flip: "none", size: { ...defaultSize } },
@@ -1598,13 +1950,18 @@ const handleDuplicateUploadedImage = (uid: string) => {
   const source = currentImageState[uid];
   if (!source) return;
   const dup = crypto.randomUUID();
-  const originalPos = source.canvasPositions?.[uid] ?? { x: 100, y: 100, width: source.size.w, height: source.size.h, scale: 1 };
+  const originalPos =
+    source.canvasPositions?.[currentViewKey] ??
+    source.canvasPositions?.[uid] ??
+    { x: 100, y: 100, width: source.size.w, height: source.size.h, scale: 1 };
   setUploadedImages(prev => [...prev, dup]);
   updateCurrentImageState({
     [dup]: {
       ...source,
       renderKey: crypto.randomUUID(),
-      canvasPositions: { [dup]: { ...originalPos, x: originalPos.x + 20, y: originalPos.y + 20 } },
+      canvasPositions: {
+        [currentViewKey]: { ...originalPos, x: originalPos.x + 20, y: originalPos.y + 20 },
+      },
     },
   });
   setSelectedUploadedImageWithLog(dup);
@@ -1709,21 +2066,6 @@ const resetTextLayer = (uid: string) => {
     },
   });
 };
-  // ---------------- SIDEBAR TITLES ----------------
-const SIDEBAR_TITLES: Record<string, string | ((props: any) => string)> = {
-  product: "Product",
-  text: ({ selectedText }: any) => (selectedText ? "Text Properties" : "Text"),
-  clipart: ({ selectedUploadedImage, currentImageState }: any) =>
-    selectedUploadedImage && currentImageState[selectedUploadedImage]?.isClipart
-      ? "Clipart Properties"
-      : "Clipart",
-  upload: "Upload", // always Upload
-  "my-designs": () => (isUserSignedIn ? "My Designs" : "Sign in to access"),
-};
-
-
-
-
 const renderActiveTab = () => {
   if (selectedObjects.length > 1) {
     return (
@@ -1986,6 +2328,96 @@ const handleCloseSidebar = () => {
   setSelectedUploadedImageWithLog(null);
   setSidebarStack(["blank"]);
 };
+
+const activeSidebarTitle = getSidebarTitle({
+  activeSidebar,
+  selectedObjectsCount: selectedObjects.length,
+  sidebarTitleOverride,
+  selectedText,
+  selectedUploadedImage,
+  currentImageState,
+  isUserSignedIn,
+});
+
+const handleSidebarTabSelect = (tab: "product" | "upload" | "text" | "clipart") => {
+  setSidebarStack([tab as SidebarView]);
+  if (tab !== "clipart" && tab !== "upload") setSelectedUploadedImageWithLog(null);
+  if (tab !== "text") setSelectedText(null);
+};
+
+const designPageContextValue = {
+  isPricePanelOpen,
+  activeSidebar,
+  canGoBack,
+  onBack: goBackSidebar,
+  onClose: handleCloseSidebar,
+  onSelectTab: handleSidebarTabSelect,
+  headerTitle: activeSidebarTitle,
+  sidebarContent: renderActiveTab(),
+  canvas: (
+    <Canvas
+      sizes={sizes}
+      setSizes={setSizes}
+      canvasPositions={positions}
+      mainImage={mainImage}
+      restrictedBox={restrictedBox}
+      canvasRef={canvasRef}
+      uploadedImages={uploadedImages}
+      setUploadedImages={setUploadedImages}
+      imageState={currentImageState}
+      setImageState={updateCurrentImageState}
+      onSelectImage={setSelectedUploadedImageWithLog}
+      onSelectText={setSelectedText}
+      onResizeStart={beginResize}
+      onSwitchTab={(tab) => {
+        if (!tab) return;
+        setSidebarStack((prev) =>
+          prev[prev.length - 1] === tab ? prev : [...prev.slice(0, 1), tab as SidebarView]
+        );
+      }}
+      onDelete={(uids) => uids.forEach((uid) => handleRemoveUploadedImage(uid))}
+      onResizeTextCommit={handleResizeText}
+      onSelectionChange={handleCanvasSelectionChange}
+      onGetPrice={handleGetPrice}
+      onSaveDesign={handleOpenSaveDesignDialog}
+      productViewImages={viewImages}
+      viewImageStates={viewImageStates}
+      currentViewKey={currentViewKey}
+      setCurrentViewKey={setCurrentViewKey}
+      setViewImageStates={setViewImageStates}
+      onViewSnapshotChange={handlePricePreviewUpdate}
+      compactPriceMode={isPricePanelOpen}
+    />
+  ),
+  preview: (
+    <DesignPreview
+      snapshot={pricePreviewByView.front}
+      fallbackImage={viewImages.front}
+      width={previewWidth}
+      alt="Front design preview"
+      className="h-full w-full max-w-none"
+      noFrame
+    />
+  ),
+  pricePanel: (
+    <GetPriceUI
+      docked
+      onClose={closePricePanel}
+      productName={safeProduct.name ?? "Unknown Product"}
+      selectedColour={selectedColour}
+      availableColours={uniqueColours}
+      onColourChange={handleColourChange}
+      sides={pricePanelSides}
+      basePrice={safeProduct.price}
+      availableSizes={pricePanelAvailableSizes}
+      selectedSize={selectedSize}
+      onSizeChange={handleSizeChange}
+      onAddToCart={handleAddToCartFromPrice}
+      onBuyNow={handleBuyNowFromPrice}
+    />
+  ),
+  pricePanelRef,
+};
   
   return (
     <>
@@ -1995,6 +2427,7 @@ const handleCloseSidebar = () => {
       {isChangeProductModalOpen && (
         <ChangeProductModal
           onClose={() => setIsChangeProductModalOpen(false)}
+          currentCategory={currentProduct?.categories?.[0]}
           onSelectProduct={handleProductSelect}
         />
       )}
@@ -2011,257 +2444,31 @@ const handleCloseSidebar = () => {
         {/* CONTENT */}
         <div className="pt-[96px] flex min-h-screen w-full bg-gray-200">
 
-      
-  {/* LEFT SIDEBAR */}
-  <div
-    className={`mt-4 mb-6 bg-white shadow-lg border border-gray-200 rounded-2xl p-4 flex flex-col gap-4 items-center h-[calc(100vh-160px)] overflow-hidden transition-all duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] ${
-      isPricePanelOpen
-        ? "ml-0 w-0 opacity-0 pointer-events-none"
-        : "ml-6 w-[140px] opacity-100"
-    }`}
-  >
-    {[
-      { id: "product", icon: <Shirt size={22} />, label: "Product" },
-      { id: "upload", icon: <UploadIcon size={22} />, label: "Upload" },
-      { id: "text", icon: <Type size={22} />, label: "Text" },
-      { id: "clipart", icon: <ClipartIcon size={22} />, label: "Clipart" },
-    ].map(tab => (
-      <button
-        key={tab.id}
-        onClick={() => {
-          // Switch sidebar
-          setSidebarStack([tab.id as SidebarView]);
+          <DesignPageProvider value={designPageContextValue}>
+            <DesignSidebars />
 
-          // Keep selectedUploadedImage for "upload" and "clipart", reset for others
-          if (tab.id !== "clipart" && tab.id !== "upload") setSelectedUploadedImageWithLog(null);
+            {/* MAIN CANVAS */}
+            <DesignWorkspaceLayout />
+          </DesignPageProvider>
 
-          // Reset selectedText for non-text tabs
-          if (tab.id !== "text") setSelectedText(null);
-        }}
-        className={`w-full h-16 flex flex-col items-center justify-center rounded-xl border transition ${
-          activeSidebar === tab.id
-            ? "border-[#C6A75E] bg-[#C6A75E]/15 shadow-sm"
-            : "border-gray-200 bg-white hover:border-[#C6A75E]/50 hover:bg-[#C6A75E]/10"
-        }`}
-      >
-        {React.cloneElement(tab.icon, {
-          className: activeSidebar === tab.id ? "text-[#8A6D2B]" : "text-gray-700",
-        })}
-        <span className={`text-sm ${activeSidebar === tab.id ? "text-[#8A6D2B] font-semibold" : "text-gray-700"}`}>
-          {tab.label}
-        </span>
-      </button>
-    ))}
-  </div>
-
-  {/* RIGHT SIDEBAR */}
-  <div
-    className={`mt-4 mb-6 h-[calc(100vh-160px)] overflow-hidden transition-all duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] ${
-      isPricePanelOpen
-        ? "ml-0 w-0 translate-x-8 opacity-0 pointer-events-none"
-        : "ml-4 w-[480px] translate-x-0 opacity-100"
-    }`}
-  >
-    <div className="bg-white shadow-lg border border-gray-200 rounded-2xl overflow-y-auto h-full">
-      {/* ONLY RENDER HEADER IF NOT BLANK */}
-      {activeSidebar !== "blank" && (
-        <SidebarHeader
-          title={
-            selectedObjects.length > 1
-              ? "Multiple Objects Selected"
-              : sidebarTitleOverride ??
-                (typeof SIDEBAR_TITLES[activeSidebar] === "function"
-                  ? SIDEBAR_TITLES[activeSidebar]!({
-                      selectedText,
-                      selectedUploadedImage,
-                      currentImageState,
-                    })
-                  : SIDEBAR_TITLES[activeSidebar] ?? "")
-          }
-          canGoBack={canGoBack}
-          onBack={goBackSidebar}
-          onClose={handleCloseSidebar}
-        />
-      )}
-      <div className="p-4">{renderActiveTab()}</div>
-    </div>
-  </div>
-
-  {/* MAIN CANVAS */}
-  <div
-    className={`mt-4 mb-6 h-[calc(100vh-160px)] flex-1 transition-all duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] ${
-      isPricePanelOpen ? "ml-0 mr-0" : "ml-0 mr-6"
-    }`}
-  >
-    <div className="relative h-full w-full">
-      <div className={`${isPricePanelOpen ? "hidden" : "flex h-full rounded-2xl overflow-hidden bg-gray-100"}`} >
-        <Canvas
-          sizes={sizes}
-          setSizes={setSizes}
-          canvasPositions={positions}
-          mainImage={mainImage}
-          restrictedBox={restrictedBox}
-          canvasRef={canvasRef}
-          uploadedImages={uploadedImages}
-          setUploadedImages={setUploadedImages}
-          imageState={currentImageState}
-          setImageState={updateCurrentImageState}
-          onSelectImage={setSelectedUploadedImageWithLog}
-          onSelectText={setSelectedText}
-          onResizeStart={beginResize}
-          onSwitchTab={(tab) => {
-            if (!tab) return;
-
-            // Keep uploaded image selected for 'upload' tab
-            setSidebarStack((prev) =>
-              prev[prev.length - 1] === tab ? prev : [...prev.slice(0, 1), tab as SidebarView]
-            );
-          }}
-          onDelete={(uids) => uids.forEach((uid) => handleRemoveUploadedImage(uid))}
-          onResizeTextCommit={handleResizeText}
-          onSelectionChange={handleCanvasSelectionChange}
-          onGetPrice={handleGetPrice}
-          onSaveDesign={handleOpenSaveDesignDialog}
-          productViewImages={viewImages}
-          viewImageStates={viewImageStates}
-          currentViewKey={currentViewKey}
-          setCurrentViewKey={setCurrentViewKey}
-          setViewImageStates={setViewImageStates}
-          onViewSnapshotChange={handlePricePreviewUpdate}
-          compactPriceMode={isPricePanelOpen}
-        />
-      </div>
-
-      {isPricePanelOpen && (
-        <div className="absolute inset-0 flex h-full w-full items-center justify-center overflow-hidden px-5">
-          <DesignPreview
-            snapshot={pricePreviewByView.front}
-            fallbackImage={viewImages.front}
-            width={previewWidth}
-            alt="Front design preview"
-            className="h-full w-full max-w-none"
-            noFrame
+          <SaveDesignDialog
+            open={isSaveDialogOpen}
+            isSavingDesign={isSavingDesign}
+            pendingDesignName={pendingDesignName}
+            maxDesignNameLength={MAX_DESIGN_NAME_LENGTH}
+            saveDialogError={saveDialogError}
+            savedDesignCount={savedDesigns.length}
+            maxSavedDesigns={MAX_SAVED_DESIGNS}
+            currentSavedDesignId={currentSavedDesignId}
+            saveMode={saveMode}
+            onPendingDesignNameChange={value => {
+              setPendingDesignName(value);
+              if (saveDialogError) setSaveDialogError(null);
+            }}
+            onSaveModeChange={setSaveMode}
+            onClose={() => setIsSaveDialogOpen(false)}
+            onSave={() => handleSaveDesign(pendingDesignName, saveMode)}
           />
-        </div>
-      )}
-    </div>
-  </div>
-
-      {isPricePanelOpen && (
-        <div
-          ref={pricePanelRef}
-          className="w-[820px] ml-4 mr-6 mt-4 mb-6 h-[calc(100vh-160px)] rounded-2xl border border-gray-200 shadow-lg bg-white overflow-hidden transition-all duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]"
-        >
-          <GetPriceUI
-            docked
-            onClose={() => setIsPricePanelOpen(false)}
-            productName={safeProduct.name ?? "Unknown Product"}
-            selectedColour={selectedColour}
-            availableColours={uniqueColours}
-            onColourChange={handleColourChange}
-            sides={pricePanelSides}
-            basePrice={safeProduct.price}
-            availableSizes={pricePanelAvailableSizes}
-            selectedSize={selectedSize}
-            onSizeChange={handleSizeChange}
-            onAddToCart={handleAddToCartFromPrice}
-            onBuyNow={handleBuyNowFromPrice}
-          />
-        </div>
-      )}
-
-          {isSaveDialogOpen && (
-            <div className="fixed inset-0 z-[10060] flex items-center justify-center bg-black/45 backdrop-blur-[2px] px-4">
-              <div className="w-full max-w-lg overflow-hidden rounded-3xl border border-[#C6A75E]/30 bg-white shadow-[0_24px_80px_rgba(0,0,0,0.22)] animate-in fade-in zoom-in-95 duration-200">
-                <div className="bg-gradient-to-r from-[#F8F3E6] via-[#FCFAF2] to-white px-7 py-5 border-b border-[#C6A75E]/20">
-                  <h3 className="text-2xl font-semibold tracking-tight text-gray-900">Save Design</h3>
-                  <p className="mt-1 text-sm text-gray-600">
-                    Give your design a clear name so it is easy to find later.
-                  </p>
-                </div>
-
-                <div className="px-7 py-6">
-                  <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">
-                    Design Title
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={pendingDesignName}
-                      maxLength={MAX_DESIGN_NAME_LENGTH}
-                      onChange={e => {
-                        setPendingDesignName(e.target.value.slice(0, MAX_DESIGN_NAME_LENGTH));
-                        if (saveDialogError) setSaveDialogError(null);
-                      }}
-                      placeholder="My design name"
-                      className="w-full rounded-2xl border border-gray-300 bg-white px-4 py-3 text-gray-900 shadow-sm transition focus:border-[#C6A75E] focus:ring-4 focus:ring-[#C6A75E]/20 focus:outline-none"
-                    />
-                    <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-gray-500">
-                      {pendingDesignName.length}/{MAX_DESIGN_NAME_LENGTH}
-                    </span>
-                  </div>
-
-                  {saveDialogError && (
-                    <p className="mt-2 text-sm text-red-600">{saveDialogError}</p>
-                  )}
-
-                  {currentSavedDesignId && (
-                    <div className="mt-5 rounded-2xl border border-gray-200 bg-gray-50/70 p-4">
-                      <p className="text-xs font-semibold uppercase tracking-[0.1em] text-gray-500">
-                        Saving Options
-                      </p>
-                      <div className="mt-3 grid grid-cols-2 gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setSaveMode("overwrite")}
-                          className={`rounded-xl px-3 py-2 text-sm border transition ${
-                            saveMode === "overwrite"
-                              ? "border-[#C6A75E] bg-[#C6A75E]/20 text-[#8A6D2B] shadow-sm"
-                              : "border-gray-300 bg-white text-gray-700 hover:border-gray-400"
-                          }`}
-                        >
-                          Overwrite Current
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setSaveMode("new")}
-                          className={`rounded-xl px-3 py-2 text-sm border transition ${
-                            saveMode === "new"
-                              ? "border-[#C6A75E] bg-[#C6A75E]/20 text-[#8A6D2B] shadow-sm"
-                              : "border-gray-300 bg-white text-gray-700 hover:border-gray-400"
-                          }`}
-                        >
-                          Save as New
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="mt-6 flex justify-end gap-3">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (isSavingDesign) return;
-                        setIsSaveDialogOpen(false);
-                      }}
-                      className="rounded-xl border border-gray-300 px-4 py-2.5 text-gray-700 transition hover:bg-gray-50"
-                      disabled={isSavingDesign}
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleSaveDesign(pendingDesignName, saveMode)}
-                      className="rounded-xl bg-[#C6A75E] px-5 py-2.5 font-medium text-white shadow-sm transition hover:bg-[#B8994E] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"
-                      disabled={isSavingDesign}
-                    >
-                      {isSavingDesign ? "Saving..." : "Save Design"}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>

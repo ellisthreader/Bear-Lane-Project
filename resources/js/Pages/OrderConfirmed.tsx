@@ -3,6 +3,7 @@ import { Head, Link, usePage } from "@inertiajs/react";
 import confetti from "canvas-confetti";
 import { CheckCircle2, FileText, Package, Truck, CreditCard, MapPin } from "lucide-react";
 import NavMenu from "@/Components/Menu/NavMenu";
+import { useCart } from "@/Context/CartContext";
 
 type OrderItem = {
   id: number;
@@ -82,8 +83,13 @@ const deliveryTypeLabel = (value?: string | null) => {
 export default function OrderConfirmed() {
   const { props } = usePage<{ order?: OrderPayload }>();
   const order = props.order;
+  const { closeCart } = useCart();
   const mapRef = useRef<HTMLDivElement | null>(null);
   const [mapFailed, setMapFailed] = useState(false);
+
+  useEffect(() => {
+    closeCart();
+  }, [closeCart]);
 
   useEffect(() => {
     const burst = () =>
@@ -206,14 +212,19 @@ export default function OrderConfirmed() {
         infoContent.className = "map-info-window";
 
         const title = document.createElement("div");
-        title.textContent = "Shipping Address:";
+        title.textContent = "Shipping";
         title.className = "map-info-window__title";
+
+        const methodText = document.createElement("div");
+        methodText.textContent = deliveryTypeLabel(order.delivery_type);
+        methodText.className = "map-info-window__service";
 
         const addressText = document.createElement("div");
         addressText.textContent = shippingMapCityCountry || shippingMapAddress;
         addressText.className = "map-info-window__address";
 
         infoContent.appendChild(title);
+        infoContent.appendChild(methodText);
         infoContent.appendChild(addressText);
 
         const infoWindow = new googleMaps.InfoWindow({
@@ -271,39 +282,67 @@ export default function OrderConfirmed() {
         }
 
         .order-confirmed-map .gm-style .gm-ui-hover-effect {
-          top: 0 !important;
-          right: 0 !important;
-          width: 30px !important;
-          height: 30px !important;
+          top: 6px !important;
+          right: 6px !important;
+          width: 24px !important;
+          height: 24px !important;
           transform: none !important;
+          border-radius: 0 !important;
+          background: transparent !important;
+          opacity: 1 !important;
+          box-shadow: none !important;
+          border: 0 !important;
+          padding: 0 !important;
+        }
+
+        .order-confirmed-map .gm-style .gm-ui-hover-effect img {
+          margin: 0 !important;
+          width: 14px !important;
+          height: 14px !important;
+          opacity: 1 !important;
+          filter: brightness(0) saturate(100%) !important;
         }
 
         .order-confirmed-map .map-info-window {
           margin: 0 !important;
-          padding: 12px 16px !important;
-          min-width: 220px;
-          min-height: 96px;
+          padding: 12px 36px 12px 12px !important;
+          min-width: 250px;
+          max-width: 280px;
+          min-height: 86px;
           display: flex;
           flex-direction: column;
           justify-content: center;
           align-items: center;
           text-align: center;
+          gap: 4px;
           box-sizing: border-box;
         }
 
         .order-confirmed-map .map-info-window__title {
-          margin: 0 0 6px 0;
-          font-size: 16px;
+          margin: 0;
+          font-size: 14px;
           line-height: 1.2;
-          font-weight: 700;
+          font-weight: 800;
           color: #1f2937;
+          letter-spacing: 0.02em;
+          text-transform: uppercase;
+        }
+
+        .order-confirmed-map .map-info-window__service {
+          margin: 0;
+          font-size: 13px;
+          line-height: 1.35;
+          font-weight: 600;
+          color: #8a6d2b;
+          word-break: break-word;
         }
 
         .order-confirmed-map .map-info-window__address {
           margin: 0;
-          font-size: 14px;
+          font-size: 13px;
           line-height: 1.35;
           color: #4b5563;
+          word-break: break-word;
         }
       `}</style>
 
@@ -428,7 +467,7 @@ export default function OrderConfirmed() {
                   </a>
                 )}
                 <Link
-                  href="/profile/edit?tab=orders"
+                  href="/profile?tab=orders"
                   className="inline-flex items-center justify-center rounded-xl bg-[#C6A75E] px-4 py-3 text-sm font-semibold text-white hover:bg-[#B8994E]"
                 >
                   View my orders

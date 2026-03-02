@@ -13,6 +13,8 @@ class Kernel extends ConsoleKernel
     protected function schedule(Schedule $schedule): void
     {
         $schedule->command('delivery:cleanup-expired-reservations')->everyMinute();
+        $schedule->command('products:notify-back-in-stock')->everyTenMinutes();
+        $schedule->command('orders:sync-delivery-status')->everyTenMinutes();
     }
 
     /**

@@ -40,21 +40,23 @@ const steps = [
 
 export default function StackedScrollCards() {
   return (
-    <section className="bg-white px-4 py-28">
+    <section className="bg-white px-4 py-20">
       <h2 className="mb-20 text-center text-[2.75rem] font-semibold tracking-tight">
         How It Works
       </h2>
 
-      <div className="relative mx-auto max-w-[1400px] space-y-10">
+      <div className="mx-auto max-w-[1200px] space-y-8">
         {steps.map((step, idx) => (
-          <div
+          <article
             key={idx}
-            className="sticky rounded-[22px] bg-[#ededed] p-8 shadow-[0_20px_50px_rgba(0,0,0,0.08)]"
-            style={{ top: `${6 + idx * 2}rem` }}
+            className="rounded-[22px] border border-[#E8DCC0] bg-[#FCFAF5] p-6 shadow-[0_18px_42px_rgba(0,0,0,0.08)] md:p-8"
           >
-            <div className="flex items-center gap-12 md:flex-row flex-col md:text-left text-center">
-              {/* Image */}
-              <div className="relative w-full md:w-1/2 aspect-[4/3] overflow-hidden rounded-[16px]">
+            <div
+              className={`flex flex-col items-center gap-10 text-center md:flex-row md:text-left ${
+                idx % 2 === 1 ? "md:flex-row-reverse" : ""
+              }`}
+            >
+              <div className="relative aspect-[4/3] w-full overflow-hidden rounded-[16px] md:w-1/2">
                 <img
                   src={step.image}
                   alt={step.title}
@@ -62,10 +64,8 @@ export default function StackedScrollCards() {
                 />
               </div>
 
-              {/* Content */}
-              <div className="relative w-full md:w-1/2 pt-12 flex flex-col items-center md:items-start">
-                {/* Number badge */}
-                <span className="absolute -top-10 left-0 flex h-[56px] w-[56px] items-center justify-center rounded-full bg-gradient-to-br from-[#f8e7a1] via-[#c9a24d] to-[#8f6b1f] text-lg font-bold text-white shadow-[0_12px_30px_rgba(201,162,77,0.45)]">
+              <div className="flex w-full flex-col items-center md:w-1/2 md:items-start">
+                <span className="mb-5 flex h-[56px] w-[56px] items-center justify-center rounded-full bg-gradient-to-br from-[#f8e7a1] via-[#c9a24d] to-[#8f6b1f] text-lg font-bold text-white shadow-[0_12px_30px_rgba(201,162,77,0.45)]">
                   {step.number}
                 </span>
 
@@ -73,12 +73,12 @@ export default function StackedScrollCards() {
                   {step.title}
                 </h3>
 
-                <p className="max-w-xl text-[1.08rem] leading-relaxed text-neutral-600">
+                <p className="max-w-xl text-[1.08rem] leading-relaxed text-[#5E4F34]">
                   {step.description}
                 </p>
               </div>
             </div>
-          </div>
+          </article>
         ))}
       </div>
     </section>

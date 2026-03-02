@@ -111,6 +111,39 @@ class DeliveryOptionService
         return $isMember ? 0.0 : $basePrice;
     }
 
+    public function resolveSelectedServiceName(
+        string $deliveryType,
+        ?User $user = null,
+        ?string $postcode = null,
+        ?string $country = null,
+        ?string $city = null,
+        ?string $street1 = null,
+    ): ?string
+    {
+        $normalizedType = strtoupper(trim($deliveryType));
+        $optionsPayload = $this->getOptions($user, $postcode, $country, $city, $street1);
+        $options = $optionsPayload['options'] ?? [];
+
+        foreach ($options as $option) {
+            if (strtoupper((string) ($option['type'] ?? '')) !== $normalizedType) {
+                continue;
+            }
+
+            $service = trim((string) ($option['selected_shippo_service'] ?? ''));
+            if ($service !== '') {
+                return $service;
+            }
+
+            if ($normalizedType === 'TIMED') {
+                return 'Timed Delivery Service';
+            }
+
+            return null;
+        }
+
+        return null;
+    }
+
     private function hasTimedAvailability(?string $postcode = null): bool
     {
         $days = $this->slotService->getAvailableSlots($postcode);
@@ -165,7 +198,7 @@ class DeliveryOptionService
         }
 
         $fromAddress = [
-            'name' => "Ellis' Courses",
+            'name' => 'Bear Lane',
             'street1' => '390 Springfield Road',
             'city' => 'Chelmsford',
             'zip' => 'CM2 6AT',

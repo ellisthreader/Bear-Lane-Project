@@ -1,5 +1,6 @@
 import React from "react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
+import AdminTopNav from "@/Components/Admin/AdminTopNav";
 import { BarChart3, ShoppingBag, Users, TrendingUp } from "lucide-react";
 
 export default function Statistics() {
@@ -28,6 +29,7 @@ export default function Statistics() {
 
   return (
     <AuthenticatedLayout>
+      <AdminTopNav />
       <div className="p-10 min-h-screen bg-gray-50 dark:bg-gray-900">
 
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-8">

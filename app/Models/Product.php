@@ -22,6 +22,10 @@ class Product extends Model
         'is_trending',
         'is_sale',
         'category_id', // main category
+        'length',
+        'width',
+        'height',
+        'dimension_unit',
     ];
 
     protected $casts = [

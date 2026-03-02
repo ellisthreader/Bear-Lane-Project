@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import { Head } from "@inertiajs/react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
+import AdminTopNav from "@/Components/Admin/AdminTopNav";
 import { ArrowLeft, SendHorizonal } from "lucide-react";
 
 interface Message {
@@ -110,6 +111,7 @@ export default function SingleChat({ chat_id, user }: Props) {
   return (
     <AuthenticatedLayout>
       <Head title={`Chat #${chat_id}`} />
+      <AdminTopNav />
 
       <div className="min-h-screen p-10 bg-gray-100 dark:bg-gray-900 flex flex-col">
         <div className="flex items-center mb-6">

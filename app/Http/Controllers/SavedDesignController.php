@@ -27,6 +27,16 @@ class SavedDesignController extends Controller
             'payload.baseViewImages.back' => ['nullable', 'string'],
             'payload.baseViewImages.leftSleeve' => ['nullable', 'string'],
             'payload.baseViewImages.rightSleeve' => ['nullable', 'string'],
+            'payload.previewByView' => ['nullable', 'array'],
+            'payload.previewByView.front' => ['nullable', 'array'],
+            'payload.previewByView.back' => ['nullable', 'array'],
+            'payload.previewByView.leftSleeve' => ['nullable', 'array'],
+            'payload.previewByView.rightSleeve' => ['nullable', 'array'],
+            'payload.compositePngByView' => ['nullable', 'array'],
+            'payload.compositePngByView.front' => ['nullable', 'string'],
+            'payload.compositePngByView.back' => ['nullable', 'string'],
+            'payload.compositePngByView.leftSleeve' => ['nullable', 'string'],
+            'payload.compositePngByView.rightSleeve' => ['nullable', 'string'],
         ]);
 
         $savedDesign = null;
@@ -66,7 +76,12 @@ class SavedDesignController extends Controller
                         ? $savedDesign->product->images->pluck('url')->values()->all()
                         : [],
                 ],
-                'previewImage' => $savedDesign->product?->images?->first()?->url,
+                'previewImage' => data_get($savedDesign->design_payload, 'compositePngByView.front')
+                    ?: data_get(
+                        $savedDesign->design_payload,
+                        'compositePngByView.' . data_get($savedDesign->design_payload, 'currentViewKey')
+                    )
+                    ?: $savedDesign->product?->images?->first()?->url,
                 'updatedAt' => $savedDesign->updated_at?->toIso8601String(),
                 'payload' => $savedDesign->design_payload,
             ],
@@ -82,5 +97,27 @@ class SavedDesignController extends Controller
         $savedDesign->delete();
 
         return response()->json(['deleted' => true]);
+    }
+
+    public function rename(Request $request, SavedDesign $savedDesign): JsonResponse
+    {
+        if ((int) $savedDesign->user_id !== (int) $request->user()->id) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:120'],
+        ]);
+
+        $savedDesign->update([
+            'name' => trim((string) $validated['name']) ?: 'Untitled Design',
+        ]);
+
+        return response()->json([
+            'savedDesign' => [
+                'id' => $savedDesign->id,
+                'name' => $savedDesign->name,
+            ],
+        ]);
     }
 }

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Product;
 use App\Models\Category;
 use App\Models\SavedDesign;
+use App\Models\Image;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Log;
@@ -58,20 +59,26 @@ class DesignController extends Controller
         };
 
         // Adult categories
-        $adultCategories = Category::whereNull('age_group')
+        $adultCategories = Category::with('parent')
+            ->whereNull('age_group')
             ->orderBy('section')
             ->get()
             ->map(function ($cat) use ($mapProducts) {
                 return [
                     'id'       => $cat->id,
                     'name'     => $cat->name,
+                    'slug'     => $cat->slug,
                     'section'  => $cat->section,
+                    'subsection' => $cat->subsection,
+                    'age_group' => $cat->age_group,
+                    'parent_name' => $cat->parent?->name,
                     'products' => $mapProducts($cat->products()->with('images')->get()),
                 ];
             });
 
         // Kids categories
-        $kidsCategories = Category::whereNotNull('age_group')
+        $kidsCategories = Category::with('parent')
+            ->whereNotNull('age_group')
             ->orderBy('age_group')
             ->orderBy('section')
             ->get()
@@ -81,8 +88,11 @@ class DesignController extends Controller
                     return [
                         'id'        => $cat->id,
                         'name'      => $cat->name,
+                        'slug'      => $cat->slug,
                         'section'   => $cat->section,
+                        'subsection' => $cat->subsection,
                         'age_group' => $cat->age_group,
+                        'parent_name' => $cat->parent?->name,
                         'products'  => $mapProducts($cat->products()->with('images')->get()),
                     ];
                 })->values();
@@ -115,7 +125,12 @@ class DesignController extends Controller
                                 ? $savedDesign->product->images->pluck('url')->values()->all()
                                 : [],
                         ],
-                        'previewImage' => $savedDesign->product?->images?->first()?->url,
+                        'previewImage' => data_get($savedDesign->design_payload, 'compositePngByView.front')
+                            ?: data_get(
+                                $savedDesign->design_payload,
+                                'compositePngByView.' . data_get($savedDesign->design_payload, 'currentViewKey')
+                            )
+                            ?: $savedDesign->product?->images?->first()?->url,
                         'updatedAt' => $savedDesign->updated_at?->toIso8601String(),
                         'payload' => $savedDesign->design_payload,
                     ];
@@ -175,23 +190,73 @@ class DesignController extends Controller
      */
     private function attachColourProducts(Product $product): void
     {
+        $productImageUrls = $product->images->pluck('url')->values()->all();
+        $productImageBoxes = $this->buildImageBoxesMap($product->images);
+
         $product->colourProducts = collect($product->variants)
             ->groupBy('colour')
-            ->map(function ($group, $colour) use ($product) {
+            ->map(function ($group, $colour) use ($product, $productImageBoxes) {
                 $firstVariant = $group->first();
+                $variantImageBoxes = $this->buildImageBoxesMap($firstVariant->images);
 
                 $images = $firstVariant->images->isNotEmpty()
-                    ? $firstVariant->images->pluck('path')->map(fn($p) => asset($p))->all()
-                    : $product->images->pluck('path')->map(fn($p) => asset($p))->all();
+                    ? $firstVariant->images->pluck('url')->values()->all()
+                    : $product->images->pluck('url')->values()->all();
 
                 return [
                     'colour' => $colour,
                     'slug'   => $firstVariant->slug,
                     'sizes'  => $group->pluck('size')->unique()->values()->all(),
                     'images' => $images,
+                    'image_boxes' => count($variantImageBoxes) > 0 ? $variantImageBoxes : $productImageBoxes,
                 ];
             })
             ->values()
             ->all();
+
+        $product->images = $productImageUrls;
+        $product->image_boxes = $productImageBoxes;
+    }
+
+    private function buildImageBoxesMap($images): array
+    {
+        if (!$images) {
+            return [];
+        }
+
+        return collect($images)
+            ->mapWithKeys(function (Image $image) {
+                $box = $this->imageRestrictedBox($image);
+                if (!$box) {
+                    return [];
+                }
+
+                return [$image->url => $box];
+            })
+            ->all();
+    }
+
+    private function imageRestrictedBox(Image $image): ?array
+    {
+        $left = $image->restricted_left;
+        $top = $image->restricted_top;
+        $width = $image->restricted_width;
+        $height = $image->restricted_height;
+
+        if (
+            $left === null ||
+            $top === null ||
+            $width === null ||
+            $height === null
+        ) {
+            return null;
+        }
+
+        return [
+            'left' => (float) $left,
+            'top' => (float) $top,
+            'width' => (float) $width,
+            'height' => (float) $height,
+        ];
     }
 }

@@ -1,7 +1,9 @@
 "use client";
 
-import React, { createContext, useContext, useState, ReactNode } from "react";
+import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import type { PricePreviewSnapshot } from "@/Pages/Design/Canvas/Canvas";
+
+type PricePreviewByView = Partial<Record<"front" | "back" | "leftSleeve" | "rightSleeve", PricePreviewSnapshot>>;
 
 export type CartItem = {
   slug: string;
@@ -13,6 +15,7 @@ export type CartItem = {
   image?: string;
   availableSizes: string[]; // sizes user can choose
   previewSnapshot?: PricePreviewSnapshot;
+  previewByView?: PricePreviewByView;
 };
 
 export type AddToCartPayload = {
@@ -25,6 +28,7 @@ export type AddToCartPayload = {
   availableSizes?: string[];
   quantity?: number;
   previewSnapshot?: PricePreviewSnapshot;
+  previewByView?: PricePreviewByView;
 };
 
 type CartContextType = {
@@ -42,16 +46,79 @@ type CartContextType = {
 };
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
+const CART_STORAGE_KEY = "bearlane_cart_v1";
+
+const normalizePrice = (p: number | string) => {
+  if (typeof p === "number") return p;
+  if (typeof p === "string") return parseFloat(p.replace(/[^0-9.]/g, "")) || 0;
+  return 0;
+};
+
+const sanitizeCart = (value: unknown): CartItem[] => {
+  if (!Array.isArray(value)) return [];
+
+  return value
+    .filter((entry): entry is Record<string, unknown> => Boolean(entry && typeof entry === "object"))
+    .filter((entry) => {
+      return (
+        typeof entry.slug === "string"
+        && typeof entry.title === "string"
+        && typeof entry.colour === "string"
+        && typeof entry.size === "string"
+      );
+    })
+    .map((entry) => {
+      const nextQuantity = Math.max(1, Math.floor(Number(entry.quantity) || 1));
+      const nextAvailableSizes = Array.isArray(entry.availableSizes)
+        ? entry.availableSizes.filter((size): size is string => typeof size === "string")
+        : [];
+
+      return {
+        ...(entry as CartItem),
+        price: normalizePrice(entry.price as number | string),
+        quantity: nextQuantity,
+        availableSizes: nextAvailableSizes.length ? nextAvailableSizes : [String(entry.size)],
+      };
+    });
+};
+
+const safeJSONStringify = (value: unknown): string => {
+  const seen = new WeakSet<object>();
+  return JSON.stringify(value, (_key, currentValue) => {
+    if (typeof currentValue === "function" || typeof currentValue === "symbol") {
+      return undefined;
+    }
+    if (currentValue && typeof currentValue === "object") {
+      const objectValue = currentValue as object;
+      if (seen.has(objectValue)) {
+        return undefined;
+      }
+      seen.add(objectValue);
+    }
+    return currentValue;
+  });
+};
 
 export const CartProvider = ({ children }: { children: ReactNode }) => {
-  const [cart, setCart] = useState<CartItem[]>([]);
+  const [cart, setCart] = useState<CartItem[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = window.localStorage.getItem(CART_STORAGE_KEY);
+      if (!raw) return [];
+      return sanitizeCart(JSON.parse(raw));
+    } catch {
+      return [];
+    }
+  });
   const [showCart, setShowCart] = useState(false);
 
-  const normalizePrice = (p: number | string) => {
-    if (typeof p === "number") return p;
-    if (typeof p === "string") return parseFloat(p.replace(/[^0-9.]/g, "")) || 0;
-    return 0;
-  };
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(CART_STORAGE_KEY, safeJSONStringify(cart));
+    } catch {
+      // Keep runtime cart state even if persistence fails (e.g. storage limits).
+    }
+  }, [cart]);
 
   const addToCart = (item: AddToCartPayload) => {
     const price = normalizePrice(item.price);

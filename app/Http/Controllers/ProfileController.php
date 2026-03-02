@@ -3,13 +3,14 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Validation\ValidationException;
 use Carbon\Carbon;
 use App\Services\UnsplashService;
-use App\Models\User;
+use App\Models\Product;
+use App\Models\SavedDesign;
 
 class ProfileController extends Controller
 {
@@ -27,11 +28,73 @@ class ProfileController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
+        $savedDesigns = SavedDesign::with(['product.images', 'product.variants'])
+            ->where('user_id', $user->id)
+            ->latest('updated_at')
+            ->take(16)
+            ->get()
+            ->map(function (SavedDesign $design) {
+                return [
+                    'id' => $design->id,
+                    'name' => $design->name,
+                    'product_name' => $design->product?->name,
+                    'product_slug' => $design->product?->slug,
+                    'product_price' => $design->product?->price !== null ? (float) $design->product->price : null,
+                    'product_sizes' => $design->product?->variants
+                        ? $design->product->variants
+                            ->pluck('size')
+                            ->filter(fn ($size) => is_string($size) && trim($size) !== '')
+                            ->unique()
+                            ->values()
+                            ->all()
+                        : [],
+                    'product_images' => $design->product?->images
+                        ? $design->product->images->pluck('url')->values()->all()
+                        : [],
+                    'preview_image' => data_get($design->design_payload, 'compositePngByView.front')
+                        ?: data_get(
+                            $design->design_payload,
+                            'compositePngByView.' . data_get($design->design_payload, 'currentViewKey')
+                        )
+                        ?: $design->product?->images?->first()?->url,
+                    'updated_at' => optional($design->updated_at)?->toIso8601String(),
+                    'payload' => $design->design_payload,
+                ];
+            })
+            ->values();
+
+        $recommendedProducts = Product::with('images')
+            ->where('is_trending', true)
+            ->latest('id')
+            ->take(12)
+            ->get();
+
+        if ($recommendedProducts->isEmpty()) {
+            $recommendedProducts = Product::with('images')
+                ->latest('id')
+                ->take(12)
+                ->get();
+        }
 
         return inertia('Profile/ProfileView', [
             'auth' => [
-                'user' => $user->toArray(),
+                'user' => array_merge($user->toArray(), [
+                    'avatar_url' => $user->avatar_url,
+                    'remaining_seconds' => $this->getRemainingCooldown($user),
+                    'cooldown_ends_at' => $this->getCooldownEndsAt($user),
+                    'server_time' => Carbon::now('UTC')->toIso8601String(),
+                ]),
             ],
+            'savedDesigns' => $savedDesigns,
+            'recommendedProducts' => $recommendedProducts->map(function (Product $product) {
+                return [
+                    'id' => $product->id,
+                    'name' => $product->name,
+                    'brand' => $product->brand,
+                    'price' => $product->price !== null ? (float) $product->price : null,
+                    'image' => $product->images->first()?->url,
+                ];
+            })->values(),
         ]);
     }
 
@@ -83,8 +146,31 @@ class ProfileController extends Controller
         $user->update($validated);
 
         return redirect()
-            ->route('profile.edit')
+            ->route('profile')
             ->with('success', 'Profile updated successfully.');
+    }
+
+    public function updateAvatar(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $validated = $request->validate([
+            'profile_photo' => 'required|image|mimes:jpg,jpeg,png,webp|max:2048',
+        ]);
+
+        if ($request->hasFile('profile_photo')) {
+            if ($user->avatar && Storage::disk('public')->exists($user->avatar)) {
+                Storage::disk('public')->delete($user->avatar);
+            }
+
+            $path = $request->file('profile_photo')->store('avatars', 'public');
+            $user->update(['avatar' => $path]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'avatar_url' => $user->fresh()->avatar_url,
+        ]);
     }
 
     /**

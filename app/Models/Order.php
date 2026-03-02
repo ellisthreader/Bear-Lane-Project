@@ -25,6 +25,7 @@ class Order extends Model
         'total',
         'payment_intent_id',
         'status',
+        'delivered_at',
         'first_name',
         'last_name',
         'phone',
@@ -37,6 +38,9 @@ class Order extends Model
         'delivery_type',
         'delivery_price',
         'shipping_rate',
+        'gift_packaging',
+        'gift_packaging_cost',
+        'gift_message',
         'selected_delivery_date',
         'calculated_ship_date',
         'shippo_transaction_id',
@@ -48,8 +52,10 @@ class Order extends Model
     ];
 
     protected $casts = [
+        'delivered_at' => 'datetime',
         'selected_delivery_date' => 'date',
         'calculated_ship_date' => 'date',
+        'gift_packaging' => 'boolean',
     ];
 
     // Append computed attributes automatically
@@ -71,6 +77,11 @@ class Order extends Model
     public function deliverySlot()
     {
         return $this->belongsTo(DeliverySlot::class, 'delivery_slot_id');
+    }
+
+    public function returnRequests()
+    {
+        return $this->hasMany(ReturnRequest::class);
     }
 
     /**

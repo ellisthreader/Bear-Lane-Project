@@ -25,9 +25,14 @@ interface ShippingService {
 
 interface DiscountData {
   code: string;
-  type: "percent" | "fixed";
+  type: "percent" | "fixed" | "shipping";
   value: number; // in £
 }
+type DiscountValidationResult = {
+  success: boolean;
+  message?: string;
+  discount?: DiscountData;
+};
 
 interface CheckoutContextType {
   // User + Address
@@ -52,7 +57,8 @@ interface CheckoutContextType {
   discountCode: string;
   setDiscountCode: (val: string) => void;
   appliedDiscount: DiscountData | null;
-  validateDiscount: (code: string) => Promise<void>;
+  setAppliedDiscount: React.Dispatch<React.SetStateAction<DiscountData | null>>;
+  validateDiscount: (code: string) => Promise<DiscountValidationResult>;
   discountError: string | null;
 
   // General + specific errors
@@ -134,6 +140,7 @@ export const CheckoutProvider = ({ children }: { children: ReactNode }) => {
         const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/discount/validate`, {
           code,
           subtotal_cents: Math.round(subtotal * 100),
+          shipping_cents: Math.round(shippingCost * 100),
         });
 
         const data = res.data;
@@ -144,10 +151,15 @@ export const CheckoutProvider = ({ children }: { children: ReactNode }) => {
           return { success: false, message: data.message || "Invalid or expired discount code." };
         }
 
-        const discountValue = data.discount_cents / 100;
+        const discountValue =
+          typeof data.value === "number"
+            ? data.value
+            : data.type === "percent"
+            ? Number(data.value || 0)
+            : data.discount_cents / 100;
         const discountData = {
           code: data.code,
-          type: "fixed" as const,
+          type: (data.type || "fixed") as "percent" | "fixed" | "shipping",
           value: discountValue,
         };
 
@@ -186,6 +198,7 @@ export const CheckoutProvider = ({ children }: { children: ReactNode }) => {
         discountCode,
         setDiscountCode,
         appliedDiscount,
+        setAppliedDiscount,
         validateDiscount,
         discountError,
         loading,

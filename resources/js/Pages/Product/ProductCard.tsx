@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { Link } from "@inertiajs/react";
 import { motion } from "framer-motion";
+import { Heart } from "lucide-react";
+import { useWishlist } from "@/Context/WishlistContext";
 
 interface ProductImage {
   url?: string;
@@ -15,12 +17,14 @@ interface ProductCardProps {
     slug: string | { slug: string };
     price: number | string;
     original_price?: number | string | null;
+    is_sale?: boolean;
     images: (string | ProductImage)[];
   };
 }
 
 export default function ProductCard({ product }: ProductCardProps) {
   const [hovered, setHovered] = useState(false);
+  const { toggleWishlistItem, isInWishlist } = useWishlist();
 
   // Normalize image getter
   const getImage = (img: string | ProductImage | undefined): string => {
@@ -35,6 +39,8 @@ export default function ProductCard({ product }: ProductCardProps) {
       : product.slug?.slug ?? "";
 
   const href = `/product/${encodeURIComponent(slug)}`;
+  const wishlistId = String(product.id);
+  const inWishlist = isInWishlist(wishlistId);
 
   const firstImage = getImage(product.images?.[0]);
   const secondImage =
@@ -45,6 +51,11 @@ export default function ProductCard({ product }: ProductCardProps) {
     product.original_price !== null && product.original_price !== undefined
       ? Number(product.original_price)
       : null;
+  const onSale = Boolean(
+    originalPrice !== null &&
+      originalPrice > 0 &&
+      (Boolean(product.is_sale) || originalPrice > price)
+  );
 
   return (
     <Link href={href}>
@@ -57,6 +68,26 @@ export default function ProductCard({ product }: ProductCardProps) {
       >
         {/* IMAGE WRAPPER */}
         <div className="relative w-full h-96 bg-gray-100 overflow-hidden">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              toggleWishlistItem({
+                id: wishlistId,
+                name: product.name,
+                brand: product.brand,
+                price: product.price,
+                image: firstImage,
+                slug,
+              });
+            }}
+            className="absolute right-3 top-3 z-10 rounded-full border border-[#E3D3AC] bg-white/95 p-2 text-[#8A6D2B] shadow-sm transition hover:bg-[#FFF8E8]"
+            aria-label={inWishlist ? "Remove from wishlist" : "Add to wishlist"}
+          >
+            <Heart className={`h-4 w-4 ${inWishlist ? "fill-current" : ""}`} />
+          </button>
+
           {/* MAIN IMAGE */}
           <motion.img
             key="frontImage"
@@ -88,11 +119,11 @@ export default function ProductCard({ product }: ProductCardProps) {
           </p>
 
           <div className="pt-2">
-            <span className="text-lg font-bold text-gray-900">
+            <span className={`text-lg font-bold ${onSale ? "text-[#B42318]" : "text-gray-900"}`}>
               £{price.toFixed(2)}
             </span>
 
-            {originalPrice !== null && (
+            {onSale && originalPrice !== null && (
               <span className="text-gray-400 line-through ml-2 text-sm">
                 £{originalPrice.toFixed(2)}
               </span>

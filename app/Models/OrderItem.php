@@ -18,10 +18,17 @@ class OrderItem extends Model
         'order_id',
         'product_id',
         'product_name',
-        'image_url', // ✅ Added this line so the image gets saved
+        'size',
+        'colour',
+        'image_url',
+        'design_payload',
         'quantity',
         'unit_price',
         'line_total',
+    ];
+
+    protected $casts = [
+        'design_payload' => 'array',
     ];
 
     /**

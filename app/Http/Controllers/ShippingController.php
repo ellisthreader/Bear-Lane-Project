@@ -35,7 +35,7 @@ class ShippingController extends Controller
 
         // Your business' FROM address (fixed)
         $fromAddress = [
-            'name'    => "Ellis' Courses",
+            'name'    => "Bear Lane",
             'street1' => '390 Springfield Road',
             'city'    => 'Chelmsford',
             'zip'     => 'CM2 6AT',

@@ -10,6 +10,7 @@ import {
   Type,
 } from "lucide-react";
 import type { PricePreviewSnapshot } from "../Canvas/Canvas";
+import { calculateDesignPricingFromSides } from "../utils/designPricing";
 
 import DesignPreview from "./DesignPreview";
 
@@ -39,22 +40,15 @@ interface GetPriceUIProps {
     sizeBreakdown: Record<string, number>;
     unitPrice: number;
     previewSnapshot?: PricePreviewSnapshot;
+    previewByView?: Partial<Record<"front" | "back" | "leftSleeve" | "rightSleeve", PricePreviewSnapshot>>;
   }) => void;
   onBuyNow?: (payload: {
     quantity: number;
     sizeBreakdown: Record<string, number>;
     unitPrice: number;
     previewSnapshot?: PricePreviewSnapshot;
+    previewByView?: Partial<Record<"front" | "back" | "leftSleeve" | "rightSleeve", PricePreviewSnapshot>>;
   }) => void;
-}
-
-function parsePrice(price: number | string | undefined): number {
-  if (typeof price === "number") return price;
-  if (typeof price === "string") {
-    const parsed = Number.parseFloat(price.replace(/[^0-9.]/g, ""));
-    return Number.isNaN(parsed) ? 0 : parsed;
-  }
-  return 0;
 }
 
 function formatGBP(value: number): string {
@@ -144,34 +138,12 @@ const GetPriceUI: React.FC<GetPriceUIProps> = ({
     () => [...sides].sort((a, b) => a.pictureNumber - b.pictureNumber),
     [sides]
   );
-  const baseUnitPrice = parsePrice(basePrice);
-  const designCounts = useMemo(() => {
-    const counts = {
-      editedSides: 0,
-      text: 0,
-      image: 0,
-      clipart: 0,
-    };
-
-    sides.forEach(side => {
-      const layers = side.preview?.layers ?? [];
-      if (layers.length > 0) counts.editedSides += 1;
-      layers.forEach(layer => {
-        if (layer.type === "text") counts.text += 1;
-        if (layer.type === "image") counts.image += 1;
-        if (layer.type === "clipart") counts.clipart += 1;
-      });
-    });
-
-    return counts;
-  }, [sides]);
-
-  const designSurchargePerItem =
-    designCounts.editedSides * 1.25 +
-    designCounts.text * 0.75 +
-    designCounts.image * 1.5 +
-    designCounts.clipart * 1.0;
-  const unitPrice = baseUnitPrice + designSurchargePerItem;
+  const pricing = useMemo(
+    () => calculateDesignPricingFromSides(sides, basePrice),
+    [sides, basePrice]
+  );
+  const designCounts = pricing.counts;
+  const unitPrice = pricing.unitPrice;
   const totalQuantity = sizeList.reduce(
     (sum, sizeKey) => sum + (sizeBreakdown[sizeKey] ?? 0),
     0
@@ -223,6 +195,12 @@ const GetPriceUI: React.FC<GetPriceUIProps> = ({
     sizeBreakdown: availableSizes.length ? sizeBreakdown : {},
     unitPrice,
     previewSnapshot: frontSide?.preview,
+    previewByView: orderedSides.reduce<Partial<Record<"front" | "back" | "leftSleeve" | "rightSleeve", PricePreviewSnapshot>>>((acc, side) => {
+      if (side.preview) {
+        acc[side.key] = side.preview;
+      }
+      return acc;
+    }, {}),
   };
 
   const wrapperClass = docked

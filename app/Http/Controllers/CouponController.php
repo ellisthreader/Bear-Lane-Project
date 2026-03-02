@@ -10,16 +10,18 @@ class CouponController extends Controller
 {
     public function apply(Request $request)
     {
-        $code = $request->input('code');
+        $code = strtoupper(trim((string) $request->input('code', '')));
         $subtotal = (int) $request->input('subtotal_cents', 0);
+        $shipping = max(0, (int) $request->input('shipping_cents', 0));
 
         Log::info('[CouponController] Applying coupon', [
             'code' => $code,
             'subtotal_cents' => $subtotal,
+            'shipping_cents' => $shipping,
         ]);
 
         try {
-            $coupon = Coupon::where('code', $code)->where('active', true)->first();
+            $coupon = Coupon::whereRaw('UPPER(code) = ?', [$code])->where('active', true)->first();
 
             if (!$coupon) {
                 Log::warning('[CouponController] Invalid coupon code', ['code' => $code]);
@@ -42,6 +44,18 @@ class CouponController extends Controller
                 return response()->json(['valid' => false, 'message' => 'Minimum spend not met'], 400);
             }
 
+            if ($code === 'FREESHIP') {
+                return response()->json([
+                    'valid' => true,
+                    'coupon_id' => $coupon->id,
+                    'code' => $coupon->code,
+                    'type' => 'shipping',
+                    'value' => 0,
+                    'discount_cents' => $shipping,
+                    'new_subtotal_cents' => $subtotal,
+                ]);
+            }
+
             $discount = $coupon->type === 'percent'
                 ? intval($subtotal * $coupon->value / 100)
                 : min($coupon->value, $subtotal);
@@ -50,6 +64,8 @@ class CouponController extends Controller
                 'valid' => true,
                 'coupon_id' => $coupon->id,
                 'code' => $coupon->code,
+                'type' => $coupon->type,
+                'value' => $coupon->type === 'fixed' ? ($coupon->value / 100) : $coupon->value,
                 'discount_cents' => $discount,
                 'new_subtotal_cents' => max(0, $subtotal - $discount),
             ]);

@@ -21,6 +21,10 @@ class Chat extends Model
         'session_id',
         'user_id',
         'is_closed',
+        'deleted_by',
+        'admin_joined',
+        'is_archived',
+        'archived_at',
     ];
 
     /**
@@ -28,6 +32,9 @@ class Chat extends Model
      */
     protected $casts = [
         'is_closed' => 'boolean',
+        'admin_joined' => 'boolean',
+        'is_archived' => 'boolean',
+        'archived_at' => 'datetime',
     ];
 
     /**

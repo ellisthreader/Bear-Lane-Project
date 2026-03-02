@@ -16,6 +16,7 @@ type Props = {
   onBlur?: () => void;
   className?: string;
   forceError?: boolean;
+  variant?: "default" | "modal";
 };
 
 export default function LuxuryPhoneInput({
@@ -25,6 +26,7 @@ export default function LuxuryPhoneInput({
   onBlur,
   className = "",
   forceError = false,
+  variant = "default",
 }: Props) {
   const [selectedCountry, setSelectedCountry] = useState<string>("GB");
   const [open, setOpen] = useState(false);
@@ -79,6 +81,7 @@ export default function LuxuryPhoneInput({
 
   const isValid = !touched || (value.length > callingCode.length && isValidPhoneNumber(value));
   const showError = forceError || !isValid;
+  const isModal = variant === "modal";
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -95,19 +98,22 @@ export default function LuxuryPhoneInput({
   }, []);
 
   return (
-    <div className={`relative w-full ${className}`.trim()} ref={dropdownRef}>
+    <div ref={dropdownRef} className={`relative w-full ${className}`.trim()}>
       <div
-        className={`flex items-center border rounded-2xl px-4 py-3 bg-white transition-all ${
+        className={`flex items-center border bg-white transition-all ${
           showError
             ? "border-red-400 ring-2 ring-red-200"
+            : isModal
+            ? "border-[#E1D4B5] focus-within:ring-2 focus-within:ring-[#C6A75E]"
             : "border-gray-200 hover:border-[#C9A24D]/50 focus-within:ring-2 focus-within:ring-[#C9A24D]"
+        } ${isModal ? "rounded-lg px-3 py-2" : "rounded-2xl px-4 py-3"
         }`}
       >
         {/* FLAG ONLY */}
         <button
           type="button"
           onClick={() => setOpen(!open)}
-          className="flex items-center pr-3 border-r border-gray-200"
+          className={`flex items-center border-r ${isModal ? "pr-2 border-[#E1D4B5]" : "pr-3 border-gray-200"}`}
         >
           <ReactCountryFlag
             countryCode={selectedCountry}
@@ -126,7 +132,7 @@ export default function LuxuryPhoneInput({
             onBlur?.();
           }}
           onFocus={() => setTouched(true)}
-          className="flex-1 ml-3 focus:outline-none text-gray-900"
+          className={`flex-1 focus:outline-none text-gray-900 ${isModal ? "ml-2 text-sm" : "ml-3"}`}
         />
       </div>
 

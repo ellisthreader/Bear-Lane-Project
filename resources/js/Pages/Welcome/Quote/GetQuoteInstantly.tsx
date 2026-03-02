@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import ProductStep from "./ProductStep";
 import EmbroideryStep from "./EmbroideryStep";
 import ContactStep from "./ContactStep";
@@ -108,6 +108,24 @@ export default function GetQuoteInstantly() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
 
+  const initialInvoiceReference = useMemo(() => {
+    if (typeof window === "undefined") return "";
+    return new URLSearchParams(window.location.search).get("invoice_ref") || "";
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const tab = params.get("quote_tab");
+    if (tab === "artist") {
+      setActiveTab("artist");
+      const target = document.getElementById("get-quote-instantly");
+      if (target) {
+        target.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }
+  }, []);
+
   const addItem = () => {
     const price = calculatePrice(productType, quantity, designType, size);
 
@@ -131,7 +149,7 @@ export default function GetQuoteInstantly() {
   };
 
   return (
-    <div className="min-h-screen bg-white py-16 px-6">
+    <div id="get-quote-instantly" className="min-h-screen bg-white py-16 px-6">
       <div className="max-w-5xl mx-auto">
 
         {/* ===== Main Card ===== */}
@@ -209,7 +227,7 @@ export default function GetQuoteInstantly() {
             </>
           )}
 
-          {activeTab === "artist" && <SpeakToArtist />}
+          {activeTab === "artist" && <SpeakToArtist initialInvoiceReference={initialInvoiceReference} />}
         </div>
       </div>
     </div>

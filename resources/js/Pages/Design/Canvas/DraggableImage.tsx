@@ -1,4 +1,5 @@
 import React from "react";
+import InlineSvg from "../Components/InlineSvg";
 
 type Props = {
   uid: string;
@@ -14,7 +15,7 @@ type Props = {
   zIndex?: number;
 };
 
-export default function DraggableImage({
+function DraggableImage({
   uid,
   url,
   pos,
@@ -54,17 +55,10 @@ export default function DraggableImage({
           zIndex: highlighted ? zIndex + 10000 : zIndex,
           userSelect: "none",
           pointerEvents: "auto",
-          backgroundColor: color || "#000000",
-          WebkitMaskImage: `url("${url}")`,
-          WebkitMaskRepeat: "no-repeat",
-          WebkitMaskPosition: "center",
-          WebkitMaskSize: "contain",
-          maskImage: `url("${url}")`,
-          maskRepeat: "no-repeat",
-          maskPosition: "center",
-          maskSize: "contain",
         }}
-      />
+      >
+        <InlineSvg src={url} color={color || "#000000"} />
+      </div>
     );
   }
 
@@ -95,3 +89,20 @@ export default function DraggableImage({
     />
   );
 }
+
+export default React.memo(DraggableImage, (prev, next) => {
+  return (
+    prev.uid === next.uid &&
+    prev.url === next.url &&
+    prev.pos.x === next.pos.x &&
+    prev.pos.y === next.pos.y &&
+    prev.size.w === next.size.w &&
+    prev.size.h === next.size.h &&
+    prev.rotation === next.rotation &&
+    prev.flip === next.flip &&
+    prev.highlighted === next.highlighted &&
+    prev.color === next.color &&
+    prev.isClipart === next.isClipart &&
+    prev.zIndex === next.zIndex
+  );
+});

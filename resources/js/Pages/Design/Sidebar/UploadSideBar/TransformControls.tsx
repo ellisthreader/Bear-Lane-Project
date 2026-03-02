@@ -21,7 +21,6 @@ export default function TransformControls({
   if (!image) return null; // defensive check
 
   const handleFlip = (direction: "horizontal" | "vertical") => {
-    console.log("Flip clicked:", selectedImage, direction, "current flip:", image.flip);
     if (!onFlipImage) {
       console.warn("onFlipImage handler is not provided!");
       return;
@@ -32,7 +31,6 @@ export default function TransformControls({
   };
 
   const handleRotate = (value: number) => {
-    console.log("Rotate changed:", selectedImage, value);
     if (!onRotateImage) {
       console.warn("onRotateImage handler is not provided!");
       return;

@@ -2,6 +2,7 @@
 
 namespace App\Events;
 
+use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Queue\SerializesModels;
@@ -23,12 +24,22 @@ class ChatDeleted implements ShouldBroadcastNow
 
     public function broadcastOn()
     {
-        // 🔒 Private channel so only participants see updates
-        return new PrivateChannel("livechat.{$this->chatId}");
+        return [
+            new Channel("livechat.{$this->chatId}"),
+            new PrivateChannel('admin.livechats'),
+        ];
     }
 
     public function broadcastAs()
     {
         return 'ChatDeleted';
+    }
+
+    public function broadcastWith(): array
+    {
+        return [
+            'chat_id' => $this->chatId,
+            'deleted_by' => $this->deleted_by,
+        ];
     }
 }

@@ -12,12 +12,6 @@ const allClipartModules = import.meta.glob(
   { eager: true }
 ) as Record<string, { default: string }>;
 
-console.log("🧠 ALL CLIPART MODULES:", allClipartModules);
-
-if (Object.keys(allClipartModules).length === 0) {
-  console.error("❌ VITE CANNOT SEE CLIPART FILES. Check path & casing.");
-}
-
 
 /**
  * Load a single category
@@ -36,8 +30,6 @@ function loadCategory(
         .replace(/\.(svg|png)$/i, "")
         .replace(/[-_]/g, " ");
 
-      console.log(`📂 CATEGORY: ${id} | FILE: ${filePath} | LABEL: ${label}`);
-
       return {
         id: filePath,
         src: mod.default,
@@ -45,7 +37,6 @@ function loadCategory(
       };
     });
 
-  console.log(`🔢 CATEGORY "${name}" ITEMS COUNT:`, items.length);
 
   return {
     id,
@@ -75,7 +66,5 @@ const clipartCategories: ClipartCategoryType[] = [
   loadCategory("summer", "Summer", "summer"),
   loadCategory("vegetables", "Vegetables", "vegetables"),
 ];
-
-console.log("✅ FINAL CLIPART CATEGORIES LOADED:", clipartCategories.map(c => ({ id: c.id, items: c.items.length })));
 
 export default clipartCategories;

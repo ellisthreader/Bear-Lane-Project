@@ -34,7 +34,6 @@ export default function ActionButtons({
         type="button"
         className="w-full py-3 bg-gray-200 rounded-xl flex items-center justify-center gap-2 hover:bg-gray-300"
         onClick={() => {
-          console.log("✂️ Crop clicked:", selectedImage);
           onCrop?.(selectedImage);
         }}
       >

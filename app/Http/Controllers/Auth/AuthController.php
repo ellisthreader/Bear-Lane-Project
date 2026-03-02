@@ -10,9 +10,215 @@ use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Auth\Events\Registered;
 use App\Models\User;
+use App\Models\Order;
+use App\Models\UserAddress;
+use App\Models\UserPaymentMethod;
+use App\Services\Stripe\StripeWalletService;
+use Illuminate\Support\Facades\Schema;
 
 class AuthController extends Controller
 {
+private function claimGuestCheckoutData(User $user): void
+{
+    $normalizedEmail = strtolower(trim((string) $user->email));
+    if ($normalizedEmail === '') {
+        return;
+    }
+
+    $claimedCount = Order::whereNull('user_id')
+        ->whereRaw('LOWER(email) = ?', [$normalizedEmail])
+        ->update(['user_id' => $user->id]);
+
+    $latestOrder = Order::where('user_id', $user->id)
+        ->orderByDesc('created_at')
+        ->first();
+
+    if ($latestOrder) {
+        $updates = [];
+
+        if (empty($user->name)) {
+            $fullName = trim((string) (($latestOrder->first_name ?? '') . ' ' . ($latestOrder->last_name ?? '')));
+            if ($fullName !== '') {
+                $updates['name'] = $fullName;
+            }
+        }
+
+        if (empty($user->phone) && !empty($latestOrder->phone)) {
+            $updates['phone'] = $latestOrder->phone;
+        }
+
+        if (!empty($updates)) {
+            $user->fill($updates);
+            $user->save();
+        }
+    }
+
+    if ($claimedCount > 0) {
+        Log::info('Guest checkout data claimed for user', [
+            'user_id' => $user->id,
+            'email' => $user->email,
+            'orders_claimed' => $claimedCount,
+        ]);
+    }
+
+    $this->syncSavedAddressesFromOrders($user);
+    $this->syncSavedPaymentMethodsFromOrders($user);
+}
+
+private function syncSavedAddressesFromOrders(User $user): void
+{
+    if (!Schema::hasTable('user_addresses')) {
+        return;
+    }
+
+    $orders = Order::where('user_id', $user->id)
+        ->whereNotNull('first_name')
+        ->whereNotNull('last_name')
+        ->whereNotNull('address_line1')
+        ->whereNotNull('city')
+        ->whereNotNull('postcode')
+        ->whereNotNull('country')
+        ->orderByDesc('created_at')
+        ->get();
+
+    if ($orders->isEmpty()) {
+        return;
+    }
+
+    $existing = UserAddress::where('user_id', $user->id)->get();
+    $existingByKey = [];
+
+    foreach ($existing as $entry) {
+        $existingByKey[$this->addressKey([
+            'first_name' => $entry->first_name,
+            'last_name' => $entry->last_name,
+            'address_line1' => $entry->address_line1,
+            'city' => $entry->city,
+            'postcode' => $entry->postcode,
+            'country' => $entry->country,
+        ])] = $entry;
+    }
+
+    $createdOrUpdatedIds = [];
+    $seenKeys = [];
+
+    foreach ($orders as $order) {
+        $payload = [
+            'first_name' => (string) $order->first_name,
+            'last_name' => (string) $order->last_name,
+            'phone' => $order->phone,
+            'country' => (string) $order->country,
+            'address_line1' => (string) $order->address_line1,
+            'address_line2' => $order->address_line2,
+            'city' => (string) $order->city,
+            'county' => null,
+            'postcode' => (string) $order->postcode,
+        ];
+
+        $key = $this->addressKey($payload);
+        if (isset($seenKeys[$key])) {
+            continue;
+        }
+        $seenKeys[$key] = true;
+
+        if (isset($existingByKey[$key])) {
+            $existingByKey[$key]->update([
+                'phone' => $payload['phone'],
+                'address_line2' => $payload['address_line2'],
+                'county' => $payload['county'],
+            ]);
+            $createdOrUpdatedIds[] = $existingByKey[$key]->id;
+            continue;
+        }
+
+        $created = UserAddress::create([
+            'user_id' => $user->id,
+            'label' => 'Checkout address',
+            ...$payload,
+            'is_default' => false,
+        ]);
+        $createdOrUpdatedIds[] = $created->id;
+        $existingByKey[$key] = $created;
+    }
+
+    if (count($createdOrUpdatedIds) === 0) {
+        return;
+    }
+
+    UserAddress::where('user_id', $user->id)->update(['is_default' => false]);
+    UserAddress::where('id', $createdOrUpdatedIds[0])->update(['is_default' => true]);
+}
+
+private function addressKey(array $payload): string
+{
+    return implode('|', [
+        strtolower(trim((string) ($payload['first_name'] ?? ''))),
+        strtolower(trim((string) ($payload['last_name'] ?? ''))),
+        strtolower(trim((string) ($payload['address_line1'] ?? ''))),
+        strtolower(trim((string) ($payload['city'] ?? ''))),
+        strtolower(trim((string) ($payload['postcode'] ?? ''))),
+        strtolower(trim((string) ($payload['country'] ?? ''))),
+    ]);
+}
+
+private function syncSavedPaymentMethodsFromOrders(User $user): void
+{
+    if (!Schema::hasTable('user_payment_methods')) {
+        return;
+    }
+
+    /** @var StripeWalletService $walletService */
+    $walletService = app(StripeWalletService::class);
+    $originalDefaultId = UserPaymentMethod::where('user_id', $user->id)
+        ->where('is_active', true)
+        ->where('is_default', true)
+        ->value('id');
+
+    $orders = Order::where('user_id', $user->id)
+        ->whereNotNull('payment_intent_id')
+        ->orderBy('created_at')
+        ->get(['payment_intent_id', 'first_name', 'last_name']);
+
+    $seenIntents = [];
+
+    foreach ($orders as $order) {
+        $paymentIntentId = trim((string) ($order->payment_intent_id ?? ''));
+        if ($paymentIntentId === '' || isset($seenIntents[$paymentIntentId])) {
+            continue;
+        }
+        $seenIntents[$paymentIntentId] = true;
+
+        $cardholderName = trim((string) (($order->first_name ?? '') . ' ' . ($order->last_name ?? '')));
+
+        try {
+            $walletService->persistPaymentMethodFromIntent(
+                $user,
+                $paymentIntentId,
+                null,
+                $cardholderName
+            );
+        } catch (\Throwable $e) {
+            Log::warning('Unable to sync guest payment method from order intent', [
+                'user_id' => $user->id,
+                'payment_intent_id' => $paymentIntentId,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    if ($originalDefaultId) {
+        $stillExists = UserPaymentMethod::where('user_id', $user->id)
+            ->where('is_active', true)
+            ->where('id', $originalDefaultId)
+            ->exists();
+
+        if ($stillExists) {
+            UserPaymentMethod::where('user_id', $user->id)->update(['is_default' => false]);
+            UserPaymentMethod::where('id', $originalDefaultId)->update(['is_default' => true]);
+        }
+    }
+}
+
 private function resolveRedirectPath(?string $redirect, string $fallback = '/profile'): string
 {
     $target = trim((string) $redirect);
@@ -43,6 +249,7 @@ public function register(Request $request)
     ]);
 
     Auth::login($user);
+    $this->claimGuestCheckoutData($user);
 
     // Fire registered event (important for email verification)
     event(new Registered($user));
@@ -82,6 +289,7 @@ public function register(Request $request)
         if (Auth::attempt($request->only('email', 'password'), $request->boolean('remember'))) {
 
             $request->session()->regenerate();
+            $this->claimGuestCheckoutData(Auth::user());
             $redirectPath = $this->resolveRedirectPath($request->input('redirect'));
 
             if (Auth::user()->is_admin) {

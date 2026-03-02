@@ -2,8 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\BackInStockSubscription;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use App\Models\Product;
 use App\Models\Category;
+use App\Models\Image;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Log;
 
@@ -59,41 +63,236 @@ class ProductController extends Controller
     /**
      * Show single product page
      */
-    public function show($slug)
+    public function show(Request $request, $slug)
     {
         Log::info("🔎 Product requested", ['slug' => $slug]);
 
-        $product = Product::where('slug', $slug)
-            ->with(['images', 'variants.images'])
+        $productModel = Product::where('slug', $slug)
+            ->with([
+                'images',
+                'variants.images',
+                'category.parent.parent.parent',
+                'categories.parent.parent.parent',
+            ])
             ->firstOrFail();
 
-        $product = $this->formatProduct($product);
+        $product = $this->formatProduct($productModel);
+        $productImageBoxes = $this->buildImageBoxesMap($productModel->images);
 
         // Build colourProducts for frontend
-        $product->colourProducts = collect($product->variants)
+        $product->colourProducts = collect($productModel->variants)
             ->groupBy('colour')
-            ->map(function ($group, $colour) use ($product) {
+            ->map(function ($group, $colour) use ($product, $productImageBoxes) {
                 $firstVariant = $group->first();
+                $variantImageBoxes = $this->buildImageBoxesMap($firstVariant->images);
 
                 $images = $firstVariant->images->isNotEmpty()
-                    ? $firstVariant->images->pluck('path')->map(fn($path) => asset($path))->all()
+                    ? $firstVariant->images->pluck('url')->values()->all()
                     : $product->images;
 
                 return [
                     'colour' => $colour,
                     'slug' => $firstVariant->slug,
                     'sizes' => $group->pluck('size')->unique()->values()->all(),
+                    'size_stock' => $group
+                        ->mapWithKeys(fn ($variant) => [(string) $variant->size => (int) ($variant->stock ?? 0)])
+                        ->all(),
                     'images' => $images,
+                    'image_boxes' => count($variantImageBoxes) > 0 ? $variantImageBoxes : $productImageBoxes,
                 ];
             })
             ->values()
             ->all();
+        $product->image_boxes = $productImageBoxes;
+        $product->breadcrumbs = $this->buildProductBreadcrumbs($productModel);
+        $recommendedProducts = $this->buildRecommendedProducts($productModel);
+        $isAdminEditor = (bool) optional($request->user())->is_admin && $request->boolean('product_mode');
+
+        $primaryCategory = null;
+        if ($productModel->relationLoaded('categories') && $productModel->categories->isNotEmpty()) {
+            $primaryCategory = $productModel->categories->first();
+        } elseif ($productModel->relationLoaded('category') && $productModel->category) {
+            $primaryCategory = $productModel->category;
+        }
 
         Log::info("=== colourProducts built ===", ['colourProducts' => $product->colourProducts]);
 
         return Inertia::render('Product/ProductLayout', [
             'product' => $product,
+            'recommendedProducts' => $recommendedProducts,
+            'adminEditor' => $isAdminEditor ? [
+                'enabled' => true,
+                'categoryId' => $primaryCategory?->id,
+                'categorySlug' => $primaryCategory?->slug,
+                'categoryName' => $primaryCategory?->name,
+            ] : null,
         ]);
+    }
+
+    public function subscribeRestock(Request $request, string $slug): JsonResponse
+    {
+        $validated = $request->validate([
+            'colour' => ['nullable', 'string', 'max:100'],
+            'size' => ['required', 'string', 'max:20'],
+        ]);
+
+        $product = Product::query()
+            ->where('slug', $slug)
+            ->with(['variants:id,product_id,colour,size,stock'])
+            ->firstOrFail();
+
+        $normalizedColour = mb_strtolower(trim((string) ($validated['colour'] ?? '')));
+        $normalizedSize = mb_strtoupper(trim((string) $validated['size']));
+
+        $selectedVariant = $product->variants->first(function ($variant) use ($normalizedColour, $normalizedSize) {
+            return mb_strtolower(trim((string) $variant->colour)) === $normalizedColour
+                && mb_strtoupper(trim((string) $variant->size)) === $normalizedSize;
+        });
+
+        // Fallback matching keeps notify flow resilient to slight frontend/backend value mismatches.
+        if (!$selectedVariant) {
+            $selectedVariant = $product->variants->first(function ($variant) use ($normalizedSize) {
+                return mb_strtoupper(trim((string) $variant->size)) === $normalizedSize;
+            });
+        }
+
+        if (!$selectedVariant) {
+            $selectedVariant = $product->variants->first(function ($variant) use ($normalizedColour) {
+                return mb_strtolower(trim((string) $variant->colour)) === $normalizedColour;
+            });
+        }
+
+        BackInStockSubscription::query()->updateOrCreate(
+            [
+                'user_id' => $request->user()->id,
+                'product_id' => $product->id,
+                'colour' => $selectedVariant ? trim((string) $selectedVariant->colour) : trim((string) ($validated['colour'] ?? '')),
+                'size' => $selectedVariant ? mb_strtoupper(trim((string) $selectedVariant->size)) : $normalizedSize,
+            ],
+            [
+                'notified_at' => null,
+            ]
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'You will be notified when this size is back in stock.',
+        ]);
+    }
+
+    private function buildProductBreadcrumbs(Product $product): array
+    {
+        $candidates = collect();
+
+        if ($product->relationLoaded('categories')) {
+            $candidates = $candidates->merge($product->categories);
+        }
+
+        if ($product->relationLoaded('category') && $product->category) {
+            $candidates->push($product->category);
+        }
+
+        $candidates = $candidates
+            ->filter()
+            ->unique('id')
+            ->values();
+
+        if ($candidates->isEmpty()) {
+            return [];
+        }
+
+        $bestTrail = [];
+        foreach ($candidates as $category) {
+            $trail = $this->buildCategoryTrail($category);
+            if (count($trail) > count($bestTrail)) {
+                $bestTrail = $trail;
+            }
+        }
+
+        if (empty($bestTrail)) {
+            return [];
+        }
+
+        $slugs = [];
+        return collect($bestTrail)
+            ->map(function (Category $category) use (&$slugs) {
+                $slugs[] = (string) $category->slug;
+
+                return [
+                    'label' => (string) $category->name,
+                    'href' => '/category/' . implode('/', $slugs),
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    private function buildCategoryTrail(Category $leaf): array
+    {
+        $trail = [];
+        $seen = [];
+        $current = $leaf;
+
+        while ($current instanceof Category && !in_array($current->id, $seen, true)) {
+            array_unshift($trail, $current);
+            $seen[] = $current->id;
+            $current = $current->parent;
+        }
+
+        return $trail;
+    }
+
+    private function buildRecommendedProducts(Product $product): array
+    {
+        $categoryIds = collect();
+
+        if ($product->relationLoaded('category') && $product->category) {
+            $categoryIds->push((int) $product->category->id);
+        }
+
+        if ($product->relationLoaded('categories')) {
+            $categoryIds = $categoryIds->merge($product->categories->pluck('id')->map(fn ($id) => (int) $id));
+        }
+
+        $categoryIds = $categoryIds->unique()->values();
+
+        $query = Product::query()
+            ->where('id', '!=', $product->id)
+            ->with(['images']);
+
+        if ($categoryIds->isNotEmpty()) {
+            $query->where(function ($q) use ($categoryIds) {
+                $q->whereIn('category_id', $categoryIds->all())
+                    ->orWhereHas('categories', function ($categoryQuery) use ($categoryIds) {
+                        $categoryQuery->whereIn('categories.id', $categoryIds->all());
+                    });
+            });
+        } else {
+            $query->where('is_trending', true);
+        }
+
+        return $query
+            ->orderByDesc('is_trending')
+            ->latest('id')
+            ->limit(8)
+            ->get()
+            ->map(fn (Product $item) => $this->formatProductTile($item))
+            ->values()
+            ->all();
+    }
+
+    private function formatProductTile(Product $product): array
+    {
+        $image = $product->images->first();
+
+        return [
+            'id' => (int) $product->id,
+            'name' => (string) $product->name,
+            'slug' => (string) $product->slug,
+            'brand' => (string) ($product->brand ?? ''),
+            'price' => (float) ($product->price ?? 0),
+            'image' => $image ? $image->url : '/images/no-image.png',
+        ];
     }
 
     /**
@@ -107,7 +306,7 @@ class ProductController extends Controller
         $allSizes   = $product->variants->pluck('size')->unique()->values()->all();
 
         $productImages = $product->images
-            ->map(fn ($img) => asset($img->path))
+            ->map(fn ($img) => $img->url)
             ->values()
             ->all();
 
@@ -139,6 +338,50 @@ class ProductController extends Controller
             'colour' => $allColours,
             'variants' => $product->variants,
             'colourProducts' => [], // will be filled in `show`
+        ];
+    }
+
+    private function buildImageBoxesMap($images): array
+    {
+        if (!$images) {
+            return [];
+        }
+
+        return collect($images)
+            ->mapWithKeys(function (Image $image) {
+                $box = $this->imageRestrictedBox($image);
+                if (!$box) {
+                    return [];
+                }
+
+                return [
+                    $image->url => $box,
+                ];
+            })
+            ->all();
+    }
+
+    private function imageRestrictedBox(Image $image): ?array
+    {
+        $left = $image->restricted_left;
+        $top = $image->restricted_top;
+        $width = $image->restricted_width;
+        $height = $image->restricted_height;
+
+        if (
+            $left === null ||
+            $top === null ||
+            $width === null ||
+            $height === null
+        ) {
+            return null;
+        }
+
+        return [
+            'left' => (float) $left,
+            'top' => (float) $top,
+            'width' => (float) $width,
+            'height' => (float) $height,
         ];
     }
 }

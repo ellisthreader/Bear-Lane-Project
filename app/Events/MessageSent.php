@@ -2,72 +2,71 @@
 
 namespace App\Events;
 
-use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Broadcasting\Channel;
+use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use App\Models\Message;
 
-class MessageSent implements ShouldBroadcast
+class MessageSent implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
-    public Message $message;
-    public ?string $guestId;
+    private const IMAGE_PREFIX = '[image]';
 
-    /**
-     * Create a new event instance.
-     *
-     * @param  \App\Models\Message  $message
-     * @param  string|null  $guestId  The guest UUID for private channels
-     */
-    public function __construct(Message $message, ?string $guestId = null)
+    public Message $message;
+
+    public function __construct(Message $message)
     {
         $this->message = $message;
-        $this->guestId = $guestId;
     }
 
-    /**
-     * Get the channels the event should broadcast on.
-     *
-     * @return \Illuminate\Broadcasting\Channel|array
-     */
     public function broadcastOn(): Channel|array
     {
-        // Guest chat → broadcast privately
-        if ($this->guestId) {
-            return new PrivateChannel("guest.{$this->guestId}");
-        }
-
-        // Fallback public/support channel
-        return new Channel("support-chat");
+        return [
+            new Channel("livechat.{$this->message->chat_id}"),
+            new PrivateChannel('admin.livechats'),
+        ];
     }
 
-    /**
-     * Name the event for the frontend listener.
-     *
-     * @return string
-     */
     public function broadcastAs(): string
     {
-        return "MessageSent";
+        return 'MessageSent';
     }
 
-    /**
-     * Customize the data sent to the frontend.
-     *
-     * @return array
-     */
     public function broadcastWith(): array
     {
+        $imageUrl = null;
+        $content = (string) $this->message->content;
+        $trimmed = trim($content);
+        if (str_starts_with($trimmed, self::IMAGE_PREFIX)) {
+            $candidate = trim(substr($trimmed, strlen(self::IMAGE_PREFIX)));
+            if ($candidate !== '') {
+                $imageUrl = $candidate;
+            }
+        }
+
+        $username = $this->message->user?->name ?: $this->message->user?->username;
+        if (!$username) {
+            $username = match ($this->message->sender_type) {
+                'admin' => 'Support Team',
+                'system' => 'System',
+                default => 'Guest',
+            };
+        }
+
         return [
             'id' => $this->message->id,
             'chat_id' => $this->message->chat_id,
             'user_id' => $this->message->user_id,
             'sender_type' => $this->message->sender_type,
-            'content' => $this->message->content,
+            'username' => $username,
+            'avatar' => $this->message->user?->avatar,
+            'is_image' => $imageUrl !== null,
+            'image_url' => $imageUrl,
+            'content' => $imageUrl ? 'Image attachment' : $this->message->content,
             'created_at' => $this->message->created_at->toDateTimeString(),
         ];
     }

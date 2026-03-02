@@ -56,6 +56,15 @@ return [
     ],
 
     // ---------------------------
+    // OpenAI API
+    // ---------------------------
+    'openai' => [
+        'api_key' => env('OPENAI_API_KEY'),
+        'moderation_model' => env('OPENAI_MODERATION_MODEL', 'omni-moderation-latest'),
+        'timeout' => (int) env('OPENAI_TIMEOUT', 10),
+    ],
+
+    // ---------------------------
     // OAuth Providers
     // ---------------------------
     'google' => [

@@ -15,6 +15,7 @@ class DatabaseSeeder extends Seeder
         // ✅ Register all your seeders in correct order
         // -------------------------------------------
         $this->call([
+            AdminUserSeeder::class,
             CategorySeeder::class, // Must run first
             ProductSeeder::class,  // Depends on categories
         ]);

@@ -104,7 +104,10 @@ export default function ShippingMethod() {
   };
 
   const fetchDeliveryOptions = async (silent = false) => {
-    if (!isAddressComplete()) return;
+    if (!isAddressComplete()) {
+      setLoading(false);
+      return;
+    }
 
     if (!silent && !hasLoadedOptions) {
       setLoading(true);
@@ -337,10 +340,35 @@ export default function ShippingMethod() {
     await reserveSlot(firstAvailableSlot.slot_id);
   };
 
-  if (loading) {
+  const shouldShowInitialLoading = !hasLoadedOptions && !error;
+
+  if (shouldShowInitialLoading || loading) {
     return (
-      <div className="p-0">
-        <p className="text-gray-600">Loading delivery options...</p>
+      <div className="rounded-2xl border border-[#C6A75E]/25 bg-gradient-to-b from-[#FFFDF7] to-white p-5">
+        <div className="flex items-center gap-3">
+          <div className="relative h-10 w-10">
+            <span className="absolute inset-0 rounded-full bg-[#C6A75E]/25 animate-ping" />
+            <span className="absolute inset-1 rounded-full border-2 border-[#C6A75E]/50 border-t-[#C6A75E] animate-spin" />
+            <span className="absolute inset-[11px] rounded-full bg-[#C6A75E]" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold tracking-wide text-[#8A6D2B]">Loading delivery options</p>
+            <p className="text-xs text-gray-500">Checking the best shipping services for your address...</p>
+          </div>
+        </div>
+
+        <div className="mt-5 space-y-3">
+          {[0, 1, 2].map((item) => (
+            <div
+              key={item}
+              className="h-[82px] rounded-xl border border-[#C6A75E]/20 bg-white/90 px-4 py-3 animate-pulse"
+            >
+              <div className="h-3 w-1/3 rounded bg-[#C6A75E]/25" />
+              <div className="mt-3 h-2.5 w-2/3 rounded bg-gray-200" />
+              <div className="mt-2 h-2.5 w-1/2 rounded bg-gray-200" />
+            </div>
+          ))}
+        </div>
       </div>
     );
   }

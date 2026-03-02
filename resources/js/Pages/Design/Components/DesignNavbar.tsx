@@ -4,6 +4,8 @@ import React from "react";
 import { Link } from "@inertiajs/react";
 import { ShoppingCart, User, Heart, ChevronRight, Folder } from "lucide-react";
 import { useCart } from "@/Context/CartContext";
+import { useWishlist } from "@/Context/WishlistContext";
+import WishlistSidebar from "@/Components/Wishlist/WishlistSidebar";
 
 type DesignNavbarProps = {
   designName?: string;
@@ -18,10 +20,12 @@ export default function DesignNavbar({
 }: DesignNavbarProps) {
   const canOpenMyDesigns = typeof onOpenMyDesigns === "function";
   const { openCart } = useCart();
+  const { openWishlist } = useWishlist();
 
   return (
-    <nav
-      className="
+    <>
+      <nav
+        className="
         fixed top-0 left-0 w-full z-50
         bg-white/95
         backdrop-blur-md
@@ -66,9 +70,14 @@ export default function DesignNavbar({
           <User className="w-5 h-5 cursor-pointer hover:text-[#C6A75E] transition" />
         </Link>
 
-        <Link href="/wishlist">
+        <button
+          type="button"
+          onClick={openWishlist}
+          className="inline-flex items-center justify-center"
+          aria-label="Open wishlist"
+        >
           <Heart className="w-5 h-5 cursor-pointer hover:text-[#C6A75E] transition" />
-        </Link>
+        </button>
 
         <button
           onClick={openCart}
@@ -78,6 +87,8 @@ export default function DesignNavbar({
           <ShoppingCart className="w-5 h-5 cursor-pointer hover:text-[#C6A75E] transition" />
         </button>
       </div>
-    </nav>
+      </nav>
+      <WishlistSidebar />
+    </>
   );
 }

@@ -102,16 +102,12 @@ export default function CheckoutPage() {
         <div className="max-w-[1300px] mx-auto py-10 px-6">
           {!showCheckoutForm ? (
             <>
-              <div className="flex justify-between items-center mb-2">
-                <h1 className="text-4xl font-semibold tracking-tight">Checkout</h1>
+              <div className="flex justify-between items-center mb-8">
+                <h1 className="text-4xl font-semibold tracking-tight text-gray-900">Checkout</h1>
                 <Link href="/courses" className="text-lg font-medium text-[#8A6D2B] hover:text-[#6F5724] transition-colors">
                   ← Continue Shopping
                 </Link>
               </div>
-
-              <p className="text-lg text-gray-600 mb-12">
-                Complete your purchase by entering your delivery details and payment information below.
-              </p>
 
               <div className="max-w-[1200px] mx-auto">
                 <div className="grid grid-cols-1 lg:grid-cols-2 items-stretch">
@@ -220,16 +216,12 @@ export default function CheckoutPage() {
             </>
           ) : (
             <>
-              <div className="flex justify-between items-center mb-2">
-                <h1 className="text-4xl font-semibold tracking-tight">Secure checkout</h1>
+              <div className="mb-8 flex items-center justify-between border-b border-[#C6A75E]/30 pb-3">
+                <h1 className="text-4xl font-semibold tracking-tight text-gray-900">Secure checkout</h1>
                 <Link href="/courses" className="text-lg font-medium text-[#8A6D2B] hover:text-[#6F5724] transition-colors">
                   ← Continue Shopping
                 </Link>
               </div>
-
-            <p className="text-lg text-gray-600 mb-12">
-              Complete your purchase by entering your delivery details and payment information below.
-            </p>
 
             <Elements stripe={stripePromise}>
               <CheckoutProvider>

@@ -39,7 +39,6 @@ export default function DesignImage({
               <div key={index} className="flex flex-col items-center gap-1">
                 <button
                   onClick={() => {
-                    console.log("📸 Thumbnail clicked:", img, "Selected?", isSelected);
                     onSelectImage?.(img);
                   }}
                   className={`transition-all duration-200 rounded-lg border

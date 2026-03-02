@@ -21,7 +21,7 @@ import { DEFAULT_TEXT_ALIGN, type TextAlign } from "../Types/Text";
 import GetPriceButton from "../Components/Buttons/GetPriceButton";
 import SaveDesignButton from "../Components/Buttons/SaveDesignButton";
 import ProductViewSelector from "../Components/ProductViewSelector";
-import type { ViewKey } from "../Design";
+import type { ViewKey } from "../types/designTypes";
 
 export type ImageState = {
   url?: string;
@@ -59,6 +59,7 @@ export type PricePreviewLayer = {
   borderWidth?: number;
   fontFamily?: string;
   fontSize?: number;
+  textAlign?: TextAlign;
 };
 
 export type PricePreviewSnapshot = {
@@ -100,12 +101,14 @@ export type CanvasProps = {
   onSaveDesign?: () => void;
   onViewSnapshotChange?: (viewKey: ViewKey, snapshot: PricePreviewSnapshot) => void;
   compactPriceMode?: boolean;
+  canvasPositions?: Record<string, { x: number; y: number }>;
 };
 
 export default function Canvas(props: CanvasProps) {
   const {
     canvasRef,
     restrictedBox,
+    canvasPositions,
     mainImage,
     uploadedImages,
     viewImageStates,
@@ -158,7 +161,8 @@ export default function Canvas(props: CanvasProps) {
     sizes,
     restrictedBox,
     currentImageState,
-    currentViewKey
+    currentViewKey,
+    canvasPositions
   );
 
   // ---------------- Text Auto Shrink ----------------
@@ -187,6 +191,99 @@ export default function Canvas(props: CanvasProps) {
       });
     },
   });
+
+  useEffect(() => {
+    if (!setViewImageStates) return;
+
+    setViewImageStates(prev => {
+      const currentViewState = prev[currentViewKey] ?? {};
+      let nextViewState = currentViewState;
+      let hasChanges = false;
+
+      Object.entries(positions).forEach(([uid, position]) => {
+        const layer = currentViewState[uid];
+        if (!layer) return;
+
+        const layerSize = sizes[uid] ?? layer.size;
+        if (!layerSize) return;
+
+        const desiredCanvasPosition = {
+          x: Number(position.x.toFixed(2)),
+          y: Number(position.y.toFixed(2)),
+          width: layerSize.w,
+          height: layerSize.h,
+          scale: layer.canvasPositions?.[currentViewKey]?.scale ?? 1,
+          relX:
+            restrictedBox.width > 0
+              ? Number(
+                  ((position.x - restrictedBox.left) / restrictedBox.width).toFixed(6)
+                )
+              : undefined,
+          relY:
+            restrictedBox.height > 0
+              ? Number(
+                  ((position.y - restrictedBox.top) / restrictedBox.height).toFixed(6)
+                )
+              : undefined,
+          relW:
+            restrictedBox.width > 0
+              ? Number((layerSize.w / restrictedBox.width).toFixed(6))
+              : undefined,
+          relH:
+            restrictedBox.height > 0
+              ? Number((layerSize.h / restrictedBox.height).toFixed(6))
+              : undefined,
+        };
+
+        const existingCanvasPosition = layer.canvasPositions?.[currentViewKey];
+        const isSamePosition =
+          existingCanvasPosition &&
+          Math.abs(existingCanvasPosition.x - desiredCanvasPosition.x) < 0.05 &&
+          Math.abs(existingCanvasPosition.y - desiredCanvasPosition.y) < 0.05 &&
+          existingCanvasPosition.width === desiredCanvasPosition.width &&
+          existingCanvasPosition.height === desiredCanvasPosition.height &&
+          existingCanvasPosition.relX === desiredCanvasPosition.relX &&
+          existingCanvasPosition.relY === desiredCanvasPosition.relY &&
+          existingCanvasPosition.relW === desiredCanvasPosition.relW &&
+          existingCanvasPosition.relH === desiredCanvasPosition.relH;
+
+        if (isSamePosition) {
+          return;
+        }
+
+        nextViewState = {
+          ...nextViewState,
+          [uid]: {
+            ...layer,
+            canvasPositions: {
+              ...(layer.canvasPositions ?? {}),
+              [currentViewKey]: desiredCanvasPosition,
+            },
+          },
+        };
+
+        hasChanges = true;
+      });
+
+      if (!hasChanges) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        [currentViewKey]: nextViewState,
+      };
+    });
+  }, [
+    currentViewKey,
+    positions,
+    sizes,
+    restrictedBox.left,
+    restrictedBox.top,
+    restrictedBox.width,
+    restrictedBox.height,
+    setViewImageStates,
+  ]);
 
   // ---------------- Drag Selection ----------------
   const drag = useDragSelection({
@@ -379,6 +476,7 @@ export default function Canvas(props: CanvasProps) {
           borderWidth: layer.borderWidth,
           fontFamily: layer.fontFamily,
           fontSize: layer.fontSize,
+          textAlign: layer.textAlign,
         };
       })
       .filter((layer): layer is PricePreviewLayer => layer !== null);
@@ -460,9 +558,16 @@ export default function Canvas(props: CanvasProps) {
       {Object.entries(currentImageState)
         .filter(([_, layer]) => layer.type === "text")
         .map(([uid, layer]) => {
-          const p = positions[uid] ?? { x: 200, y: 200 };
+          const savedViewPosition = layer.canvasPositions?.[currentViewKey];
           const fontSize = layer.fontSize ?? 24;
-          const size = sizes[uid] ?? { w: 200, h: fontSize };
+          const size = sizes[uid] ?? layer.size ?? { w: 1, h: fontSize };
+          const fallbackX = restrictedBox.left + (restrictedBox.width - size.w) / 2;
+          const fallbackY = restrictedBox.top + (restrictedBox.height - size.h) / 2;
+          const p =
+            positions[uid] ??
+            (savedViewPosition
+              ? { x: Number(savedViewPosition.x), y: Number(savedViewPosition.y) }
+              : { x: fallbackX, y: fallbackY });
           return (
             <DraggableText
               key={uid}
@@ -531,7 +636,7 @@ export default function Canvas(props: CanvasProps) {
       )}
 
       {!compactPriceMode && (
-        <div className="absolute bottom-6 right-6 flex gap-4 z-50">
+        <div data-export-ignore="true" className="absolute bottom-6 right-6 flex gap-4 z-50">
           <SaveDesignButton onClick={onSaveDesign ?? (() => {})} />
           <GetPriceButton onClick={onGetPrice ?? (() => {})} />
         </div>

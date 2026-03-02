@@ -7,7 +7,6 @@ export function useTextResize(
   onResizeText: (uid: string, size: number) => void
 ) {
   return (e: React.MouseEvent) => {
-    console.log("🔥 useTextResize START");
     e.preventDefault();
     e.stopPropagation();
 
@@ -16,7 +15,6 @@ export function useTextResize(
     const el = document.querySelector<HTMLElement>(
       `[data-uid="${CSS.escape(uid)}"][data-type="text"]`
     );
-    console.log("🔍 resize target", el);
     if (!el) return;
 
     const startFont = getFontSize(uid);
@@ -29,7 +27,6 @@ export function useTextResize(
     let lastValidSize = startFont;
 
     const onMove = (ev: MouseEvent) => {
-      console.log("➡️ resizing move", ev.clientX);
       const dx = ev.clientX - startX;
       const desired = Math.max(minFont, startFont * (1 + dx * sensitivity));
 
@@ -63,7 +60,6 @@ export function useTextResize(
         top + rect.height > maxBottom;
 
       const finalSize = exceeds ? lastValidSize : desired;
-      console.log("📏 new size", desired);
 
       if (!exceeds) {
         lastValidSize = desired;
@@ -71,7 +67,6 @@ export function useTextResize(
 
       // ✅ SINGLE SOURCE OF TRUTH
       onResizeText(uid, finalSize);
-      console.log("🧠 onResizeText", uid, desired);
     };
 
     const onUp = () => {

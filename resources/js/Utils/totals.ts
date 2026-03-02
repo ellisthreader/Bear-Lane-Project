@@ -7,7 +7,7 @@ export type ItemForTotals = {
 };
 
 export type AppliedDiscount = {
-  type: "percent" | "fixed";
+  type: "percent" | "fixed" | "shipping";
   value: number; // e.g. 25 for 25%, or 5 for £5 off
   code?: string;
 } | null;
@@ -44,26 +44,32 @@ export function computeTotalsInCents(args: {
   const shipping_cents = Math.round((Number(shippingCost) || 0) * 100);
   const extra_fee_cents = Math.round((Number(extraFeeCost) || 0) * 100);
 
-  // --- discount applied only to subtotal (not VAT or shipping)
-  let discount_cents = 0;
+  // --- discounts:
+  // percent/fixed apply to subtotal, shipping type applies to delivery charge
+  let subtotal_discount_cents = 0;
+  let shipping_discount_cents = 0;
   if (appliedDiscount) {
     if (appliedDiscount.type === "percent") {
-      discount_cents = Math.round(subtotal_cents * (appliedDiscount.value / 100));
+      subtotal_discount_cents = Math.round(subtotal_cents * (appliedDiscount.value / 100));
     } else if (appliedDiscount.type === "fixed") {
-      discount_cents = Math.round((Number(appliedDiscount.value) || 0) * 100);
-      discount_cents = Math.min(discount_cents, subtotal_cents); // never more than subtotal
+      subtotal_discount_cents = Math.round((Number(appliedDiscount.value) || 0) * 100);
+      subtotal_discount_cents = Math.min(subtotal_discount_cents, subtotal_cents); // never more than subtotal
+    } else if (appliedDiscount.type === "shipping") {
+      shipping_discount_cents = shipping_cents;
     }
   }
+  const discount_cents = subtotal_discount_cents + shipping_discount_cents;
 
   // --- discounted subtotal
-  const discounted_subtotal_cents = Math.max(subtotal_cents - discount_cents, 0);
+  const discounted_subtotal_cents = Math.max(subtotal_cents - subtotal_discount_cents, 0);
+  const final_shipping_cents = Math.max(shipping_cents - shipping_discount_cents, 0);
 
   // --- VAT (20% on discounted subtotal only)
   const vat_cents = Math.round(discounted_subtotal_cents * 0.2);
 
   // --- final total (subtotal - discount + VAT + shipping + extra fee)
   const total_cents = Math.max(
-    discounted_subtotal_cents + vat_cents + shipping_cents + extra_fee_cents,
+    discounted_subtotal_cents + vat_cents + final_shipping_cents + extra_fee_cents,
     0
   );
 
@@ -73,7 +79,7 @@ export function computeTotalsInCents(args: {
     discount_cents,
     discounted_subtotal_cents,
     vat_cents,
-    shipping_cents,
+    shipping_cents: final_shipping_cents,
     extra_fee_cents,
     total_cents,
 
@@ -82,7 +88,7 @@ export function computeTotalsInCents(args: {
     discount: (discount_cents / 100).toFixed(2),
     discounted_subtotal: (discounted_subtotal_cents / 100).toFixed(2),
     vat: (vat_cents / 100).toFixed(2),
-    shipping: (shipping_cents / 100).toFixed(2),
+    shipping: (final_shipping_cents / 100).toFixed(2),
     extra_fee: (extra_fee_cents / 100).toFixed(2),
     total: (total_cents / 100).toFixed(2),
   };

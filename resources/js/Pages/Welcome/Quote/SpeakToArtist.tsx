@@ -1,15 +1,20 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Check, X } from "lucide-react";
 import { isValidPhoneNumber } from "react-phone-number-input";
 import LuxuryPhoneInput from "@/Components/LuxuryPhoneInput";
 
-export default function SpeakToArtist() {
+interface SpeakToArtistProps {
+  initialInvoiceReference?: string;
+}
+
+export default function SpeakToArtist({ initialInvoiceReference = "" }: SpeakToArtistProps) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [invoiceReference, setInvoiceReference] = useState(initialInvoiceReference);
   const [budget, setBudget] = useState("");
   const [details, setDetails] = useState("");
   const [files, setFiles] = useState<File[]>([]);
@@ -23,6 +28,11 @@ export default function SpeakToArtist() {
 
   const gold = "#C9A24D";
   const maxCharacters = 1000;
+
+  useEffect(() => {
+    if (!initialInvoiceReference) return;
+    setInvoiceReference(initialInvoiceReference);
+  }, [initialInvoiceReference]);
 
   /* ---------------- EMAIL VALIDATION ---------------- */
 
@@ -106,6 +116,7 @@ const handleSubmit = async () => {
   formData.append("name", name);
   formData.append("email", email);
   formData.append("phone", phone);
+  formData.append("invoice_reference", invoiceReference);
   formData.append("budget", budget);
   formData.append("details", details);
   files.forEach((file) => formData.append("images[]", file));
@@ -122,6 +133,7 @@ const handleSubmit = async () => {
     setName("");
     setEmail("");
     setPhone("");
+    setInvoiceReference(initialInvoiceReference);
     setBudget("");
     setDetails("");
     setFiles([]);
@@ -188,6 +200,14 @@ const handleSubmit = async () => {
               onChange={(v) => setPhone(v)}
               required
               onBlur={() => setTouchedPhone(true)}
+            />
+
+            <input
+              type="text"
+              placeholder="Invoice reference number"
+              value={invoiceReference}
+              onChange={(e) => setInvoiceReference(e.target.value)}
+              className="w-full rounded-xl border border-gray-200 px-5 py-4 focus:outline-none focus:ring-2 focus:ring-[#C9A24D]"
             />
 
             <input

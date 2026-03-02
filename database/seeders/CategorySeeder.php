@@ -2,92 +2,84 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
-use Illuminate\Support\Str;
 use App\Models\Category;
+use Illuminate\Database\Seeder;
 
 class CategorySeeder extends Seeder
 {
     public function run(): void
     {
-        // Full, sane set of categories matching typical product slugs used in ProductSeeder
-        // Add / remove entries here as your product list grows.
-        $categories = [
-            // -------------- WOMEN (Adult) --------------
-            ['section' => 'Women', 'subsection' => 'Clothing', 'name' => 'T-Shirts'],
-            ['section' => 'Women', 'subsection' => 'Clothing', 'name' => 'Hoodies & Sweatshirts'],
-            ['section' => 'Women', 'subsection' => 'Clothing', 'name' => 'Jackets & Coats'],
-            ['section' => 'Women', 'subsection' => 'Shoes', 'name' => 'Trainers'],
-            ['section' => 'Women', 'subsection' => 'Accessories', 'name' => 'Hats'],
-            ['section' => 'Women', 'subsection' => 'Accessories', 'name' => 'Scarves'],
-
-            // -------------- MEN (Adult) --------------
-            ['section' => 'Men', 'subsection' => 'Clothing', 'name' => 'T-Shirts'],
-            ['section' => 'Men', 'subsection' => 'Clothing', 'name' => 'Hoodies & Sweatshirts'],
-            ['section' => 'Men', 'subsection' => 'Clothing', 'name' => 'Jackets & Coats'],
-            ['section' => 'Men', 'subsection' => 'Shoes', 'name' => 'Trainers'],
-            ['section' => 'Men', 'subsection' => 'Accessories', 'name' => 'Hats'],
-            ['section' => 'Men', 'subsection' => 'Accessories', 'name' => 'Scarves'],
-
-            // -------------- KIDS: Baby & Newborn (Girl & Boy) --------------
-            ['section' => 'Girl', 'subsection' => 'Clothing', 'name' => 'T-Shirts', 'age_group' => 'Baby & Newborn'],
-            ['section' => 'Girl', 'subsection' => 'Clothing', 'name' => 'Jackets & Coats', 'age_group' => 'Baby & Newborn'],
-            ['section' => 'Boy',  'subsection' => 'Clothing', 'name' => 'Nightwear', 'age_group' => 'Baby & Newborn'],
-            ['section' => 'Boy',  'subsection' => 'Clothing', 'name' => 'Jackets & Coats', 'age_group' => 'Baby & Newborn'],
-
-            // -------------- KIDS: 2-8 (Girl & Boy) --------------
-            ['section' => 'Girl', 'subsection' => 'Clothing', 'name' => 'T-Shirts', 'age_group' => '2-8'],
-            ['section' => 'Girl', 'subsection' => 'Clothing', 'name' => 'Jackets & Coats', 'age_group' => '2-8'],
-            ['section' => 'Boy',  'subsection' => 'Clothing', 'name' => 'Nightwear', 'age_group' => '2-8'],
-            ['section' => 'Boy',  'subsection' => 'Clothing', 'name' => 'Jackets & Coats', 'age_group' => '2-8'],
-
-            // -------------- KIDS: 9-14 (Girl & Boy) --------------
-            ['section' => 'Girl', 'subsection' => 'Clothing', 'name' => 'T-Shirts', 'age_group' => '9-14'],
-            ['section' => 'Girl', 'subsection' => 'Clothing', 'name' => 'Jackets & Coats', 'age_group' => '9-14'],
-            ['section' => 'Boy',  'subsection' => 'Clothing', 'name' => 'Nightwear', 'age_group' => '9-14'],
-            ['section' => 'Boy',  'subsection' => 'Clothing', 'name' => 'Jackets & Coats', 'age_group' => '9-14'],
+        $allowedSlugs = [
+            'women',
+            'women/clothing',
+            'women/t-shirt',
+            'women/accessories',
+            'women/bears',
+            'women/shoes',
+            'women/trainers',
+            'men',
+            'men/clothing',
+            'men/t-shirt',
+            'men/accessories',
+            'men/bears',
+            'men/shoes',
+            'men/trainers',
+            'kids',
+            'kids/clothing',
+            'kids/t-shirt',
+            'kids/accessories',
+            'kids/bears',
+            'kids/shoes',
+            'kids/trainers',
         ];
 
-        // Build slug for each category consistently.
-        foreach ($categories as &$category) {
-            $slugParts = [];
+        Category::query()
+            ->where(function ($query) {
+                $query->where('slug', 'sale')
+                    ->orWhere('slug', 'like', 'women%')
+                    ->orWhere('slug', 'like', 'men%')
+                    ->orWhere('slug', 'like', 'kids%');
+            })
+            ->whereNotIn('slug', $allowedSlugs)
+            ->delete();
 
-            if (!empty($category['age_group'])) {
-                // include age_group early for kids slugs like "2-8-girl-clothing-t-shirts"
-                $slugParts[] = $category['age_group'];
-            }
+        $women = $this->firstOrCreateCategory('Women', 'women', null);
+        $men = $this->firstOrCreateCategory('Men', 'men', null);
+        $kids = $this->firstOrCreateCategory('Kids', 'kids', null);
 
-            // normalize section (lowercase, slug-friendly)
-            $slugParts[] = $category['section'];
-            $slugParts[] = $category['subsection'];
-            $slugParts[] = $category['name'];
+        $womenClothing = $this->firstOrCreateCategory('Clothing', 'women/clothing', $women->id);
+        $womenAccessories = $this->firstOrCreateCategory('Accessories', 'women/accessories', $women->id);
+        $womenShoes = $this->firstOrCreateCategory('Shoes', 'women/shoes', $women->id);
+        $this->firstOrCreateCategory('T-shirt', 'women/t-shirt', $womenClothing->id);
+        $this->firstOrCreateCategory('Bears', 'women/bears', $womenAccessories->id);
+        $this->firstOrCreateCategory('Trainers', 'women/trainers', $womenShoes->id);
 
-            // join and slugify
-            $category['slug'] = Str::slug(implode('-', $slugParts));
+        $menClothing = $this->firstOrCreateCategory('Clothing', 'men/clothing', $men->id);
+        $menAccessories = $this->firstOrCreateCategory('Accessories', 'men/accessories', $men->id);
+        $menShoes = $this->firstOrCreateCategory('Shoes', 'men/shoes', $men->id);
+        $this->firstOrCreateCategory('T-shirt', 'men/t-shirt', $menClothing->id);
+        $this->firstOrCreateCategory('Bears', 'men/bears', $menAccessories->id);
+        $this->firstOrCreateCategory('Trainers', 'men/trainers', $menShoes->id);
 
-            // store canonical values for DB fields (so updateOrCreate doesn't miss anything)
-            // ensure keys exist (age_group may be absent)
-            if (!isset($category['age_group'])) {
-                $category['age_group'] = null;
-            }
-        }
-        unset($category);
+        $kidsClothing = $this->firstOrCreateCategory('Clothing', 'kids/clothing', $kids->id);
+        $kidsAccessories = $this->firstOrCreateCategory('Accessories', 'kids/accessories', $kids->id);
+        $kidsShoes = $this->firstOrCreateCategory('Shoes', 'kids/shoes', $kids->id);
+        $this->firstOrCreateCategory('T-shirt', 'kids/t-shirt', $kidsClothing->id);
+        $this->firstOrCreateCategory('Bears', 'kids/bears', $kidsAccessories->id);
+        $this->firstOrCreateCategory('Trainers', 'kids/trainers', $kidsShoes->id);
+    }
 
-        // Insert or update categories using slug (idempotent and safe)
-        foreach ($categories as $cat) {
-            Category::updateOrCreate(
-                ['slug' => $cat['slug']],
-                [
-                    'name'       => $cat['name'],
-                    'slug'       => $cat['slug'],
-                    'section'    => $cat['section'],
-                    'subsection' => $cat['subsection'],
-                    'parent_id'  => null,
-                    'age_group'  => $cat['age_group'],
-                ]
-            );
-        }
-
-        $this->command->info("✅ Categories seeded/updated successfully (slugs created or updated).");
+    private function firstOrCreateCategory(string $name, string $slug, ?int $parentId): Category
+    {
+        return Category::query()->firstOrCreate(
+            ['slug' => $slug],
+            [
+                'name' => $name,
+                'parent_id' => $parentId,
+                'section' => $parentId ? 'Navigation' : $name,
+                'subsection' => null,
+                'age_group' => null,
+            ]
+        );
     }
 }

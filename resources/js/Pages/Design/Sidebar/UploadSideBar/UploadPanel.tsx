@@ -45,6 +45,21 @@ export default function StencilizeUI({
     setLoading(false);
   };
 
+  const runStencilize = async (sourceUrl: string, randomize = false) => {
+    const edgeStrength = randomize ? 1.05 + Math.random() * 0.35 : 1.15;
+    const blur = randomize ? 0.6 + Math.random() * 0.45 : 0.8;
+    const minAlpha = randomize ? 16 + Math.floor(Math.random() * 5) : 18;
+    const posterizeLevels = randomize ? (Math.random() > 0.6 ? 4 : 3) : 3;
+    return stencilizeImage(sourceUrl, {
+      threshold: 0,
+      edgeStrength,
+      blur,
+      posterizeLevels,
+      mode: "mono",
+      minAlpha,
+    });
+  };
+
   /* ---------------- Upload ---------------- */
   const handleFile = async (file?: File) => {
     if (!file || loading) return;
@@ -58,7 +73,7 @@ export default function StencilizeUI({
     setLoading(true);
 
     try {
-      const processedImage = await stencilizeImage(objectUrl);
+      const processedImage = await runStencilize(objectUrl, false);
       setProcessed(processedImage);
     } catch (err) {
       console.error("Stencilize failed:", err);
@@ -79,12 +94,25 @@ export default function StencilizeUI({
     resetState();
   };
 
+  const handleRegenerate = async () => {
+    if (!original || loading) return;
+    setLoading(true);
+    try {
+      const nextProcessed = await runStencilize(original, true);
+      setProcessed(nextProcessed);
+    } catch (err) {
+      console.error("Regenerate stencil failed:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   /* ---------------- UI ---------------- */
   return (
     <>
-      <div className="p-6 space-y-6 h-full overflow-y-auto bg-white rounded-xl">
+      <div className="p-6 space-y-6 h-full overflow-y-auto rounded-xl border border-[#E7D9B9] bg-gradient-to-b from-[#FFFEFB] to-[#F9F5EA]">
         {/* Browse Button */}
-        <label className="w-full flex items-center gap-3 cursor-pointer bg-gray-100 hover:bg-gray-200 text-gray-800 py-3 px-4 rounded-lg border border-gray-300 transition">
+        <label className="w-full flex items-center gap-3 cursor-pointer bg-white hover:bg-[#FFF7E6] text-[#2F2617] py-3 px-4 rounded-lg border border-[#DCC89A] transition">
           <UploadCloud size={22} />
           <span className="font-medium">
             {loading ? "Processing…" : "Browse your computer"}
@@ -106,7 +134,7 @@ export default function StencilizeUI({
             handleFile(e.dataTransfer.files?.[0]);
           }}
           onDragOver={(e) => e.preventDefault()}
-          className="w-full h-36 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-600 bg-gray-50 hover:bg-gray-100 transition"
+          className="w-full h-36 border-2 border-dashed border-[#D8C391] rounded-lg flex flex-col items-center justify-center text-[#7A6640] bg-[#FFFCF2] hover:bg-[#FFF6DE] transition"
         >
           <ImageIcon size={30} className="mb-2 opacity-70" />
           <p className="text-sm font-medium">Or drag and drop</p>
@@ -161,6 +189,7 @@ export default function StencilizeUI({
           loading={loading}
           onClose={handleCancel}
           onConfirm={handleConfirm}
+          onRegenerate={handleRegenerate}
         />
       )}
     </>

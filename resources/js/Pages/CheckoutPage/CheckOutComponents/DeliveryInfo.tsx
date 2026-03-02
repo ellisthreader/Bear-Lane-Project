@@ -3,7 +3,7 @@ import { useCheckout } from "@/Context/CheckoutContext";
 import { Autocomplete, useLoadScript } from "@react-google-maps/api";
 import { getCountryCode } from "@/Utils/countryCodes";
 import LuxuryPhoneInput from "@/Components/LuxuryPhoneInput";
-import type { CheckoutFieldErrors, CheckoutFieldKey } from "../CheckoutForm";
+import type { CheckoutFieldErrors, CheckoutFieldKey } from "../types";
 
 const GOOGLE_MAPS_LIBRARIES: ("places")[] = ["places"];
 

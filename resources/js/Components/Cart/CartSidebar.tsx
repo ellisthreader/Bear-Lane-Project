@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Plus, Minus, Trash2, ChevronDown } from "lucide-react";
 import { useCart } from "@/Context/CartContext";
+import { useWishlist } from "@/Context/WishlistContext";
 import { router } from "@inertiajs/react";
 import DesignPreview from "@/Pages/Design/Components/DesignPreview";
 
@@ -114,6 +115,7 @@ const CartSidebar = () => {
     openCart: () => void;
     addToCart: (item: AddToCartPayload) => void;
   } = useCart();
+  const { toggleWishlistItem, isInWishlist } = useWishlist();
 
   const [page, setPage] = useState(0);
   const itemsPerPage = 4;
@@ -360,6 +362,22 @@ const CartSidebar = () => {
                               className="mt-2 px-3 py-1 bg-[#C6A75E] text-white rounded-lg text-sm hover:bg-[#B8994E] transition"
                             >
                               Add
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                toggleWishlistItem({
+                                  id: product.id,
+                                  name: product.title,
+                                  brand: "On",
+                                  price: product.price,
+                                  image: product.image,
+                                  slug: product.slug,
+                                })
+                              }
+                              className="mt-1 px-3 py-1 rounded-lg text-xs border border-[#D9C18B] text-[#7B6530] hover:bg-[#FFF8E8] transition"
+                            >
+                              {isInWishlist(String(product.id)) ? "Wishlisted" : "Wishlist"}
                             </button>
                           </div>
                         ))}

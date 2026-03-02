@@ -52,6 +52,16 @@ export default function IdeaToIconicSection() {
     };
   }, []);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const quoteTab = params.get("quote_tab");
+    const invoiceRef = params.get("invoice_ref");
+    if (quoteTab === "artist" || quoteTab === "instant" || invoiceRef) {
+      setActivePage("getQuote");
+    }
+  }, []);
+
   /* ================= FULL PAGE VIEWS ================= */
 
   if (activePage === "startProject") {

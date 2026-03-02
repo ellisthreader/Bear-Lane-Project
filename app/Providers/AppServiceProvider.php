@@ -39,6 +39,7 @@ class AppServiceProvider extends ServiceProvider
                         'id' => $user->id,
                         'username' => $user->username,
                         'name' => $user->name,
+                        'is_admin' => (bool) ($user->is_admin ?? false),
                         'avatar_url' => $user->avatar_url ?? $user->avatar ?? '/images/default-avatar.png',
                         'created_at' => $user->created_at,
                     ];

@@ -103,6 +103,41 @@ class ShippoRateService
         return $data;
     }
 
+    public function getTransaction(string $transactionObjectId): array
+    {
+        $token = config('services.shippo.token');
+
+        if (empty($token)) {
+            throw new \RuntimeException('Shippo API key is missing. Set SHIPPO_API_KEY in .env.');
+        }
+
+        $transactionObjectId = trim($transactionObjectId);
+        if ($transactionObjectId === '') {
+            throw new \RuntimeException('Transaction id is required to fetch Shippo transaction.');
+        }
+
+        $response = Http::withHeaders([
+            'Authorization' => 'ShippoToken ' . $token,
+            'Content-Type' => 'application/json',
+        ])->get("https://api.goshippo.com/v1/transactions/{$transactionObjectId}");
+
+        if ($response->failed()) {
+            $body = $response->json();
+            $message = is_array($body) && !empty($body['detail'])
+                ? (string) $body['detail']
+                : 'Shippo transaction lookup failed.';
+
+            throw new \RuntimeException($message);
+        }
+
+        $data = $response->json();
+        if (!is_array($data)) {
+            throw new \RuntimeException('Shippo transaction lookup response was invalid.');
+        }
+
+        return $data;
+    }
+
     public function getFilteredRates(array $fromAddress, array $toAddress, array $parcel, int $maxEstimatedDays = 2): array
     {
         $rates = $this->getRates($fromAddress, $toAddress, $parcel);

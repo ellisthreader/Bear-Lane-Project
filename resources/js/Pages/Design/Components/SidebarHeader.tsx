@@ -27,7 +27,6 @@ export default function SidebarHeader({
 
       <button
         onClick={() => {
-          console.log("[SidebarHeader] Close clicked");
           onClose();
         }}
         className="

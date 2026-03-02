@@ -22,14 +22,7 @@ export default function Clipart({
 
   // 🔍 DEBUG
   useEffect(() => {
-    console.log("[Clipart] activeCategoryId =", activeCategoryId);
-  }, [activeCategoryId]);
-
-  // 🔁 Force reset when "Change Art" is clicked
-  useEffect(() => {
     if (forceSections && activeCategoryId !== null) {
-      console.log("[Clipart] forceSections → resetting to sections");
-
       setActiveCategoryId(null);
       setSidebarTitle?.(null);
       setSidebarBackOverride?.(false);
@@ -51,8 +44,6 @@ export default function Clipart({
             const category = clipartCategories.find((c) => c.id === id);
             if (!category) return;
 
-            console.log("[Clipart] Category selected:", category.name);
-
             setActiveCategoryId(id);
 
             // UI updates
@@ -67,15 +58,9 @@ export default function Clipart({
         <ClipartItemsPage
           category={activeCategory}
           onBack={() => {
-            console.log("[Clipart] Item page back clicked");
-
-            // Local UI cleanup
             setActiveCategoryId(null);
             setSidebarTitle?.(null);
             setSidebarBackOverride?.(false);
-
-            // ⬅️ REAL navigation (pop sidebar stack)
-            console.log("[Clipart] Calling onBack()");
             onBack();
           }}
           onAddClipart={onAddClipart}

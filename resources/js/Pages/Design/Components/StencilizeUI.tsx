@@ -37,6 +37,21 @@ export default function StencilizeUI({
     setLoading(false);
   };
 
+  const runStencilize = async (sourceUrl: string, randomize = false) => {
+    const edgeStrength = randomize ? 1.05 + Math.random() * 0.35 : 1.15;
+    const blur = randomize ? 0.6 + Math.random() * 0.45 : 0.8;
+    const minAlpha = randomize ? 16 + Math.floor(Math.random() * 5) : 18;
+    const posterizeLevels = randomize ? (Math.random() > 0.6 ? 4 : 3) : 3;
+    return stencilizeImage(sourceUrl, {
+      threshold: 0,
+      edgeStrength,
+      blur,
+      posterizeLevels,
+      mode: "mono",
+      minAlpha,
+    });
+  };
+
   /* ---------------- Upload ---------------- */
 
   const handleFile = async (file?: File) => {
@@ -51,13 +66,7 @@ export default function StencilizeUI({
     setLoading(true);
 
     try {
-      const result = await stencilizeImage(objectUrl, {
-        threshold: 140,
-        edgeStrength: 1.5,
-        blur: 1,
-        posterizeLevels: 2,
-        randomness: 0.45,
-      });
+      const result = await runStencilize(objectUrl, false);
 
       setProcessed(result);
     } catch (err) {
@@ -81,21 +90,34 @@ export default function StencilizeUI({
     resetState();
   };
 
+  const handleRegenerate = async () => {
+    if (!original || loading) return;
+    setLoading(true);
+    try {
+      const result = await runStencilize(original, true);
+      setProcessed(result);
+    } catch (err) {
+      console.error("Regenerate stencil failed:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   /* ---------------- UI ---------------- */
 
   return (
     <>
-      <div className="p-5 space-y-6 h-full overflow-y-auto bg-white shadow-lg rounded-xl">
+      <div className="p-5 space-y-6 h-full overflow-y-auto rounded-xl border border-[#E7D9B9] bg-gradient-to-b from-[#FFFEFB] to-[#F9F5EA] shadow-lg">
         {/* Header */}
         <div>
-          <h2 className="text-xl font-bold">Upload Images</h2>
-          <p className="text-gray-500 text-sm">
+          <h2 className="text-xl font-bold text-[#2F2617]">Upload Images</h2>
+          <p className="text-[#7A6640] text-sm">
             Add your own images to create stitch-ready stencils.
           </p>
         </div>
 
         {/* Browse Button */}
-        <label className="w-full flex items-center gap-3 cursor-pointer bg-gray-100 hover:bg-gray-200 text-gray-800 py-3 px-4 rounded-xl border border-gray-300 transition shadow-sm">
+        <label className="w-full flex items-center gap-3 cursor-pointer bg-white hover:bg-[#FFF7E6] text-[#2F2617] py-3 px-4 rounded-xl border border-[#DCC89A] transition shadow-sm">
           <UploadCloud size={22} />
           <span className="font-medium">
             {loading ? "Processing…" : "Browse your computer"}
@@ -117,7 +139,7 @@ export default function StencilizeUI({
             handleFile(e.dataTransfer.files?.[0]);
           }}
           onDragOver={(e) => e.preventDefault()}
-          className="w-full h-36 border-2 border-dashed border-gray-400 rounded-xl flex flex-col items-center justify-center text-gray-600 bg-gray-50 hover:bg-gray-100 transition"
+          className="w-full h-36 border-2 border-dashed border-[#D8C391] rounded-xl flex flex-col items-center justify-center text-[#7A6640] bg-[#FFFCF2] hover:bg-[#FFF6DE] transition"
         >
           <ImageIcon size={30} className="mb-2 opacity-70" />
           <p className="text-sm font-medium">Or drag and drop</p>
@@ -138,7 +160,7 @@ export default function StencilizeUI({
 
         {/* Recent Uploads */}
         <div className="pb-4">
-          <h3 className="text-lg font-semibold mb-2">Recent Uploads</h3>
+          <h3 className="text-lg font-semibold mb-2 text-[#2F2617]">Recent Uploads</h3>
           {recentImages.length === 0 ? (
             <p className="text-gray-500 text-sm">No uploads yet.</p>
           ) : (
@@ -170,6 +192,7 @@ export default function StencilizeUI({
           loading={loading}
           onClose={handleCancel}
           onConfirm={handleConfirm}
+          onRegenerate={handleRegenerate}
         />
       )}
     </>

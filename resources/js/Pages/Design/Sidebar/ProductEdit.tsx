@@ -31,6 +31,20 @@ const colourMap: Record<string, string> = {
   Rose: "#f43f5e",
 };
 
+const getColourCode = (colour: string) => {
+  if (colourMap[colour]) return colourMap[colour];
+  const normalized = String(colour || "").trim().toLowerCase();
+  if (!normalized) return "#d1d5db";
+
+  // Stable fallback colour for custom admin colours.
+  let hash = 0;
+  for (let i = 0; i < normalized.length; i += 1) {
+    hash = normalized.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const hue = Math.abs(hash) % 360;
+  return `hsl(${hue} 65% 55%)`;
+};
+
 export default function ProductEdit({
   product,
   selectedColour,
@@ -75,11 +89,28 @@ export default function ProductEdit({
 
   const uniqueColours = Object.keys(variantsByColour);
 
+  const reviewCount = useMemo(() => {
+    const raw = Number(product?.review_count ?? product?.reviews_count ?? 0);
+    return Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : 0;
+  }, [product?.review_count, product?.reviews_count]);
+
+  const ratingValue = useMemo(() => {
+    const raw = Number(product?.average_rating ?? product?.rating ?? 0);
+    if (!Number.isFinite(raw) || raw <= 0) return 0;
+    return Math.min(5, raw);
+  }, [product?.average_rating, product?.rating]);
+
   // ---------- Sizes available for selected colour ----------
-const availableSizes =
-  selectedColour && variantsByColour[selectedColour]
-    ? variantsByColour[selectedColour].map(v => v.size).filter(Boolean)
-    : [];
+  const availableSizes =
+    selectedColour && variantsByColour[selectedColour]
+      ? Array.from(
+          new Set(
+            variantsByColour[selectedColour]
+              .map((v) => v.size)
+              .filter((size): size is string => typeof size === "string" && size.trim().length > 0)
+          )
+        )
+      : [];
 
 
   // ---------- CLICK HANDLERS ----------
@@ -106,15 +137,15 @@ const availableSizes =
         </button>
       </div>
 
-      {/* Fake Reviews */}
+      {/* Real Reviews */}
       <div className="flex items-center mb-4">
         <div className="flex items-center text-yellow-400 mr-2">
           {Array.from({ length: 5 }).map((_, i) => (
-            <Star key={i} size={18} className={i < 4 ? "fill-current" : ""} />
+            <Star key={i} size={18} className={i < Math.round(ratingValue) ? "fill-current" : ""} />
           ))}
         </div>
         <span className="text-gray-600 font-medium text-sm">
-          4.7 stars - 1,291 reviews
+          {reviewCount > 0 ? `${ratingValue.toFixed(1)} stars - ${reviewCount.toLocaleString()} reviews` : "No reviews yet"}
         </span>
       </div>
 
@@ -129,11 +160,8 @@ const availableSizes =
       <div className="mb-6">
         <h2 className="text-lg font-semibold mb-2 text-gray-700">Colours</h2>
         <div className="grid grid-cols-6 gap-3">
-          {uniqueColours
-            .concat(Object.keys(colourMap).filter(c => !uniqueColours.includes(c)))
-            .slice(0, 16)
-            .map((colour) => {
-              const colorCode = colourMap[colour] ?? "#d1d5db"; 
+          {uniqueColours.map((colour) => {
+              const colorCode = getColourCode(colour);
               const isSelected = selectedColour === colour;
 
               return (

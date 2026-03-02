@@ -7,6 +7,40 @@ type Props = {
   color?: string;
 };
 
+const cleanedSvgCache = new Map<string, string>();
+const svgFetchPromiseCache = new Map<string, Promise<string>>();
+
+const cleanSvg = (text: string) =>
+  text
+    .replace(/<style[\s\S]*?<\/style>/gi, "")
+    .replace(/fill="[^"]*"/gi, "")
+    .replace(/stroke="[^"]*"/gi, "")
+    .replace(/<svg([^>]*)>/i, `<svg$1 width="100%" height="100%">`);
+
+const getCleanedSvg = (src: string): Promise<string> => {
+  const cached = cleanedSvgCache.get(src);
+  if (cached) return Promise.resolve(cached);
+
+  const inFlight = svgFetchPromiseCache.get(src);
+  if (inFlight) return inFlight;
+
+  const request = fetch(src)
+    .then(res => res.text())
+    .then(text => {
+      const cleaned = cleanSvg(text);
+      cleanedSvgCache.set(src, cleaned);
+      svgFetchPromiseCache.delete(src);
+      return cleaned;
+    })
+    .catch(error => {
+      svgFetchPromiseCache.delete(src);
+      throw error;
+    });
+
+  svgFetchPromiseCache.set(src, request);
+  return request;
+};
+
 export default function InlineSvg({ src, color = "#000000" }: Props) {
   const [svg, setSvg] = useState<string>("");
 
@@ -19,36 +53,16 @@ export default function InlineSvg({ src, color = "#000000" }: Props) {
   useEffect(() => {
     let cancelled = false;
 
-    fetch(src)
-      .then((res) => res.text())
-      .then((text) => {
+    getCleanedSvg(src)
+      .then((cleaned) => {
         if (cancelled) return;
 
-        const cleaned = text
-          // remove embedded styles
-          .replace(/<style[\s\S]*?<\/style>/gi, "")
-          // remove explicit fills/strokes
-          .replace(/fill="[^"]*"/gi, "")
-          .replace(/stroke="[^"]*"/gi, "")
-          // normalize svg tag
-          .replace(
-            /<svg([^>]*)>/i,
-            `<svg$1 width="100%" height="100%">`
-          );
-
         baseSvgRef.current = cleaned;
-        baseSvgRef.current = cleaned;
-        setSvg(cleaned);
-
-        // 🔑 FORCE color re-application after SVG loads
-        queueMicrotask(() => {
-          setSvg((prev) =>
-            prev.replace(
-              /<svg([^>]*)>/i,
-              `<svg$1 style="color:${color}; fill:currentColor; stroke:currentColor;">`
-            )
-          );
-        });
+        const colored = cleaned.replace(
+          /<svg([^>]*)>/i,
+          `<svg$1 style="color:${color}; fill:currentColor; stroke:currentColor;">`
+        );
+        setSvg(colored);
       });
 
     return () => {
