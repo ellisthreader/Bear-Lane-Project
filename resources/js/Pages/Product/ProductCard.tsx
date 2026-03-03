@@ -20,9 +20,10 @@ interface ProductCardProps {
     is_sale?: boolean;
     images: (string | ProductImage)[];
   };
+  compact?: boolean;
 }
 
-export default function ProductCard({ product }: ProductCardProps) {
+export default function ProductCard({ product, compact = false }: ProductCardProps) {
   const [hovered, setHovered] = useState(false);
   const { toggleWishlistItem, isInWishlist } = useWishlist();
 
@@ -67,7 +68,11 @@ export default function ProductCard({ product }: ProductCardProps) {
         onMouseLeave={() => setHovered(false)}
       >
         {/* IMAGE WRAPPER */}
-        <div className="relative w-full h-96 bg-gray-100 overflow-hidden">
+        <div
+          className={`relative w-full bg-gray-100 overflow-hidden ${
+            compact ? "h-64 md:h-72" : "h-96"
+          }`}
+        >
           <button
             type="button"
             onClick={(e) => {
@@ -93,9 +98,10 @@ export default function ProductCard({ product }: ProductCardProps) {
             key="frontImage"
             src={firstImage}
             alt={product.name}
+            draggable={false}
             className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
               hovered ? "opacity-0" : "opacity-100"
-            }`}
+            } pointer-events-none select-none`}
           />
 
           {/* SECOND IMAGE ON HOVER */}
@@ -103,18 +109,19 @@ export default function ProductCard({ product }: ProductCardProps) {
             key="hoverImage"
             src={secondImage}
             alt={product.name}
+            draggable={false}
             className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
               hovered ? "opacity-100" : "opacity-0"
-            }`}
+            } pointer-events-none select-none`}
           />
         </div>
 
-        <div className="p-5 space-y-1 bg-white">
+        <div className={`space-y-1 bg-white ${compact ? "p-4" : "p-5"}`}>
           <p className="text-sm uppercase tracking-wide text-gray-500 font-medium">
             {product.brand}
           </p>
 
-          <p className="text-lg font-semibold text-gray-800 leading-tight">
+          <p className={`${compact ? "text-base" : "text-lg"} font-semibold text-gray-800 leading-tight`}>
             {product.name}
           </p>
 

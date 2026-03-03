@@ -1,13 +1,21 @@
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Head, usePage } from "@inertiajs/react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import GuestLayout from "@/Layouts/GuestLayout";
+import { AnimatePresence, motion } from "framer-motion";
 
 import HeroSection from "./HeroSection";
 import IdeaToIconicSection from "./IdeaToIconicSection";
 import CategorySection from "./CategorySection";
 import StackedScrollCards from "./StackedScrollCards";
 import ProductCard from "../Product/ProductCard";
-import { CheckCircle2, ShieldCheck, SlidersHorizontal, Star, Truck } from "lucide-react";
+import {
+  CheckCircle2,
+  ShieldCheck,
+  SlidersHorizontal,
+  Star,
+  Truck,
+} from "lucide-react";
 
 type User = {
   id: number;
@@ -113,15 +121,131 @@ const fallbackSpotlightProducts: Product[] = [
     original_price: null,
     images: [],
   },
+  {
+    id: -5,
+    name: "Classic Crew Tee",
+    slug: "classic-crew-tee",
+    type: "Tee",
+    brand: "Studio",
+    price: 22,
+    original_price: null,
+    images: [],
+  },
+  {
+    id: -6,
+    name: "Street Heavyweight Tee",
+    slug: "street-heavyweight-tee",
+    type: "Tee",
+    brand: "Street",
+    price: 26,
+    original_price: null,
+    images: [],
+  },
+  {
+    id: -7,
+    name: "Drop Shoulder Tee",
+    slug: "drop-shoulder-tee",
+    type: "Tee",
+    brand: "Studio",
+    price: 25,
+    original_price: null,
+    images: [],
+  },
+  {
+    id: -8,
+    name: "Organic Cotton Tee",
+    slug: "organic-cotton-tee",
+    type: "Tee",
+    brand: "Eco",
+    price: 29,
+    original_price: null,
+    images: [],
+  },
+  {
+    id: -9,
+    name: "Vintage Wash Tee",
+    slug: "vintage-wash-tee",
+    type: "Tee",
+    brand: "Heritage",
+    price: 27,
+    original_price: null,
+    images: [],
+  },
+  {
+    id: -10,
+    name: "Performance Training Tee",
+    slug: "performance-training-tee",
+    type: "Tee",
+    brand: "Sport",
+    price: 23,
+    original_price: null,
+    images: [],
+  },
 ];
 
 export default function Welcome() {
   const { props } = usePage<PageProps>();
   const user = props.auth?.user;
   const Layout = user ? AuthenticatedLayout : GuestLayout;
-  const spotlightProducts = props.products?.length
-    ? props.products.slice(0, 4)
-    : fallbackSpotlightProducts;
+  const spotlightProducts = useMemo(
+    () =>
+      props.products?.length
+        ? props.products.slice(0, 10)
+        : fallbackSpotlightProducts.slice(0, 10),
+    [props.products]
+  );
+  const [activeReview, setActiveReview] = useState(0);
+  const productRailRef = useRef<HTMLDivElement | null>(null);
+  const draggingRef = useRef(false);
+  const movedDuringDragRef = useRef(false);
+  const dragStartXRef = useRef(0);
+  const dragStartScrollRef = useRef(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setActiveReview((prev) => (prev + 1) % customerReviews.length);
+    }, 4600);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const rail = productRailRef.current;
+    if (!rail) return;
+
+    const interval = setInterval(() => {
+      const atEnd = rail.scrollLeft + rail.clientWidth >= rail.scrollWidth - 12;
+      if (atEnd) {
+        rail.scrollTo({ left: 0, behavior: "smooth" });
+        return;
+      }
+      rail.scrollBy({ left: 320, behavior: "smooth" });
+    }, 3600);
+
+    return () => clearInterval(interval);
+  }, [spotlightProducts.length]);
+
+  const startDrag = (clientX: number) => {
+    const rail = productRailRef.current;
+    if (!rail) return;
+    draggingRef.current = true;
+    movedDuringDragRef.current = false;
+    dragStartXRef.current = clientX;
+    dragStartScrollRef.current = rail.scrollLeft;
+  };
+
+  const moveDrag = (clientX: number) => {
+    const rail = productRailRef.current;
+    if (!rail || !draggingRef.current) return;
+    const delta = clientX - dragStartXRef.current;
+    if (Math.abs(delta) > 4) {
+      movedDuringDragRef.current = true;
+    }
+    rail.scrollLeft = dragStartScrollRef.current - delta;
+  };
+
+  const endDrag = () => {
+    draggingRef.current = false;
+  };
 
   return (
     <Layout>
@@ -152,9 +276,44 @@ export default function Welcome() {
             </h2>
           </div>
 
-          <div className="mt-10 grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
+        </div>
+
+        <div className="mt-5 w-full px-4 sm:px-6 lg:px-8">
+          <div
+            ref={productRailRef}
+            onMouseDown={(event) => {
+              event.preventDefault();
+              startDrag(event.clientX);
+            }}
+            onMouseMove={(event) => {
+              event.preventDefault();
+              moveDrag(event.clientX);
+            }}
+            onMouseUp={endDrag}
+            onMouseLeave={endDrag}
+            onTouchStart={(event) => startDrag(event.touches[0].clientX)}
+            onTouchMove={(event) => moveDrag(event.touches[0].clientX)}
+            onTouchEnd={endDrag}
+            onDragStart={(event) => event.preventDefault()}
+            onClickCapture={(event) => {
+              if (movedDuringDragRef.current) {
+                event.preventDefault();
+                event.stopPropagation();
+              }
+            }}
+            className="flex w-full snap-x snap-mandatory gap-5 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden cursor-grab active:cursor-grabbing select-none touch-pan-y"
+          >
             {spotlightProducts.map((product) => (
-              <ProductCard key={product.id} product={product} />
+              <motion.div
+                key={product.id}
+                className="w-[250px] min-w-[250px] snap-start sm:w-[265px] sm:min-w-[265px]"
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, amount: 0.2 }}
+                transition={{ duration: 0.35 }}
+              >
+                <ProductCard product={product} compact />
+              </motion.div>
             ))}
           </div>
         </div>
@@ -182,24 +341,43 @@ export default function Welcome() {
               </div>
             </div>
 
-            <div className="mt-8 grid gap-5 md:grid-cols-3">
-              {customerReviews.map((review) => (
-                <blockquote
-                  key={review.name}
-                  className="rounded-2xl border border-[#EADFC6] bg-white p-5 text-[#1D1710]"
+            <div className="mt-8 overflow-hidden rounded-2xl border border-[#EADFC6] bg-white p-6">
+              <AnimatePresence mode="wait">
+                <motion.blockquote
+                  key={customerReviews[activeReview].name}
+                  className="text-[#1D1710]"
+                  initial={{ opacity: 0, x: 40 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -40 }}
+                  transition={{ duration: 0.45 }}
                 >
                   <div className="mb-3 flex gap-1 text-[#C9A24D]">
                     {Array.from({ length: 5 }).map((_, idx) => (
                       <Star key={idx} className="h-4 w-4 fill-current" />
                     ))}
                   </div>
-                  <p className="text-sm leading-relaxed">"{review.quote}"</p>
+                  <p className="text-base leading-relaxed">
+                    "{customerReviews[activeReview].quote}"
+                  </p>
                   <footer className="mt-4 border-t border-[#EFE3CC] pt-4">
-                    <p className="font-semibold">{review.name}</p>
-                    <p className="text-xs text-[#6F5C3A]">{review.role}</p>
+                    <p className="font-semibold">{customerReviews[activeReview].name}</p>
+                    <p className="text-xs text-[#6F5C3A]">{customerReviews[activeReview].role}</p>
                   </footer>
-                </blockquote>
-              ))}
+                </motion.blockquote>
+              </AnimatePresence>
+              <div className="mt-5 flex justify-center gap-2">
+                {customerReviews.map((review, index) => (
+                  <button
+                    key={review.name}
+                    type="button"
+                    onClick={() => setActiveReview(index)}
+                    className={`h-2.5 rounded-full transition-all ${
+                      index === activeReview ? "w-7 bg-[#C9A24D]" : "w-2.5 bg-[#E2D4B6]"
+                    }`}
+                    aria-label={`Show review from ${review.name}`}
+                  />
+                ))}
+              </div>
             </div>
           </div>
 

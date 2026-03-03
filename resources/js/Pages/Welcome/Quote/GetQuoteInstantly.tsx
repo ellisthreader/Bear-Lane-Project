@@ -92,7 +92,11 @@ export const calculatePrice = (
 };
 
 /* ================= MAIN ================= */
-export default function GetQuoteInstantly() {
+type GetQuoteInstantlyProps = {
+  embedded?: boolean;
+};
+
+export default function GetQuoteInstantly({ embedded = false }: GetQuoteInstantlyProps) {
   const [activeTab, setActiveTab] = useState<"instant" | "artist">("instant");
   const [step, setStep] = useState<1 | 2 | 3>(1);
 
@@ -149,7 +153,10 @@ export default function GetQuoteInstantly() {
   };
 
   return (
-    <div id="get-quote-instantly" className="min-h-screen bg-white py-16 px-6">
+    <div
+      id="get-quote-instantly"
+      className={`bg-white px-4 sm:px-6 ${embedded ? "py-4 sm:py-6" : "min-h-screen py-16"}`}
+    >
       <div className="max-w-5xl mx-auto">
 
         {/* ===== Main Card ===== */}

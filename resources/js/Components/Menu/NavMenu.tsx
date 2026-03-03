@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useCart } from "@/Context/CartContext";
 import { useWishlist } from "@/Context/WishlistContext";
 import { Link, usePage } from "@inertiajs/react";
@@ -47,6 +47,8 @@ export default function NavMenu() {
     Array<{ id: number; type: "warning" | "message"; title: string; content: string; created_at: string | null }>
   >([]);
   const searchPanelRef = useRef<HTMLDivElement | null>(null);
+  const searchControlRef = useRef<HTMLDivElement | null>(null);
+  const searchMiddleRef = useRef<HTMLDivElement | null>(null);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
 
   const categories = ["Women", "Men", "Kids", "Sale"];
@@ -118,6 +120,14 @@ export default function NavMenu() {
 
     return items.slice(0, 10);
   };
+
+  const searchCategoryCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    searchResults.forEach((item) => {
+      counts.set(item.category, (counts.get(item.category) ?? 0) + 1);
+    });
+    return Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
+  }, [searchResults]);
 
   useEffect(() => {
     if (!notificationsOpen || !isAuthenticated) return;
@@ -205,7 +215,11 @@ export default function NavMenu() {
     };
 
     const closeOnOutsideClick = (event: MouseEvent) => {
-      if (searchPanelRef.current && !searchPanelRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      const inPanel = Boolean(searchPanelRef.current?.contains(target));
+      const inControl = Boolean(searchControlRef.current?.contains(target));
+      const inMiddle = Boolean(searchMiddleRef.current?.contains(target));
+      if (!inPanel && !inControl && !inMiddle) {
         setSearchOpen(false);
       }
     };
@@ -400,20 +414,55 @@ export default function NavMenu() {
           </div>
         </div>
 
+        <div
+          ref={searchMiddleRef}
+          className="pointer-events-none absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2"
+        >
+          <motion.div
+            initial={false}
+            animate={{ width: searchOpen ? 500 : 0, opacity: searchOpen ? 1 : 0 }}
+            transition={{ duration: 0.26, ease: "easeOut" }}
+            className="overflow-hidden"
+          >
+            <div className="relative pointer-events-auto">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8A6D2B]" />
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                onFocus={() => setSearchOpen(true)}
+                placeholder="Search products..."
+                className="w-[500px] rounded-full border border-[#E2CF9B] bg-[#FFFDF7] py-2.5 pl-10 pr-4 text-sm text-[#2A2317] outline-none transition placeholder:text-[#9E8650] focus:border-[#C9A24D] focus:ring-2 focus:ring-[#EBD8AE]"
+              />
+            </div>
+          </motion.div>
+        </div>
+
         {/* RIGHT */}
         <div className="ml-auto flex items-center gap-6">
-          <button
-            type="button"
-            onClick={() => {
-              setSearchOpen((prev) => !prev);
-              setNotificationsOpen(false);
-              setActiveSidebar(null);
-            }}
-            className="inline-flex items-center justify-center"
-            aria-label="Search products"
-          >
-            <Search className="w-5 h-5 cursor-pointer hover:text-[#D4AF37] transition" />
-          </button>
+          <div ref={searchControlRef} className="flex items-center">
+            <button
+              type="button"
+              onClick={() => {
+                setSearchOpen((prev) => {
+                  const next = !prev;
+                  if (!next) {
+                    setSearchQuery("");
+                    setSearchResults([]);
+                  } else {
+                    setNotificationsOpen(false);
+                    setActiveSidebar(null);
+                  }
+                  return next;
+                });
+              }}
+              className="inline-flex items-center justify-center"
+              aria-label="Search products"
+            >
+              <Search className="w-5 h-5 cursor-pointer hover:text-[#D4AF37] transition" />
+            </button>
+          </div>
           <button
             type="button"
             onClick={toggleWishlist}
@@ -472,41 +521,46 @@ export default function NavMenu() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -8, scale: 0.98 }}
             transition={{ duration: 0.2 }}
-            className="absolute right-6 top-[74px] z-50 w-[500px] max-w-[95vw] overflow-hidden rounded-2xl border border-[#E8D8B3] bg-white shadow-[0_28px_65px_rgba(105,79,20,0.18)]"
+            className="absolute left-0 right-0 top-full z-40 border-b border-[#E8D8B3] bg-white"
           >
-            <div className="bg-gradient-to-r from-[#FFFAEE] to-[#FFF4D6] p-4">
+            <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8A6D2B]">
                 Search Products
               </p>
-              <div className="relative mt-2">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8A6D2B]" />
-                <input
-                  ref={searchInputRef}
-                  type="text"
-                  value={searchQuery}
-                  onChange={(event) => setSearchQuery(event.target.value)}
-                  placeholder="Try hoodie, jacket, polo..."
-                  className="w-full rounded-xl border border-[#E2CF9B] bg-white py-2.5 pl-10 pr-4 text-sm text-[#2A2317] outline-none transition placeholder:text-[#9E8650] focus:border-[#C9A24D] focus:ring-2 focus:ring-[#EBD8AE]"
-                />
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                {searchCategoryCounts.length > 0 ? (
+                  searchCategoryCounts.map(([category, count]) => (
+                    <span
+                      key={category}
+                      className="inline-flex items-center rounded-full border border-[#E3D3AD] bg-white px-3 py-1 text-xs font-semibold text-[#7C6031]"
+                    >
+                      {category} ({count})
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-xs text-[#8A6D2B]">
+                    Start typing to see category counts and product suggestions.
+                  </span>
+                )}
               </div>
             </div>
 
-            <div className="max-h-[430px] overflow-y-auto bg-white p-3">
+            <div className="mx-auto grid max-h-[430px] max-w-7xl gap-4 overflow-y-auto bg-white px-4 pb-5 sm:px-6 lg:grid-cols-[260px_minmax(0,1fr)] lg:px-8">
               {searchQuery.trim().length < 2 && (
-                <div className="rounded-xl border border-dashed border-[#E5D5AE] bg-[#FFFBF3] p-4 text-sm text-[#7A6540]">
+                <div className="border border-dashed border-[#E5D5AE] bg-[#FFFBF3] p-4 text-sm text-[#7A6540] lg:col-span-2">
                   Type at least 2 characters to search products.
                 </div>
               )}
 
               {searchQuery.trim().length >= 2 && searchLoading && (
-                <div className="flex items-center gap-2 rounded-xl border border-[#F1E7D0] bg-[#FFFCF6] px-3 py-4 text-sm text-[#6E5A36]">
+                <div className="flex items-center gap-2 border border-[#F1E7D0] bg-[#FFFCF6] px-3 py-4 text-sm text-[#6E5A36] lg:col-span-2">
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Searching products...
                 </div>
               )}
 
               {searchQuery.trim().length >= 2 && !searchLoading && searchError && (
-                <div className="rounded-xl border border-[#F6CFBF] bg-[#FFF6F3] p-4 text-sm text-[#9C4525]">
+                <div className="border border-[#F6CFBF] bg-[#FFF6F3] p-4 text-sm text-[#9C4525] lg:col-span-2">
                   {searchError}
                 </div>
               )}
@@ -515,38 +569,56 @@ export default function NavMenu() {
                 !searchLoading &&
                 !searchError &&
                 searchResults.length === 0 && (
-                  <div className="rounded-xl border border-[#F1E7D0] bg-[#FFFCF6] p-4 text-sm text-[#7A6540]">
+                  <div className="border border-[#F1E7D0] bg-[#FFFCF6] p-4 text-sm text-[#7A6540] lg:col-span-2">
                     No matching products found.
                   </div>
                 )}
 
               {searchResults.length > 0 && (
-                <div className="space-y-2">
-                  {searchResults.map((item) => (
-                    <Link
-                      key={`${item.slug}-${item.id}`}
-                      href={`/product/${encodeURIComponent(item.slug)}`}
-                      onClick={() => {
-                        setSearchOpen(false);
-                        setSearchQuery("");
-                      }}
-                      className="group flex items-center gap-3 rounded-xl border border-transparent px-2 py-2 transition hover:border-[#E7D5AB] hover:bg-[#FFF9EC]"
-                    >
-                      <div className="h-16 w-16 overflow-hidden rounded-lg border border-[#EADFC8] bg-[#F7F3EA]">
-                        <img
-                          src={item.image || "/images/no-image.png"}
-                          alt={item.name}
-                          className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
-                        />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-semibold text-[#1F1A13]">{item.name}</p>
-                        <p className="text-xs uppercase tracking-wide text-[#8E7642]">{item.category}</p>
-                        <p className="mt-1 text-sm font-bold text-[#7D5E1A]">£{item.price.toFixed(2)}</p>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
+                <>
+                  <div className="border border-[#EADFC6] bg-[#FFFCF6] p-3">
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8A6D2B]">
+                      Categories
+                    </p>
+                    <div className="mt-3 space-y-2">
+                      {searchCategoryCounts.map(([category, count]) => (
+                        <div
+                          key={category}
+                          className="flex items-center justify-between border border-[#EFE2C4] bg-white px-3 py-2"
+                        >
+                          <span className="text-sm font-medium text-[#3C301E]">{category}</span>
+                          <span className="text-xs font-semibold text-[#8A6D2B]">({count})</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    {searchResults.map((item) => (
+                      <Link
+                        key={`${item.slug}-${item.id}`}
+                        href={`/product/${encodeURIComponent(item.slug)}`}
+                        onClick={() => {
+                          setSearchOpen(false);
+                          setSearchQuery("");
+                        }}
+                        className="group flex items-center gap-3 border border-transparent px-2 py-2 transition hover:border-[#E7D5AB] hover:bg-[#FFF9EC]"
+                      >
+                        <div className="h-16 w-16 overflow-hidden border border-[#EADFC8] bg-[#F7F3EA]">
+                          <img
+                            src={item.image || "/images/no-image.png"}
+                            alt={item.name}
+                            className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                          />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-semibold text-[#1F1A13]">{item.name}</p>
+                          <p className="text-xs uppercase tracking-wide text-[#8E7642]">{item.category}</p>
+                          <p className="mt-1 text-sm font-bold text-[#7D5E1A]">£{item.price.toFixed(2)}</p>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </>
               )}
             </div>
           </motion.div>

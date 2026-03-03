@@ -82,7 +82,7 @@ export default function IdeaToIconicSection() {
 
   if (activePage === "getQuote") {
     return (
-      <div className="bg-[#ffffff] pt-16 pb-6 px-4 overflow-y-auto">
+      <div className="bg-[#ffffff] pt-10 pb-0 px-4 overflow-y-auto">
         <div className="max-w-7xl mx-auto">
           <button
             onClick={() => setActivePage("none")}
@@ -90,7 +90,7 @@ export default function IdeaToIconicSection() {
           >
             ← Back
           </button>
-          <GetQuoteInstantly />
+          <GetQuoteInstantly embedded />
         </div>
       </div>
     );
