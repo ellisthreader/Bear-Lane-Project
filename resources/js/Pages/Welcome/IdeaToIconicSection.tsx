@@ -153,12 +153,11 @@ export default function IdeaToIconicSection() {
                 </div>
 
                 {/* SWITCH PREVIEW ROW */}
-                <div className="relative h-[32%] rounded-2xl border border-[#E8DDBF] bg-[#FFFCF6] p-3 shadow-sm">
-                  <div className="pointer-events-none absolute left-1/2 top-1/2 h-[2px] w-[72%] -translate-x-1/2 -translate-y-1/2 bg-gradient-to-r from-transparent via-[#C9A24D] to-transparent" />
-                  <div className="relative flex h-full items-center gap-3">
+                <div className="relative h-[32%] rounded-2xl border border-[#E7DCC2] bg-white p-3 shadow-sm">
+                  <div className="relative grid h-full grid-cols-[1fr_auto_1fr] items-center gap-3">
                     {/* Design */}
                     <div
-                      className={`relative h-full w-1/2 overflow-hidden rounded-xl shadow-md transition-all duration-700 ease-out ${
+                      className={`relative h-full overflow-hidden rounded-xl border border-[#E6DDC7] shadow-md transition-all duration-700 ease-out ${
                         showConcept && isActive
                           ? "translate-x-0 opacity-100"
                           : "-translate-x-4 opacity-0"
@@ -169,23 +168,25 @@ export default function IdeaToIconicSection() {
                         alt="Design concept"
                         className="h-full w-full object-cover"
                       />
-                      <span className="absolute left-2 top-2 rounded-full bg-black/65 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
+                      <span className="absolute left-2 top-2 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#2F2414]">
                         Design
                       </span>
                     </div>
 
                     {/* Arrow */}
                     <div
-                      className={`absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2 text-[#C9A24D] transition-opacity duration-500 ${
+                      className={`flex items-center justify-center transition-opacity duration-500 ${
                         showConcept && showModel && isActive ? "opacity-100" : "opacity-0"
                       }`}
                     >
-                      <ArrowRight size={24} />
+                      <div className="relative flex h-11 w-11 items-center justify-center rounded-full border border-[#DECFA8] bg-gradient-to-br from-[#FFF7E2] to-[#F4E2B2] shadow-[0_8px_18px_rgba(120,88,26,0.18)]">
+                        <ArrowRight size={20} className="text-[#7A5D20]" strokeWidth={2.5} />
+                      </div>
                     </div>
 
                     {/* Real Product */}
                     <div
-                      className={`relative h-full w-1/2 overflow-hidden rounded-xl shadow-md transition-all duration-700 ease-out ${
+                      className={`relative h-full overflow-hidden rounded-xl border border-[#E6DDC7] shadow-md transition-all duration-700 ease-out ${
                         showModel && isActive
                           ? "translate-x-0 opacity-100"
                           : "translate-x-4 opacity-0"
@@ -196,7 +197,7 @@ export default function IdeaToIconicSection() {
                         alt="Real product"
                         className="h-full w-full object-cover"
                       />
-                      <span className="absolute left-2 top-2 rounded-full bg-black/65 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
+                      <span className="absolute left-2 top-2 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#2F2414]">
                         Real Product
                       </span>
                     </div>

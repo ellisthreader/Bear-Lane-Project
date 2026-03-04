@@ -43,13 +43,6 @@ type PageProps = {
   products: Product[];
 };
 
-type PreMadeDesign = {
-  id: number;
-  name: string;
-  description: string;
-  image: string;
-};
-
 const customerReviews = [
   {
     name: "Mia Thompson",
@@ -192,43 +185,13 @@ const fallbackSpotlightProducts: Product[] = [
   },
 ];
 
-const preMadeDesigns: PreMadeDesign[] = [
-  {
-    id: 1,
-    name: "Urban Monogram Pack",
-    description: "A sharp chest-and-back layout made for premium streetwear drops.",
-    image: "/images/Examples/Example1.png",
-  },
-  {
-    id: 2,
-    name: "Athletic Crest Series",
-    description: "Professional crest setup balanced for clubs, teams, and events.",
-    image: "/images/Examples/Example2.png",
-  },
-  {
-    id: 3,
-    name: "Minimal Signature Set",
-    description: "Clean typography placement created by our in-house designers.",
-    image: "/images/Examples/Example3.png",
-  },
-  {
-    id: 4,
-    name: "Vintage Badge Collection",
-    description: "Retro-inspired badge placements crafted for standout merch runs.",
-    image: "/images/Examples/Example4.png",
-  },
-  {
-    id: 5,
-    name: "Sportline Number Pack",
-    description: "Ready-made number and name combos tuned for training apparel.",
-    image: "/images/Examples/Example5.png",
-  },
-  {
-    id: 6,
-    name: "Luxury Outline Studio",
-    description: "Modern outlines and emblem marks polished by our pro creatives.",
-    image: "/images/Examples/Example6.jpeg",
-  },
+const preMadeDesignNotes = [
+  "Built by our in-house professionals to give you a polished starting point.",
+  "Specially prepared layouts that can be customized quickly for your brand.",
+  "Production-ready compositions designed to look premium on first pass.",
+  "Expert-crafted styling so your team can launch merch faster.",
+  "Made by our pro designers for clean, balanced, high-conversion visuals.",
+  "Ready-made concepts tuned for print and embroidery friendly output.",
 ];
 
 export default function Welcome() {
@@ -242,8 +205,16 @@ export default function Welcome() {
         : fallbackSpotlightProducts.slice(0, 10),
     [props.products]
   );
+  const preMadeProducts = useMemo(() => {
+    if (!props.products?.length) {
+      return fallbackSpotlightProducts.slice(0, 6);
+    }
+    const secondary = props.products.slice(10, 16);
+    return secondary.length >= 4 ? secondary : props.products.slice(0, 6);
+  }, [props.products]);
   const [activeReview, setActiveReview] = useState(0);
   const productRailRef = useRef<HTMLDivElement | null>(null);
+  const preMadeRailRef = useRef<HTMLDivElement | null>(null);
   const [activeProductIndex, setActiveProductIndex] = useState(0);
   const [productCardStep, setProductCardStep] = useState(0);
   const [canScrollPrev, setCanScrollPrev] = useState(false);
@@ -356,6 +327,16 @@ export default function Welcome() {
     productRailPointerIdRef.current = null;
   };
 
+  const handleRailWheel = (
+    event: React.WheelEvent<HTMLDivElement>,
+    rail: HTMLDivElement | null
+  ) => {
+    if (!rail) return;
+    if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
+    event.preventDefault();
+    rail.scrollBy({ left: event.deltaY, behavior: "auto" });
+  };
+
   return (
     <Layout>
       <Head title="Welcome" />
@@ -440,6 +421,8 @@ export default function Welcome() {
                 event.stopPropagation();
               }
             }}
+            onWheel={(event) => handleRailWheel(event, productRailRef.current)}
+            onDragStart={(event) => event.preventDefault()}
             className="flex w-full cursor-grab select-none snap-x snap-mandatory gap-4 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden touch-pan-x active:cursor-grabbing"
           >
             {spotlightProducts.map((product) => (
@@ -488,24 +471,22 @@ export default function Welcome() {
             to customize in minutes.
           </p>
 
-          <div className="mt-6 flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {preMadeDesigns.map((design) => (
-              <article
-                key={design.id}
-                className="min-w-[80%] snap-start rounded-2xl border border-[#EADFC4] bg-[#FFFCF6] p-3 shadow-sm sm:min-w-[48%] lg:min-w-[32%]"
+          <div
+            ref={preMadeRailRef}
+            onWheel={(event) => handleRailWheel(event, preMadeRailRef.current)}
+            onDragStart={(event) => event.preventDefault()}
+            className="mt-6 flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden touch-pan-x"
+          >
+            {preMadeProducts.map((product, index) => (
+              <div
+                key={`premade-${product.id}-${index}`}
+                className="min-w-[76%] snap-start sm:min-w-[48%] md:min-w-[32%] lg:w-[265px] lg:min-w-[265px]"
               >
-                <div className="h-44 overflow-hidden rounded-xl bg-[#F5EFE2] sm:h-52">
-                  <img
-                    src={design.image}
-                    alt={design.name}
-                    className="h-full w-full object-cover"
-                  />
-                </div>
-                <h3 className="mt-3 text-base font-semibold text-[#221A11]">
-                  {design.name}
-                </h3>
-                <p className="mt-1 text-sm text-[#6F5A34]">{design.description}</p>
-              </article>
+                <ProductCard product={product} compact />
+                <p className="mt-3 px-1 text-sm text-[#6F5A34]">
+                  {preMadeDesignNotes[index % preMadeDesignNotes.length]}
+                </p>
+              </div>
             ))}
           </div>
         </div>

@@ -59,7 +59,11 @@ export default function ProductCard({ product, compact = false }: ProductCardPro
   );
 
   return (
-    <Link href={href}>
+    <Link
+      href={href}
+      draggable={false}
+      onDragStart={(event) => event.preventDefault()}
+    >
       <motion.div
         className="bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 border overflow-hidden"
         whileHover={{ scale: 1.02 }}
