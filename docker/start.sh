@@ -17,4 +17,4 @@ if [ "${RUN_MIGRATIONS:-true}" = "true" ]; then
   php artisan migrate --force --ansi
 fi
 
-exec php -S 0.0.0.0:$PORT -t public
+exec php -S 0.0.0.0:$PORT -t public public/index.php
