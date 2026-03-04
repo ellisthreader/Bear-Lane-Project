@@ -43,6 +43,13 @@ type PageProps = {
   products: Product[];
 };
 
+type PreMadeDesign = {
+  id: number;
+  name: string;
+  description: string;
+  image: string;
+};
+
 const customerReviews = [
   {
     name: "Mia Thompson",
@@ -185,6 +192,45 @@ const fallbackSpotlightProducts: Product[] = [
   },
 ];
 
+const preMadeDesigns: PreMadeDesign[] = [
+  {
+    id: 1,
+    name: "Urban Monogram Pack",
+    description: "A sharp chest-and-back layout made for premium streetwear drops.",
+    image: "/images/Examples/Example1.png",
+  },
+  {
+    id: 2,
+    name: "Athletic Crest Series",
+    description: "Professional crest setup balanced for clubs, teams, and events.",
+    image: "/images/Examples/Example2.png",
+  },
+  {
+    id: 3,
+    name: "Minimal Signature Set",
+    description: "Clean typography placement created by our in-house designers.",
+    image: "/images/Examples/Example3.png",
+  },
+  {
+    id: 4,
+    name: "Vintage Badge Collection",
+    description: "Retro-inspired badge placements crafted for standout merch runs.",
+    image: "/images/Examples/Example4.png",
+  },
+  {
+    id: 5,
+    name: "Sportline Number Pack",
+    description: "Ready-made number and name combos tuned for training apparel.",
+    image: "/images/Examples/Example5.png",
+  },
+  {
+    id: 6,
+    name: "Luxury Outline Studio",
+    description: "Modern outlines and emblem marks polished by our pro creatives.",
+    image: "/images/Examples/Example6.jpeg",
+  },
+];
+
 export default function Welcome() {
   const { props } = usePage<PageProps>();
   const user = props.auth?.user;
@@ -202,6 +248,11 @@ export default function Welcome() {
   const [productCardStep, setProductCardStep] = useState(0);
   const [canScrollPrev, setCanScrollPrev] = useState(false);
   const [canScrollNext, setCanScrollNext] = useState(spotlightProducts.length > 1);
+  const productRailDraggingRef = useRef(false);
+  const productRailMovedRef = useRef(false);
+  const productRailPointerIdRef = useRef<number | null>(null);
+  const productRailStartXRef = useRef(0);
+  const productRailStartScrollRef = useRef(0);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -265,18 +316,66 @@ export default function Welcome() {
     rail.scrollTo({ left: step * index, behavior: "smooth" });
   };
 
+  const startProductRailDrag = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.pointerType !== "mouse") return;
+    const rail = productRailRef.current;
+    if (!rail) return;
+    productRailDraggingRef.current = true;
+    productRailMovedRef.current = false;
+    productRailPointerIdRef.current = event.pointerId;
+    productRailStartXRef.current = event.clientX;
+    productRailStartScrollRef.current = rail.scrollLeft;
+    rail.setPointerCapture(event.pointerId);
+  };
+
+  const moveProductRailDrag = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!productRailDraggingRef.current) return;
+    if (event.pointerType !== "mouse") return;
+    const rail = productRailRef.current;
+    if (!rail) return;
+    const delta = event.clientX - productRailStartXRef.current;
+    if (Math.abs(delta) > 4) {
+      productRailMovedRef.current = true;
+    }
+    rail.scrollLeft = productRailStartScrollRef.current - delta;
+  };
+
+  const endProductRailDrag = (event?: React.PointerEvent<HTMLDivElement>) => {
+    const rail = productRailRef.current;
+    if (rail && productRailPointerIdRef.current !== null) {
+      try {
+        rail.releasePointerCapture(productRailPointerIdRef.current);
+      } catch {
+        // Safe no-op for browsers that already released capture.
+      }
+    }
+    if (event && event.pointerType === "mouse") {
+      event.currentTarget.style.cursor = "grab";
+    }
+    productRailDraggingRef.current = false;
+    productRailPointerIdRef.current = null;
+  };
+
   return (
     <Layout>
       <Head title="Welcome" />
 
-      {/* HERO */}
-      <HeroSection />
+      <div className="flex flex-col">
+        {/* HERO */}
+        <div className="order-1">
+          <HeroSection />
+        </div>
 
-       {/* CATEGORIES */}
-      <CategorySection />
+        {/* FROM IDEA TO ICONIC SECTION */}
+        <div className="order-2 md:order-3">
+          <IdeaToIconicSection />
+        </div>
 
-      {/* FROM IDEA TO ICONIC SECTION */}
-      <IdeaToIconicSection />
+        {/* CATEGORIES */}
+        <div className="order-3 md:order-2">
+          <CategorySection />
+        </div>
+      </div>
 
      
 
@@ -318,7 +417,30 @@ export default function Welcome() {
         <div className="mt-5 w-full px-4 sm:px-6 lg:px-8">
           <div
             ref={productRailRef}
-            className="flex w-full snap-x snap-mandatory gap-4 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden touch-pan-x"
+            onPointerDown={(event) => {
+              startProductRailDrag(event);
+            }}
+            onPointerMove={(event) => {
+              moveProductRailDrag(event);
+            }}
+            onPointerUp={(event) => {
+              endProductRailDrag(event);
+            }}
+            onPointerCancel={(event) => {
+              endProductRailDrag(event);
+            }}
+            onPointerLeave={(event) => {
+              if (event.pointerType === "mouse" && !productRailDraggingRef.current) {
+                event.currentTarget.style.cursor = "grab";
+              }
+            }}
+            onClickCapture={(event) => {
+              if (productRailMovedRef.current) {
+                event.preventDefault();
+                event.stopPropagation();
+              }
+            }}
+            className="flex w-full cursor-grab select-none snap-x snap-mandatory gap-4 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden touch-pan-x active:cursor-grabbing"
           >
             {spotlightProducts.map((product) => (
               <motion.div
@@ -347,6 +469,43 @@ export default function Welcome() {
                 }`}
                 aria-label={`Jump to featured product ${index + 1}`}
               />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="bg-white pb-12">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center gap-4">
+            <div className="h-px flex-1 bg-[#E6D9BC]" />
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9C7B2A]">
+              New pre-made designs
+            </p>
+            <div className="h-px flex-1 bg-[#E6D9BC]" />
+          </div>
+          <p className="mx-auto mt-3 max-w-2xl text-center text-sm text-[#6A5530]">
+            Professionally crafted design templates from our studio team, ready
+            to customize in minutes.
+          </p>
+
+          <div className="mt-6 flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {preMadeDesigns.map((design) => (
+              <article
+                key={design.id}
+                className="min-w-[80%] snap-start rounded-2xl border border-[#EADFC4] bg-[#FFFCF6] p-3 shadow-sm sm:min-w-[48%] lg:min-w-[32%]"
+              >
+                <div className="h-44 overflow-hidden rounded-xl bg-[#F5EFE2] sm:h-52">
+                  <img
+                    src={design.image}
+                    alt={design.name}
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+                <h3 className="mt-3 text-base font-semibold text-[#221A11]">
+                  {design.name}
+                </h3>
+                <p className="mt-1 text-sm text-[#6F5A34]">{design.description}</p>
+              </article>
             ))}
           </div>
         </div>
@@ -424,10 +583,10 @@ export default function Welcome() {
                 return (
                   <div
                     key={signal.title}
-                    className="rounded-2xl border border-[#E8DDBF] bg-[#FFFCF5] p-6 text-center"
+                    className="rounded-2xl border border-[#E8DDBF] bg-white p-6 text-center"
                   >
-                    <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-[#F7E7C1] text-[#8A6D2B]">
-                      <Icon className="h-5 w-5" />
+                    <div className="mx-auto text-[#8A6D2B]">
+                      <Icon className="mx-auto h-10 w-10" />
                     </div>
                     <h3 className="mt-4 text-base font-semibold text-[#1F1A13]">
                       {signal.title}
@@ -441,9 +600,9 @@ export default function Welcome() {
             </div>
           </div>
 
-          <div className="mt-14 rounded-2xl border border-[#E8DDBF] bg-[#FFF7E6] p-6 text-center sm:p-8">
-            <div className="inline-flex items-center gap-2 rounded-full border border-[#E1CCA0] bg-white px-4 py-1 text-xs font-semibold uppercase tracking-wider text-[#8A6D2B]">
-              <CheckCircle2 className="h-4 w-4" />
+          <div className="mt-14 rounded-2xl border border-[#E8DDBF] bg-white p-6 text-center sm:p-8">
+            <div className="inline-flex items-center gap-2 rounded-full border border-[#E8DDBF] bg-white px-4 py-1 text-xs font-semibold uppercase tracking-wider text-[#8A6D2B]">
+              <CheckCircle2 className="h-5 w-5" />
               Professional quality assurance
             </div>
             <p className="mx-auto mt-4 max-w-2xl text-sm text-[#5D4B2E] sm:text-base">

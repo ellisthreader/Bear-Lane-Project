@@ -54,9 +54,9 @@ export default function HeroSection() {
   };
 
   return (
-    <div className="relative w-full" style={{ paddingTop: "px" }}>
+    <div className="relative w-full">
       {/* Hero container */}
-      <div className="relative w-full aspect-video max-h-[91vh] overflow-hidden">
+      <div className="relative h-[72vh] min-h-[430px] max-h-[86vh] w-full overflow-hidden sm:h-[76vh] md:h-auto md:max-h-[91vh] md:aspect-video">
         <AnimatePresence initial={false} custom={direction}>
           <motion.img
             key={currentIndex}
@@ -86,7 +86,7 @@ export default function HeroSection() {
         <button
           onClick={handlePrev}
           disabled={isDisabled}
-          className={`absolute left-6 top-1/2 -translate-y-1/2 bg-white/70 hover:bg-white text-gray-900 p-3 rounded-full shadow-md transition z-20 ${
+          className={`absolute left-3 top-1/2 z-20 -translate-y-1/2 rounded-full bg-white/70 p-2.5 text-gray-900 shadow-md transition hover:bg-white sm:left-6 sm:p-3 ${
             isDisabled ? "opacity-50 cursor-not-allowed" : ""
           }`}
         >
@@ -97,7 +97,7 @@ export default function HeroSection() {
         <button
           onClick={() => handleNext()}
           disabled={isDisabled}
-          className={`absolute right-6 top-1/2 -translate-y-1/2 bg-white/70 hover:bg-white text-gray-900 p-3 rounded-full shadow-md transition z-20 ${
+          className={`absolute right-3 top-1/2 z-20 -translate-y-1/2 rounded-full bg-white/70 p-2.5 text-gray-900 shadow-md transition hover:bg-white sm:right-6 sm:p-3 ${
             isDisabled ? "opacity-50 cursor-not-allowed" : ""
           }`}
         >

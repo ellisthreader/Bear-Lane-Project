@@ -534,7 +534,7 @@ export default function NavMenu() {
             >
               <Heart className="h-5 w-5 cursor-pointer transition hover:text-[#D4AF37]" />
             </button>
-            <Link href="/profile" className="hidden h-10 w-10 items-center justify-center rounded-full transition hover:bg-[#F6ECD5] sm:inline-flex">
+            <Link href="/profile" className="inline-flex h-10 w-10 items-center justify-center rounded-full transition hover:bg-[#F6ECD5]">
               <User className="h-5 w-5 cursor-pointer transition hover:text-[#D4AF37]" />
             </Link>
             {isAuthenticated && (
@@ -577,6 +577,25 @@ export default function NavMenu() {
         </div>
       </motion.nav>
 
+      <div className="border-b border-[#EFE3C8] bg-white px-3 pb-3 lg:hidden">
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8A6D2B]" />
+          <input
+            ref={mobileSearchInputRef}
+            type="text"
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            onFocus={() => {
+              setSearchOpen(true);
+              setActiveSidebar(null);
+              setMobileMenuOpen(false);
+            }}
+            placeholder="Search products..."
+            className="w-full rounded-full border border-[#E2CF9B] bg-[#FFFDF7] py-2.5 pl-10 pr-4 text-sm text-[#2A2317] outline-none transition placeholder:text-[#9E8650] focus:border-[#C9A24D] focus:ring-2 focus:ring-[#EBD8AE]"
+          />
+        </div>
+      </div>
+
       <AnimatePresence>
         {searchOpen && (
           <motion.div
@@ -588,18 +607,6 @@ export default function NavMenu() {
             className="absolute left-0 right-0 top-full z-40 border-b border-[#E8D8B3] bg-white"
           >
             <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
-              <div className="relative mb-3 lg:hidden">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8A6D2B]" />
-                <input
-                  ref={mobileSearchInputRef}
-                  type="text"
-                  value={searchQuery}
-                  onChange={(event) => setSearchQuery(event.target.value)}
-                  onFocus={() => setSearchOpen(true)}
-                  placeholder="Search products..."
-                  className="w-full rounded-full border border-[#E2CF9B] bg-[#FFFDF7] py-2.5 pl-10 pr-4 text-sm text-[#2A2317] outline-none transition placeholder:text-[#9E8650] focus:border-[#C9A24D] focus:ring-2 focus:ring-[#EBD8AE]"
-                />
-              </div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8A6D2B]">
                 Search Products
               </p>
