@@ -1,6 +1,7 @@
 import { Link } from "@inertiajs/react";
 import { useEffect, useMemo, useState } from "react";
 import {
+  Archive,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
@@ -403,10 +404,12 @@ function OrdersWorkspace() {
     updateStatus,
     sendMessage,
     generateLabel,
+    archiveOrder,
   } = useAdminOrders();
   const { pendingCount: pendingReturnsCount } = useAdminOrderReturns();
 
   const [search, setSearch] = useState("");
+  const [ordersView, setOrdersView] = useState<"active" | "archived" | "all">("active");
   const [dispatchTracking, setDispatchTracking] = useState("");
   const [messageSubject, setMessageSubject] = useState("");
   const [messageBody, setMessageBody] = useState("");
@@ -463,10 +466,16 @@ function OrdersWorkspace() {
   }, [selectedOrder?.status]);
 
   const filteredOrders = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    if (!query) return orders;
+    const byArchiveState = orders.filter((order) => {
+      if (ordersView === "all") return true;
+      if (ordersView === "archived") return Boolean(order.archived_at);
+      return !order.archived_at;
+    });
 
-    return orders.filter((order) =>
+    const query = search.trim().toLowerCase();
+    if (!query) return byArchiveState;
+
+    return byArchiveState.filter((order) =>
       [
         order.order_number,
         order.customer_name,
@@ -477,13 +486,14 @@ function OrdersWorkspace() {
         .toLowerCase()
         .includes(query)
     );
-  }, [orders, search]);
+  }, [orders, search, ordersView]);
 
   const stepIndex = statusToStepIndex(selectedOrder?.status);
   const primaryAction = getPrimaryAction(selectedOrder?.status);
   const normalizedSelectedStatus = normalizedStatus(selectedOrder?.status);
   const isProductionMode = normalizedSelectedStatus.includes("production") || normalizedSelectedStatus.includes("process");
   const isPackedMode = normalizedSelectedStatus.includes("pack");
+  const isDeliveredMode = normalizedSelectedStatus.includes("deliver");
   const isPackagingReviewMode = isProductionMode && productionStage === "packaging";
   const showProductionPanel = isProductionMode && productionStage === "production";
   const showPackagingPanel = isPackagingReviewMode;
@@ -647,6 +657,16 @@ function OrdersWorkspace() {
     }
   };
 
+  const handleArchiveDeliveredOrder = async () => {
+    if (!isDeliveredMode) return;
+    try {
+      await archiveOrder();
+      setNotice(`Order #${selectedOrder?.order_number || ""} archived.`);
+    } catch {
+      // Error shown via context state.
+    }
+  };
+
   const fetchDropoffPoints = async () => {
     setDropoffLoading(true);
     setDropoffError(null);
@@ -789,6 +809,35 @@ function OrdersWorkspace() {
                 className="h-10 w-full rounded-xl border border-[#E1D4B8] bg-[#FFFEFB] pl-9 pr-3 text-sm outline-none focus:border-[#C9A85B]"
               />
             </div>
+            <div className="mb-3 inline-flex rounded-xl border border-[#E1D4B8] bg-[#FFFCF4] p-1">
+              <button
+                type="button"
+                onClick={() => setOrdersView("active")}
+                className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                  ordersView === "active" ? "bg-[#B89443] text-white" : "text-[#7B6530] hover:bg-[#FFF4DF]"
+                }`}
+              >
+                Active
+              </button>
+              <button
+                type="button"
+                onClick={() => setOrdersView("archived")}
+                className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                  ordersView === "archived" ? "bg-[#B89443] text-white" : "text-[#7B6530] hover:bg-[#FFF4DF]"
+                }`}
+              >
+                Archived
+              </button>
+              <button
+                type="button"
+                onClick={() => setOrdersView("all")}
+                className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                  ordersView === "all" ? "bg-[#B89443] text-white" : "text-[#7B6530] hover:bg-[#FFF4DF]"
+                }`}
+              >
+                All
+              </button>
+            </div>
 
             {loadingOrders ? (
               <p className="flex items-center gap-2 px-2 py-6 text-sm text-[#6B5A34]">
@@ -823,6 +872,9 @@ function OrdersWorkspace() {
                       <p className="mt-2 text-xs text-[#7D6A45]">{formatDate(order.created_at)}</p>
                       <p className="mt-0.5 text-xs font-semibold text-[#6A562D]">
                         {order.items_count} item{order.items_count === 1 ? "" : "s"} • {formatMoney(order.total)}
+                      </p>
+                      <p className="mt-0.5 text-[11px] text-[#7D6A45]">
+                        Archived: {order.archived_at ? formatDate(order.archived_at) : "No"}
                       </p>
                     </button>
                   );
@@ -941,7 +993,7 @@ function OrdersWorkspace() {
                         <div className="space-y-2">
                           <div className="rounded-xl border border-[#E5D7B8] bg-[#FFF9EB] px-3 py-2 text-xs font-semibold text-[#7D6A45]">
                             {normalizedStatus(selectedOrder.status).includes("deliver")
-                              ? "Delivered. No further action needed."
+                              ? "Delivered successfully."
                               : normalizedStatus(selectedOrder.status).includes("dispatch")
                                 ? "Dispatched. Waiting for courier delivery updates."
                                 : "No action available."}
@@ -1408,52 +1460,84 @@ function OrdersWorkspace() {
                 ) : (
                   <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr),280px]">
                     <section className="space-y-4">
-                      <section className="rounded-2xl border border-[#E7DCC2] bg-[#FFFEFB] p-4">
-                        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#8A6D2B]">Order Items & Production Assets</p>
-                        <div className="mt-3 space-y-3">
-                          {selectedOrder.items.map((item) => (
-                            <article key={item.id} className="rounded-xl border border-[#E7DCC2] bg-white p-3">
-                              <div className="flex flex-wrap items-center gap-3">
-                                <div className="flex min-w-0 flex-1 items-center gap-3">
+                      {isDeliveredMode ? (
+                        <section className="rounded-2xl border border-[#CDE3B2] bg-[#F7FCEB] p-4">
+                          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#4D6E2A]">Delivery Complete</p>
+                          <h3 className="mt-2 text-lg font-bold text-[#2D2515]">Order delivered successfully</h3>
+                          <p className="mt-1 text-sm text-[#5C7332]">
+                            This order has been delivered to the customer and no further fulfilment action is required.
+                          </p>
+                          <div className="mt-4 flex flex-wrap items-center gap-2">
+                            {selectedOrder.tracking_url ? (
+                              <a
+                                href={selectedOrder.tracking_url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-2 rounded-lg border border-[#BFD99B] bg-white px-3 py-2 text-xs font-semibold text-[#4D6E2A] transition hover:bg-[#EEF8DE]"
+                              >
+                                Open Tracking
+                                <ExternalLink className="h-3.5 w-3.5" />
+                              </a>
+                            ) : null}
+                            <button
+                              type="button"
+                              onClick={() => void handleArchiveDeliveredOrder()}
+                              disabled={saving}
+                              className="inline-flex items-center gap-2 rounded-lg bg-[#6E9A38] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#5F872F] disabled:opacity-60"
+                            >
+                              <Archive className="h-3.5 w-3.5" />
+                              Archive Delivered Order
+                            </button>
+                          </div>
+                        </section>
+                      ) : (
+                        <section className="rounded-2xl border border-[#E7DCC2] bg-[#FFFEFB] p-4">
+                          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#8A6D2B]">Order Items & Production Assets</p>
+                          <div className="mt-3 space-y-3">
+                            {selectedOrder.items.map((item) => (
+                              <article key={item.id} className="rounded-xl border border-[#E7DCC2] bg-white p-3">
+                                <div className="flex flex-wrap items-center gap-3">
+                                  <div className="flex min-w-0 flex-1 items-center gap-3">
+                                    <button
+                                      type="button"
+                                      onClick={() => window.open(item.image_url || "/images/placeholder.jpg", "_blank")}
+                                      className="h-14 w-14 overflow-hidden rounded-lg border border-[#E4D4AE] bg-[#FFF9EC]"
+                                    >
+                                      <img src={item.image_url || "/images/placeholder.jpg"} alt={item.product_name} className="h-full w-full object-cover" />
+                                    </button>
+                                    <div className="min-w-0">
+                                      <p className="truncate text-sm font-semibold text-[#2D2515]">{item.product_name}</p>
+                                      <p className="mt-1 text-xs text-[#7D6A45]">Qty {item.quantity} • Size {item.size || "N/A"} • Colour {item.colour || "N/A"}</p>
+                                    </div>
+                                  </div>
+                                  <p className="text-xs font-semibold text-[#7B6530]">{formatMoney(item.line_total)} line total</p>
                                   <button
                                     type="button"
-                                    onClick={() => window.open(item.image_url || "/images/placeholder.jpg", "_blank")}
-                                    className="h-14 w-14 overflow-hidden rounded-lg border border-[#E4D4AE] bg-[#FFF9EC]"
+                                    onClick={() => setReviewingItemId(item.id)}
+                                    className="rounded-lg border border-[#D7BE84] bg-[#FFFCF4] px-3 py-1.5 text-xs font-semibold text-[#7B6530] transition hover:bg-[#FFF4DF]"
                                   >
-                                    <img src={item.image_url || "/images/placeholder.jpg"} alt={item.product_name} className="h-full w-full object-cover" />
+                                    Review design
                                   </button>
-                                  <div className="min-w-0">
-                                    <p className="truncate text-sm font-semibold text-[#2D2515]">{item.product_name}</p>
-                                    <p className="mt-1 text-xs text-[#7D6A45]">Qty {item.quantity} • Size {item.size || "N/A"} • Colour {item.colour || "N/A"}</p>
-                                  </div>
                                 </div>
-                                <p className="text-xs font-semibold text-[#7B6530]">{formatMoney(item.line_total)} line total</p>
-                                <button
-                                  type="button"
-                                  onClick={() => setReviewingItemId(item.id)}
-                                  className="rounded-lg border border-[#D7BE84] bg-[#FFFCF4] px-3 py-1.5 text-xs font-semibold text-[#7B6530] transition hover:bg-[#FFF4DF]"
-                                >
-                                  Review design
-                                </button>
-                              </div>
-                              {showPackedNotes ? (
-                                <ul className="mt-3 space-y-1 text-xs text-[#6B5A34]">
-                                  <li className="flex items-center gap-1.5">
-                                    <CheckCircle2 className="h-3.5 w-3.5 text-[#4D7A2E]" />
-                                    Packed in '{item.parcel_size_label || "assigned"}' packaging.
-                                  </li>
-                                  {selectedOrder.gift_packaging ? (
+                                {showPackedNotes ? (
+                                  <ul className="mt-3 space-y-1 text-xs text-[#6B5A34]">
                                     <li className="flex items-center gap-1.5">
                                       <CheckCircle2 className="h-3.5 w-3.5 text-[#4D7A2E]" />
-                                      Gift wrapped{selectedOrder.gift_message?.trim() ? " with custom message." : "."}
+                                      Packed in '{item.parcel_size_label || "assigned"}' packaging.
                                     </li>
-                                  ) : null}
-                                </ul>
-                              ) : null}
-                            </article>
-                          ))}
-                        </div>
-                      </section>
+                                    {selectedOrder.gift_packaging ? (
+                                      <li className="flex items-center gap-1.5">
+                                        <CheckCircle2 className="h-3.5 w-3.5 text-[#4D7A2E]" />
+                                        Gift wrapped{selectedOrder.gift_message?.trim() ? " with custom message." : "."}
+                                      </li>
+                                    ) : null}
+                                  </ul>
+                                ) : null}
+                              </article>
+                            ))}
+                          </div>
+                        </section>
+                      )}
                     </section>
 
                     <aside className="space-y-4">
@@ -1494,31 +1578,33 @@ function OrdersWorkspace() {
                         </div>
                       </section>
 
-                      <section className="rounded-2xl border border-[#E7DCC2] bg-[#FFFEFB] p-4">
-                        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#8A6D2B]">Need Clarification?</p>
-                        <input
-                          value={messageSubject}
-                          onChange={(event) => setMessageSubject(event.target.value)}
-                          placeholder="Subject (optional)"
-                          className="mt-2 h-10 w-full rounded-xl border border-[#E1D4B8] bg-white px-3 text-sm outline-none focus:border-[#C9A85B]"
-                        />
-                        <textarea
-                          value={messageBody}
-                          onChange={(event) => setMessageBody(event.target.value)}
-                          rows={4}
-                          placeholder="Ask the customer for any missing details..."
-                          className="mt-2 w-full rounded-xl border border-[#E1D4B8] bg-white px-3 py-2 text-sm outline-none focus:border-[#C9A85B]"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => void handleSendMessage()}
-                          disabled={saving || !messageBody.trim()}
-                          className="mt-2 inline-flex items-center gap-2 rounded-xl bg-[#B89443] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#A58335] disabled:opacity-60"
-                        >
-                          <Send className="h-4 w-4" />
-                          Send Message
-                        </button>
-                      </section>
+                      {!isDeliveredMode ? (
+                        <section className="rounded-2xl border border-[#E7DCC2] bg-[#FFFEFB] p-4">
+                          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#8A6D2B]">Need Clarification?</p>
+                          <input
+                            value={messageSubject}
+                            onChange={(event) => setMessageSubject(event.target.value)}
+                            placeholder="Subject (optional)"
+                            className="mt-2 h-10 w-full rounded-xl border border-[#E1D4B8] bg-white px-3 text-sm outline-none focus:border-[#C9A85B]"
+                          />
+                          <textarea
+                            value={messageBody}
+                            onChange={(event) => setMessageBody(event.target.value)}
+                            rows={4}
+                            placeholder="Ask the customer for any missing details..."
+                            className="mt-2 w-full rounded-xl border border-[#E1D4B8] bg-white px-3 py-2 text-sm outline-none focus:border-[#C9A85B]"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => void handleSendMessage()}
+                            disabled={saving || !messageBody.trim()}
+                            className="mt-2 inline-flex items-center gap-2 rounded-xl bg-[#B89443] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#A58335] disabled:opacity-60"
+                          >
+                            <Send className="h-4 w-4" />
+                            Send Message
+                          </button>
+                        </section>
+                      ) : null}
                     </aside>
                   </div>
                 )}

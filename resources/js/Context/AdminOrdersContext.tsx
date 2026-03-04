@@ -62,6 +62,7 @@ type AdminOrderSummary = {
   shippo_tracking_number: string | null;
   tracking_url?: string | null;
   is_new: boolean;
+  archived_at?: string | null;
 };
 
 type AdminOrderDetail = AdminOrderSummary & {
@@ -113,6 +114,7 @@ type AdminOrdersContextValue = {
   updateStatus: (status: string, trackingNumber?: string) => Promise<void>;
   sendMessage: (message: string, subject?: string) => Promise<{ sent_to_inbox: boolean; sent_email: boolean }>;
   generateLabel: () => Promise<void>;
+  archiveOrder: () => Promise<void>;
 };
 
 const AdminOrdersContext = createContext<AdminOrdersContextValue | null>(null);
@@ -347,6 +349,40 @@ export function AdminOrdersProvider({ children }: { children: ReactNode }) {
     }
   }, [selectedOrderId]);
 
+  const archiveOrder = useCallback(async () => {
+    if (!selectedOrderId) return;
+
+    setSaving(true);
+    setError(null);
+    try {
+      const response = await fetch(`/admin/orders/${selectedOrderId}/archive`, {
+        method: "PATCH",
+        credentials: "same-origin",
+        headers: {
+          Accept: "application/json",
+          "X-CSRF-TOKEN": getCsrfToken(),
+          "X-XSRF-TOKEN": getCookieValue("XSRF-TOKEN"),
+          "X-Requested-With": "XMLHttpRequest",
+        },
+      });
+
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        if (response.status === 419) {
+          throw new Error("Your admin session expired. Refresh the page and try again.");
+        }
+        throw new Error(payload?.message || "Unable to archive order.");
+      }
+
+      await refreshOrders();
+    } catch (archiveError) {
+      setError(archiveError instanceof Error ? archiveError.message : "Unable to archive order.");
+      throw archiveError;
+    } finally {
+      setSaving(false);
+    }
+  }, [refreshOrders, selectedOrderId]);
+
   const value = useMemo<AdminOrdersContextValue>(() => ({
     loadingOrders,
     loadingOrderDetail,
@@ -362,6 +398,7 @@ export function AdminOrdersProvider({ children }: { children: ReactNode }) {
     updateStatus,
     sendMessage,
     generateLabel,
+    archiveOrder,
   }), [
     loadingOrders,
     loadingOrderDetail,
@@ -377,6 +414,7 @@ export function AdminOrdersProvider({ children }: { children: ReactNode }) {
     updateStatus,
     sendMessage,
     generateLabel,
+    archiveOrder,
   ]);
 
   return <AdminOrdersContext.Provider value={value}>{children}</AdminOrdersContext.Provider>;

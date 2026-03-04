@@ -26,6 +26,7 @@ class Order extends Model
         'payment_intent_id',
         'status',
         'delivered_at',
+        'archived_at',
         'first_name',
         'last_name',
         'phone',
@@ -53,6 +54,7 @@ class Order extends Model
 
     protected $casts = [
         'delivered_at' => 'datetime',
+        'archived_at' => 'datetime',
         'selected_delivery_date' => 'date',
         'calculated_ship_date' => 'date',
         'gift_packaging' => 'boolean',

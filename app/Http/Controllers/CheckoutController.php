@@ -19,11 +19,13 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Mail;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Services\DeliverySlotService;
 use App\Services\DeliveryOptionService;
 use App\Services\ShippoLabelService;
 use App\Services\Stripe\StripeWalletService;
+use App\Mail\OrderConfirmedMail;
 use Stripe\Exception\CardException;
 use Carbon\Carbon;
 use App\Models\ReturnRequest;
@@ -436,6 +438,17 @@ class CheckoutController extends Controller
 
             DB::commit();
 
+            try {
+                $order->loadMissing('items.product');
+                Mail::to($order->email)->send(new OrderConfirmedMail($order));
+            } catch (\Throwable $mailEx) {
+                Log::warning('[storeOrder] order confirmation email failed', [
+                    'order_number' => $order->order_number,
+                    'email' => $order->email,
+                    'error' => $mailEx->getMessage(),
+                ]);
+            }
+
             return response()->json([
                 'success' => true,
                 'order_number' => $order->order_number,
@@ -521,6 +534,7 @@ class CheckoutController extends Controller
     {
         $order = Order::with([
             'items.product',
+            'items.review',
             'returnRequests' => fn ($query) => $query->latest('requested_at')->latest('created_at'),
         ])->where('order_number', $orderNumber)->first();
 
@@ -534,30 +548,7 @@ class CheckoutController extends Controller
             abort(403, 'You are not authorized to view this order.');
         }
 
-        $items = $order->items->map(function ($item) {
-            $prod = $item->product;
-            $image = $item->image_url;
-
-            if (!$image || !Str::startsWith($image, ['http://', 'https://'])) {
-                $image = asset('images/' . ($image ?: 'placeholder.jpg'));
-            }
-
-            return [
-                'id' => $item->id,
-                'order_id' => $item->order_id,
-                'product_id' => $item->product_id,
-                'product_brand' => $prod->brand ?? null,
-                'product_name' => $prod->name ?? $item->product_name,
-                'size' => $item->size,
-                'colour' => $item->colour,
-                'image_url' => $image,
-                'quantity' => $item->quantity,
-                'unit_price' => $item->unit_price,
-                'line_total' => $item->line_total,
-                'created_at' => $item->created_at,
-                'updated_at' => $item->updated_at,
-            ];
-        })->toArray();
+        $items = $this->mapOrderItemsForUser($order);
 
         $orderArr = $order->toArray();
         $orderArr['items'] = $items;
@@ -583,6 +574,7 @@ class CheckoutController extends Controller
 
         $order = Order::with([
                 'items.product',
+                'items.review',
                 'returnRequests' => fn ($query) => $query->latest('requested_at')->latest('created_at'),
             ])
             ->where('user_id', $userId)
@@ -593,30 +585,7 @@ class CheckoutController extends Controller
             return response()->json(['success' => false, 'message' => 'Order not found']);
         }
 
-        $items = $order->items->map(function ($item) {
-            $prod = $item->product;
-            $image = $item->image_url;
-
-            if (!$image || !Str::startsWith($image, ['http://', 'https://'])) {
-                $image = asset('images/' . ($image ?: 'placeholder.jpg'));
-            }
-
-            return [
-                'id' => $item->id,
-                'order_id' => $item->order_id,
-                'product_id' => $item->product_id,
-                'product_brand' => $prod->brand ?? null,
-                'product_name' => $prod->name ?? $item->product_name,
-                'size' => $item->size,
-                'colour' => $item->colour,
-                'image_url' => $image,
-                'quantity' => $item->quantity,
-                'unit_price' => $item->unit_price,
-                'line_total' => $item->line_total,
-                'created_at' => $item->created_at,
-                'updated_at' => $item->updated_at,
-            ];
-        })->toArray();
+        $items = $this->mapOrderItemsForUser($order);
 
         $orderArr = $order->toArray();
         $orderArr['items'] = $items;
@@ -642,6 +611,7 @@ class CheckoutController extends Controller
 
         $orders = Order::with([
                 'items.product',
+                'items.review',
                 'returnRequests' => fn ($query) => $query->latest('requested_at')->latest('created_at'),
             ])
             ->where('user_id', $user->id)
@@ -649,30 +619,7 @@ class CheckoutController extends Controller
             ->get();
 
         $formatted = $orders->map(function ($order) {
-            $items = $order->items->map(function ($item) {
-                $prod = $item->product;
-                $image = $item->image_url;
-
-                if (!$image || !Str::startsWith($image, ['http://', 'https://'])) {
-                    $image = asset('images/' . ($image ?: 'placeholder.jpg'));
-                }
-
-                return [
-                    'id' => $item->id,
-                    'order_id' => $item->order_id,
-                    'product_id' => $item->product_id,
-                    'product_brand' => $prod->brand ?? null,
-                    'product_name' => $prod->name ?? $item->product_name,
-                    'size' => $item->size,
-                    'colour' => $item->colour,
-                    'image_url' => $image,
-                    'quantity' => $item->quantity,
-                    'unit_price' => $item->unit_price,
-                    'line_total' => $item->line_total,
-                    'created_at' => $item->created_at,
-                    'updated_at' => $item->updated_at,
-                ];
-            })->toArray();
+            $items = $this->mapOrderItemsForUser($order);
 
             $orderArr = $order->toArray();
             $orderArr['items'] = $items;
@@ -732,6 +679,43 @@ class CheckoutController extends Controller
             'postcode' => $delivery['postcode'],
             'is_default' => true,
         ]);
+    }
+
+    private function mapOrderItemsForUser(Order $order): array
+    {
+        return $order->items->map(function ($item) {
+            $prod = $item->product;
+            $image = $item->image_url;
+            $review = $item->review;
+
+            if (!$image || !Str::startsWith($image, ['http://', 'https://'])) {
+                $image = asset('images/' . ($image ?: 'placeholder.jpg'));
+            }
+
+            return [
+                'id' => $item->id,
+                'order_id' => $item->order_id,
+                'product_id' => $item->product_id,
+                'product_slug' => $prod->slug ?? null,
+                'product_brand' => $prod->brand ?? null,
+                'product_name' => $prod->name ?? $item->product_name,
+                'size' => $item->size,
+                'colour' => $item->colour,
+                'image_url' => $image,
+                'quantity' => $item->quantity,
+                'unit_price' => $item->unit_price,
+                'line_total' => $item->line_total,
+                'created_at' => $item->created_at,
+                'updated_at' => $item->updated_at,
+                'review' => $review ? [
+                    'id' => $review->id,
+                    'rating' => (float) ($review->rating ?? 0),
+                    'message' => (string) ($review->message ?? ''),
+                    'created_at' => optional($review->created_at)->toIso8601String(),
+                    'images_count' => (int) ($review->images_count ?? 0),
+                ] : null,
+            ];
+        })->toArray();
     }
 
     private function buildTrackingUrl(?string $trackingNumber): ?string
@@ -801,11 +785,24 @@ class CheckoutController extends Controller
                 'rejected_at' => optional($request->rejected_at)->toIso8601String(),
                 'more_info_requested_at' => optional($request->more_info_requested_at)->toIso8601String(),
                 'received_at' => optional($request->received_at)->toIso8601String(),
+                'customer_shipped_at' => optional($request->customer_shipped_at)->toIso8601String(),
                 'refunded_at' => optional($request->refunded_at)->toIso8601String(),
+                'exchange_offered_at' => optional($request->exchange_offered_at)->toIso8601String(),
                 'admin_note' => $request->admin_note,
                 'admin_override' => (bool) $request->admin_override,
                 'shippo_label_url' => $request->shippo_label_url,
                 'shippo_tracking_number' => $request->shippo_tracking_number,
+                'return_shipping_service' => $request->return_shipping_service,
+                'return_shipping_amount' => $request->return_shipping_amount,
+                'return_shipping_currency' => $request->return_shipping_currency,
+                'refund_amount' => $request->refund_amount,
+                'stripe_refund_id' => $request->stripe_refund_id,
+                'stripe_refund_currency' => $request->stripe_refund_currency,
+                'stripe_payment_amount' => $request->stripe_payment_amount,
+                'stripe_fee_amount' => $request->stripe_fee_amount,
+                'stripe_net_amount' => $request->stripe_net_amount,
+                'additional_info_submitted_at' => optional($request->additional_info_submitted_at)->toIso8601String(),
+                'archived_at' => optional($request->archived_at)->toIso8601String(),
             ])
             ->values()
             ->all();

@@ -2401,7 +2401,6 @@ const designPageContextValue = {
   ),
   pricePanel: (
     <GetPriceUI
-      docked
       onClose={closePricePanel}
       productName={safeProduct.name ?? "Unknown Product"}
       selectedColour={selectedColour}
@@ -2445,7 +2444,7 @@ const designPageContextValue = {
         <div className="pt-[96px] flex min-h-screen w-full bg-gray-200">
 
           <DesignPageProvider value={designPageContextValue}>
-            <DesignSidebars />
+            {!isPricePanelOpen ? <DesignSidebars /> : null}
 
             {/* MAIN CANVAS */}
             <DesignWorkspaceLayout />

@@ -123,6 +123,20 @@ interface BreadcrumbItem {
   href: string;
 }
 
+type ProductReviewRow = {
+  id: number;
+  rating: number;
+  message: string;
+  title?: string | null;
+  created_at?: string | null;
+  is_verified_purchase?: boolean;
+  user?: {
+    username?: string | null;
+    avatar_url?: string | null;
+  } | null;
+  images?: string[];
+};
+
 interface Product {
   id?: number | string;
   brand: string;
@@ -142,6 +156,7 @@ interface Product {
   colourProducts: ColourProduct[];
   breadcrumbs?: BreadcrumbItem[];
   specifications?: string;
+  reviews?: ProductReviewRow[];
   length?: number | string | null;
   width?: number | string | null;
   height?: number | string | null;
@@ -265,6 +280,21 @@ const mapRestrictedBoxes = (rawMap: unknown): Record<string, RestrictedBoxRatio>
 };
 
 const restrictedDraftKey = (colourId: string, imageUrl: string) => `${colourId}::${imageUrl}`;
+
+const renderRatingStars = (value: number, className = "h-4 w-4") => {
+  const safeValue = Number.isFinite(value) ? Math.max(0, Math.min(5, value)) : 0;
+  return Array.from({ length: 5 }).map((_, index) => {
+    const fillRatio = Math.max(0, Math.min(1, safeValue - index));
+    return (
+      <span key={`rating-star-${index}`} className={`relative inline-flex ${className}`}>
+        <Star className={`${className} text-[#E2D6BE]`} />
+        <span className="absolute inset-0 overflow-hidden" style={{ width: `${fillRatio * 100}%` }}>
+          <Star className={`${className} fill-current text-[#C8941C]`} />
+        </span>
+      </span>
+    );
+  });
+};
 
 export default function ProductLayout({ product, recommendedProducts = [], adminEditor }: Props) {
   const page = usePage<{ auth?: { user?: { id?: number; name?: string; email?: string; is_admin?: boolean } } }>();
@@ -601,7 +631,10 @@ export default function ProductLayout({ product, recommendedProducts = [], admin
       ? "Notify me when back in stock"
       : "Sign in to get notified when back in stock";
 
-  const reviewRows: Array<{ name: string; rating: number; text: string }> = [];
+  const reviewRows = useMemo<ProductReviewRow[]>(() => {
+    if (!Array.isArray(product.reviews)) return [];
+    return product.reviews;
+  }, [product.reviews]);
 
   useEffect(() => {
     if (!isLightboxOpen) return;
@@ -1823,23 +1856,58 @@ export default function ProductLayout({ product, recommendedProducts = [], admin
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#EFE4D0] pb-4">
               <h2 className="text-2xl font-extrabold text-[#1E1A12]">Customer Reviews</h2>
               <p className="text-sm text-[#6C5E43]">
-                {rating.toFixed(1)} out of 5 based on {reviewCount.toLocaleString()} reviews
+                {reviewCount > 0 ? `${rating.toFixed(1)} out of 5 based on ${reviewCount.toLocaleString()} reviews` : "No reviews yet"}
               </p>
             </div>
 
             <div className="mt-5 space-y-4">
               {reviewRows.length > 0 ? (
                 reviewRows.map((review, idx) => (
-                  <article key={`${review.name}-${idx}`} className="rounded-2xl border border-[#E8DDC8] bg-white p-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="font-semibold text-[#2B2417]">{review.name}</p>
+                  <article key={`${review.id}-${idx}`} className="rounded-2xl border border-[#E8DDC8] bg-white p-4">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 overflow-hidden rounded-full border border-[#E7DAC0] bg-[#FFF9EC]">
+                          {review.user?.avatar_url ? (
+                            <img src={review.user.avatar_url} alt={review.user.username || "Customer"} className="h-full w-full object-cover" />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center text-sm font-bold text-[#8A6D2B]">
+                              {String(review.user?.username || "C").slice(0, 1).toUpperCase()}
+                            </div>
+                          )}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-[#2B2417]">@{review.user?.username || "customer"}</p>
+                          <p className="mt-0.5 text-xs text-[#7D6F54]">
+                            {review.created_at ? new Date(review.created_at).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "Recent"}
+                            {review.is_verified_purchase ? " • Verified purchase" : ""}
+                          </p>
+                        </div>
+                      </div>
                       <div className="inline-flex items-center gap-1 text-[#C8941C]">
-                        {Array.from({ length: 5 }).map((_, i) => (
-                          <Star key={i} className={`h-4 w-4 ${i < review.rating ? "fill-current" : ""}`} />
-                        ))}
+                        {renderRatingStars(Number(review.rating || 0))}
+                        <span className="ml-1 text-xs font-semibold text-[#7E6A3C]">{Number(review.rating || 0).toFixed(1)}</span>
                       </div>
                     </div>
-                    <p className="mt-2 text-sm leading-relaxed text-[#4A3F2C]">{review.text}</p>
+                    <p className="mt-2 text-sm leading-relaxed text-[#4A3F2C]">{review.message}</p>
+                    {Array.isArray(review.images) && review.images.length > 0 ? (
+                      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                        {review.images.slice(0, 4).map((imageUrl, imageIndex) => (
+                          <a
+                            key={`${review.id}-image-${imageIndex}`}
+                            href={imageUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="block overflow-hidden rounded-lg border border-[#E8DDC8] bg-[#FFFDF7]"
+                          >
+                            <img
+                              src={imageUrl}
+                              alt={`Review image ${imageIndex + 1}`}
+                              className="aspect-square w-full object-cover transition-transform duration-300 hover:scale-105"
+                            />
+                          </a>
+                        ))}
+                      </div>
+                    ) : null}
                   </article>
                 ))
               ) : (

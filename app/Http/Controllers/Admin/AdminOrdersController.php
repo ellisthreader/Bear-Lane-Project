@@ -164,6 +164,48 @@ class AdminOrdersController extends Controller
         ]);
     }
 
+    public function archive(Request $request, Order $order): JsonResponse
+    {
+        $status = strtolower(trim((string) $order->status));
+        if (!str_contains($status, 'deliver')) {
+            return response()->json([
+                'message' => 'Only delivered orders can be archived.',
+            ], 422);
+        }
+
+        if ($order->archived_at) {
+            return response()->json([
+                'success' => true,
+                'archived_at' => optional($order->archived_at)->toIso8601String(),
+            ]);
+        }
+
+        $order->archived_at = now();
+        $order->save();
+
+        $this->activityLogService->logFromRequest(
+            $request,
+            'order_archived',
+            'Order archived',
+            "Archived order #{$order->order_number}",
+            [
+                'icon' => 'package',
+                ...$this->activityLogService->modelContext($order, "Order #{$order->order_number}"),
+                'metadata' => [
+                    'order_id' => $order->id,
+                    'order_number' => $order->order_number,
+                    'status' => $order->status,
+                    'archived_at' => optional($order->archived_at)->toIso8601String(),
+                ],
+            ]
+        );
+
+        return response()->json([
+            'success' => true,
+            'archived_at' => optional($order->archived_at)->toIso8601String(),
+        ]);
+    }
+
     public function messageCustomer(Request $request, Order $order): JsonResponse
     {
         $validated = $request->validate([
@@ -346,6 +388,7 @@ class AdminOrdersController extends Controller
             'shippo_tracking_number' => $order->shippo_tracking_number,
             'tracking_url' => $this->buildTrackingUrl($order),
             'is_new' => $this->isNewOrderStatus($order->status),
+            'archived_at' => optional($order->archived_at)->toIso8601String(),
         ];
     }
 
@@ -572,6 +615,6 @@ class AdminOrdersController extends Controller
 
     private function countNewOrders(Collection $orders): int
     {
-        return $orders->filter(fn (array $order) => (bool) ($order['is_new'] ?? false))->count();
+        return $orders->filter(fn (array $order) => !($order['archived_at'] ?? null) && (bool) ($order['is_new'] ?? false))->count();
     }
 }

@@ -21,6 +21,8 @@ class CategoryController extends Controller
         // Load products with relationships
         $products = $categoryModel->products()
             ->with(['categories', 'images', 'variants'])
+            ->withAvg('approvedReviews as average_rating', 'rating')
+            ->withCount('approvedReviews as reviews_count')
             ->get();
 
         $isAdmin = (bool) optional($request->user())->is_admin;
@@ -81,6 +83,8 @@ class CategoryController extends Controller
 
         $products = $categoryModel->products()
             ->with(['categories', 'images', 'variants'])
+            ->withAvg('approvedReviews as average_rating', 'rating')
+            ->withCount('approvedReviews as reviews_count')
             ->get();
 
         return Inertia::render('CategoryPage', [

@@ -12,6 +12,7 @@ use App\Models\SavedDesign;
 use App\Models\UserAddress;
 use App\Models\UserPaymentMethod;
 use App\Models\Chat;
+use App\Models\ProductReview;
 
 class User extends Authenticatable implements MustVerifyEmail
 {
@@ -130,6 +131,11 @@ class User extends Authenticatable implements MustVerifyEmail
     public function paymentMethods()
     {
         return $this->hasMany(UserPaymentMethod::class);
+    }
+
+    public function productReviews()
+    {
+        return $this->hasMany(ProductReview::class);
     }
 
     /**

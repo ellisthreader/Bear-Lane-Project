@@ -1,11 +1,21 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { Link } from "@inertiajs/react";
-import { Check, ChevronDown, Star, Truck } from "lucide-react";
+import { Check, ChevronDown, ImagePlus, Loader2, Star, Truck, X } from "lucide-react";
 import OrderReturnSection, { type ReturnEnabledOrder } from "./components/OrderReturnSection";
+
+interface OrderItemReviewSummary {
+  id: number;
+  rating: number;
+  message: string;
+  created_at?: string | null;
+  images_count?: number;
+}
 
 interface OrderItem {
   id: number;
+  product_id?: number | null;
+  product_slug?: string | null;
   product_name: string;
   size?: string | null;
   colour?: string | null;
@@ -13,6 +23,7 @@ interface OrderItem {
   quantity: number;
   unit_price: number;
   line_total: number;
+  review?: OrderItemReviewSummary | null;
 }
 
 interface ReturnEligibility {
@@ -33,6 +44,10 @@ interface ReturnRequestSummary {
   admin_note?: string | null;
   shippo_label_url?: string | null;
   shippo_tracking_number?: string | null;
+  return_shipping_service?: string | null;
+  return_shipping_amount?: number | null;
+  return_shipping_currency?: string | null;
+  customer_shipped_at?: string | null;
 }
 
 interface Order extends ReturnEnabledOrder {
@@ -61,12 +76,17 @@ type OrdersTabProps = {
   sortBy?: SortBy;
 };
 
+type ActiveReviewTarget = {
+  orderId: number;
+  itemId: number;
+} | null;
+
 export default function OrdersTab({ sortBy = "newest" }: OrdersTabProps) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedOrderIds, setExpandedOrderIds] = useState<number[]>([]);
   const [returnModalOrderId, setReturnModalOrderId] = useState<number | null>(null);
-  const [reviewNotice, setReviewNotice] = useState<string | null>(null);
+  const [activeReviewTarget, setActiveReviewTarget] = useState<ActiveReviewTarget>(null);
 
   const fetchOrders = useCallback(async () => {
     try {
@@ -96,15 +116,51 @@ export default function OrdersTab({ sortBy = "newest" }: OrdersTabProps) {
     setExpandedOrderIds((prev) => (prev.includes(id) ? prev.filter((v) => v !== id) : [...prev, id]));
   };
 
+  const getLatestReturnRequest = (order: Order): ReturnRequestSummary | null => {
+    const requests = Array.isArray(order.return_requests) ? order.return_requests : [];
+    return requests[0] || null;
+  };
+
   const getActiveReturnRequest = (order: Order): ReturnRequestSummary | null => {
     const requests = Array.isArray(order.return_requests) ? order.return_requests : [];
     return requests.find((request) =>
-      ["pending", "approved", "more_info_requested", "received"].includes(String(request.status || ""))
+      ["pending", "approved", "more_info_requested", "in_transit", "received", "exchange_offered"].includes(String(request.status || ""))
     ) || null;
   };
 
+  const getReturnStatusMeta = (status?: string | null) => {
+    const value = String(status || "").toLowerCase().trim();
+    if (value === "approved") {
+      return { label: "Approved", styles: "border-[#CDE3B2] bg-[#F2FAE8] text-[#4D6E2A]" };
+    }
+    if (value === "refunded") {
+      return { label: "Refund issued", styles: "border-[#D0DDF3] bg-[#F4F8FF] text-[#315B8E]" };
+    }
+    if (value === "rejected") {
+      return { label: "Return declined", styles: "border-[#F4C7C1] bg-[#FFF2F1] text-[#9F3126]" };
+    }
+    if (value === "more_info_requested") {
+      return { label: "More info requested", styles: "border-[#E8D0A0] bg-[#FFF5E2] text-[#8C6221]" };
+    }
+    if (value === "in_transit") {
+      return { label: "Return in transit", styles: "border-[#E8D0A0] bg-[#FFF5E2] text-[#8C6221]" };
+    }
+    if (value === "received") {
+      return { label: "Return received", styles: "border-[#D0DDF3] bg-[#F4F8FF] text-[#315B8E]" };
+    }
+    if (value === "exchange_offered") {
+      return { label: "Exchange arranged", styles: "border-[#D0DDF3] bg-[#F4F8FF] text-[#315B8E]" };
+    }
+    if (value === "pending") {
+      return { label: "Pending return", styles: "border-[#D9C79C] bg-[#FFF9E9] text-[#7A6231]" };
+    }
+    return null;
+  };
+
   const getStatusLabel = (order: Order) => {
-    if (getActiveReturnRequest(order)) return "Pending return";
+    const latestReturnRequest = getLatestReturnRequest(order);
+    const returnStatus = getReturnStatusMeta(latestReturnRequest?.status);
+    if (returnStatus) return returnStatus.label;
     const s = (order.status ?? "").toLowerCase().trim();
     if (["cancelled", "canceled"].some((v) => s.includes(v))) return "Cancelled";
     if (["delivered"].some((v) => s.includes(v))) return "Delivered";
@@ -114,8 +170,10 @@ export default function OrdersTab({ sortBy = "newest" }: OrdersTabProps) {
   };
 
   const getStatusStyles = (order: Order) => {
-    if (getActiveReturnRequest(order)) {
-      return "border-[#D9C79C] bg-[#FFF9E9] text-[#7A6231]";
+    const latestReturnRequest = getLatestReturnRequest(order);
+    const returnStatus = getReturnStatusMeta(latestReturnRequest?.status);
+    if (returnStatus) {
+      return returnStatus.styles;
     }
     const s = (order.status ?? "").toLowerCase().trim();
     if (["delivered"].some((v) => s.includes(v))) {
@@ -164,6 +222,14 @@ export default function OrdersTab({ sortBy = "newest" }: OrdersTabProps) {
     () => orders.find((order) => order.id === returnModalOrderId) || null,
     [orders, returnModalOrderId]
   );
+  const activeReviewOrder = useMemo(
+    () => orders.find((order) => order.id === activeReviewTarget?.orderId) || null,
+    [orders, activeReviewTarget?.orderId]
+  );
+  const activeReviewItem = useMemo(
+    () => activeReviewOrder?.items.find((item) => item.id === activeReviewTarget?.itemId) || null,
+    [activeReviewOrder, activeReviewTarget?.itemId]
+  );
 
   if (loading) {
     return (
@@ -195,8 +261,12 @@ export default function OrdersTab({ sortBy = "newest" }: OrdersTabProps) {
         {sortedOrders.map((order, index) => {
         const trackingRef = order.shippo_tracking_number;
         const isExpanded = expandedOrderIds.includes(order.id);
+        const isDeliveredOrder = String(order.status || "").toLowerCase().includes("deliver");
+        const latestReturnRequest = getLatestReturnRequest(order);
         const activeReturnRequest = getActiveReturnRequest(order);
-        const canRequestReturn = Boolean(order.return_eligibility?.can_request) && !activeReturnRequest;
+        const displayReturnRequest = activeReturnRequest || latestReturnRequest;
+        const activeReturnStatus = getReturnStatusMeta(displayReturnRequest?.status);
+        const canRequestReturn = Boolean(order.return_eligibility?.can_request) && !displayReturnRequest;
         const trackingStage = getTrackingStage(order.status);
         const trackingSteps = [
           { label: "Order placed", description: "Your order has been confirmed and queued." },
@@ -237,7 +307,7 @@ export default function OrdersTab({ sortBy = "newest" }: OrdersTabProps) {
             <div className={`grid transition-all duration-300 ${isExpanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
               <div className="overflow-hidden">
                 <div className="space-y-4 border-t border-[#EFE2C5] px-4 pb-4 pt-3">
-                  {activeReturnRequest ? (
+                  {displayReturnRequest ? (
                     <div className="rounded-xl border border-[#E6D7B0] bg-gradient-to-r from-[#FFFCF5] to-white p-4">
                       <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#9B8862]">Returns</p>
                       <p className="mt-2 text-sm text-[#6E5F41]">Delivered orders can be returned within 30 days with image proof.</p>
@@ -249,9 +319,15 @@ export default function OrdersTab({ sortBy = "newest" }: OrdersTabProps) {
                           : "N/A"}
                       </p>
                       <div className="mt-3 rounded-lg border border-[#D8C9A5] bg-white px-3 py-2">
-                        <p className="text-xs font-semibold text-[#6A541F]">Active return request in progress.</p>
+                        <p className="text-xs font-semibold text-[#6A541F]">
+                          {activeReturnStatus?.label === "Refund issued"
+                            ? "Refund completed."
+                            : activeReturnStatus?.label === "Approved"
+                              ? "Return request approved."
+                              : "Return request in progress."}
+                        </p>
                         <p className="mt-1 text-xs text-[#7D6A45]">
-                          #{activeReturnRequest.id} • {activeReturnRequest.reason_label} • Pending review
+                          #{displayReturnRequest.id} • {displayReturnRequest.reason_label} • {activeReturnStatus?.label || String(displayReturnRequest.status || "").replaceAll("_", " ")}
                         </p>
                       </div>
                     </div>
@@ -350,6 +426,33 @@ export default function OrdersTab({ sortBy = "newest" }: OrdersTabProps) {
                               <p className="mt-0.5 text-xs text-[#8A7B5A]">£{Number(item.unit_price || 0).toFixed(2)} each</p>
                             </div>
                           </div>
+                          {isDeliveredOrder ? (
+                            <div className="mt-3 flex flex-wrap items-center gap-2">
+                              {item.review?.id ? (
+                                <span className="inline-flex items-center gap-1 rounded-full border border-[#CDE3B2] bg-[#F2FAE8] px-2.5 py-1 text-[11px] font-semibold text-[#4D6E2A]">
+                                  <Star className="h-3.5 w-3.5 fill-current" />
+                                  Reviewed {Number(item.review.rating || 0).toFixed(1)}
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => setActiveReviewTarget({ orderId: order.id, itemId: item.id })}
+                                  className="inline-flex items-center gap-2 rounded-lg border border-[#D7BE84] bg-[#FFFDF4] px-3 py-1.5 text-xs font-semibold text-[#7B6530] transition hover:bg-[#FFF4DF]"
+                                >
+                                  <Star className="h-3.5 w-3.5" />
+                                  Leave Review
+                                </button>
+                              )}
+                              {item.product_slug ? (
+                                <a
+                                  href={`/product/${item.product_slug}`}
+                                  className="inline-flex items-center rounded-lg border border-[#E1D4B8] bg-white px-3 py-1.5 text-xs font-semibold text-[#7B6530] transition hover:bg-[#FFF8EA]"
+                                >
+                                  View Product
+                                </a>
+                              ) : null}
+                            </div>
+                          ) : null}
                         </div>
                       ))
                     ) : null}
@@ -364,20 +467,15 @@ export default function OrdersTab({ sortBy = "newest" }: OrdersTabProps) {
                       >
                         Request Return
                       </button>
-                    ) : activeReturnRequest ? (
-                      <span className="inline-flex items-center gap-2 rounded-lg border border-[#D9C79C] bg-[#FFF9E9] px-3 py-2 text-xs font-semibold text-[#7A6231]">
-                        Pending Return
-                      </span>
+                    ) : displayReturnRequest ? (
+                      <button
+                        type="button"
+                        onClick={() => setReturnModalOrderId(order.id)}
+                        className="inline-flex items-center gap-2 rounded-lg border border-[#D9C79C] bg-[#FFF9E9] px-3 py-2 text-xs font-semibold text-[#7A6231] transition hover:bg-[#FFF3D6]"
+                      >
+                        View Return
+                      </button>
                     ) : null}
-
-                    <button
-                      type="button"
-                      onClick={() => setReviewNotice("Leave review will be available soon.")}
-                      className="inline-flex items-center gap-2 rounded-lg border border-[#D7BE84] bg-[#FFFDF4] px-3 py-2 text-xs font-semibold text-[#7B6530] transition hover:bg-[#FFF4DF]"
-                    >
-                      <Star className="h-3.5 w-3.5" />
-                      Leave Review
-                    </button>
 
                   </div>
                 </div>
@@ -395,11 +493,229 @@ export default function OrdersTab({ sortBy = "newest" }: OrdersTabProps) {
           onSubmitted={fetchOrders}
         />
       ) : null}
-      {reviewNotice ? (
-        <p className="inline-flex rounded-lg border border-[#E5D7B8] bg-[#FFF9EB] px-3 py-2 text-xs font-semibold text-[#7A6231]">
-          {reviewNotice}
-        </p>
+      {activeReviewOrder && activeReviewItem ? (
+        <LeaveReviewModal
+          order={activeReviewOrder}
+          item={activeReviewItem}
+          onClose={() => setActiveReviewTarget(null)}
+          onSubmitted={async () => {
+            await fetchOrders();
+            setActiveReviewTarget(null);
+          }}
+        />
       ) : null}
     </>
+  );
+}
+
+function renderRatingStars(value: number, className = "h-6 w-6") {
+  const safe = Number.isFinite(value) ? Math.max(0, Math.min(5, value)) : 0;
+  return Array.from({ length: 5 }).map((_, index) => {
+    const fill = Math.max(0, Math.min(1, safe - index));
+    return (
+      <span key={`review-rating-${index}`} className={`relative inline-flex ${className}`}>
+        <Star className={`${className} text-[#E4D4AE]`} />
+        <span className="absolute inset-0 overflow-hidden" style={{ width: `${fill * 100}%` }}>
+          <Star className={`${className} fill-current text-[#C8941C]`} />
+        </span>
+      </span>
+    );
+  });
+}
+
+function LeaveReviewModal({
+  order,
+  item,
+  onClose,
+  onSubmitted,
+}: {
+  order: Order;
+  item: OrderItem;
+  onClose: () => void;
+  onSubmitted: () => Promise<void> | void;
+}) {
+  const [rating, setRating] = useState<number>(5);
+  const [message, setMessage] = useState<string>("");
+  const [images, setImages] = useState<File[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const imagePreviews = useMemo(
+    () => images.map((file) => ({ file, url: URL.createObjectURL(file) })),
+    [images]
+  );
+
+  useEffect(() => {
+    return () => {
+      imagePreviews.forEach((entry) => URL.revokeObjectURL(entry.url));
+    };
+  }, [imagePreviews]);
+
+  const handleImagesSelected = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const selected = Array.from(event.target.files || []);
+    event.target.value = "";
+    if (!selected.length) return;
+
+    const remaining = Math.max(0, 4 - images.length);
+    if (remaining <= 0) return;
+    setImages((prev) => [...prev, ...selected.slice(0, remaining)]);
+  };
+
+  const removeImage = (index: number) => {
+    setImages((prev) => prev.filter((_, idx) => idx !== index));
+  };
+
+  const submitReview = async () => {
+    setError(null);
+    const trimmedMessage = message.trim();
+    if (trimmedMessage.length < 6) {
+      setError("Please write at least a short message about your experience.");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const formData = new FormData();
+      formData.append("rating", String(rating));
+      formData.append("message", trimmedMessage);
+      images.forEach((file) => formData.append("images[]", file));
+
+      const response = await axios.post(`/orders/${order.id}/items/${item.id}/reviews`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      if (!response.data?.success) {
+        throw new Error(response.data?.message || "Unable to submit your review.");
+      }
+
+      await onSubmitted();
+    } catch (err: any) {
+      const serverMessage = err?.response?.data?.message;
+      setError(typeof serverMessage === "string" ? serverMessage : "Unable to submit your review right now.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[140] flex items-center justify-center bg-black/35 p-4 backdrop-blur-[2px]">
+      <div className="w-full max-w-2xl rounded-3xl border border-[#E1CF9F] bg-white shadow-[0_20px_70px_rgba(40,30,10,0.28)]">
+        <div className="flex items-start justify-between gap-3 border-b border-[#EFE2C5] bg-gradient-to-r from-[#FFF9EA] to-white px-5 py-4">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#9C8452]">Leave us a review</p>
+            <h3 className="mt-1 text-lg font-bold text-[#2B2416]">{item.product_name}</h3>
+            <p className="mt-1 text-xs text-[#7D6A45]">
+              Order #{order.order_number} • Delivered item review
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full border border-[#E1D4B8] bg-white p-2 text-[#6D5A31] transition hover:bg-[#FFF8E8]"
+            aria-label="Close review modal"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="space-y-5 px-5 py-5">
+          <div className="rounded-2xl border border-[#E8DDC3] bg-[#FFFCF6] p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#8A6D2B]">Your rating</p>
+            <div className="mt-3">
+              <div className="relative inline-flex">
+                <div className="inline-flex gap-1">{renderRatingStars(rating)}</div>
+                <div className="absolute inset-0 grid grid-cols-10">
+                  {Array.from({ length: 10 }).map((_, index) => {
+                    const value = (index + 1) / 2;
+                    return (
+                      <button
+                        key={`rating-pick-${value}`}
+                        type="button"
+                        onClick={() => setRating(value)}
+                        className="h-6"
+                        aria-label={`Rate ${value} stars`}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+              <p className="mt-2 text-sm font-semibold text-[#6F5A2D]">{rating.toFixed(1)} out of 5</p>
+              <input
+                type="range"
+                min={0.5}
+                max={5}
+                step={0.5}
+                value={rating}
+                onChange={(event) => setRating(Number(event.target.value))}
+                className="mt-3 h-2 w-full cursor-pointer appearance-none rounded-full bg-[#E9DAB9] [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border [&::-webkit-slider-thumb]:border-[#C79D46] [&::-webkit-slider-thumb]:bg-[#FFF6DF]"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold uppercase tracking-[0.12em] text-[#8A6D2B]">Your message</label>
+            <textarea
+              value={message}
+              onChange={(event) => setMessage(event.target.value)}
+              rows={4}
+              placeholder="Tell other customers about quality, fit, print quality, and overall experience."
+              className="mt-2 w-full rounded-2xl border border-[#E1D4B8] bg-[#FFFEFA] px-4 py-3 text-sm text-[#2D2515] outline-none transition focus:border-[#C9A85B]"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold uppercase tracking-[0.12em] text-[#8A6D2B]">Review photos (optional)</label>
+            <label className="mt-2 flex h-11 w-full max-w-xs cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-[#D8C598] bg-[#FFFCF4] text-sm font-semibold text-[#6D5A31] transition hover:bg-[#FFF5E0]">
+              <ImagePlus className="h-4 w-4" />
+              Upload images (max 4)
+              <input type="file" accept="image/jpeg,image/png,image/webp" multiple className="hidden" onChange={handleImagesSelected} />
+            </label>
+
+            {imagePreviews.length > 0 ? (
+              <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {imagePreviews.map((entry, index) => (
+                  <div key={`${entry.file.name}-${index}`} className="relative overflow-hidden rounded-lg border border-[#E7DCC2] bg-white">
+                    <img src={entry.url} alt={`Review upload ${index + 1}`} className="h-20 w-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => removeImage(index)}
+                      className="absolute right-1 top-1 rounded-full bg-black/60 p-1 text-white"
+                      aria-label={`Remove image ${index + 1}`}
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </div>
+
+          {error ? (
+            <p className="rounded-xl border border-[#F4C7C1] bg-[#FFF2F1] px-3 py-2 text-xs font-semibold text-[#9F3126]">
+              {error}
+            </p>
+          ) : null}
+        </div>
+
+        <div className="flex flex-wrap justify-end gap-2 border-t border-[#EFE2C5] px-5 py-4">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-xl border border-[#E1D4B8] bg-white px-4 py-2 text-sm font-semibold text-[#6D5A31] transition hover:bg-[#FFF8EA]"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() => void submitReview()}
+            disabled={submitting}
+            className="inline-flex items-center gap-2 rounded-xl bg-[#B89443] px-5 py-2 text-sm font-semibold text-white transition hover:bg-[#A58335] disabled:opacity-60"
+          >
+            {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Star className="h-4 w-4" />}
+            {submitting ? "Submitting..." : "Publish Review"}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }

@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use App\Models\Product;
 use App\Models\Category;
 use App\Models\Image;
+use App\Models\ProductReview;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Log;
 
@@ -20,6 +21,8 @@ class ProductController extends Controller
     {
         $products = Product::where('type', $type)
             ->with(['images', 'variants.images'])
+            ->withAvg('approvedReviews as average_rating', 'rating')
+            ->withCount('approvedReviews as reviews_count')
             ->get()
             ->map(fn ($product) => $this->formatProduct($product));
 
@@ -38,6 +41,8 @@ class ProductController extends Controller
 
         $products = Product::where('category_id', $category->id)
             ->with(['images', 'variants.images'])
+            ->withAvg('approvedReviews as average_rating', 'rating')
+            ->withCount('approvedReviews as reviews_count')
             ->get()
             ->map(fn($product) => $this->formatProduct($product));
 
@@ -54,6 +59,8 @@ class ProductController extends Controller
     {
         $products = Product::where('is_trending', true)
             ->with(['images', 'variants.images'])
+            ->withAvg('approvedReviews as average_rating', 'rating')
+            ->withCount('approvedReviews as reviews_count')
             ->get()
             ->map(fn ($product) => $this->formatProduct($product));
 
@@ -73,7 +80,16 @@ class ProductController extends Controller
                 'variants.images',
                 'category.parent.parent.parent',
                 'categories.parent.parent.parent',
+                'approvedReviews' => fn ($query) => $query
+                    ->with([
+                        'user:id,username,name,avatar',
+                        'images',
+                    ])
+                    ->latest('created_at')
+                    ->limit(50),
             ])
+            ->withAvg('approvedReviews as average_rating', 'rating')
+            ->withCount('approvedReviews as reviews_count')
             ->firstOrFail();
 
         $product = $this->formatProduct($productModel);
@@ -105,6 +121,10 @@ class ProductController extends Controller
             ->all();
         $product->image_boxes = $productImageBoxes;
         $product->breadcrumbs = $this->buildProductBreadcrumbs($productModel);
+        $product->reviews = $productModel->approvedReviews
+            ->map(fn (ProductReview $review) => $this->mapReview($review))
+            ->values()
+            ->all();
         $recommendedProducts = $this->buildRecommendedProducts($productModel);
         $isAdminEditor = (bool) optional($request->user())->is_admin && $request->boolean('product_mode');
 
@@ -292,6 +312,8 @@ class ProductController extends Controller
             'brand' => (string) ($product->brand ?? ''),
             'price' => (float) ($product->price ?? 0),
             'image' => $image ? $image->url : '/images/no-image.png',
+            'average_rating' => isset($product->average_rating) ? round((float) $product->average_rating, 2) : 0,
+            'reviews_count' => (int) ($product->reviews_count ?? 0),
         ];
     }
 
@@ -336,8 +358,13 @@ class ProductController extends Controller
             'images' => $productImages,
             'sizes' => $allSizes,
             'colour' => $allColours,
+            'average_rating' => isset($product->average_rating) ? round((float) $product->average_rating, 2) : 0,
+            'rating' => isset($product->average_rating) ? round((float) $product->average_rating, 2) : 0,
+            'review_count' => (int) ($product->reviews_count ?? 0),
+            'reviews_count' => (int) ($product->reviews_count ?? 0),
             'variants' => $product->variants,
             'colourProducts' => [], // will be filled in `show`
+            'reviews' => [],
         ];
     }
 
@@ -382,6 +409,39 @@ class ProductController extends Controller
             'top' => (float) $top,
             'width' => (float) $width,
             'height' => (float) $height,
+        ];
+    }
+
+    private function mapReview(ProductReview $review): array
+    {
+        $username = trim((string) ($review->user?->username ?: $review->user?->name ?: $review->username_snapshot ?: 'Customer'));
+
+        $avatarUrl = null;
+        if ($review->user && $review->user->avatar_url) {
+            $avatarUrl = $review->user->avatar_url;
+        } elseif (is_string($review->avatar_url_snapshot) && trim($review->avatar_url_snapshot) !== '') {
+            $snapshot = trim($review->avatar_url_snapshot);
+            $avatarUrl = str_starts_with($snapshot, 'http://') || str_starts_with($snapshot, 'https://')
+                ? $snapshot
+                : asset('storage/' . ltrim($snapshot, '/'));
+        }
+
+        return [
+            'id' => $review->id,
+            'rating' => (float) ($review->rating ?? 0),
+            'message' => (string) ($review->message ?? ''),
+            'title' => (string) ($review->title ?? ''),
+            'created_at' => optional($review->created_at)->toIso8601String(),
+            'is_verified_purchase' => true,
+            'user' => [
+                'username' => $username,
+                'avatar_url' => $avatarUrl,
+            ],
+            'images' => $review->images
+                ->map(fn ($image) => $image->image_url)
+                ->filter(fn ($url) => is_string($url) && trim($url) !== '')
+                ->values()
+                ->all(),
         ];
     }
 }

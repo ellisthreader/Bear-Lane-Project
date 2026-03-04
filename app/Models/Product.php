@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use App\Models\Image;
 use App\Models\ProductVariant;
 use App\Models\Category;
+use App\Models\ProductReview;
 
 class Product extends Model
 {
@@ -71,6 +72,18 @@ class Product extends Model
     public function images()
     {
         return $this->morphMany(Image::class, 'imageable');
+    }
+
+    public function reviews()
+    {
+        return $this->hasMany(ProductReview::class);
+    }
+
+    public function approvedReviews()
+    {
+        return $this->hasMany(ProductReview::class)
+            ->where('moderation_status', 'approved')
+            ->where('is_visible', true);
     }
 
     /**

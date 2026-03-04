@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Product;
 use App\Models\Order;
+use App\Models\ProductReview;
 
 class OrderItem extends Model
 {
@@ -45,5 +46,10 @@ class OrderItem extends Model
     public function product()
     {
         return $this->belongsTo(Product::class, 'product_id');
+    }
+
+    public function review()
+    {
+        return $this->hasOne(ProductReview::class, 'order_item_id');
     }
 }

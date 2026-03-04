@@ -60,6 +60,14 @@ type AdminReturnRequestSummary = {
   is_within_window: boolean;
   admin_override: boolean;
   selected_items_count: number;
+  selected_items_value?: number | null;
+  additional_info_submitted_at?: string | null;
+  stripe_refund_id?: string | null;
+  stripe_refund_currency?: string | null;
+  stripe_payment_amount?: number | null;
+  stripe_fee_amount?: number | null;
+  stripe_net_amount?: number | null;
+  archived_at?: string | null;
   return_shipping_service?: string | null;
   return_shipping_amount?: number | null;
   return_shipping_currency?: string | null;
@@ -73,11 +81,25 @@ type AdminReturnRequestDetail = AdminReturnRequestSummary & {
   refund_amount: number | null;
   shippo_label_url: string | null;
   shippo_tracking_number: string | null;
+  return_shipping_rate_id?: string | null;
+  customer_shipped_at?: string | null;
+  received_at?: string | null;
+  refunded_at?: string | null;
+  exchange_offered_at?: string | null;
   order: ReturnOrderSummary | null;
   history: ReturnHistoryEntry[];
 };
 
-type UpdateReturnAction = "approve" | "reject" | "request_more_info" | "issue_refund" | "mark_received" | "override";
+type UpdateReturnAction =
+  | "approve"
+  | "reject"
+  | "request_more_info"
+  | "issue_refund"
+  | "mark_received"
+  | "override"
+  | "exchange_products"
+  | "message_user"
+  | "archive";
 
 type AdminOrderReturnsContextValue = {
   loadingList: boolean;
@@ -91,7 +113,12 @@ type AdminOrderReturnsContextValue = {
   refreshReturnRequests: () => Promise<void>;
   selectReturnRequest: (returnRequestId: number) => Promise<void>;
   updateReturnStatus: (action: UpdateReturnAction, note?: string, refundAmount?: number, returnTrackingNumber?: string) => Promise<void>;
-  generateReturnLabel: () => Promise<void>;
+  generateReturnLabel: (selectedRate?: {
+    object_id: string;
+    service_name?: string | null;
+    amount?: number | null;
+    currency?: string | null;
+  }) => Promise<void>;
 };
 
 const AdminOrderReturnsContext = createContext<AdminOrderReturnsContextValue | null>(null);
@@ -236,6 +263,14 @@ export function AdminOrderReturnsProvider({ children }: { children: ReactNode })
                 days_left: updated.days_left,
                 reason_label: updated.reason_label,
                 selected_items_count: updated.selected_items_count,
+                selected_items_value: updated.selected_items_value,
+                additional_info_submitted_at: updated.additional_info_submitted_at,
+                stripe_refund_id: updated.stripe_refund_id,
+                stripe_refund_currency: updated.stripe_refund_currency,
+                stripe_payment_amount: updated.stripe_payment_amount,
+                stripe_fee_amount: updated.stripe_fee_amount,
+                stripe_net_amount: updated.stripe_net_amount,
+                archived_at: updated.archived_at,
               }
             : entry
         ));
@@ -250,7 +285,12 @@ export function AdminOrderReturnsProvider({ children }: { children: ReactNode })
     }
   }, [selectedReturnId]);
 
-  const generateReturnLabel = useCallback(async () => {
+  const generateReturnLabel = useCallback(async (selectedRate?: {
+    object_id: string;
+    service_name?: string | null;
+    amount?: number | null;
+    currency?: string | null;
+  }) => {
     if (!selectedReturnId) return;
 
     setSaving(true);
@@ -262,10 +302,17 @@ export function AdminOrderReturnsProvider({ children }: { children: ReactNode })
         credentials: "same-origin",
         headers: {
           Accept: "application/json",
+          "Content-Type": "application/json",
           "X-CSRF-TOKEN": getCsrfToken(),
           "X-XSRF-TOKEN": getCookieValue("XSRF-TOKEN"),
           "X-Requested-With": "XMLHttpRequest",
         },
+        body: JSON.stringify({
+          selected_rate_object_id: selectedRate?.object_id || undefined,
+          selected_rate_service: selectedRate?.service_name || undefined,
+          selected_rate_amount: typeof selectedRate?.amount === "number" ? selectedRate.amount : undefined,
+          selected_rate_currency: selectedRate?.currency || undefined,
+        }),
       });
 
       const payload = await response.json().catch(() => null);

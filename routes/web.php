@@ -22,9 +22,11 @@ use App\Http\Controllers\LiveChatController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\OrderReturnController;
+use App\Http\Controllers\ProductReviewController;
 use App\Http\Controllers\Admin\ProductController as AdminProductController;
 use App\Http\Controllers\Admin\AdminOrdersController;
 use App\Http\Controllers\Admin\AdminOrderReturnsController;
+use App\Http\Controllers\Admin\AdminStatisticsController;
 use App\Http\Controllers\Admin\SupportAdminController;
 use App\Http\Controllers\Admin\SupportChatController;
 use App\Http\Controllers\DesignController;
@@ -118,6 +120,8 @@ Route::get('/', function () {
 
     $products = Product::query()
         ->with('images')
+        ->withAvg('approvedReviews as average_rating', 'rating')
+        ->withCount('approvedReviews as reviews_count')
         ->where(function ($query) use ($mensTShirtSlugs) {
             $query
                 ->whereHas('categories', function ($categoryQuery) use ($mensTShirtSlugs) {
@@ -193,6 +197,22 @@ Route::middleware('auth')->group(function () {
     Route::get('/orders/{orderNumber}', [CheckoutController::class, 'showOrder'])->name('orders.show');
     Route::get('/orders/{order}/returns/shipping-options', [OrderReturnController::class, 'shippingOptions'])->whereNumber('order')->name('orders.returns.shipping-options');
     Route::post('/orders/{order}/returns', [OrderReturnController::class, 'store'])->whereNumber('order')->name('orders.returns.store');
+    Route::patch('/orders/{order}/returns/{returnRequest}/mark-sent', [OrderReturnController::class, 'markSent'])
+        ->whereNumber('order')
+        ->whereNumber('returnRequest')
+        ->name('orders.returns.mark-sent');
+    Route::post('/orders/{order}/returns/{returnRequest}/more-evidence', [OrderReturnController::class, 'submitMoreEvidence'])
+        ->whereNumber('order')
+        ->whereNumber('returnRequest')
+        ->name('orders.returns.more-evidence');
+    Route::get('/orders/{order}/returns/{returnRequest}/refund-statement', [OrderReturnController::class, 'refundStatement'])
+        ->whereNumber('order')
+        ->whereNumber('returnRequest')
+        ->name('orders.returns.refund-statement');
+    Route::post('/orders/{order}/items/{orderItem}/reviews', [ProductReviewController::class, 'store'])
+        ->whereNumber('order')
+        ->whereNumber('orderItem')
+        ->name('orders.items.reviews.store');
 });
 
 Route::get('/order-latest', [CheckoutController::class, 'latestOrder'])->name('order.latest');
@@ -454,7 +474,14 @@ Route::get('/company', fn() => Inertia::render('Company'));
 */
 Route::middleware(['auth', 'admin', 'admin.activity'])->prefix('admin')->group(function () {
     Route::get('/dashboard', [SupportAdminController::class, 'dashboard'])->name('admin.dashboard');
-    Route::get('/statistics', fn() => inertia('Admin/Statistics'))->name('admin.statistics');
+    Route::get('/statistics', [AdminStatisticsController::class, 'index'])->name('admin.statistics');
+    Route::get('/statistics/data', [AdminStatisticsController::class, 'data'])->name('admin.statistics.data');
+    Route::get('/statistics/{metric}', [AdminStatisticsController::class, 'showMetric'])
+        ->where('metric', 'total_revenue|total_users|total_orders|net_profit|best_selling_products|reviews')
+        ->name('admin.statistics.metric');
+    Route::get('/statistics/{metric}/data', [AdminStatisticsController::class, 'metricData'])
+        ->where('metric', 'total_revenue|total_users|total_orders|net_profit|best_selling_products|reviews')
+        ->name('admin.statistics.metric.data');
     Route::get('/support', [SupportAdminController::class, 'index'])->name('admin.support');
     Route::get('/support/data', [SupportAdminController::class, 'data'])->name('admin.support.data');
     Route::post('/support/articles', [SupportAdminController::class, 'storeArticle'])->name('admin.support.articles.store');
@@ -486,12 +513,15 @@ Route::middleware(['auth', 'admin', 'admin.activity'])->prefix('admin')->group(f
     Route::get('/orders/data', [AdminOrdersController::class, 'data'])->name('admin.orders.data');
     Route::get('/orders/{order}/data', [AdminOrdersController::class, 'show'])->whereNumber('order')->name('admin.orders.show');
     Route::patch('/orders/{order}/status', [AdminOrdersController::class, 'updateStatus'])->whereNumber('order')->name('admin.orders.status');
+    Route::match(['patch', 'post', 'get'], '/orders/{order}/archive', [AdminOrdersController::class, 'archive'])->whereNumber('order')->name('admin.orders.archive');
     Route::post('/orders/{order}/message', [AdminOrdersController::class, 'messageCustomer'])->whereNumber('order')->name('admin.orders.message');
     Route::post('/orders/{order}/label', [AdminOrdersController::class, 'generateLabel'])->whereNumber('order')->name('admin.orders.label');
     Route::get('/orders/returns/data', [AdminOrderReturnsController::class, 'data'])->name('admin.orders.returns.data');
     Route::get('/orders/returns/{returnRequest}/data', [AdminOrderReturnsController::class, 'show'])->whereNumber('returnRequest')->name('admin.orders.returns.show');
+    Route::get('/orders/returns/{returnRequest}/shipping-options', [AdminOrderReturnsController::class, 'shippingOptions'])->whereNumber('returnRequest')->name('admin.orders.returns.shipping-options');
     Route::patch('/orders/returns/{returnRequest}/status', [AdminOrderReturnsController::class, 'updateStatus'])->whereNumber('returnRequest')->name('admin.orders.returns.status');
     Route::post('/orders/returns/{returnRequest}/label', [AdminOrderReturnsController::class, 'generateLabel'])->whereNumber('returnRequest')->name('admin.orders.returns.label');
+    Route::get('/orders/returns/{returnRequest}/refund-statement', [AdminOrderReturnsController::class, 'downloadRefundStatement'])->whereNumber('returnRequest')->name('admin.orders.returns.refund-statement');
     Route::get('/users', function () {
         $users = User::query()
             ->select(['id', 'name', 'username', 'email'])

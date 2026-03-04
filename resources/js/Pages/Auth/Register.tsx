@@ -3,9 +3,13 @@ import axios from "axios";
 import { FcGoogle } from "react-icons/fc";
 import { FaFacebook } from "react-icons/fa";
 
-export default function Register() {
+type RegisterProps = {
+  email?: string;
+};
+
+export default function Register({ email: initialEmail = "" }: RegisterProps) {
   const [username, setUsername] = useState("");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [signupErrors, setSignupErrors] = useState<any>({});
@@ -39,6 +43,10 @@ export default function Register() {
   };
 
   const passwordStrength = getPasswordStrength(password);
+
+  useEffect(() => {
+    setEmail(initialEmail || "");
+  }, [initialEmail]);
 
   // --------------------------
   // Username validation

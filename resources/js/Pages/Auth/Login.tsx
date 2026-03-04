@@ -182,7 +182,7 @@ export default function AuthPage() {
                         disabled={loading}
                         className="w-full py-5 text-white font-semibold text-xl rounded-2xl shadow-md hover:shadow-lg transition-all duration-300"
                         style={{ background: gold, opacity: loading ? 0.8 : 1, cursor: loading ? "not-allowed" : "pointer" }}
-                      >Verify OAuth Login
+                      >
                         {loading ? "Logging in..." : "Login"}
                       </button>
                     </form>

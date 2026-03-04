@@ -121,6 +121,30 @@ export default function NavMenu() {
     return items.slice(0, 10);
   };
 
+  const renderNotificationContent = (content: string) => {
+    const text = String(content || "");
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const parts = text.split(urlRegex);
+
+    return parts.map((part, index) => {
+      if (/^https?:\/\//.test(part)) {
+        return (
+          <a
+            key={`notif-link-${index}`}
+            href={part}
+            target="_blank"
+            rel="noreferrer"
+            className="font-semibold text-[#7B6530] underline underline-offset-2"
+          >
+            {part}
+          </a>
+        );
+      }
+
+      return <React.Fragment key={`notif-text-${index}`}>{part}</React.Fragment>;
+    });
+  };
+
   const searchCategoryCounts = useMemo(() => {
     const counts = new Map<string, number>();
     searchResults.forEach((item) => {
@@ -390,7 +414,13 @@ export default function NavMenu() {
               flex items-center gap-12
               text-[17px] uppercase tracking-wide
               text-black dark:text-gray-200
+              transition-opacity duration-200
             "
+            style={{
+              opacity: searchOpen ? 0 : 1,
+              visibility: searchOpen ? "hidden" : "visible",
+              pointerEvents: searchOpen ? "none" : "auto",
+            }}
           >
             {categories.map((cat) => (
               <div
@@ -696,7 +726,7 @@ export default function NavMenu() {
                       )}
                       <p className="text-sm font-semibold text-[#111827]">{item.title}</p>
                     </div>
-                    <p className="whitespace-pre-wrap text-sm text-[#374151]">{item.content}</p>
+                    <p className="whitespace-pre-wrap text-sm text-[#374151]">{renderNotificationContent(item.content)}</p>
                     <div className="mt-2 flex items-center justify-between gap-2">
                       {item.created_at ? (
                         <p className="text-xs text-[#6b7280]">

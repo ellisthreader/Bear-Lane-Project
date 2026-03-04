@@ -205,7 +205,7 @@ const GetPriceUI: React.FC<GetPriceUIProps> = ({
 
   const wrapperClass = docked
     ? "h-full"
-    : "fixed inset-0 z-[9999] flex items-center justify-center bg-black/35 backdrop-blur-[2px] p-4";
+    : "fixed inset-0 z-[9999] flex items-center justify-center bg-black/45 backdrop-blur-sm p-4";
   const panelClass = docked
     ? "h-full w-full rounded-3xl border border-gray-100 bg-white shadow-[0_15px_50px_rgba(0,0,0,0.06)] flex flex-col overflow-hidden"
     : "max-h-[92vh] w-[1080px] max-w-[98vw] overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-[0_15px_50px_rgba(0,0,0,0.06)] flex flex-col";
