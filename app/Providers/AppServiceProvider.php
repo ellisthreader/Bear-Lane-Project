@@ -29,7 +29,7 @@ class AppServiceProvider extends ServiceProvider
         }
 
         VerifyEmail::createUrlUsing(function (object $notifiable): string {
-            return URL::temporarySignedRoute(
+            $relativeSignedPath = URL::temporarySignedRoute(
                 'verification.verify',
                 now()->addMinutes((int) config('auth.verification.expire', 60)),
                 [
@@ -38,6 +38,13 @@ class AppServiceProvider extends ServiceProvider
                 ],
                 absolute: false
             );
+
+            $appUrl = rtrim((string) config('app.url', ''), '/');
+            if ($appUrl !== '') {
+                return $appUrl . $relativeSignedPath;
+            }
+
+            return URL::to($relativeSignedPath);
         });
 
         // Prefetch assets via Vite
