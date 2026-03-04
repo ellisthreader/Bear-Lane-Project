@@ -184,18 +184,26 @@ export default function Register({ email: initialEmail = "" }: RegisterProps) {
     setSignupErrors({});
 
     try {
-      await axios.post("/register", {
+      const response = await axios.post("/register", {
         username,
         email,
         password,
         password_confirmation: confirmPassword,
       });
 
-      // ✅ Hard redirect (guaranteed to work)
-      window.location.href = "/profile";
+      const redirectTo = response?.data?.redirect || "/profile";
+      window.location.href = redirectTo;
     } catch (err: any) {
       const backendErrors = err.response?.data?.errors || {};
-      setSignupErrors(backendErrors);
+      const backendMessage = err.response?.data?.message;
+      const mappedErrors = { ...backendErrors } as any;
+      if ((!backendErrors || Object.keys(backendErrors).length === 0) && backendMessage) {
+        mappedErrors.general = backendMessage;
+      }
+      if (!mappedErrors.general && (!backendErrors || Object.keys(backendErrors).length === 0)) {
+        mappedErrors.general = "Sign up failed. Please try again.";
+      }
+      setSignupErrors(mappedErrors);
       setHasSubmitted(false);
     } finally {
       setSignupLoading(false);
@@ -241,6 +249,12 @@ export default function Register({ email: initialEmail = "" }: RegisterProps) {
         <span className="mx-2 text-gray-400 font-medium">OR</span>
         <hr className="flex-1 border-gray-300" />
       </div>
+
+      {signupErrors.general && (
+        <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          {signupErrors.general}
+        </p>
+      )}
 
       {/* Username */}
       <div>

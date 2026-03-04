@@ -44,6 +44,7 @@ use Illuminate\Foundation\Auth\EmailVerificationRequest;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 
 
@@ -889,15 +890,34 @@ Route::middleware(['auth', 'admin', 'admin.activity'])->prefix('admin')->group(f
             'message' => ['required', 'string', 'max:5000'],
         ]);
 
-        Mail::send('emails.admin-message', [
-            'heading' => (string) $validated['subject'],
-            'messageBody' => (string) $validated['message'],
-            'type' => 'message',
-            'userName' => (string) ($target->name ?: $target->username ?: 'there'),
-            'logoUrl' => asset('images/BLText.png'),
-        ], function ($mail) use ($target, $validated) {
-            $mail->to($target->email)->subject((string) $validated['subject']);
-        });
+        if (empty($target->email)) {
+            return response()->json(['success' => false, 'message' => 'This user has no email address.'], 422);
+        }
+
+        try {
+            Mail::send('emails.admin-message', [
+                'heading' => (string) $validated['subject'],
+                'messageBody' => (string) $validated['message'],
+                'type' => 'message',
+                'userName' => (string) ($target->name ?: $target->username ?: 'there'),
+                'logoUrl' => asset('images/BLText.png'),
+            ], function ($mail) use ($target, $validated) {
+                $mail->to($target->email)->subject((string) $validated['subject']);
+            });
+        } catch (Throwable $exception) {
+            Log::error('Admin email send failed.', [
+                'route' => 'admin.users.send-email',
+                'target_user_id' => $target->id,
+                'target_user_email' => $target->email,
+                'subject' => (string) $validated['subject'],
+                'error' => $exception->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Email could not be sent right now. Please check mail settings and worker status.',
+            ], 500);
+        }
 
         $activityLogger->logFromRequest(
             $request,
@@ -976,15 +996,33 @@ Route::middleware(['auth', 'admin', 'admin.activity'])->prefix('admin')->group(f
             'content' => $warningText,
         ]);
 
-        Mail::send('emails.admin-message', [
-            'heading' => 'Important account warning',
-            'messageBody' => (string) $validated['message'],
-            'type' => 'warning',
-            'userName' => (string) ($target->name ?: $target->username ?: 'there'),
-            'logoUrl' => asset('images/BLText.png'),
-        ], function ($mail) use ($target) {
-            $mail->to($target->email)->subject('Important account warning');
-        });
+        if (empty($target->email)) {
+            return response()->json(['success' => false, 'message' => 'This user has no email address.'], 422);
+        }
+
+        try {
+            Mail::send('emails.admin-message', [
+                'heading' => 'Important account warning',
+                'messageBody' => (string) $validated['message'],
+                'type' => 'warning',
+                'userName' => (string) ($target->name ?: $target->username ?: 'there'),
+                'logoUrl' => asset('images/BLText.png'),
+            ], function ($mail) use ($target) {
+                $mail->to($target->email)->subject('Important account warning');
+            });
+        } catch (Throwable $exception) {
+            Log::error('Admin warning email send failed.', [
+                'route' => 'admin.users.warning',
+                'target_user_id' => $target->id,
+                'target_user_email' => $target->email,
+                'error' => $exception->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Warning email could not be sent right now. Please check mail settings and worker status.',
+            ], 500);
+        }
 
         $activityLogger->logFromRequest(
             $request,

@@ -251,16 +251,30 @@ public function register(Request $request)
     Auth::login($user);
     $this->claimGuestCheckoutData($user);
 
-    // Fire registered event (important for email verification)
-    event(new Registered($user));
+    try {
+        // Fire registered event (important for email verification)
+        event(new Registered($user));
 
-    // Explicitly send verification email (safe even with event)
-    $user->sendEmailVerificationNotification();
+        // Explicitly send verification email (safe even with event)
+        $user->sendEmailVerificationNotification();
+    } catch (\Throwable $e) {
+        Log::error('Signup verification email failed', [
+            'user_id' => $user->id,
+            'email' => $user->email,
+            'error' => $e->getMessage(),
+        ]);
 
-    // Redirect to verification notice page
-    return redirect()
-        ->route('verification.notice')
-        ->with('just_signed_up', true);
+        return response()->json([
+            'success' => true,
+            'redirect' => route('verification.notice'),
+            'warning' => 'Account created, but we could not send the verification email right now.',
+        ]);
+    }
+
+    return response()->json([
+        'success' => true,
+        'redirect' => route('verification.notice'),
+    ]);
 }
 
 
