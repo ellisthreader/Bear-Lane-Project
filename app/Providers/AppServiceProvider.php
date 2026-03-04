@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use Illuminate\Support\Facades\Vite;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
@@ -22,6 +23,10 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        if ($this->app->environment('production')) {
+            URL::forceScheme('https');
+        }
+
         // Prefetch assets via Vite
         Vite::prefetch(concurrency: 3);
 
