@@ -241,7 +241,9 @@ class OAuthController extends Controller
     {
         $request->session()->put('oauth_redirect', $this->resolveRedirectPath($request->query('redirect')));
         Log::info("Redirecting user to Google OAuth");
-        return Socialite::driver('google')->redirect();
+        return Socialite::driver('google')
+            ->redirectUrl((string) config('services.google.redirect'))
+            ->redirect();
     }
 
     public function handleGoogleCallback(Request $request)
@@ -284,7 +286,9 @@ class OAuthController extends Controller
     {
         $request->session()->put('oauth_redirect', $this->resolveRedirectPath($request->query('redirect')));
         Log::info("Redirecting user to Apple OAuth");
-        return Socialite::driver('apple')->redirect();
+        return Socialite::driver('apple')
+            ->redirectUrl((string) config('services.apple.redirect'))
+            ->redirect();
     }
 
     public function handleAppleCallback(Request $request)
@@ -327,7 +331,9 @@ class OAuthController extends Controller
     {
         $request->session()->put('oauth_redirect', $this->resolveRedirectPath($request->query('redirect')));
         Log::info("Redirecting user to Facebook OAuth");
-        return Socialite::driver('facebook')->redirect();
+        return Socialite::driver('facebook')
+            ->redirectUrl((string) config('services.facebook.redirect'))
+            ->redirect();
     }
 
     public function handleFacebookCallback(Request $request)
