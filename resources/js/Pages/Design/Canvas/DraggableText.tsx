@@ -64,21 +64,27 @@ useLayoutEffect(() => {
   const el = measureRef.current;
   if (!el) return;
 
-  const rect = el.getBoundingClientRect();
-  const extraStroke = borderWidth * 2;
-  const w = Math.round((rect.width + extraStroke) * 10) / 10;
-  const h = Math.round((rect.height + extraStroke) * 10) / 10;
+  const frame = window.requestAnimationFrame(() => {
+    const rect = el.getBoundingClientRect();
+    const extraStroke = borderWidth * 2;
+    const w = Math.round((rect.width + extraStroke) * 10) / 10;
+    const h = Math.round((rect.height + extraStroke) * 10) / 10;
 
-  if (
-    !lastMeasured.current ||
-    lastMeasured.current.w !== w ||
-    lastMeasured.current.h !== h
-  ) {
-    lastMeasured.current = { w, h };
-    setMeasured({ w, h });
-    onMeasure?.(uid, w, h);
-  }
-}, [text, fontSize, fontFamily, borderWidth, rotation, flip]);
+    if (
+      !lastMeasured.current ||
+      lastMeasured.current.w !== w ||
+      lastMeasured.current.h !== h
+    ) {
+      lastMeasured.current = { w, h };
+      setMeasured({ w, h });
+      onMeasure?.(uid, w, h);
+    }
+  });
+
+  return () => {
+    window.cancelAnimationFrame(frame);
+  };
+}, [text, fontSize, fontFamily, borderWidth, rotation, flip, textAlign, color, borderColor, uid, onMeasure]);
 
 
 
@@ -113,6 +119,7 @@ useLayoutEffect(() => {
         >
           <span
             ref={measureRef}
+            data-text-content="true"
             style={{
             fontFamily,
             fontSize: `${fontSize}px`,

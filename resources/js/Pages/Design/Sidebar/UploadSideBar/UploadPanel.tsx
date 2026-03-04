@@ -8,6 +8,7 @@ import ImagePreviewModal from "../../Components/ImagePreviewModal";
 type StencilizeUIProps = {
   onUpload: (url: string) => void;
   onValidateUpload?: (file: File) => Promise<{ allowed: boolean; message?: string }>;
+  enableStencilProcessing?: boolean;
 
   /** UIDs, NOT URLs */
   recentImages?: string[];
@@ -21,6 +22,7 @@ type StencilizeUIProps = {
 export default function StencilizeUI({
   onUpload,
   onValidateUpload,
+  enableStencilProcessing = true,
   recentImages = [],
   imageState,
   onSelectImage,
@@ -62,6 +64,20 @@ export default function StencilizeUI({
     });
   };
 
+  const toDataUrl = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === "string") {
+          resolve(reader.result);
+          return;
+        }
+        reject(new Error("Unable to read image file."));
+      };
+      reader.onerror = () => reject(new Error("Unable to read image file."));
+      reader.readAsDataURL(file);
+    });
+
   /* ---------------- Upload ---------------- */
   const handleFile = async (file?: File) => {
     if (!file || loading) return;
@@ -72,6 +88,18 @@ export default function StencilizeUI({
         if (fileInputRef.current) fileInputRef.current.value = "";
         return;
       }
+    }
+
+    if (!enableStencilProcessing) {
+      try {
+        const rawDataUrl = await toDataUrl(file);
+        onUpload(rawDataUrl);
+      } catch (err) {
+        console.error("Image read failed:", err);
+      } finally {
+        if (fileInputRef.current) fileInputRef.current.value = "";
+      }
+      return;
     }
 
     resetState();

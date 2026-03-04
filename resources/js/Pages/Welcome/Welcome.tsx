@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Head, usePage } from "@inertiajs/react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import GuestLayout from "@/Layouts/GuestLayout";
@@ -11,6 +11,8 @@ import StackedScrollCards from "./StackedScrollCards";
 import ProductCard from "../Product/ProductCard";
 import {
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   ShieldCheck,
   SlidersHorizontal,
   Star,
@@ -196,10 +198,10 @@ export default function Welcome() {
   );
   const [activeReview, setActiveReview] = useState(0);
   const productRailRef = useRef<HTMLDivElement | null>(null);
-  const draggingRef = useRef(false);
-  const movedDuringDragRef = useRef(false);
-  const dragStartXRef = useRef(0);
-  const dragStartScrollRef = useRef(0);
+  const [activeProductIndex, setActiveProductIndex] = useState(0);
+  const [productCardStep, setProductCardStep] = useState(0);
+  const [canScrollPrev, setCanScrollPrev] = useState(false);
+  const [canScrollNext, setCanScrollNext] = useState(spotlightProducts.length > 1);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -208,43 +210,59 @@ export default function Welcome() {
     return () => clearInterval(interval);
   }, []);
 
+  const syncProductRailState = useCallback(() => {
+    const rail = productRailRef.current;
+    if (!rail) return;
+
+    const firstCard = rail.querySelector<HTMLElement>("[data-product-card]");
+    if (firstCard) {
+      const railStyle = window.getComputedStyle(rail);
+      const gapRaw =
+        railStyle.columnGap !== "normal" ? railStyle.columnGap : railStyle.gap;
+      const gap = Number.parseFloat(gapRaw || "0") || 0;
+      const nextStep = firstCard.offsetWidth + gap;
+      if (nextStep > 0) {
+        setProductCardStep(nextStep);
+        const nextIndex = Math.round(rail.scrollLeft / nextStep);
+        setActiveProductIndex(
+          Math.max(0, Math.min(spotlightProducts.length - 1, nextIndex))
+        );
+      }
+    }
+
+    setCanScrollPrev(rail.scrollLeft > 8);
+    setCanScrollNext(rail.scrollLeft + rail.clientWidth < rail.scrollWidth - 8);
+  }, [spotlightProducts.length]);
+
   useEffect(() => {
     const rail = productRailRef.current;
     if (!rail) return;
 
-    const interval = setInterval(() => {
-      const atEnd = rail.scrollLeft + rail.clientWidth >= rail.scrollWidth - 12;
-      if (atEnd) {
-        rail.scrollTo({ left: 0, behavior: "smooth" });
-        return;
-      }
-      rail.scrollBy({ left: 320, behavior: "smooth" });
-    }, 3600);
+    syncProductRailState();
+    rail.addEventListener("scroll", syncProductRailState, { passive: true });
+    window.addEventListener("resize", syncProductRailState);
 
-    return () => clearInterval(interval);
-  }, [spotlightProducts.length]);
+    return () => {
+      rail.removeEventListener("scroll", syncProductRailState);
+      window.removeEventListener("resize", syncProductRailState);
+    };
+  }, [syncProductRailState]);
 
-  const startDrag = (clientX: number) => {
+  const scrollProductRail = (direction: "prev" | "next") => {
     const rail = productRailRef.current;
     if (!rail) return;
-    draggingRef.current = true;
-    movedDuringDragRef.current = false;
-    dragStartXRef.current = clientX;
-    dragStartScrollRef.current = rail.scrollLeft;
+    const step = productCardStep > 0 ? productCardStep : rail.clientWidth * 0.82;
+    rail.scrollBy({
+      left: direction === "next" ? step : -step,
+      behavior: "smooth",
+    });
   };
 
-  const moveDrag = (clientX: number) => {
+  const jumpToProduct = (index: number) => {
     const rail = productRailRef.current;
-    if (!rail || !draggingRef.current) return;
-    const delta = clientX - dragStartXRef.current;
-    if (Math.abs(delta) > 4) {
-      movedDuringDragRef.current = true;
-    }
-    rail.scrollLeft = dragStartScrollRef.current - delta;
-  };
-
-  const endDrag = () => {
-    draggingRef.current = false;
+    if (!rail) return;
+    const step = productCardStep > 0 ? productCardStep : rail.clientWidth * 0.82;
+    rail.scrollTo({ left: step * index, behavior: "smooth" });
   };
 
   return (
@@ -275,38 +293,38 @@ export default function Welcome() {
               Featured Products
             </h2>
           </div>
-
+          <div className="mt-5 flex items-center justify-center gap-2 sm:justify-end">
+            <button
+              type="button"
+              onClick={() => scrollProductRail("prev")}
+              disabled={!canScrollPrev}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#E5D3AA] bg-[#FFF9ED] text-[#7D5E1A] transition hover:border-[#C9A24D] hover:text-[#6D520D] disabled:cursor-not-allowed disabled:opacity-45"
+              aria-label="Previous featured products"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollProductRail("next")}
+              disabled={!canScrollNext}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#E5D3AA] bg-[#FFF9ED] text-[#7D5E1A] transition hover:border-[#C9A24D] hover:text-[#6D520D] disabled:cursor-not-allowed disabled:opacity-45"
+              aria-label="Next featured products"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
         </div>
 
         <div className="mt-5 w-full px-4 sm:px-6 lg:px-8">
           <div
             ref={productRailRef}
-            onMouseDown={(event) => {
-              event.preventDefault();
-              startDrag(event.clientX);
-            }}
-            onMouseMove={(event) => {
-              event.preventDefault();
-              moveDrag(event.clientX);
-            }}
-            onMouseUp={endDrag}
-            onMouseLeave={endDrag}
-            onTouchStart={(event) => startDrag(event.touches[0].clientX)}
-            onTouchMove={(event) => moveDrag(event.touches[0].clientX)}
-            onTouchEnd={endDrag}
-            onDragStart={(event) => event.preventDefault()}
-            onClickCapture={(event) => {
-              if (movedDuringDragRef.current) {
-                event.preventDefault();
-                event.stopPropagation();
-              }
-            }}
-            className="flex w-full snap-x snap-mandatory gap-5 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden cursor-grab active:cursor-grabbing select-none touch-pan-y"
+            className="flex w-full snap-x snap-mandatory gap-4 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden touch-pan-x"
           >
             {spotlightProducts.map((product) => (
               <motion.div
                 key={product.id}
-                className="w-[250px] min-w-[250px] snap-start sm:w-[265px] sm:min-w-[265px]"
+                data-product-card
+                className="min-w-[76%] snap-start sm:min-w-[48%] md:min-w-[32%] lg:w-[265px] lg:min-w-[265px]"
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, amount: 0.2 }}
@@ -314,6 +332,21 @@ export default function Welcome() {
               >
                 <ProductCard product={product} compact />
               </motion.div>
+            ))}
+          </div>
+          <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+            {spotlightProducts.map((product, index) => (
+              <button
+                key={`spotlight-dot-${product.id}`}
+                type="button"
+                onClick={() => jumpToProduct(index)}
+                className={`h-2.5 rounded-full transition-all ${
+                  index === activeProductIndex
+                    ? "w-7 bg-[#C9A24D]"
+                    : "w-2.5 bg-[#E4D4B2]"
+                }`}
+                aria-label={`Jump to featured product ${index + 1}`}
+              />
             ))}
           </div>
         </div>

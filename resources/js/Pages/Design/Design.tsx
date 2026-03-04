@@ -2150,6 +2150,7 @@ const renderActiveTab = () => {
           canvasRef={canvasRef}
           onUpload={handleUpload}
           onValidateUpload={handleValidateUploadImage}
+          enableStencilProcessing={selectedDesignType === "embroidery"}
           recentImages={uploadedImages}
           selectedImage={selectedUploadedImage}
           onSelectImage={setSelectedUploadedImageWithLog}
@@ -2516,7 +2517,6 @@ const designPageContextValue = {
       selectedSize={selectedSize}
       onSizeChange={handleSizeChange}
       selectedDesignType={selectedDesignType}
-      onDesignTypeChange={setSelectedDesignType}
       onAddToCart={handleAddToCartFromPrice}
       onBuyNow={handleBuyNowFromPrice}
     />

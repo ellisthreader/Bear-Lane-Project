@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
-  CheckCircle2,
   CircleDollarSign,
   Images,
   Palette,
@@ -13,7 +12,7 @@ import {
 } from "lucide-react";
 import type { PricePreviewSnapshot } from "../Canvas/Canvas";
 import { calculateDesignPricingFromSides } from "../utils/designPricing";
-import { DESIGN_TYPE_OPTIONS, designTypeLabel, normalizeDesignType, type DesignType } from "@/Utils/designType";
+import { designTypeLabel, normalizeDesignType, type DesignType } from "@/Utils/designType";
 
 import DesignPreview from "./DesignPreview";
 
@@ -39,7 +38,6 @@ interface GetPriceUIProps {
   selectedSize?: string | null;
   onSizeChange?: (size: string) => void;
   selectedDesignType?: DesignType | null;
-  onDesignTypeChange?: (designType: DesignType) => void;
   onAddToCart?: (payload: {
     quantity: number;
     sizeBreakdown: Record<string, number>;
@@ -78,7 +76,6 @@ const GetPriceUI: React.FC<GetPriceUIProps> = ({
   selectedSize,
   onSizeChange,
   selectedDesignType,
-  onDesignTypeChange,
   onAddToCart,
   onBuyNow,
 }) => {
@@ -335,39 +332,11 @@ const GetPriceUI: React.FC<GetPriceUIProps> = ({
               </div>
 
               <div className="rounded-2xl border border-gray-200 bg-white p-3">
-                <p className="mb-2 text-sm font-semibold text-gray-700">Design type <span className="text-red-600">*</span></p>
-                <div className="grid gap-2 md:grid-cols-2">
-                  {DESIGN_TYPE_OPTIONS.map((option) => {
-                    const isSelected = selectedDesignTypeValue === option.value;
-                    return (
-                      <button
-                        key={option.value}
-                        type="button"
-                        onClick={() => onDesignTypeChange?.(option.value)}
-                        className={`rounded-xl border px-3 py-2 text-left transition ${
-                          isSelected
-                            ? "border-[#1F6E4A] bg-[#F2FBF6] shadow-sm"
-                            : "border-gray-300 bg-white hover:border-gray-400"
-                        }`}
-                      >
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={`inline-flex h-7 w-7 items-center justify-center rounded-full border ${
-                              isSelected
-                                ? "border-[#1F6E4A] bg-[#E2F4EA] text-[#1F6E4A]"
-                                : "border-gray-300 bg-gray-50 text-gray-700"
-                            }`}
-                          >
-                            {designTypeIcon(option.value)}
-                          </span>
-                          <p className={`text-sm font-semibold ${isSelected ? "text-[#15543A]" : "text-gray-800"}`}>{option.label}</p>
-                          {isSelected && <CheckCircle2 size={15} className="ml-auto text-[#1F6E4A]" />}
-                        </div>
-                        <p className="mt-0.5 text-xs text-gray-600">{option.helper}</p>
-                      </button>
-                    );
-                  })}
-                </div>
+                <p className="mb-1 text-sm font-semibold text-gray-700">Design type</p>
+                <p className="inline-flex items-center gap-2 text-sm text-gray-700">
+                  {designTypeIcon(selectedDesignTypeValue)}
+                  {selectedDesignTypeDisplay}
+                </p>
               </div>
 
               <div className="rounded-3xl border border-dashed border-gray-200 bg-white/80 p-5 shadow-sm flex flex-col gap-3">

@@ -62,6 +62,22 @@ const SelectionBox: React.FC<SelectionBoxProps> = ({
         return;
       }
 
+      if (layer?.type === "text") {
+        const textContent = document.querySelector<HTMLElement>(
+          `[data-uid="${CSS.escape(uid)}"][data-type="text"] [data-text-content="true"]`
+        );
+        if (textContent) {
+          const r = textContent.getBoundingClientRect();
+          const x = r.left - canvasRect.left;
+          const y = r.top - canvasRect.top;
+          minX = Math.min(minX, x);
+          minY = Math.min(minY, y);
+          maxX = Math.max(maxX, x + r.width);
+          maxY = Math.max(maxY, y + r.height);
+          return;
+        }
+      }
+
       const el = document.querySelector<HTMLElement>(`[data-uid="${CSS.escape(uid)}"]`);
       if (el) {
         const r = el.getBoundingClientRect();

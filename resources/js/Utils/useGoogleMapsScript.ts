@@ -12,6 +12,15 @@ declare global {
   }
 }
 
+const hasRequiredGoogleLibraries = (libraries: string[]): boolean => {
+  const hasMaps = Boolean(window.google?.maps);
+  if (!hasMaps) return false;
+
+  const placesRequested = libraries.includes("places");
+  const hasPlaces = Boolean(window.google?.maps?.places);
+  return !placesRequested || hasPlaces;
+};
+
 export default function useGoogleMapsScript({
   enabled,
   apiKey,
@@ -19,7 +28,8 @@ export default function useGoogleMapsScript({
 }: UseGoogleMapsScriptOptions): { isLoaded: boolean; loadError: Error | null } {
   const [isLoaded, setIsLoaded] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
-    return Boolean(window.google?.maps);
+    const normalized = Array.from(new Set(libraries.map((lib) => lib.trim()).filter(Boolean))).sort();
+    return hasRequiredGoogleLibraries(normalized);
   });
   const [loadError, setLoadError] = useState<Error | null>(null);
 
@@ -37,11 +47,7 @@ export default function useGoogleMapsScript({
       return;
     }
 
-    const placesRequested = normalizedLibraries.includes("places");
-    const hasMaps = Boolean(window.google?.maps);
-    const hasPlaces = Boolean(window.google?.maps?.places);
-
-    if (hasMaps && (!placesRequested || hasPlaces)) {
+    if (hasRequiredGoogleLibraries(normalizedLibraries)) {
       setIsLoaded(true);
       return;
     }
@@ -69,7 +75,7 @@ export default function useGoogleMapsScript({
     if (existing) {
       existing.addEventListener("load", onLoad);
       existing.addEventListener("error", onError);
-      if (window.google?.maps) {
+      if (hasRequiredGoogleLibraries(normalizedLibraries)) {
         setIsLoaded(true);
       }
       return () => {

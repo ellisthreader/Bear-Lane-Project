@@ -5,7 +5,20 @@ import { useCart } from "@/Context/CartContext";
 import { useWishlist } from "@/Context/WishlistContext";
 import { Link, usePage } from "@inertiajs/react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ShoppingCart, Search, User, Heart, Shield, Bell, AlertTriangle, MessageSquare, Loader2 } from "lucide-react";
+import {
+  ShoppingCart,
+  Search,
+  User,
+  Heart,
+  Shield,
+  Bell,
+  AlertTriangle,
+  MessageSquare,
+  Loader2,
+  Menu,
+  X,
+  ChevronRight,
+} from "lucide-react";
 import CartSidebar from "@/Components/Cart/CartSidebar";
 import WishlistSidebar from "@/Components/Wishlist/WishlistSidebar";
 
@@ -39,6 +52,7 @@ export default function NavMenu() {
   const [notificationsError, setNotificationsError] = useState<string | null>(null);
   const [pendingChatNotifications, setPendingChatNotifications] = useState(0);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
@@ -50,6 +64,7 @@ export default function NavMenu() {
   const searchControlRef = useRef<HTMLDivElement | null>(null);
   const searchMiddleRef = useRef<HTMLDivElement | null>(null);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const mobileSearchInputRef = useRef<HTMLInputElement | null>(null);
 
   const categories = ["Women", "Men", "Kids", "Sale"];
   const getCsrfToken = () =>
@@ -61,16 +76,21 @@ export default function NavMenu() {
     exit: { x: "-100%", opacity: 0 },
   };
 
-  const renderSidebar = () => {
+  const closeMobileMenu = () => {
+    setMobileMenuOpen(false);
+    setActiveSidebar(null);
+  };
+
+  const renderSidebar = (closeSidebar: () => void) => {
     switch (activeSidebar?.toLowerCase()) {
       case "women":
-        return <WomenSidebar closeSidebar={() => setActiveSidebar(null)} />;
+        return <WomenSidebar closeSidebar={closeSidebar} />;
       case "men":
-        return <MenSidebar closeSidebar={() => setActiveSidebar(null)} />;
+        return <MenSidebar closeSidebar={closeSidebar} />;
       case "kids":
-        return <KidsSidebar closeSidebar={() => setActiveSidebar(null)} />;
+        return <KidsSidebar closeSidebar={closeSidebar} />;
       case "sale":
-        return <SaleSidebar closeSidebar={() => setActiveSidebar(null)} />;
+        return <SaleSidebar closeSidebar={closeSidebar} />;
       default:
         return null;
     }
@@ -307,10 +327,25 @@ export default function NavMenu() {
   useEffect(() => {
     if (!searchOpen) return;
     const timer = window.setTimeout(() => {
-      searchInputRef.current?.focus();
+      const desktopInput = searchInputRef.current;
+      const mobileInput = mobileSearchInputRef.current;
+      const target =
+        (desktopInput && desktopInput.offsetParent !== null
+          ? desktopInput
+          : mobileInput) ?? desktopInput ?? mobileInput;
+      target?.focus();
     }, 20);
     return () => window.clearTimeout(timer);
   }, [searchOpen]);
+
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [mobileMenuOpen]);
 
   const unreadCount = notifications.length;
 
@@ -374,172 +409,171 @@ export default function NavMenu() {
       >
       <motion.nav
         className="
-          relative z-30 w-full
-          bg-white dark:bg-gray-900
-          backdrop-blur-xl
-          flex items-center
-          pl-3 pr-10 py-4
-          border-b border-gray-200 dark:border-gray-700
+          relative z-30 w-full border-b border-gray-200 bg-white px-3 py-3 backdrop-blur-xl dark:border-gray-700 dark:bg-gray-900
+          sm:px-4 lg:py-4 lg:pl-3 lg:pr-10
         "
       >
-        {/* LEFT */}
-        <div className="flex items-center gap-1">
-          {/* LOGO */}
-          <Link
-            href="/"
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
             onClick={() => {
-              setLogoGlow(true);
-              setTimeout(() => setLogoGlow(false), 600);
+              setMobileMenuOpen(true);
+              setSearchOpen(false);
+              setNotificationsOpen(false);
+              setActiveSidebar((prev) => prev ?? categories[0]);
             }}
-            className="flex items-center"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#E8D8B3] bg-[#FFF9EC] text-[#7D5E1A] transition hover:border-[#D4AF37] hover:text-[#D4AF37] lg:hidden"
+            aria-label="Open menu"
           >
-            <div
-              className={`
-                relative h-[50px] w-[220px]
-                transition-all duration-300
-                ${logoGlow ? "logo-neon-glow" : ""}
-              `}
-            >
-              <img
-                src="/images/BLText.png"
-                alt="Bear Lane"
-                className="w-full h-full object-contain select-none"
-              />
-            </div>
-          </Link>
-
-          {/* NAV LINKS */}
-          <div
-            className="
-              flex items-center gap-12
-              text-[17px] uppercase tracking-wide
-              text-black dark:text-gray-200
-              transition-opacity duration-200
-            "
-            style={{
-              opacity: searchOpen ? 0 : 1,
-              visibility: searchOpen ? "hidden" : "visible",
-              pointerEvents: searchOpen ? "none" : "auto",
-            }}
-          >
-            {categories.map((cat) => (
-              <div
-                key={cat}
-                onMouseEnter={() => setActiveSidebar(cat)} // OPEN on hover
-                className="
-                  cursor-pointer px-4 py-2
-                  transition-all duration-300
-                  hover:text-[#D4AF37]
-                  relative
-                  after:absolute after:left-1/2 after:-translate-x-1/2 after:bottom-0
-                  after:w-0 after:h-[2px]
-                  after:bg-[#D4AF37]
-                  after:transition-all after:duration-300
-                  hover:after:w-full
-                "
-              >
-                {cat}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div
-          ref={searchMiddleRef}
-          className="pointer-events-none absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2"
-        >
-          <motion.div
-            initial={false}
-            animate={{ width: searchOpen ? 500 : 0, opacity: searchOpen ? 1 : 0 }}
-            transition={{ duration: 0.26, ease: "easeOut" }}
-            className="overflow-hidden"
-          >
-            <div className="relative pointer-events-auto">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8A6D2B]" />
-              <input
-                ref={searchInputRef}
-                type="text"
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-                onFocus={() => setSearchOpen(true)}
-                placeholder="Search products..."
-                className="w-[500px] rounded-full border border-[#E2CF9B] bg-[#FFFDF7] py-2.5 pl-10 pr-4 text-sm text-[#2A2317] outline-none transition placeholder:text-[#9E8650] focus:border-[#C9A24D] focus:ring-2 focus:ring-[#EBD8AE]"
-              />
-            </div>
-          </motion.div>
-        </div>
-
-        {/* RIGHT */}
-        <div className="ml-auto flex items-center gap-6">
-          <div ref={searchControlRef} className="flex items-center">
-            <button
-              type="button"
-              onClick={() => {
-                setSearchOpen((prev) => {
-                  const next = !prev;
-                  if (!next) {
-                    setSearchQuery("");
-                    setSearchResults([]);
-                  } else {
-                    setNotificationsOpen(false);
-                    setActiveSidebar(null);
-                  }
-                  return next;
-                });
-              }}
-              className="inline-flex items-center justify-center"
-              aria-label="Search products"
-            >
-              <Search className="w-5 h-5 cursor-pointer hover:text-[#D4AF37] transition" />
-            </button>
-          </div>
-          <button
-            type="button"
-            onClick={toggleWishlist}
-            className="inline-flex items-center justify-center"
-            aria-label="Open wishlist"
-          >
-            <Heart className="w-5 h-5 cursor-pointer hover:text-[#D4AF37] transition" />
+            <Menu className="h-5 w-5" />
           </button>
-          <Link href="/profile">
-            <User className="w-5 h-5 cursor-pointer hover:text-[#D4AF37] transition" />
-          </Link>
-          {isAuthenticated && (
-            <button
-              type="button"
-              onClick={() => setNotificationsOpen((prev) => !prev)}
-              className="relative inline-flex items-center justify-center"
-              aria-label="Open notifications"
-            >
-              <Bell className="w-5 h-5 cursor-pointer hover:text-[#D4AF37] transition" />
-              {unreadCount > 0 && (
-                <span className="absolute -right-2 -top-2 inline-flex min-h-4 min-w-4 items-center justify-center rounded-full bg-[#D4AF37] px-1 text-[10px] font-semibold leading-none text-white">
-                  {unreadCount > 9 ? "9+" : unreadCount}
-                </span>
-              )}
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={openCart}
-            className="cursor-pointer hover:text-[#D4AF37] transition"
-            aria-label="Open cart"
-          >
-            <ShoppingCart className="w-5 h-5" />
-          </button>
-          {isAdmin && (
+
+          <div className="flex min-w-0 items-center gap-1">
             <Link
-              href="/admin/dashboard"
-              className="relative inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[#D4AF37]/35 text-[#7B6530] transition hover:border-[#D4AF37] hover:bg-[#FFF8E6] hover:text-[#D4AF37]"
-              aria-label="Open admin dashboard"
-              title="Admin Dashboard"
+              href="/"
+              onClick={() => {
+                setLogoGlow(true);
+                setTimeout(() => setLogoGlow(false), 600);
+              }}
+              className="flex items-center"
             >
-              <Shield className="h-4 w-4" />
-              {pendingChatNotifications > 0 ? (
-                <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-[#DC2626]" />
-              ) : null}
+              <div
+                className={`
+                  relative h-[44px] w-[170px] transition-all duration-300 sm:h-[50px] sm:w-[220px]
+                  ${logoGlow ? "logo-neon-glow" : ""}
+                `}
+              >
+                <img
+                  src="/images/BLText.png"
+                  alt="Bear Lane"
+                  className="h-full w-full object-contain select-none"
+                />
+              </div>
             </Link>
-          )}
+
+            <div
+              className="
+                hidden items-center gap-12 text-[17px] uppercase tracking-wide text-black transition-opacity duration-200 dark:text-gray-200 lg:flex
+              "
+              style={{
+                opacity: searchOpen ? 0 : 1,
+                visibility: searchOpen ? "hidden" : "visible",
+                pointerEvents: searchOpen ? "none" : "auto",
+              }}
+            >
+              {categories.map((cat) => (
+                <div
+                  key={cat}
+                  onMouseEnter={() => setActiveSidebar(cat)}
+                  className="
+                    relative cursor-pointer px-4 py-2 transition-all duration-300 hover:text-[#D4AF37]
+                    after:absolute after:bottom-0 after:left-1/2 after:h-[2px] after:w-0 after:-translate-x-1/2 after:bg-[#D4AF37] after:transition-all after:duration-300
+                    hover:after:w-full
+                  "
+                >
+                  {cat}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div
+            ref={searchMiddleRef}
+            className="pointer-events-none absolute left-1/2 top-1/2 z-10 hidden -translate-x-1/2 -translate-y-1/2 lg:block"
+          >
+            <motion.div
+              initial={false}
+              animate={{ width: searchOpen ? 500 : 0, opacity: searchOpen ? 1 : 0 }}
+              transition={{ duration: 0.26, ease: "easeOut" }}
+              className="overflow-hidden"
+            >
+              <div className="relative pointer-events-auto">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8A6D2B]" />
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  onFocus={() => setSearchOpen(true)}
+                  placeholder="Search products..."
+                  className="w-[500px] rounded-full border border-[#E2CF9B] bg-[#FFFDF7] py-2.5 pl-10 pr-4 text-sm text-[#2A2317] outline-none transition placeholder:text-[#9E8650] focus:border-[#C9A24D] focus:ring-2 focus:ring-[#EBD8AE]"
+                />
+              </div>
+            </motion.div>
+          </div>
+
+          <div className="ml-auto flex items-center gap-1 sm:gap-2 lg:gap-6">
+            <div ref={searchControlRef} className="flex items-center">
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchOpen((prev) => {
+                    const next = !prev;
+                    if (!next) {
+                      setSearchQuery("");
+                      setSearchResults([]);
+                    } else {
+                      setNotificationsOpen(false);
+                      setActiveSidebar(null);
+                      setMobileMenuOpen(false);
+                    }
+                    return next;
+                  });
+                }}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full transition hover:bg-[#F6ECD5]"
+                aria-label="Search products"
+              >
+                <Search className="h-5 w-5 cursor-pointer transition hover:text-[#D4AF37]" />
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={toggleWishlist}
+              className="hidden h-10 w-10 items-center justify-center rounded-full transition hover:bg-[#F6ECD5] sm:inline-flex"
+              aria-label="Open wishlist"
+            >
+              <Heart className="h-5 w-5 cursor-pointer transition hover:text-[#D4AF37]" />
+            </button>
+            <Link href="/profile" className="hidden h-10 w-10 items-center justify-center rounded-full transition hover:bg-[#F6ECD5] sm:inline-flex">
+              <User className="h-5 w-5 cursor-pointer transition hover:text-[#D4AF37]" />
+            </Link>
+            {isAuthenticated && (
+              <button
+                type="button"
+                onClick={() => setNotificationsOpen((prev) => !prev)}
+                className="relative inline-flex h-10 w-10 items-center justify-center rounded-full transition hover:bg-[#F6ECD5]"
+                aria-label="Open notifications"
+              >
+                <Bell className="h-5 w-5 cursor-pointer transition hover:text-[#D4AF37]" />
+                {unreadCount > 0 && (
+                  <span className="absolute -right-1.5 -top-1.5 inline-flex min-h-4 min-w-4 items-center justify-center rounded-full bg-[#D4AF37] px-1 text-[10px] font-semibold leading-none text-white">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={openCart}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full transition hover:bg-[#F6ECD5]"
+              aria-label="Open cart"
+            >
+              <ShoppingCart className="h-5 w-5" />
+            </button>
+            {isAdmin && (
+              <Link
+                href="/admin/dashboard"
+                className="relative hidden h-8 w-8 items-center justify-center rounded-lg border border-[#D4AF37]/35 text-[#7B6530] transition hover:border-[#D4AF37] hover:bg-[#FFF8E6] hover:text-[#D4AF37] sm:inline-flex"
+                aria-label="Open admin dashboard"
+                title="Admin Dashboard"
+              >
+                <Shield className="h-4 w-4" />
+                {pendingChatNotifications > 0 ? (
+                  <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-[#DC2626]" />
+                ) : null}
+              </Link>
+            )}
+          </div>
         </div>
       </motion.nav>
 
@@ -554,6 +588,18 @@ export default function NavMenu() {
             className="absolute left-0 right-0 top-full z-40 border-b border-[#E8D8B3] bg-white"
           >
             <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
+              <div className="relative mb-3 lg:hidden">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8A6D2B]" />
+                <input
+                  ref={mobileSearchInputRef}
+                  type="text"
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  onFocus={() => setSearchOpen(true)}
+                  placeholder="Search products..."
+                  className="w-full rounded-full border border-[#E2CF9B] bg-[#FFFDF7] py-2.5 pl-10 pr-4 text-sm text-[#2A2317] outline-none transition placeholder:text-[#9E8650] focus:border-[#C9A24D] focus:ring-2 focus:ring-[#EBD8AE]"
+                />
+              </div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8A6D2B]">
                 Search Products
               </p>
@@ -662,7 +708,7 @@ export default function NavMenu() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.2 }}
-            className="absolute right-6 top-[74px] z-40 w-[360px] max-w-[92vw] rounded-2xl border border-[#e5e7eb] bg-white p-3 shadow-2xl"
+            className="absolute right-2 top-[68px] z-40 w-[360px] max-w-[92vw] rounded-2xl border border-[#e5e7eb] bg-white p-3 shadow-2xl sm:right-6 sm:top-[74px]"
           >
             <div className="mb-2 flex items-center justify-between px-1 py-1">
               <h3 className="text-sm font-semibold text-[#111827]">Notifications</h3>
@@ -753,6 +799,119 @@ export default function NavMenu() {
 
       {/* SIDEBAR */}
       <AnimatePresence>
+        {mobileMenuOpen && (
+          <>
+            <motion.button
+              type="button"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.52 }}
+              exit={{ opacity: 0 }}
+              onClick={closeMobileMenu}
+              className="fixed inset-0 z-50 bg-black lg:hidden"
+              aria-label="Close mobile menu backdrop"
+            />
+
+            <motion.aside
+              initial={{ x: "-100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "-100%" }}
+              transition={{ duration: 0.25 }}
+              className="fixed inset-y-0 left-0 z-[60] w-[88%] max-w-[360px] overflow-y-auto border-r border-[#E8D8B3] bg-white p-4 shadow-2xl lg:hidden"
+            >
+              <div className="flex items-center justify-between">
+                <div className="h-[42px] w-[150px]">
+                  <img
+                    src="/images/BLText.png"
+                    alt="Bear Lane"
+                    className="h-full w-full object-contain"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={closeMobileMenu}
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#E8D8B3] bg-[#FFF9EC] text-[#7D5E1A]"
+                  aria-label="Close menu"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="mt-4 grid grid-cols-3 gap-2">
+                <Link
+                  href="/profile"
+                  onClick={closeMobileMenu}
+                  className="rounded-xl border border-[#E7D7B3] bg-[#FFFCF4] px-3 py-2 text-center text-xs font-semibold text-[#5F4820]"
+                >
+                  Profile
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => {
+                    toggleWishlist();
+                    closeMobileMenu();
+                  }}
+                  className="rounded-xl border border-[#E7D7B3] bg-[#FFFCF4] px-3 py-2 text-center text-xs font-semibold text-[#5F4820]"
+                >
+                  Wishlist
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    openCart();
+                    closeMobileMenu();
+                  }}
+                  className="rounded-xl border border-[#E7D7B3] bg-[#FFFCF4] px-3 py-2 text-center text-xs font-semibold text-[#5F4820]"
+                >
+                  Cart
+                </button>
+              </div>
+
+              {isAdmin && (
+                <Link
+                  href="/admin/dashboard"
+                  onClick={closeMobileMenu}
+                  className="mt-3 inline-flex items-center gap-2 rounded-full border border-[#E0C98A] bg-[#FFF6DF] px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-[#7D5E1A]"
+                >
+                  <Shield className="h-3.5 w-3.5" />
+                  Admin dashboard
+                </Link>
+              )}
+
+              <div className="mt-6 rounded-2xl border border-[#EADFC6] bg-[#FFFDF8] p-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8A6D2B]">
+                  Shop Categories
+                </p>
+                <div className="mt-2 space-y-1">
+                  {categories.map((cat) => {
+                    const isActive = activeSidebar === cat;
+                    return (
+                      <button
+                        key={`mobile-category-${cat}`}
+                        type="button"
+                        onClick={() => setActiveSidebar(cat)}
+                        className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm font-semibold transition ${
+                          isActive
+                            ? "bg-[#F8ECCF] text-[#5F4820]"
+                            : "text-[#3B2E1B] hover:bg-[#FFF6DF]"
+                        }`}
+                      >
+                        <span>{cat}</span>
+                        <ChevronRight className="h-4 w-4" />
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="mt-3 rounded-2xl border border-[#EADFC6] bg-white p-4">
+                {renderSidebar(closeMobileMenu)}
+              </div>
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
         {activeSidebar && (
           <>
             {/* BACKDROP */}
@@ -760,7 +919,7 @@ export default function NavMenu() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 0.5 }}
               exit={{ opacity: 0 }}
-              className="absolute top-full left-0 w-full h-screen bg-black z-20"
+              className="absolute left-0 top-full z-20 hidden h-screen w-full bg-black lg:block"
             />
 
             {/* SIDEBAR PANEL */}
@@ -771,14 +930,10 @@ export default function NavMenu() {
               exit="exit"
               transition={{ duration: 0.25 }}
               className="
-                absolute top-full left-0
-                w-[35%] h-screen
-                bg-white dark:bg-gray-900
-                shadow-2xl z-30
-                p-7 overflow-y-auto
+                absolute left-0 top-full z-30 hidden h-screen w-[35%] overflow-y-auto bg-white p-7 shadow-2xl dark:bg-gray-900 lg:block
               "
             >
-              {renderSidebar()}
+              {renderSidebar(() => setActiveSidebar(null))}
             </motion.div>
           </>
         )}

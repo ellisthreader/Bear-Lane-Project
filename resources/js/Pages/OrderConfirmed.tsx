@@ -256,7 +256,7 @@ export default function OrderConfirmed() {
     const existingScript = document.querySelector<HTMLScriptElement>('script[data-google-maps="order-confirmed"]');
     if (!existingScript) {
       const script = document.createElement("script");
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&callback=__initOrderConfirmedShippingMap&loading=async`;
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places&callback=__initOrderConfirmedShippingMap&loading=async`;
       script.async = true;
       script.defer = true;
       script.dataset.googleMaps = "order-confirmed";
