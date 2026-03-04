@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\URL;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Services\DeliverySlotService;
 use App\Services\DeliveryOptionService;
@@ -233,7 +234,11 @@ class CheckoutController extends Controller
      */
     public function storeOrder(Request $request)
     {
-        Log::info('[storeOrder] Incoming request', ['request' => $request->all()]);
+        Log::info('[storeOrder] Incoming order request', [
+            'user_id' => optional(auth()->user())->id,
+            'items_count' => count((array) $request->input('items', [])),
+            'has_payment_intent' => filled($request->input('payment_intent_id')),
+        ]);
 
         $validator = Validator::make($request->all(), [
             'email' => 'required|email',
@@ -458,7 +463,7 @@ class CheckoutController extends Controller
             DB::rollBack();
             Log::error('[storeOrder] Error storing order', [
                 'msg' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
+                'user_id' => optional(auth()->user())->id,
             ]);
             return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
         }
@@ -803,6 +808,28 @@ class CheckoutController extends Controller
                 'stripe_net_amount' => $request->stripe_net_amount,
                 'additional_info_submitted_at' => optional($request->additional_info_submitted_at)->toIso8601String(),
                 'archived_at' => optional($request->archived_at)->toIso8601String(),
+                'proof_urls' => collect((array) ($request->proof_paths ?? []))
+                    ->map(function ($path, $index) use ($request) {
+                        $value = trim((string) $path);
+                        if ($value === '') {
+                            return null;
+                        }
+                        if (str_starts_with($value, 'http://') || str_starts_with($value, 'https://')) {
+                            return $value;
+                        }
+
+                        return URL::temporarySignedRoute(
+                            'media.returns.proof',
+                            now()->addMinutes(20),
+                            [
+                                'returnRequest' => $request->id,
+                                'index' => (int) $index,
+                            ]
+                        );
+                    })
+                    ->filter()
+                    ->values()
+                    ->all(),
             ])
             ->values()
             ->all();

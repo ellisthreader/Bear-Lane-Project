@@ -37,8 +37,10 @@ class ShippingService
                 'async'        => false,
             ];
 
-            // Log the exact payload being sent
-            Log::info('Shippo Request Payload', ['payload' => $payload]);
+            Log::info('Shippo request started', [
+                'to_country' => $toAddress['country'] ?? null,
+                'from_country' => $fromAddress['country'] ?? null,
+            ]);
 
             $response = Http::withHeaders([
                 'Authorization' => 'ShippoToken ' . $this->shippoToken,
@@ -48,13 +50,11 @@ class ShippingService
 
             Log::info('Shippo Raw Response', [
                 'status' => $response->status(),
-                'body'   => $response->body(),
             ]);
 
             if ($response->failed()) {
                 Log::error('Shippo API returned failed status', [
                     'status' => $response->status(),
-                    'body'   => $response->body(),
                 ]);
                 $message = 'Shippo request failed.';
                 $body = $response->json();
@@ -76,7 +76,6 @@ class ShippingService
         } catch (\Exception $e) {
             Log::error('Shippo API Exception', [
                 'message' => $e->getMessage(),
-                'trace'   => $e->getTraceAsString(),
             ]);
             return [];
         }

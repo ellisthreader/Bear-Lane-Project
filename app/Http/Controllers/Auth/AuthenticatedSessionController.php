@@ -44,17 +44,15 @@ class AuthenticatedSessionController extends Controller
             $redirectPath = $this->resolveRedirectPath($request->input('redirect'));
 
             Log::info('User logged in successfully.', [
-                'email' => $request->email,
+                'user_id' => optional($request->user())->id,
                 'ip' => $request->ip(),
-                'user_agent' => $request->userAgent(),
             ]);
 
             return redirect()->intended($redirectPath);
         } catch (\Exception $e) {
             Log::warning('Failed login attempt.', [
-                'email' => $request->email,
+                'email_hash' => hash('sha256', strtolower(trim((string) $request->email))),
                 'ip' => $request->ip(),
-                'user_agent' => $request->userAgent(),
                 'error' => $e->getMessage(),
             ]);
 
@@ -74,9 +72,8 @@ class AuthenticatedSessionController extends Controller
         $request->session()->regenerateToken();
 
         Log::info('User logged out.', [
-            'email' => $user?->email,
+            'user_id' => $user?->id,
             'ip' => $request->ip(),
-            'user_agent' => $request->userAgent(),
         ]);
 
         return redirect('/');

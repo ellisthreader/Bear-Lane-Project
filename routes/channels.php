@@ -41,6 +41,24 @@ Broadcast::channel('chat.{chatId}', function ($user, $chatId) {
 
 /*
 |--------------------------------------------------------------------------
+| Private livechat channels (per chat session)
+|--------------------------------------------------------------------------
+| Only admins or the chat owner can subscribe.
+*/
+Broadcast::channel('livechat.{chatId}', function ($user, $chatId) {
+    if (!$user) {
+        return false;
+    }
+
+    if ((bool) ($user->is_admin ?? false)) {
+        return true;
+    }
+
+    return $user->chats()->where('chats.id', $chatId)->exists();
+});
+
+/*
+|--------------------------------------------------------------------------
 | Admin-only live chat channel
 |--------------------------------------------------------------------------
 | Only admins can join this channel and view live messages.
@@ -57,17 +75,4 @@ Broadcast::channel('admin.livechats', function ($user) {
 */
 Broadcast::channel('support-chat', function ($user) {
     return (bool) $user;
-});
-
-/*
-|--------------------------------------------------------------------------
-| Guest private chat channels
-|--------------------------------------------------------------------------
-| Each guest gets a unique private channel: 'guest.{guestId}'
-| No authentication required; guests can only listen to their own channel.
-*/
-Broadcast::channel('guest.{guestId}', function ($guestId) {
-    // For guests, we allow listening by default
-    // Security is enforced by frontend using the same guestId
-    return true;
 });

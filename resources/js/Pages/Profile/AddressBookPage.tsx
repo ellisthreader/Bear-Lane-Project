@@ -1,9 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, usePage } from "@inertiajs/react";
-import { Autocomplete, useLoadScript } from "@react-google-maps/api";
+import { Autocomplete } from "@react-google-maps/api";
 import Modal from "@/Components/Modal";
 import NavMenu from "@/Components/Menu/NavMenu";
 import { showCheckoutError, showCheckoutSuccess } from "../CheckoutPage/checkoutToasts";
+import useAnalyticsConsent from "@/Utils/useAnalyticsConsent";
+import useGoogleMapsScript from "@/Utils/useGoogleMapsScript";
 
 type SavedAddress = {
   id: number;
@@ -87,8 +89,11 @@ export default function AddressBookPage() {
 
   const [autocomplete, setAutocomplete] = useState<google.maps.places.Autocomplete | null>(null);
   const googleMapsApiKey = (import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined)?.trim() || "";
-  const { isLoaded } = useLoadScript({
-    googleMapsApiKey,
+  const hasAnalyticsConsent = useAnalyticsConsent();
+  const canUseGoogleAddressLookup = googleMapsApiKey.length > 0 && hasAnalyticsConsent;
+  const { isLoaded } = useGoogleMapsScript({
+    enabled: canUseGoogleAddressLookup,
+    apiKey: googleMapsApiKey,
     libraries: GOOGLE_MAPS_LIBRARIES,
   });
 
@@ -430,7 +435,7 @@ export default function AddressBookPage() {
               {fieldErrors.last_name && <p className="mt-1 text-sm text-red-600">{fieldErrors.last_name}</p>}
             </div>
             <div className="md:col-span-2">
-              {googleMapsApiKey && isLoaded ? (
+              {canUseGoogleAddressLookup && isLoaded ? (
                 <Autocomplete onLoad={setAutocomplete} onPlaceChanged={handleAddressPick}>
                   <input
                     className={`w-full ${getInputClass("address_line1")}`}

@@ -19,15 +19,17 @@ class PasswordResetLinkController extends Controller
             'email' => 'required|email',
         ]);
 
+        $emailHash = hash('sha256', strtolower(trim((string) $request->email)));
+
         Log::info('Password reset request received.', [
-            'email' => $request->email,
+            'email_hash' => $emailHash,
         ]);
 
         try {
             // Delete old tokens for this email
             $deleted = DB::table('password_reset_tokens')->where('email', $request->email)->delete();
             Log::info("Old tokens deleted for email.", [
-                'email' => $request->email,
+                'email_hash' => $emailHash,
                 'deleted_rows' => $deleted
             ]);
 
@@ -55,7 +57,7 @@ class PasswordResetLinkController extends Controller
         } catch (\Exception $e) {
             Log::error('Exception in password reset request.', [
                 'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'email_hash' => $emailHash,
             ]);
 
             return response()->json([

@@ -4,6 +4,7 @@ import confetti from "canvas-confetti";
 import { CheckCircle2, FileText, Package, Truck, CreditCard, MapPin } from "lucide-react";
 import NavMenu from "@/Components/Menu/NavMenu";
 import { useCart } from "@/Context/CartContext";
+import useAnalyticsConsent from "@/Utils/useAnalyticsConsent";
 
 type OrderItem = {
   id: number;
@@ -50,7 +51,7 @@ declare global {
   }
 }
 
-const GOOGLE_MAPS_API_KEY = (import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string) || "YOUR_GOOGLE_MAPS_API_KEY";
+const GOOGLE_MAPS_API_KEY = (import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined)?.trim() || "";
 
 const formatMoney = (value: number | string | null | undefined) => `£${Number(value || 0).toFixed(2)}`;
 
@@ -86,6 +87,7 @@ export default function OrderConfirmed() {
   const { closeCart } = useCart();
   const mapRef = useRef<HTMLDivElement | null>(null);
   const [mapFailed, setMapFailed] = useState(false);
+  const hasAnalyticsConsent = useAnalyticsConsent();
 
   useEffect(() => {
     closeCart();
@@ -166,7 +168,7 @@ export default function OrderConfirmed() {
       setMapFailed(true);
       return;
     }
-    if (!GOOGLE_MAPS_API_KEY || GOOGLE_MAPS_API_KEY === "YOUR_GOOGLE_MAPS_API_KEY") {
+    if (!GOOGLE_MAPS_API_KEY || !hasAnalyticsConsent) {
       setMapFailed(true);
       return;
     }
@@ -263,7 +265,7 @@ export default function OrderConfirmed() {
     return () => {
       cancelled = true;
     };
-  }, [shippingMapAddress, shippingMapCity, shippingMapCountry, shippingMapProvince]);
+  }, [hasAnalyticsConsent, shippingMapAddress, shippingMapCity, shippingMapCountry, shippingMapProvince]);
 
   return (
     <div className="min-h-screen bg-white text-gray-900">

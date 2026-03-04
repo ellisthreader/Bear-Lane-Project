@@ -1,9 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useCheckout } from "@/Context/CheckoutContext";
-import { Autocomplete, useLoadScript } from "@react-google-maps/api";
+import { Autocomplete } from "@react-google-maps/api";
 import { getCountryCode } from "@/Utils/countryCodes";
 import LuxuryPhoneInput from "@/Components/LuxuryPhoneInput";
 import type { CheckoutFieldErrors, CheckoutFieldKey } from "../types";
+import useAnalyticsConsent from "@/Utils/useAnalyticsConsent";
+import useGoogleMapsScript from "@/Utils/useGoogleMapsScript";
 
 const GOOGLE_MAPS_LIBRARIES: ("places")[] = ["places"];
 
@@ -20,13 +22,15 @@ export default function DeliveryInfo({
 }: DeliveryInfoProps) {
   const { address, setAddress, country, setCountry } = useCheckout();
   const googleMapsApiKey = (import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined)?.trim() || "";
-  const canUseGoogleAddressLookup = googleMapsApiKey.length > 0;
+  const hasAnalyticsConsent = useAnalyticsConsent();
+  const canUseGoogleAddressLookup = googleMapsApiKey.length > 0 && hasAnalyticsConsent;
   const [autocomplete, setAutocomplete] = useState<google.maps.places.Autocomplete | null>(null);
   const [manualEntry, setManualEntry] = useState(false);
   const [lookupValue, setLookupValue] = useState("");
 
-  const { isLoaded } = useLoadScript({
-    googleMapsApiKey,
+  const { isLoaded } = useGoogleMapsScript({
+    enabled: canUseGoogleAddressLookup,
+    apiKey: googleMapsApiKey,
     libraries: GOOGLE_MAPS_LIBRARIES,
   });
 

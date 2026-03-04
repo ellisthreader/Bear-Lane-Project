@@ -10,6 +10,7 @@ import {
   Truck,
   Upload,
 } from "lucide-react";
+import useAnalyticsConsent from "@/Utils/useAnalyticsConsent";
 
 declare global {
   interface Window {
@@ -391,6 +392,7 @@ const getProgressStep = (status?: string | null) => {
 };
 
 export default function OrderReturnSection({ order, isOpen, onClose, onSubmitted }: OrderReturnSectionProps) {
+  const hasAnalyticsConsent = useAnalyticsConsent();
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [selectedItemQuantities, setSelectedItemQuantities] = useState<Record<number, number>>({});
   const [reasonCode, setReasonCode] = useState<string>("");
@@ -582,6 +584,11 @@ export default function OrderReturnSection({ order, isOpen, onClose, onSubmitted
   };
 
   const searchDropoffPoints = async () => {
+    if (!hasAnalyticsConsent) {
+      setDropoffError("Enable analytics cookies to use live drop-off point search.");
+      return;
+    }
+
     setDropoffLoading(true);
     setDropoffError(null);
     setDropoffPoints([]);
@@ -1121,12 +1128,18 @@ export default function OrderReturnSection({ order, isOpen, onClose, onSubmitted
                   <button
                     type="button"
                     onClick={() => void searchDropoffPoints()}
-                    disabled={dropoffLoading || dropoffPostcode.trim() === ""}
+                    disabled={!hasAnalyticsConsent || dropoffLoading || dropoffPostcode.trim() === ""}
                     className="rounded-lg border border-[#D7BE84] bg-[#FFFCF4] px-3 py-2 text-xs font-semibold text-[#7B6530] transition hover:bg-[#FFF4DF] disabled:opacity-60"
                   >
                     {dropoffLoading ? "Searching..." : "Find drop-off points"}
                   </button>
                 </div>
+
+                {!hasAnalyticsConsent ? (
+                  <p className="mt-3 rounded-lg border border-[#E6DCC4] bg-[#FFF9EC] px-3 py-2 text-xs font-semibold text-[#7A6231]">
+                    Enable analytics cookies in Cookie Preferences to use live drop-off search.
+                  </p>
+                ) : null}
 
                 {dropoffError ? (
                   <p className="mt-3 rounded-lg border border-[#F4C7C1] bg-[#FFF2F1] px-3 py-2 text-xs font-semibold text-[#9F3126]">{dropoffError}</p>

@@ -108,6 +108,25 @@ export default function CookieConsentManager() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [isPreferencesOpen]);
 
+  const persistConsentServerSide = async (state: CookieConsentState) => {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute("content") || "";
+    try {
+      await fetch("/cookie-consent", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          "X-Requested-With": "XMLHttpRequest",
+          ...(csrfToken ? { "X-CSRF-TOKEN": csrfToken } : {}),
+        },
+        body: JSON.stringify(state),
+      });
+    } catch {
+      // Consent UI should never fail due to logging transport issues.
+    }
+  };
+
   const commitChoice = (preferences: CookiePreferences, status: CookieConsentState["status"]) => {
     const nextState = buildCookieConsentState(preferences, status);
     saveCookieConsent(nextState);
@@ -116,6 +135,7 @@ export default function CookieConsentManager() {
     setIsBannerVisible(false);
     setIsPreferencesOpen(false);
     window.dispatchEvent(new CustomEvent("cookie-consent-updated", { detail: nextState }));
+    void persistConsentServerSide(nextState);
   };
 
   const handleAcceptAll = () => {

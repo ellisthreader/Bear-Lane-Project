@@ -11,7 +11,10 @@ class QuoteController extends Controller
 {
     public function sendQuote(Request $request)
     {
-        Log::info('sendQuote called', $request->all());
+        Log::info('sendQuote called', [
+            'items_count' => count((array) $request->input('items', [])),
+            'has_email' => filled($request->input('email')),
+        ]);
 
         $request->validate([
             'name' => 'required|string',
@@ -42,14 +45,17 @@ class QuoteController extends Controller
                 $message->html($this->generateQuoteHtml($data));
             });
 
-            Log::info('Quote email sent successfully', ['email' => $data['email'], 'quoteNumber' => $data['quoteNumber']]);
+            Log::info('Quote email sent successfully', [
+                'quote_number' => $data['quoteNumber'],
+            ]);
 
             return response()->json(['message' => 'Quote sent successfully']);
 
         } catch (\Exception $e) {
 
             Log::error('sendQuote failed: ' . $e->getMessage(), [
-                'data' => $data
+                'quote_number' => $data['quoteNumber'] ?? null,
+                'items_count' => count((array) ($data['items'] ?? [])),
             ]);
 
             return response()->json([

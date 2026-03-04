@@ -47,20 +47,8 @@ class ShippoRateService
                 throw new \RuntimeException('Shippo did not return rate data.');
             }
 
-            $allRates = array_map(function (array $rate) {
-                return [
-                    'provider' => $rate['provider'] ?? null,
-                    'service_name' => trim((string) (($rate['provider'] ?? '') . ' ' . (($rate['servicelevel']['name'] ?? '')))),
-                    'amount' => $rate['amount'] ?? null,
-                    'currency' => $rate['currency'] ?? null,
-                    'estimated_days' => isset($rate['estimated_days']) ? (int) $rate['estimated_days'] : null,
-                    'attributes' => $rate['attributes'] ?? null,
-                ];
-            }, $data['rates']);
-
             logger()->info('ShippoRateService: ALL shippo rate options returned', [
-                'rates_count' => count($allRates),
-                'rates' => $allRates,
+                'rates_count' => count((array) ($data['rates'] ?? [])),
             ]);
 
             return $data['rates'];

@@ -179,7 +179,7 @@ class OrderReturnController extends Controller
                 return $moderationError;
             }
 
-            $proofPaths[] = $proofFile->store("returns/{$order->order_number}", 'public');
+            $proofPaths[] = $proofFile->store("returns/{$order->order_number}", 'local');
         }
 
         $itemQuantities = collect((array) ($validated['item_quantities'] ?? []))
@@ -295,7 +295,7 @@ class OrderReturnController extends Controller
                 return $moderationError;
             }
 
-            $proofPaths[] = $proofFile->store("returns/{$order->order_number}", 'public');
+            $proofPaths[] = $proofFile->store("returns/{$order->order_number}", 'local');
         }
 
         $message = trim((string) ($validated['message'] ?? ''));

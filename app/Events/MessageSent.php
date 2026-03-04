@@ -26,7 +26,7 @@ class MessageSent implements ShouldBroadcastNow
     public function broadcastOn(): Channel|array
     {
         return [
-            new Channel("livechat.{$this->message->chat_id}"),
+            new PrivateChannel("livechat.{$this->message->chat_id}"),
             new PrivateChannel('admin.livechats'),
         ];
     }

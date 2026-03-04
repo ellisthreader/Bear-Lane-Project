@@ -56,7 +56,6 @@ private function claimGuestCheckoutData(User $user): void
     if ($claimedCount > 0) {
         Log::info('Guest checkout data claimed for user', [
             'user_id' => $user->id,
-            'email' => $user->email,
             'orders_claimed' => $claimedCount,
         ]);
     }
@@ -260,7 +259,6 @@ public function register(Request $request)
     } catch (\Throwable $e) {
         Log::error('Signup verification email failed', [
             'user_id' => $user->id,
-            'email' => $user->email,
             'error' => $e->getMessage(),
         ]);
 
@@ -329,36 +327,6 @@ public function register(Request $request)
         $request->session()->regenerateToken();
 
         return redirect()->route('login');
-    }
-
-    // -----------------------
-    // CHECK EMAIL (for frontend step logic)
-    // -----------------------
-    public function checkEmail(Request $request)
-    {
-        $request->validate(['email' => 'required|email']);
-
-        $user = User::where('email', $request->email)->first();
-
-        $exists = (bool) $user;
-        $oauth = $user && $user->is_oauth
-            ? ($user->oauth_provider ?? 'Google')
-            : null;
-
-        $suggestions = [];
-
-        if ($exists) {
-            $prefix = explode('@', $request->email)[0];
-            for ($i = 1; $i <= 3; $i++) {
-                $suggestions[] = $prefix . $i;
-            }
-        }
-
-        return response()->json([
-            'exists' => $exists,
-            'oauth' => $oauth,
-            'suggestions' => $suggestions,
-        ]);
     }
 
     // -----------------------

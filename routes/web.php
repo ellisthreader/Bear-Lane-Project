@@ -39,6 +39,8 @@ use App\Http\Controllers\Auth\EmailVerificationController;
 use App\Http\Controllers\SavedCheckoutController;
 use App\Http\Controllers\WalletController;
 use App\Http\Controllers\WishlistController;
+use App\Http\Controllers\CookieConsentController;
+use App\Http\Controllers\SecureMediaController;
 use App\Services\AdminActivityLogService;
 use Illuminate\Foundation\Auth\EmailVerificationRequest;
 use Illuminate\Support\Facades\Password;
@@ -104,6 +106,8 @@ Route::get('/menu/categories', function () {
 
     return response()->json($response);
 });
+
+Route::post('/cookie-consent', [CookieConsentController::class, 'store'])->name('cookie-consent.store');
 
 /*
 |--------------------------------------------------------------------------
@@ -215,6 +219,12 @@ Route::middleware('auth')->group(function () {
         ->whereNumber('orderItem')
         ->name('orders.items.reviews.store');
 });
+
+Route::get('/media/returns/{returnRequest}/{index}', [SecureMediaController::class, 'returnProof'])
+    ->middleware(['auth', 'signed'])
+    ->whereNumber('returnRequest')
+    ->whereNumber('index')
+    ->name('media.returns.proof');
 
 Route::get('/order-latest', [CheckoutController::class, 'latestOrder'])->name('order.latest');
 
@@ -452,19 +462,6 @@ Route::get('/api/chat', [ChatController::class, 'index'])->name('chat.index');
 |--------------------------------------------------------------------------
 */
 Route::get('/invoice/{orderId}', [InvoiceController::class, 'download'])->name('invoice.download');
-
-/*
-|--------------------------------------------------------------------------
-| CHECKERS
-|--------------------------------------------------------------------------
-*/
-Route::get('/check-username', fn(Request $request) => response()->json([
-    'exists' => User::where('username', $request->username)->exists(),
-]))->name('check.username');
-
-Route::get('/check-email', fn(Request $request) => response()->json([
-    'exists' => User::where('email', $request->email)->exists(),
-]))->name('check.email');
 
 Route::get('/company', fn() => Inertia::render('Company'));
 
@@ -1423,9 +1420,6 @@ Route::get('/auth/facebook/callback', [OAuthController::class, 'handleFacebookCa
 
 Route::get('/auth/apple', [OAuthController::class, 'redirectToApple'])->name('auth.apple');
 Route::get('/auth/apple/callback', [OAuthController::class, 'handleAppleCallback']);
-
-
-Route::post('/check-email', [AuthController::class, 'checkEmail']);
 
 Route::post('/oauth/send-code', [EmailVerificationController::class, 'sendCode']);
 Route::post('/oauth/verify-code', [EmailVerificationController::class, 'verifyCode']);

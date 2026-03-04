@@ -935,12 +935,12 @@ export default function Livechat() {
   }, [isSizeGuideOpen]);
 
   useEffect(() => {
-    if (!chatId) return;
+    if (!chatId || !isAuthenticated) return;
 
     const echo = (window as any).Echo;
     if (!echo) return;
 
-    const channel = echo.channel(`livechat.${chatId}`);
+    const channel = echo.private(`livechat.${chatId}`);
 
     channel.listen(".MessageSent", (event: Message) => {
       const eventId = String(event.id);
@@ -979,7 +979,7 @@ export default function Livechat() {
       channel.stopListening(".ChatDeleted");
       echo.leave(`livechat.${chatId}`);
     };
-  }, [chatId]);
+  }, [chatId, isAuthenticated]);
 
   const sendMessage = async () => {
     if (!newMessage.trim() || chatDeleted || botTyping) return;

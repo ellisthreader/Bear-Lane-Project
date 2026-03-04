@@ -49,7 +49,7 @@ export default function Register({ email: initialEmail = "" }: RegisterProps) {
   }, [initialEmail]);
 
   // --------------------------
-  // Username validation
+  // Username validation (local only)
   // --------------------------
   useEffect(() => {
     if (!username) {
@@ -74,68 +74,28 @@ export default function Register({ email: initialEmail = "" }: RegisterProps) {
       return;
     }
 
-    const timeout = setTimeout(() => {
-      axios
-        .get("/check-username", { params: { username } })
-        .then((res) => {
-          if (res.data.exists) {
-            setSignupErrors((prev: any) => ({
-              ...prev,
-              username: "Username already taken.",
-            }));
-            setUsernameSuggestions(res.data.suggestions || []);
-          } else {
-            setSignupErrors((prev: any) => ({ ...prev, username: undefined }));
-            setUsernameSuggestions([]);
-          }
-        })
-        .catch(() => {
-          setSignupErrors((prev: any) => ({
-            ...prev,
-            username: "Error checking username.",
-          }));
-        });
-    }, 500);
-
-    return () => clearTimeout(timeout);
+    setSignupErrors((prev: any) => ({ ...prev, username: undefined }));
+    setUsernameSuggestions([]);
   }, [username]);
 
   // --------------------------
-  // Email validation
+  // Email validation (local only)
   // --------------------------
   useEffect(() => {
-    if (!email) return;
+    if (!email) {
+      setSignupErrors((prev: any) => ({ ...prev, email: undefined }));
+      return;
+    }
 
-    const timeout = setTimeout(() => {
-      if (!/^\S+@\S+\.\S+$/.test(email)) {
-        setSignupErrors((prev: any) => ({
-          ...prev,
-          email: "Invalid email address.",
-        }));
-        return;
-      }
+    if (!/^\S+@\S+\.\S+$/.test(email)) {
+      setSignupErrors((prev: any) => ({
+        ...prev,
+        email: "Invalid email address.",
+      }));
+      return;
+    }
 
-      axios
-        .get("/check-email", { params: { email } })
-        .then((res) => {
-          if (res.data.exists) {
-            setSignupErrors((prev: any) => ({
-              ...prev,
-              email: "This email is already registered.",
-            }));
-          } else {
-            setSignupErrors((prev: any) => ({ ...prev, email: undefined }));
-          }
-        })
-        .catch(() => {
-          setSignupErrors((prev: any) => ({
-            ...prev,
-            email: "Error checking email.",
-          }));
-        });
-    }, 500);
-
-    return () => clearTimeout(timeout);
+    setSignupErrors((prev: any) => ({ ...prev, email: undefined }));
   }, [email]);
 
   // --------------------------
@@ -196,7 +156,16 @@ export default function Register({ email: initialEmail = "" }: RegisterProps) {
     } catch (err: any) {
       const backendErrors = err.response?.data?.errors || {};
       const backendMessage = err.response?.data?.message;
-      const mappedErrors = { ...backendErrors } as any;
+      const mappedErrors: Record<string, string> = {};
+      Object.entries(backendErrors).forEach(([key, value]) => {
+        if (Array.isArray(value) && value.length > 0) {
+          mappedErrors[key] = String(value[0]);
+          return;
+        }
+        if (typeof value === "string") {
+          mappedErrors[key] = value;
+        }
+      });
       if ((!backendErrors || Object.keys(backendErrors).length === 0) && backendMessage) {
         mappedErrors.general = backendMessage;
       }

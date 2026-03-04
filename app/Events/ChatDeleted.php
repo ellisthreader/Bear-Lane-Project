@@ -25,7 +25,7 @@ class ChatDeleted implements ShouldBroadcastNow
     public function broadcastOn()
     {
         return [
-            new Channel("livechat.{$this->chatId}"),
+            new PrivateChannel("livechat.{$this->chatId}"),
             new PrivateChannel('admin.livechats'),
         ];
     }

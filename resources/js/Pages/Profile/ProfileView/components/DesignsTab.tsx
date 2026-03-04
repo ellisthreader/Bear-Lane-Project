@@ -358,7 +358,7 @@ export default function DesignsTab() {
           <p className="mt-2 text-sm text-[#7A6C4D]">Bring your first idea to life.</p>
           <button
             onClick={() => {
-              window.location.href = "https://hatgpt.com/c/ff8be5c6-7a9d-4a4d-bd7b-d03556fd1209";
+              router.get("/design/white-tee");
             }}
             className="mt-6 inline-flex rounded-xl bg-[#C6A75E] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#B3934C]"
             type="button"

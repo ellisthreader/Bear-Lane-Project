@@ -1,8 +1,10 @@
 import React from "react";
 import { router } from "@inertiajs/react";
 import Modal from "@/Components/Modal";
-import { Autocomplete, useLoadScript } from "@react-google-maps/api";
+import { Autocomplete } from "@react-google-maps/api";
 import { useProfileViewContext } from "../ProfileViewContext";
+import useAnalyticsConsent from "@/Utils/useAnalyticsConsent";
+import useGoogleMapsScript from "@/Utils/useGoogleMapsScript";
 
 const GOOGLE_MAPS_LIBRARIES: ("places")[] = ["places"];
 
@@ -24,8 +26,11 @@ export default function AddressBookSection() {
 
   const [autocomplete, setAutocomplete] = React.useState<google.maps.places.Autocomplete | null>(null);
   const googleMapsApiKey = (import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined)?.trim() || "";
-  const { isLoaded } = useLoadScript({
-    googleMapsApiKey,
+  const hasAnalyticsConsent = useAnalyticsConsent();
+  const canUseGoogleAddressLookup = googleMapsApiKey.length > 0 && hasAnalyticsConsent;
+  const { isLoaded } = useGoogleMapsScript({
+    enabled: canUseGoogleAddressLookup,
+    apiKey: googleMapsApiKey,
     libraries: GOOGLE_MAPS_LIBRARIES,
   });
 
@@ -114,7 +119,7 @@ export default function AddressBookSection() {
               {addressFieldErrors.last_name && <p className="mt-1 text-sm text-red-600">{addressFieldErrors.last_name}</p>}
             </div>
             <div className="md:col-span-2">
-              {googleMapsApiKey && isLoaded ? (
+              {canUseGoogleAddressLookup && isLoaded ? (
                 <Autocomplete onLoad={setAutocomplete} onPlaceChanged={handleAddressPick}>
                   <input
                     className={`w-full ${getInputClass("address_line1")}`}

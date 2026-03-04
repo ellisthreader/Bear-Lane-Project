@@ -1,55 +1,38 @@
 import React, { useState } from "react";
-import axios from "axios";
 import { router } from "@inertiajs/react";
 import { FcGoogle } from "react-icons/fc";
 import { FaFacebookF } from "react-icons/fa";
 import Register from "./Register";
 import ForgotPassword from "./ForgotPassword";
-import OAuthVerify from "./OAuthVerify";
 import NavMenu from "@/Components/Menu/NavMenu";
 
 export default function AuthPage() {
+  const isRegisterRoute = typeof window !== "undefined" && window.location.pathname === "/register";
   const [email, setEmail] = useState("");
-  const [step, setStep] = useState<"email" | "password" | "register" | "oauth">("email");
+  const [step, setStep] = useState<"email" | "password" | "register">(
+    isRegisterRoute ? "register" : "email",
+  );
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
-  const [oauthProvider, setOauthProvider] = useState<string | null>(null);
 
   const gold = "#C6A75E";
 
   // -----------------------
   // Handle email step
   // -----------------------
-  const handleEmailSubmit = async (e: React.FormEvent) => {
+  const handleEmailSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    if (!email) return;
-    setLoading(true);
-
-    try {
-      const res = await axios.post("/check-email", { email });
-
-      if (res.data.exists) {
-        if (res.data.oauth) {
-          // OAuth detected: go directly to OAuthVerify step
-          setOauthProvider(res.data.oauth); // e.g., "google" or "apple"
-          setStep("oauth");
-        } else {
-          // Regular password login
-          setStep("password");
-        }
-      } else {
-        // New user → register step
-        setStep("register");
-      }
-    } catch (err) {
-      console.error(err);
-      setError("Error checking email. Please try again.");
-    } finally {
-      setLoading(false);
+    if (!email.trim()) {
+      setError("Please enter your email.");
+      return;
     }
+
+    // Move to password step without exposing account-existence checks.
+    setStep("password");
+    setLoading(false);
   };
 
   // -----------------------
@@ -135,6 +118,13 @@ export default function AuthPage() {
                       >
                         {loading ? "Checking..." : "Continue"}
                       </button>
+                      <button
+                        type="button"
+                        onClick={() => setStep("register")}
+                        className="w-full py-4 text-[#6B5A34] font-semibold text-base rounded-2xl border border-[#D9CBA8] hover:bg-[#FFF9EB] transition-all duration-200"
+                      >
+                        Create a new account
+                      </button>
                     </form>
 
                     <div className="flex items-center my-6">
@@ -185,6 +175,13 @@ export default function AuthPage() {
                       >
                         {loading ? "Logging in..." : "Login"}
                       </button>
+                      <button
+                        type="button"
+                        onClick={() => setStep("register")}
+                        className="w-full py-4 text-[#6B5A34] font-semibold text-base rounded-2xl border border-[#D9CBA8] hover:bg-[#FFF9EB] transition-all duration-200"
+                      >
+                        Don&apos;t have an account? Register
+                      </button>
                     </form>
                     <div className="text-center mt-4 text-gray-500">
                       <button
@@ -201,12 +198,6 @@ export default function AuthPage() {
                 {/* Register Step */}
                 {step === "register" && <Register email={email} />}
 
-                {/* OAuth Verify Step */}
-                {step === "oauth" && oauthProvider && (
-                  <div className="w-full animate-fadeIn">
-                    <OAuthVerify email={email} />
-                  </div>
-                )}
               </>
             )}
           </div>

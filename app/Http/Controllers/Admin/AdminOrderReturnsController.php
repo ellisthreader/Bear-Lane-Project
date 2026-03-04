@@ -13,6 +13,7 @@ use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use Stripe\PaymentIntent;
 use Stripe\Refund;
@@ -648,11 +649,18 @@ class AdminOrderReturnsController extends Controller
         $order = $returnRequest->order;
         $summary = $this->mapSummary($returnRequest);
         $proofUrls = collect((array) $returnRequest->proof_paths)
-            ->map(function ($path) {
+            ->map(function ($path, $index) use ($returnRequest) {
                 $value = trim((string) $path);
                 if ($value === '') return null;
                 if (str_starts_with($value, 'http://') || str_starts_with($value, 'https://')) return $value;
-                return asset('storage/' . ltrim($value, '/'));
+                return URL::temporarySignedRoute(
+                    'media.returns.proof',
+                    now()->addMinutes(20),
+                    [
+                        'returnRequest' => $returnRequest->id,
+                        'index' => (int) $index,
+                    ]
+                );
             })
             ->filter()
             ->values()

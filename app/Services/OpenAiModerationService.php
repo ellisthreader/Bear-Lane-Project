@@ -403,7 +403,8 @@ class OpenAiModerationService
     public function logFlaggedMessage(string $input, array $moderation, array $context = []): void
     {
         Log::warning('chat.moderation.flagged', [
-            'message' => $input,
+            'message_hash' => hash('sha256', $input),
+            'message_length' => mb_strlen($input),
             'matched_categories' => $moderation['matched_categories'] ?? [],
             'local_violations' => $moderation['local_violations'] ?? [],
             'categories' => $moderation['categories'] ?? [],

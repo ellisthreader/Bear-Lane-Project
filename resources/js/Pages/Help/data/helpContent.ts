@@ -274,6 +274,7 @@ export const HELP_CATEGORIES: HelpCategory[] = [
         content: [
           "We use your data to deliver orders, manage accounts, and improve customer support.",
           "We do not sell personal data to third parties.",
+          "Where needed to run the service, we share limited data with processors such as payment, shipping, moderation, maps, email, and OAuth providers.",
         ],
       },
       {
@@ -283,6 +284,7 @@ export const HELP_CATEGORIES: HelpCategory[] = [
         content: [
           "Common data includes name, email, order details and saved preferences.",
           "Payment data is processed by secure payment providers and not stored as raw card details in your profile.",
+          "Support messages and uploads may be checked by automated moderation systems to keep the platform safe.",
         ],
       },
       {
@@ -292,6 +294,7 @@ export const HELP_CATEGORIES: HelpCategory[] = [
         content: [
           "Traffic is protected using SSL/TLS encryption.",
           "Access to sensitive operational data is restricted to authorised personnel.",
+          "Sensitive return evidence links are time-limited and access-controlled.",
         ],
       },
       {
@@ -301,6 +304,7 @@ export const HELP_CATEGORIES: HelpCategory[] = [
         content: [
           "You can request deletion through support.",
           "Where required by law, limited records may be retained for compliance and fraud prevention.",
+          "You can also ask for a copy of your data and request corrections.",
         ],
       },
       {
@@ -311,6 +315,7 @@ export const HELP_CATEGORIES: HelpCategory[] = [
           "We use essential and analytics cookies to keep the site secure, improve performance, and personalise your browsing experience.",
           "You can manage your cookie choices any time from the Cookie Preferences link in the footer under Customer Services.",
           "If you disable certain cookies, some site features may not function exactly as expected.",
+          "Your cookie choice is recorded so we can respect it on future visits.",
         ],
       },
     ],

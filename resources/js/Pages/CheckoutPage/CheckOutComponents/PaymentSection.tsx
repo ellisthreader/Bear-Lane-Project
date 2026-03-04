@@ -1,12 +1,14 @@
 import React from "react";
 import { CardCvcElement, CardExpiryElement, CardNumberElement } from "@stripe/react-stripe-js";
-import { Autocomplete, useLoadScript } from "@react-google-maps/api";
+import { Autocomplete } from "@react-google-maps/api";
 import { FaApple, FaCreditCard, FaPaypal } from "react-icons/fa";
 import { FcGoogle } from "react-icons/fc";
 import { getCountryCode } from "@/Utils/countryCodes";
 import { useCheckoutPayment } from "../context/CheckoutPaymentContext";
 import type { BillingAddress, PaymentType } from "../types";
 import { showCheckoutError } from "../checkoutToasts";
+import useAnalyticsConsent from "@/Utils/useAnalyticsConsent";
+import useGoogleMapsScript from "@/Utils/useGoogleMapsScript";
 type SavedBillingAddress = BillingAddress & { id: string };
 type BillingModalField = "firstName" | "lastName" | "country" | "line1" | "city" | "postcode";
 const GOOGLE_MAPS_LIBRARIES: ("places")[] = ["places"];
@@ -95,9 +97,13 @@ export default function PaymentSection() {
   const [pendingWalletSelection, setPendingWalletSelection] = React.useState<number | "new" | null>(null);
   const [walletSelectionMode, setWalletSelectionMode] = React.useState<"saved" | "new" | null>(null);
   const sectionRootRef = React.useRef<HTMLDivElement | null>(null);
+  const hasAnalyticsConsent = useAnalyticsConsent();
+  const googleMapsApiKey = (import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined)?.trim() || "";
+  const canUseGoogleAddressLookup = hasAnalyticsConsent && googleMapsApiKey.length > 0;
 
-  const { isLoaded: isGoogleLoaded } = useLoadScript({
-    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string,
+  const { isLoaded: isGoogleLoaded } = useGoogleMapsScript({
+    enabled: canUseGoogleAddressLookup,
+    apiKey: googleMapsApiKey,
     libraries: GOOGLE_MAPS_LIBRARIES,
   });
 
