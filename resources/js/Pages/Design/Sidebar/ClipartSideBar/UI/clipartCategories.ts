@@ -5,6 +5,11 @@ const allClipartModules = import.meta.glob(
   { eager: true, import: "default" }
 ) as Record<string, string>;
 
+const normalizeClipartSrc = (value: string): string => {
+  if (!value) return "";
+  const withLeadingSlash = value.startsWith("/") ? value : `/${value}`;
+  return encodeURI(withLeadingSlash);
+};
 
 /**
  * Load a single category
@@ -25,7 +30,7 @@ function loadCategory(
 
       return {
         id: filePath,
-        src: url,
+        src: normalizeClipartSrc(url),
         label, // always a string ✅
       };
     })

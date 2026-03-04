@@ -10,6 +10,11 @@ class Image extends Model
 {
     use HasFactory;
 
+    private const PATH_ALIASES = [
+        '/images/products/bwhitetee1.png' => 'images/Products/WhiteTee1.png',
+        'images/products/bwhitetee1.png' => 'images/Products/WhiteTee1.png',
+    ];
+
     protected $fillable = [
         'imageable_id',
         'imageable_type',
@@ -39,23 +44,29 @@ class Image extends Model
 
     public function getUrlAttribute(): string
     {
-        $path = trim((string) $this->path);
+        $path = $this->normalizePath(trim((string) $this->path));
         if ($path === '') {
-            return '';
+            return asset('images/placeholder.jpg');
         }
 
         // If path already starts with http, return as-is
-        if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
+        if ($this->isHttpUrl($path)) {
             return $path;
         }
 
-        // Paths already rooted to app public assets.
-        if (str_starts_with($path, '/')) {
-            return asset(ltrim($path, '/'));
-        }
+        $path = ltrim($path, '/');
 
         if (str_starts_with($path, 'storage/')) {
-            return asset($path);
+            if (file_exists(public_path($path))) {
+                return asset($path);
+            }
+
+            $relativePath = ltrim(substr($path, strlen('storage/')), '/');
+            if ($relativePath !== '' && Storage::disk('public')->exists($relativePath)) {
+                return asset('storage/' . $relativePath);
+            }
+
+            return asset('images/placeholder.jpg');
         }
 
         // Most uploaded product/admin images are stored on the public disk.
@@ -63,8 +74,31 @@ class Image extends Model
             return asset('storage/' . ltrim($path, '/'));
         }
 
-        // Fallback for legacy paths relative to public/.
-        return asset($path);
+        // Legacy paths relative to public/.
+        if (file_exists(public_path($path))) {
+            return asset($path);
+        }
+
+        return asset('images/placeholder.jpg');
+    }
+
+    private function isHttpUrl(string $path): bool
+    {
+        return str_starts_with($path, 'http://') || str_starts_with($path, 'https://');
+    }
+
+    private function normalizePath(string $path): string
+    {
+        $normalized = str_replace('\\', '/', $path);
+        $normalized = preg_replace('#/+#', '/', $normalized) ?? $normalized;
+        $normalized = preg_replace('/\.(png|jpe?g|webp|gif|svg)g$/i', '.$1', $normalized) ?? $normalized;
+
+        $alias = self::PATH_ALIASES[strtolower($normalized)] ?? null;
+        if ($alias) {
+            return $alias;
+        }
+
+        return $normalized;
 
     }
 }

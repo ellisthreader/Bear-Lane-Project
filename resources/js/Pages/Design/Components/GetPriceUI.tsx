@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
+  CheckCircle2,
   CircleDollarSign,
   Images,
   Palette,
+  PenTool,
+  Printer,
   Ruler,
-  ShieldCheck,
   Shirt,
   Sticker,
   Type,
@@ -59,6 +61,9 @@ interface GetPriceUIProps {
 function formatGBP(value: number): string {
   return `£${value.toFixed(2)}`;
 }
+
+const designTypeIcon = (designType: DesignType) =>
+  designType === "embroidery" ? <PenTool size={16} /> : <Printer size={16} />;
 
 const GetPriceUI: React.FC<GetPriceUIProps> = ({
   onClose,
@@ -329,7 +334,7 @@ const GetPriceUI: React.FC<GetPriceUIProps> = ({
                 </label>
               </div>
 
-              <div className="rounded-2xl border border-gray-200 bg-[#FFFCF4] p-3">
+              <div className="rounded-2xl border border-gray-200 bg-white p-3">
                 <p className="mb-2 text-sm font-semibold text-gray-700">Design type <span className="text-red-600">*</span></p>
                 <div className="grid gap-2 md:grid-cols-2">
                   {DESIGN_TYPE_OPTIONS.map((option) => {
@@ -341,11 +346,23 @@ const GetPriceUI: React.FC<GetPriceUIProps> = ({
                         onClick={() => onDesignTypeChange?.(option.value)}
                         className={`rounded-xl border px-3 py-2 text-left transition ${
                           isSelected
-                            ? "border-[#C6A75E] bg-[#FFF7E6] shadow-sm"
-                            : "border-gray-300 bg-white hover:border-[#C6A75E]/70"
+                            ? "border-[#1F6E4A] bg-[#F2FBF6] shadow-sm"
+                            : "border-gray-300 bg-white hover:border-gray-400"
                         }`}
                       >
-                        <p className={`text-sm font-semibold ${isSelected ? "text-[#7B6530]" : "text-gray-800"}`}>{option.label}</p>
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`inline-flex h-7 w-7 items-center justify-center rounded-full border ${
+                              isSelected
+                                ? "border-[#1F6E4A] bg-[#E2F4EA] text-[#1F6E4A]"
+                                : "border-gray-300 bg-gray-50 text-gray-700"
+                            }`}
+                          >
+                            {designTypeIcon(option.value)}
+                          </span>
+                          <p className={`text-sm font-semibold ${isSelected ? "text-[#15543A]" : "text-gray-800"}`}>{option.label}</p>
+                          {isSelected && <CheckCircle2 size={15} className="ml-auto text-[#1F6E4A]" />}
+                        </div>
                         <p className="mt-0.5 text-xs text-gray-600">{option.helper}</p>
                       </button>
                     );
@@ -403,7 +420,10 @@ const GetPriceUI: React.FC<GetPriceUIProps> = ({
                 <p className="text-sm text-gray-600">
                   Total {Math.max(totalQuantity, 1)} item(s): {formatGBP(totalPrice)}
                 </p>
-                <p className="text-sm font-medium text-[#7B6530]">Design type: {selectedDesignTypeDisplay}</p>
+                <p className="inline-flex items-center gap-2 text-sm font-medium text-gray-700">
+                  {designTypeIcon(selectedDesignTypeValue)}
+                  Design type: {selectedDesignTypeDisplay}
+                </p>
                 <div className="flex flex-wrap gap-2">
                   {designTags.length > 0 ? (
                     designTags.map(tag => (
@@ -429,7 +449,10 @@ const GetPriceUI: React.FC<GetPriceUIProps> = ({
                 <div className="mt-2 flex flex-col gap-1 text-sm">
                   <p className="text-lg font-semibold text-gray-900">{productName}</p>
                   <p className="text-sm text-gray-500">Colour: {selectedColourValue}</p>
-                  <p className="text-sm text-gray-500">Design type: {selectedDesignTypeDisplay}</p>
+                  <p className="inline-flex items-center gap-2 text-sm text-gray-500">
+                    {designTypeIcon(selectedDesignTypeValue)}
+                    Design type: {selectedDesignTypeDisplay}
+                  </p>
                 </div>
                 <div className="flex flex-wrap items-start gap-3 overflow-x-auto">
                   {orderedSides.map(side => (

@@ -323,7 +323,7 @@ class ProductSeeder extends Seeder
                 'is_trending'    => true,
                 'categories'     => ['men/t-shirt'],
                 'images' => [
-                    'images/Products/BWhiteTee1.png',
+                    'images/Products/WhiteTee1.png',
                     'images/Products/WhiteTee1.png',
                 ],
                 'variants' => [
@@ -375,7 +375,7 @@ class ProductSeeder extends Seeder
                 'is_trending'    => false,
                 'categories'     => ['men/t-shirt'],
                 'images' => [
-                    'images/Products/WhiteTee1.pngg',
+                    'images/Products/WhiteTee1.png',
                     'images/Products/WhiteTee1.png',
                 ],
                 'variants' => [
