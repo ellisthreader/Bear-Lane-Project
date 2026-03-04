@@ -9,6 +9,14 @@ php artisan config:clear --ansi
 php artisan route:clear --ansi
 php artisan view:clear --ansi
 
+# Ensure public/storage points to this container's storage path.
+# Repo-copied symlinks can target a different absolute path (e.g. /var/www/html).
+if [ -L public/storage ] || [ -e public/storage ]; then
+  rm -rf public/storage
+fi
+php artisan storage:link --ansi
+rm -f public/hot
+
 if [ "${RUN_MIGRATIONS:-true}" = "true" ]; then
   echo "Running migrations..."
   php artisan migrate --force --ansi

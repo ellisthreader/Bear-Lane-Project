@@ -214,7 +214,7 @@ export default function MyDesignsSidebar({
   const [createError, setCreateError] = React.useState<string | null>(null);
   const [activeViewByDesign, setActiveViewByDesign] = React.useState<Record<number, number>>({});
   const [expandedPreview, setExpandedPreview] = React.useState<{ src: string; name: string } | null>(null);
-  const loginUrl = "http://localhost/login";
+  const loginUrl = "/login";
   const visibleDesigns = designs.slice(0, MAX_VISIBLE_SAVED_DESIGNS);
 
   // 🔹 Not signed in

@@ -20,6 +20,7 @@ export default function ContactStep({
   items,
   total,
 }: Props) {
+  const API_URL = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, "") || "";
   const [hasProceeded, setHasProceeded] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -53,8 +54,8 @@ export default function ContactStep({
         price: item.price,
       }));
 
-      // POST to your Laravel API
-      const response = await fetch("http://localhost/api/instant-quote", {
+      // Use configured API base URL in production, fallback to same-origin.
+      const response = await fetch(`${API_URL}/api/instant-quote`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

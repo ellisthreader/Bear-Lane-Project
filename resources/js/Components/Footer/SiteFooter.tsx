@@ -54,12 +54,22 @@ export default function SiteFooter() {
               <ul className="mt-4 space-y-2.5">
                 {section.links.map((link) => (
                   <li key={link.label}>
-                    <Link
-                      href={link.href}
-                      className="text-[14px] font-medium text-[#5A5145] transition hover:text-[#A17A2B]"
-                    >
-                      {link.label}
-                    </Link>
+                    {link.label === "Cookie Preferences" ? (
+                      <button
+                        type="button"
+                        onClick={() => window.dispatchEvent(new Event("open-cookie-preferences"))}
+                        className="text-[14px] font-medium text-[#5A5145] transition hover:text-[#A17A2B] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#B89443]"
+                      >
+                        {link.label}
+                      </button>
+                    ) : (
+                      <Link
+                        href={link.href}
+                        className="text-[14px] font-medium text-[#5A5145] transition hover:text-[#A17A2B]"
+                      >
+                        {link.label}
+                      </Link>
+                    )}
                   </li>
                 ))}
               </ul>

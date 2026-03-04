@@ -7,6 +7,7 @@ import { resolvePageComponent } from "laravel-vite-plugin/inertia-helpers";
 import { CartProvider } from "@/Context/CartContext";
 import { WishlistProvider } from "@/Context/WishlistContext";
 import { CheckoutProvider } from "@/Context/CheckoutContext";
+import CookieConsentManager from "@/Components/Cookies/CookieConsentManager";
 
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -33,6 +34,7 @@ createInertiaApp({
           <WishlistProvider>
             <CheckoutProvider>
               <App {...props} />
+              <CookieConsentManager />
 
               <ToastContainer
                 position="top-center"

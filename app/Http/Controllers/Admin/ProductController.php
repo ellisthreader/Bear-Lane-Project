@@ -7,9 +7,12 @@ use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Services\AdminActivityLogService;
+use App\Services\OpenAiModerationService;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 class ProductController extends Controller
@@ -784,18 +787,79 @@ class ProductController extends Controller
         ]);
     }
 
-    public function uploadImage(Request $request)
+    public function uploadImage(Request $request, OpenAiModerationService $moderationService)
     {
         $validated = $request->validate([
             'image' => 'required|image|max:8192',
         ]);
 
-        $path = $validated['image']->store('products/admin', 'public');
+        $image = $validated['image'];
+        if (!$image instanceof UploadedFile) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid image upload.',
+            ], 422);
+        }
+
+        $imageDataUrl = $this->uploadedImageToDataUrl($image);
+        if (!$imageDataUrl) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Could not process uploaded image.',
+            ], 422);
+        }
+
+        try {
+            $moderation = $moderationService->moderateImageDataUrl($imageDataUrl, 'Admin product image upload');
+        } catch (\Throwable $exception) {
+            Log::error('Admin product image moderation failed', [
+                'error' => $exception->getMessage(),
+                'admin_id' => optional($request->user())->id,
+                'ip' => $request->ip(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Image moderation is temporarily unavailable. Please try again shortly.',
+            ], 503);
+        }
+
+        if (!empty($moderation['blocked'])) {
+            $reason = $moderationService->summarizeViolationReason($moderation);
+            $moderationService->logFlaggedMessage('[admin-product-image-upload-blocked]', $moderation, [
+                'endpoint' => '/admin/products/upload-image',
+                'admin_id' => optional($request->user())->id,
+                'ip' => $request->ip(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => "Image was blocked by content checks ({$reason}). Please upload a different image.",
+                'warning' => true,
+            ], 422);
+        }
+
+        $path = $image->store('products/admin', 'public');
 
         return response()->json([
             'success' => true,
             'path' => '/storage/' . ltrim($path, '/'),
         ]);
+    }
+
+    private function uploadedImageToDataUrl(UploadedFile $file): ?string
+    {
+        $binary = @file_get_contents($file->getRealPath());
+        if ($binary === false) {
+            return null;
+        }
+
+        $mime = strtolower(trim((string) ($file->getMimeType() ?: 'image/jpeg')));
+        if (!str_starts_with($mime, 'image/')) {
+            return null;
+        }
+
+        return 'data:' . $mime . ';base64,' . base64_encode($binary);
     }
 
     public function deleteProduct(Request $request, Product $product)

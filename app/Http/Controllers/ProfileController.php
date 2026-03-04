@@ -4,11 +4,13 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Http;
 use Carbon\Carbon;
 use App\Services\UnsplashService;
+use App\Services\OpenAiModerationService;
 use App\Models\Product;
 use App\Models\SavedDesign;
 
@@ -134,6 +136,15 @@ class ProfileController extends Controller
 
         // Handle profile photo
         if ($request->hasFile('profile_photo')) {
+            $photo = $request->file('profile_photo');
+            if ($photo instanceof UploadedFile) {
+                $moderationFailure = $this->moderateAvatarUpload($photo, $request);
+                if ($moderationFailure !== null) {
+                    $message = (string) ($moderationFailure->getData(true)['message'] ?? 'Avatar image upload failed moderation checks.');
+                    return back()->withErrors(['profile_photo' => $message]);
+                }
+            }
+
             if ($user->avatar && Storage::disk('public')->exists($user->avatar)) {
                 Storage::disk('public')->delete($user->avatar);
             }
@@ -159,6 +170,14 @@ class ProfileController extends Controller
         ]);
 
         if ($request->hasFile('profile_photo')) {
+            $photo = $request->file('profile_photo');
+            if ($photo instanceof UploadedFile) {
+                $moderationFailure = $this->moderateAvatarUpload($photo, $request);
+                if ($moderationFailure !== null) {
+                    return $moderationFailure;
+                }
+            }
+
             if ($user->avatar && Storage::disk('public')->exists($user->avatar)) {
                 Storage::disk('public')->delete($user->avatar);
             }
@@ -244,5 +263,64 @@ class ProfileController extends Controller
         return Carbon::parse($user->last_avatar_generated_at, 'UTC')
             ->addMinutes($this->cooldownMinutes)
             ->toIso8601String();
+    }
+
+    private function moderateAvatarUpload(UploadedFile $file, Request $request): ?JsonResponse
+    {
+        $imageDataUrl = $this->uploadedImageToDataUrl($file);
+        if (!$imageDataUrl) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Could not process uploaded avatar image.',
+            ], 422);
+        }
+
+        $moderationService = app(OpenAiModerationService::class);
+        try {
+            $moderation = $moderationService->moderateImageDataUrl($imageDataUrl, 'User avatar upload');
+        } catch (\Throwable $exception) {
+            Log::error('Profile avatar moderation failed', [
+                'error' => $exception->getMessage(),
+                'user_id' => optional($request->user())->id,
+                'ip' => $request->ip(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Image moderation is temporarily unavailable. Please try again shortly.',
+            ], 503);
+        }
+
+        if (!empty($moderation['blocked'])) {
+            $reason = $moderationService->summarizeViolationReason($moderation);
+            $moderationService->logFlaggedMessage('[profile-avatar-upload-blocked]', $moderation, [
+                'endpoint' => '/profile/avatar',
+                'user_id' => optional($request->user())->id,
+                'ip' => $request->ip(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => "Avatar image was blocked by content checks ({$reason}). Please upload a different image.",
+                'warning' => true,
+            ], 422);
+        }
+
+        return null;
+    }
+
+    private function uploadedImageToDataUrl(UploadedFile $file): ?string
+    {
+        $binary = @file_get_contents($file->getRealPath());
+        if ($binary === false) {
+            return null;
+        }
+
+        $mime = strtolower(trim((string) ($file->getMimeType() ?: 'image/jpeg')));
+        if (!str_starts_with($mime, 'image/')) {
+            return null;
+        }
+
+        return 'data:' . $mime . ';base64,' . base64_encode($binary);
     }
 }

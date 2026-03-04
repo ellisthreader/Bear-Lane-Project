@@ -83,7 +83,7 @@ class QuoteController extends Controller
             
             <!-- Logo (NO ATTACHMENT) -->
             <div style='text-align: center; margin-bottom: 20px;'>
-                <img src='http://localhost/images/BLText.png' 
+                <img src='" . asset('images/BLText.png') . "' 
                      alt='Company Logo' 
                      style='max-width: 150px;'>
             </div>

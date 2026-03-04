@@ -4,10 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Models\Order;
 use App\Models\ReturnRequest;
+use App\Services\OpenAiModerationService;
 use App\Services\ShippoRateService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
@@ -115,7 +118,7 @@ class OrderReturnController extends Controller
         }
     }
 
-    public function store(Request $request, Order $order): JsonResponse
+    public function store(Request $request, Order $order, OpenAiModerationService $moderationService): JsonResponse
     {
         $user = $request->user();
         if (!$user || (int) $order->user_id !== (int) $user->id) {
@@ -159,8 +162,23 @@ class OrderReturnController extends Controller
             return response()->json(['message' => 'Please select at least one valid order item to return.'], 422);
         }
 
+        $proofFiles = collect($request->file('proofs', []))
+            ->filter(fn ($file) => $file instanceof UploadedFile)
+            ->values();
+
         $proofPaths = [];
-        foreach ($request->file('proofs', []) as $proofFile) {
+        foreach ($proofFiles as $index => $proofFile) {
+            $moderationError = $this->moderateUpload($moderationService, $proofFile, [
+                'endpoint' => '/orders/{order}/returns',
+                'order_id' => $order->id,
+                'user_id' => $user->id,
+                'image_index' => $index,
+                'ip' => $request->ip(),
+            ]);
+            if ($moderationError !== null) {
+                return $moderationError;
+            }
+
             $proofPaths[] = $proofFile->store("returns/{$order->order_number}", 'public');
         }
 
@@ -240,7 +258,7 @@ class OrderReturnController extends Controller
         ]);
     }
 
-    public function submitMoreEvidence(Request $request, Order $order, ReturnRequest $returnRequest): JsonResponse
+    public function submitMoreEvidence(Request $request, Order $order, ReturnRequest $returnRequest, OpenAiModerationService $moderationService): JsonResponse
     {
         $user = $request->user();
         if (!$user || (int) $order->user_id !== (int) $user->id || (int) $returnRequest->order_id !== (int) $order->id) {
@@ -259,8 +277,24 @@ class OrderReturnController extends Controller
             'message' => ['nullable', 'string', 'max:2000'],
         ]);
 
+        $proofFiles = collect($request->file('proofs', []))
+            ->filter(fn ($file) => $file instanceof UploadedFile)
+            ->values();
+
         $proofPaths = (array) ($returnRequest->proof_paths ?? []);
-        foreach ($request->file('proofs', []) as $proofFile) {
+        foreach ($proofFiles as $index => $proofFile) {
+            $moderationError = $this->moderateUpload($moderationService, $proofFile, [
+                'endpoint' => '/orders/{order}/returns/{returnRequest}/more-evidence',
+                'order_id' => $order->id,
+                'return_request_id' => $returnRequest->id,
+                'user_id' => $user->id,
+                'image_index' => $index,
+                'ip' => $request->ip(),
+            ]);
+            if ($moderationError !== null) {
+                return $moderationError;
+            }
+
             $proofPaths[] = $proofFile->store("returns/{$order->order_number}", 'public');
         }
 
@@ -359,5 +393,55 @@ class OrderReturnController extends Controller
     {
         $amount = (float) ($value ?? 0);
         return number_format($amount, 2) . ' ' . strtoupper($currency);
+    }
+
+    private function moderateUpload(OpenAiModerationService $moderationService, UploadedFile $file, array $context): ?JsonResponse
+    {
+        $imageDataUrl = $this->uploadedImageToDataUrl($file);
+        if (!$imageDataUrl) {
+            return response()->json([
+                'message' => 'One uploaded image could not be processed. Please try another file.',
+            ], 422);
+        }
+
+        try {
+            $moderation = $moderationService->moderateImageDataUrl($imageDataUrl, 'Order return evidence upload');
+        } catch (\Throwable $exception) {
+            Log::error('Return evidence moderation failed', [
+                'error' => $exception->getMessage(),
+                ...$context,
+            ]);
+
+            return response()->json([
+                'message' => 'Image moderation is temporarily unavailable. Please try again shortly.',
+            ], 503);
+        }
+
+        if (!empty($moderation['blocked'])) {
+            $reason = $moderationService->summarizeViolationReason($moderation);
+            $moderationService->logFlaggedMessage('[return-evidence-upload-blocked]', $moderation, $context);
+
+            return response()->json([
+                'message' => "An uploaded image was blocked by content checks ({$reason}). Please upload a different image.",
+                'warning' => true,
+            ], 422);
+        }
+
+        return null;
+    }
+
+    private function uploadedImageToDataUrl(UploadedFile $file): ?string
+    {
+        $binary = @file_get_contents($file->getRealPath());
+        if ($binary === false) {
+            return null;
+        }
+
+        $mime = strtolower(trim((string) ($file->getMimeType() ?: 'image/jpeg')));
+        if (!str_starts_with($mime, 'image/')) {
+            return null;
+        }
+
+        return 'data:' . $mime . ';base64,' . base64_encode($binary);
     }
 }

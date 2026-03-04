@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 
 class Image extends Model
 {
@@ -38,13 +39,32 @@ class Image extends Model
 
     public function getUrlAttribute(): string
     {
-        // If path already starts with http, return as-is
-        if (str_starts_with($this->path, 'http')) {
-            return $this->path;
+        $path = trim((string) $this->path);
+        if ($path === '') {
+            return '';
         }
 
-        // Otherwise, assume path is relative to public/
-        return asset($this->path);
+        // If path already starts with http, return as-is
+        if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
+            return $path;
+        }
+
+        // Paths already rooted to app public assets.
+        if (str_starts_with($path, '/')) {
+            return asset(ltrim($path, '/'));
+        }
+
+        if (str_starts_with($path, 'storage/')) {
+            return asset($path);
+        }
+
+        // Most uploaded product/admin images are stored on the public disk.
+        if (Storage::disk('public')->exists($path)) {
+            return asset('storage/' . ltrim($path, '/'));
+        }
+
+        // Fallback for legacy paths relative to public/.
+        return asset($path);
 
     }
 }
