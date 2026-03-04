@@ -7,8 +7,8 @@ import { FaFacebookF } from "react-icons/fa";
 import CheckoutForm from "./CheckoutForm";
 import { CheckoutProvider } from "@/Context/CheckoutContext";
 
-// ✅ Stripe public key
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_KEY as string);
+const stripeKey = (import.meta.env.VITE_STRIPE_KEY as string | undefined)?.trim() || "";
+const stripePromise = stripeKey ? loadStripe(stripeKey) : null;
 
 export default function CheckoutPage() {
   const page = usePage<{ auth?: { user?: unknown } }>();
@@ -222,6 +222,12 @@ export default function CheckoutPage() {
                   ← Continue Shopping
                 </Link>
               </div>
+
+              {!stripePromise && (
+                <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                  Payments are temporarily unavailable. Missing Stripe publishable key (`VITE_STRIPE_KEY`).
+                </div>
+              )}
 
             <Elements stripe={stripePromise}>
               <CheckoutProvider>

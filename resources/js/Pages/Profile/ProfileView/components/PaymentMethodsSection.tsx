@@ -6,7 +6,8 @@ import { FaPaypal } from "react-icons/fa6";
 import AddPaymentMethodModal from "./AddPaymentMethodModal";
 import { useProfileViewContext } from "../ProfileViewContext";
 
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_KEY as string);
+const stripeKey = (import.meta.env.VITE_STRIPE_KEY as string | undefined)?.trim() || "";
+const stripePromise = stripeKey ? loadStripe(stripeKey) : null;
 
 export default function PaymentMethodsSection() {
   const { loadingSavedData, paymentMethods, setDefaultPaymentMethod, deletePaymentMethod } = useProfileViewContext();
@@ -104,16 +105,22 @@ export default function PaymentMethodsSection() {
         </div>
       )}
 
-      <Elements stripe={stripePromise}>
-        <AddPaymentMethodModal
-          show={showAddCard}
-          onClose={() => setShowAddCard(false)}
-          existingPaymentMethodCount={cardMethods.length}
-          onSaved={async () => {
-            router.reload({ preserveScroll: true });
-          }}
-        />
-      </Elements>
+      {stripePromise ? (
+        <Elements stripe={stripePromise}>
+          <AddPaymentMethodModal
+            show={showAddCard}
+            onClose={() => setShowAddCard(false)}
+            existingPaymentMethodCount={cardMethods.length}
+            onSaved={async () => {
+              router.reload({ preserveScroll: true });
+            }}
+          />
+        </Elements>
+      ) : (
+        <p className="mt-4 text-sm text-red-600">
+          Card management is unavailable. Missing `VITE_STRIPE_KEY`.
+        </p>
+      )}
     </section>
   );
 }

@@ -86,8 +86,9 @@ export default function AddressBookPage() {
   const [addressForm, setAddressForm] = useState<AddressFormState>(emptyAddressForm);
 
   const [autocomplete, setAutocomplete] = useState<google.maps.places.Autocomplete | null>(null);
+  const googleMapsApiKey = (import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined)?.trim() || "";
   const { isLoaded } = useLoadScript({
-    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string,
+    googleMapsApiKey,
     libraries: GOOGLE_MAPS_LIBRARIES,
   });
 
@@ -429,7 +430,7 @@ export default function AddressBookPage() {
               {fieldErrors.last_name && <p className="mt-1 text-sm text-red-600">{fieldErrors.last_name}</p>}
             </div>
             <div className="md:col-span-2">
-              {isLoaded ? (
+              {googleMapsApiKey && isLoaded ? (
                 <Autocomplete onLoad={setAutocomplete} onPlaceChanged={handleAddressPick}>
                   <input
                     className={`w-full ${getInputClass("address_line1")}`}

@@ -19,12 +19,14 @@ export default function DeliveryInfo({
   onFieldValueChange,
 }: DeliveryInfoProps) {
   const { address, setAddress, country, setCountry } = useCheckout();
+  const googleMapsApiKey = (import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined)?.trim() || "";
+  const canUseGoogleAddressLookup = googleMapsApiKey.length > 0;
   const [autocomplete, setAutocomplete] = useState<google.maps.places.Autocomplete | null>(null);
   const [manualEntry, setManualEntry] = useState(false);
   const [lookupValue, setLookupValue] = useState("");
 
   const { isLoaded } = useLoadScript({
-    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string,
+    googleMapsApiKey,
     libraries: GOOGLE_MAPS_LIBRARIES,
   });
 
@@ -163,7 +165,7 @@ export default function DeliveryInfo({
     (Boolean(fieldErrors.addressLine1) || Boolean(fieldErrors.city) || Boolean(fieldErrors.postcode)) &&
     (!address.addressLine1 || !address.city || !address.postcode);
 
-  if (!isLoaded) {
+  if (canUseGoogleAddressLookup && !isLoaded) {
     return (
       <div className="p-0">
         <p className="text-sm text-gray-500">Loading address lookup...</p>
@@ -215,7 +217,7 @@ export default function DeliveryInfo({
           {fieldErrors.country && !country && <p className="mt-1.5 text-sm text-red-600">{fieldErrors.country}</p>}
         </div>
 
-        {!manualEntry ? (
+        {!manualEntry && canUseGoogleAddressLookup ? (
           <div>
             <label className="mb-1.5 block text-sm font-medium text-gray-700">Add your postcode or address *</label>
             <Autocomplete onLoad={setAutocomplete} onPlaceChanged={handleAddressPick}>

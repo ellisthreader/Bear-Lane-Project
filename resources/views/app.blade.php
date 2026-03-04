@@ -13,17 +13,6 @@
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
 
-    <!-- Preload dark mode to prevent flash of light mode -->
-    <script>
-        try {
-            if (localStorage.getItem('darkMode') === 'true') {
-                document.documentElement.classList.add('dark');
-            }
-        } catch (e) {
-            console.error(e);
-        }
-    </script>
-
     <!-- Routes & Vite -->
     @routes
     @viteReactRefresh

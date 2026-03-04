@@ -4,7 +4,6 @@ import { createRoot } from "react-dom/client";
 import { createInertiaApp } from "@inertiajs/react";
 import { resolvePageComponent } from "laravel-vite-plugin/inertia-helpers";
 
-import { DarkModeProvider } from "@/Context/DarkModeContext";
 import { CartProvider } from "@/Context/CartContext";
 import { WishlistProvider } from "@/Context/WishlistContext";
 import { CheckoutProvider } from "@/Context/CheckoutContext";
@@ -32,23 +31,21 @@ createInertiaApp({
       <React.StrictMode>
         <CartProvider>
           <WishlistProvider>
-            <DarkModeProvider>
-              <CheckoutProvider>
-                <App {...props} />
+            <CheckoutProvider>
+              <App {...props} />
 
-                <ToastContainer
-                  position="top-center"
-                  autoClose={3000}
-                  hideProgressBar
-                  newestOnTop
-                  closeOnClick
-                  pauseOnFocusLoss={false}
-                  draggable={false}
-                  pauseOnHover
-                  theme="colored"
-                />
-              </CheckoutProvider>
-            </DarkModeProvider>
+              <ToastContainer
+                position="top-center"
+                autoClose={3000}
+                hideProgressBar
+                newestOnTop
+                closeOnClick
+                pauseOnFocusLoss={false}
+                draggable={false}
+                pauseOnHover
+                theme="colored"
+              />
+            </CheckoutProvider>
           </WishlistProvider>
         </CartProvider>
       </React.StrictMode>

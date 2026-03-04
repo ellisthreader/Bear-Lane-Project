@@ -77,6 +77,7 @@ interface CheckoutContextType {
 const CheckoutContext = createContext<CheckoutContextType | undefined>(undefined);
 
 export const CheckoutProvider = ({ children }: { children: ReactNode }) => {
+  const apiBaseUrl = ((import.meta.env.VITE_API_URL as string | undefined) || "").replace(/\/$/, "");
   const { cart } = useCart();
 
   // User info
@@ -137,7 +138,7 @@ export const CheckoutProvider = ({ children }: { children: ReactNode }) => {
       setDiscountError(null);
 
       try {
-        const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/discount/validate`, {
+        const res = await axios.post(`${apiBaseUrl}/api/discount/validate`, {
           code,
           subtotal_cents: Math.round(subtotal * 100),
           shipping_cents: Math.round(shippingCost * 100),

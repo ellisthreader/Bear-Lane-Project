@@ -20,7 +20,8 @@ type SavedPaymentMethod = {
   is_active: boolean;
 };
 
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_KEY as string);
+const stripeKey = (import.meta.env.VITE_STRIPE_KEY as string | undefined)?.trim() || "";
+const stripePromise = stripeKey ? loadStripe(stripeKey) : null;
 
 const formatCardNumber = (last4?: string | null) => {
   const digits = (last4 || "0000").slice(-4);
@@ -330,14 +331,22 @@ export default function PaymentMethodsPage() {
         )}
       </main>
 
-      <Elements stripe={stripePromise}>
-        <AddPaymentMethodModal
-          show={showAddCard}
-          onClose={() => setShowAddCard(false)}
-          existingPaymentMethodCount={cardPaymentMethods.length}
-          onSaved={fetchPaymentMethods}
-        />
-      </Elements>
+      {stripePromise ? (
+        <Elements stripe={stripePromise}>
+          <AddPaymentMethodModal
+            show={showAddCard}
+            onClose={() => setShowAddCard(false)}
+            existingPaymentMethodCount={cardPaymentMethods.length}
+            onSaved={fetchPaymentMethods}
+          />
+        </Elements>
+      ) : (
+        <div className="mx-auto mb-8 w-full max-w-7xl px-4 md:px-10">
+          <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            Stripe is not configured. Set `VITE_STRIPE_KEY` in Railway Variables.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

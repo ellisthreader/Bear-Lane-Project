@@ -14,6 +14,7 @@ import { computeTotalsInCents } from "@/Utils/totals";
 import { toast } from "react-toastify";
 
 const CheckoutForm = () => {
+  const apiBaseUrl = ((import.meta.env.VITE_API_URL as string | undefined) || "").replace(/\/$/, "");
   const stripe = useStripe();
   const elements = useElements();
   const { cart } = useCart();
@@ -123,7 +124,7 @@ const CheckoutForm = () => {
 
     try {
       // --- Create payment intent ---
-      const paymentRes = await fetch(`${import.meta.env.VITE_API_URL}/api/create-payment-intent`, {
+      const paymentRes = await fetch(`${apiBaseUrl}/api/create-payment-intent`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -166,7 +167,7 @@ const CheckoutForm = () => {
         setError(result.error.message);
       } else if (result.paymentIntent?.status === "succeeded") {
         // --- Store order ---
-        const orderRes = await fetch(`${import.meta.env.VITE_API_URL}/checkout/store-order`, {
+        const orderRes = await fetch(`${apiBaseUrl}/checkout/store-order`, {
           method: "POST",
           headers: { 
             "Content-Type": "application/json",

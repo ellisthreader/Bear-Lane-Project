@@ -104,7 +104,7 @@ export default function SpeakToArtist({ initialInvoiceReference = "" }: SpeakToA
 
   /* ---------------- SUBMIT ---------------- */
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost";
+const API_URL = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, "") || "";
 
 const handleSubmit = async () => {
   if (!isFormValid) return;
