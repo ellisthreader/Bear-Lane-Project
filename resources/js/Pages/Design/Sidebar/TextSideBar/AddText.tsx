@@ -15,12 +15,13 @@ export type TextLayer = {
   borderColor: string;
   borderWidth: number;
   width?: number;
+  size?: { w: number; h: number };
 };
 
 export default function AddText({
   onAddText,
 }: {
-  onAddText: (layer: TextLayer) => void;
+  onAddText: (layer: TextLayer) => void | Promise<boolean | void>;
 }) {
   const [text, setText] = useState("");
 
@@ -47,7 +48,37 @@ export default function AddText({
     return fontSize;
   };
 
-  const handleAddText = () => {
+  const measureTextBox = (
+    value: string,
+    fontFamily: string,
+    fontSize: number,
+    borderWidth = 0
+  ) => {
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("2d");
+    const fallbackWidth = Math.max(40, value.length * fontSize * 0.6);
+    const safeLines = value.split(/\r?\n/).map((line) => line || " ");
+
+    if (!context) {
+      return {
+        w: Math.ceil(fallbackWidth + borderWidth * 2 + 8),
+        h: Math.ceil(fontSize * 1.25 + borderWidth * 2 + 4),
+      };
+    }
+
+    context.font = `${fontSize}px ${fontFamily}`;
+    const widestLine = safeLines.reduce((max, line) => {
+      const width = context.measureText(line).width;
+      return Math.max(max, width);
+    }, 0);
+
+    return {
+      w: Math.ceil(Math.max(24, widestLine) + borderWidth * 2 + 8),
+      h: Math.ceil(safeLines.length * fontSize * 1.2 + borderWidth * 2 + 4),
+    };
+  };
+
+  const handleAddText = async () => {
     const trimmed = text.trim();
     if (!trimmed) return;
 
@@ -63,7 +94,9 @@ export default function AddText({
       maxFontSize
     );
 
-    onAddText({
+    const initialSize = measureTextBox(clampedText, "Inter", adjustedFontSize, 0);
+
+    const result = await onAddText({
       id: crypto.randomUUID(),
       type: "text",
       text: clampedText,
@@ -74,7 +107,12 @@ export default function AddText({
       borderColor: "#000000",
       borderWidth: 0,
       width: maxWidth,
+      size: initialSize,
     });
+
+    if (result === false) {
+      return;
+    }
 
     setText("");
   };

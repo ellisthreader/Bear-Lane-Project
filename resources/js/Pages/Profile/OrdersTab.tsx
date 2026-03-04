@@ -3,6 +3,7 @@ import axios from "axios";
 import { Link } from "@inertiajs/react";
 import { Check, ChevronDown, ImagePlus, Loader2, Star, Truck, X } from "lucide-react";
 import OrderReturnSection, { type ReturnEnabledOrder } from "./components/OrderReturnSection";
+import { designTypeLabel, normalizeDesignType } from "@/Utils/designType";
 
 interface OrderItemReviewSummary {
   id: number;
@@ -19,6 +20,7 @@ interface OrderItem {
   product_name: string;
   size?: string | null;
   colour?: string | null;
+  design_type?: "printing" | "embroidery" | string | null;
   image_url?: string | null;
   quantity: number;
   unit_price: number;
@@ -420,6 +422,9 @@ export default function OrdersTab({ sortBy = "newest" }: OrdersTabProps) {
                                 Size: {item.size || "N/A"} · Qty: {item.quantity}
                               </p>
                               {item.colour && <p className="mt-0.5 text-xs text-[#7F704F]">Colour: {item.colour}</p>}
+                              <p className="mt-0.5 text-xs font-semibold text-[#6A541F]">
+                                Design type: {designTypeLabel(normalizeDesignType(item.design_type))}
+                              </p>
                             </div>
                             <div className="text-right">
                               <p className="text-sm font-semibold text-[#6E5A2E]">£{Number(item.line_total || 0).toFixed(2)}</p>

@@ -6,6 +6,7 @@ import { calculateDesignPricingFromPreviews } from "@/Pages/Design/utils/designP
 import { useProfileViewContext } from "../ProfileViewContext";
 import type { SavedDesignItem } from "../types";
 import { showCheckoutError, showCheckoutSuccess } from "@/Pages/CheckoutPage/checkoutToasts";
+import { normalizeDesignType } from "@/Utils/designType";
 
 type ViewKey = "front" | "back" | "leftSleeve" | "rightSleeve";
 
@@ -218,7 +219,8 @@ export default function DesignsTab() {
       previewByView?.leftSleeve,
       previewByView?.rightSleeve,
     ];
-    const pricing = calculateDesignPricingFromPreviews(previews, design.product_price ?? 0);
+    const designType = normalizeDesignType(design.payload?.selectedDesignType);
+    const pricing = calculateDesignPricingFromPreviews(previews, design.product_price ?? 0, designType);
     const fallbackSize = design.product_sizes?.[0] ?? "One Size";
     const selectedSize = design.payload?.selectedSize || fallbackSize;
     const selectedColour = design.payload?.selectedColour || "Default";
@@ -239,6 +241,7 @@ export default function DesignsTab() {
       image: getViewBaseImage(design, currentViewKey) ?? design.preview_image ?? undefined,
       availableSizes: design.product_sizes?.length ? design.product_sizes : [selectedSize],
       quantity: 1,
+      designType,
       previewSnapshot,
     });
 

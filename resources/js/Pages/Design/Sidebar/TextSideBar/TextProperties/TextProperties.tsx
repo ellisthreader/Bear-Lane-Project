@@ -36,6 +36,7 @@ type Props = {
   flip: "none" | "horizontal" | "vertical";
 
   onTextChange: (v: string) => void;
+  onTextCommit?: (v: string) => void | Promise<void>;
   onFontChange: (v: string) => void;
   onFontSizeChange: (v: number) => void;
   onColorChange: (v: string) => void;
@@ -159,6 +160,7 @@ export default function TextProperties(props: Props) {
       <TextArea
         textValue={props.textValue}
         onTextChange={props.onTextChange}
+        onTextCommit={props.onTextCommit}
       />
 
       {/* Font Selector */}

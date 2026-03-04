@@ -88,7 +88,7 @@ export default function ClipartItemsPage({
           >
             <img
               src={item.src}
-              alt={item.label}
+              alt={`${category.name} clipart`}
               draggable={false}
               className="
                 max-w-[75%]

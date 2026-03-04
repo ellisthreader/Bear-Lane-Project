@@ -30,6 +30,7 @@ use App\Http\Controllers\Admin\AdminStatisticsController;
 use App\Http\Controllers\Admin\SupportAdminController;
 use App\Http\Controllers\Admin\SupportChatController;
 use App\Http\Controllers\DesignController;
+use App\Http\Controllers\DesignModerationController;
 use App\Http\Controllers\SavedDesignController;
 use App\Http\Controllers\ProductSearchController;
 use App\Http\Controllers\FaqRequestController;
@@ -42,7 +43,7 @@ use App\Http\Controllers\WishlistController;
 use App\Http\Controllers\CookieConsentController;
 use App\Http\Controllers\SecureMediaController;
 use App\Services\AdminActivityLogService;
-use Illuminate\Foundation\Auth\EmailVerificationRequest;
+use Illuminate\Auth\Events\Verified;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Mail;
@@ -393,14 +394,28 @@ Route::get('/email/verify', function () {
 
 
 // Handle verification link (THIS ACTUALLY VERIFIES)
-Route::get('/email/verify/{id}/{hash}', function (EmailVerificationRequest $request) {
+Route::get('/email/verify/{id}/{hash}', function (Request $request, string $id, string $hash) {
+    $user = User::query()->findOrFail((int) $id);
 
-    $request->fulfill(); // <-- THIS sets email_verified_at
+    if (!hash_equals((string) $hash, sha1($user->getEmailForVerification()))) {
+        abort(403, 'Invalid verification link.');
+    }
 
-    return redirect()->route('profile')
-        ->with('verified', 1);
+    if (!$user->hasVerifiedEmail() && $user->markEmailAsVerified()) {
+        event(new Verified($user));
+    }
 
-})->middleware(['auth', 'signed:relative', 'throttle:6,1'])
+    $requestUser = $request->user();
+    $isSameAuthenticatedUser =
+        $requestUser !== null &&
+        (int) $requestUser->id === (int) $user->id;
+
+    if ($isSameAuthenticatedUser) {
+        return redirect()->route('profile')->with('verified', 1);
+    }
+
+    return redirect('/login?email_verified=1');
+})->middleware(['signed:relative', 'throttle:6,1'])
   ->name('verification.verify');
 
 
@@ -1396,6 +1411,13 @@ Route::get('/design/{slug}', [DesignController::class, 'show'])->name('design.sh
 */
 Route::get('/design/change-product/{product}', [DesignController::class, 'changeProduct'])
      ->name('design.changeProduct');
+
+Route::post('/design/moderate-text', [DesignModerationController::class, 'moderateText'])
+    ->middleware('throttle:40,1')
+    ->name('design.moderate-text');
+Route::post('/design/moderate-image', [DesignModerationController::class, 'moderateImage'])
+    ->middleware('throttle:30,1')
+    ->name('design.moderate-image');
 
 Route::middleware('auth')->group(function () {
     Route::post('/design/saved', [SavedDesignController::class, 'store'])->name('design.saved.store');

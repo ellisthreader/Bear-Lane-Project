@@ -1,4 +1,5 @@
 import type { PricePreviewSnapshot } from "../Canvas/Canvas";
+import { EMBROIDERY_SURCHARGE_MULTIPLIER, normalizeDesignType, type DesignType } from "@/Utils/designType";
 
 type PreviewLike = {
   preview?: PricePreviewSnapshot;
@@ -50,15 +51,18 @@ function computeCounts(previews: Array<PricePreviewSnapshot | undefined>): Desig
 
 export function calculateDesignPricingFromPreviews(
   previews: Array<PricePreviewSnapshot | undefined>,
-  basePrice: number | string | undefined
+  basePrice: number | string | undefined,
+  designType: DesignType | string | null | undefined = "printing"
 ): DesignPricingResult {
   const counts = computeCounts(previews);
   const baseUnitPrice = parsePrice(basePrice);
-  const designSurchargePerItem =
+  const designSurchargePerItemBase =
     counts.editedSides * 1.25 +
     counts.text * 0.75 +
     counts.image * 1.5 +
     counts.clipart * 1.0;
+  const multiplier = normalizeDesignType(designType) === "embroidery" ? EMBROIDERY_SURCHARGE_MULTIPLIER : 1;
+  const designSurchargePerItem = designSurchargePerItemBase * multiplier;
 
   return {
     baseUnitPrice,
@@ -70,10 +74,12 @@ export function calculateDesignPricingFromPreviews(
 
 export function calculateDesignPricingFromSides(
   sides: PreviewLike[],
-  basePrice: number | string | undefined
+  basePrice: number | string | undefined,
+  designType: DesignType | string | null | undefined = "printing"
 ): DesignPricingResult {
   return calculateDesignPricingFromPreviews(
     sides.map(side => side.preview),
-    basePrice
+    basePrice,
+    designType
   );
 }

@@ -434,6 +434,7 @@ class AdminOrdersController extends Controller
         $payload = is_array($item->design_payload) ? $item->design_payload : [];
         $previewSnapshot = data_get($payload, 'preview_snapshot');
         $previewByView = data_get($payload, 'preview_by_view');
+        $designType = $this->normalizeDesignType($item->design_type ?: data_get($payload, 'design_type'));
         $length = is_numeric($item->product?->length) ? (float) $item->product?->length : null;
         $width = is_numeric($item->product?->width) ? (float) $item->product?->width : null;
         $height = is_numeric($item->product?->height) ? (float) $item->product?->height : null;
@@ -445,6 +446,7 @@ class AdminOrdersController extends Controller
             'product_name' => $item->product_name,
             'size' => $item->size,
             'colour' => $item->colour,
+            'design_type' => $designType,
             'parcel_size_key' => $parcelSize['key'] ?? null,
             'parcel_size_label' => $parcelSize['label'] ?? null,
             'parcel_size_instructions' => $parcelSize['description'] ?? null,
@@ -616,5 +618,11 @@ class AdminOrdersController extends Controller
     private function countNewOrders(Collection $orders): int
     {
         return $orders->filter(fn (array $order) => !($order['archived_at'] ?? null) && (bool) ($order['is_new'] ?? false))->count();
+    }
+
+    private function normalizeDesignType(mixed $value): string
+    {
+        $normalized = strtolower(trim((string) $value));
+        return $normalized === 'embroidery' ? 'embroidery' : 'printing';
     }
 }

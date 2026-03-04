@@ -26,6 +26,7 @@ import type { PricePreviewSnapshot } from "@/Pages/Design/Canvas/Canvas";
 import { AdminOrdersProvider, useAdminOrders, type AdminOrderItem } from "@/Context/AdminOrdersContext";
 import { AdminOrderReturnsProvider, useAdminOrderReturns } from "@/Context/AdminOrderReturnsContext";
 import AdminOrderReturnsPanel from "@/Pages/Admin/Orders/ReturnsPanel";
+import { designTypeLabel, normalizeDesignType } from "@/Utils/designType";
 
 declare global {
   interface Window {
@@ -1056,7 +1057,7 @@ function OrdersWorkspace() {
                                     : "border-[#E1D4B8] bg-white text-[#7B6530] hover:bg-[#FFF8EA]"
                                 }`}
                               >
-                                {index + 1}. {item.product_name}
+                                {index + 1}. {item.product_name} • {designTypeLabel(normalizeDesignType(item.design_type))}
                               </button>
                             ))}
                           </div>
@@ -1069,7 +1070,7 @@ function OrdersWorkspace() {
                                 {allItemsDone && !showCompletedImages
                                   ? `All products have been marked as complete and made (${completedCount}/${productionItems.length})`
                                   : activeProductionItem
-                                    ? `${activeProductionItem.product_name} · Qty ${activeProductionItem.quantity}`
+                                    ? `${activeProductionItem.product_name} · Qty ${activeProductionItem.quantity} · ${designTypeLabel(normalizeDesignType(activeProductionItem.design_type))}`
                                     : "All products have been marked as complete and made"}
                               </p>
                               <div className="flex items-center gap-2">
@@ -1431,6 +1432,7 @@ function OrdersWorkspace() {
                                     {item.product_name} - {item.quantity}, {item.size || "N/A"}
                                   </p>
                                   <p className="mt-1 text-xs text-[#7D6A45]">Colour {item.colour || "N/A"}</p>
+                                  <p className="mt-1 text-xs text-[#7D6A45]">Design type: {designTypeLabel(normalizeDesignType(item.design_type))}</p>
                                 </div>
                               </div>
 
@@ -1508,6 +1510,7 @@ function OrdersWorkspace() {
                                     <div className="min-w-0">
                                       <p className="truncate text-sm font-semibold text-[#2D2515]">{item.product_name}</p>
                                       <p className="mt-1 text-xs text-[#7D6A45]">Qty {item.quantity} • Size {item.size || "N/A"} • Colour {item.colour || "N/A"}</p>
+                                      <p className="mt-1 text-xs font-semibold text-[#6A541F]">Design type: {designTypeLabel(normalizeDesignType(item.design_type))}</p>
                                     </div>
                                   </div>
                                   <p className="text-xs font-semibold text-[#7B6530]">{formatMoney(item.line_total)} line total</p>
@@ -1704,7 +1707,9 @@ function OrdersWorkspace() {
             <div className="mb-3 flex items-start justify-between gap-3">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#8A6D2B]">Review Design</p>
-                <h3 className="mt-1 text-base font-bold text-[#2D2515]">{reviewingItem.product_name}</h3>
+                <h3 className="mt-1 text-base font-bold text-[#2D2515]">
+                  {reviewingItem.product_name} • {designTypeLabel(normalizeDesignType(reviewingItem.design_type))}
+                </h3>
               </div>
               <button
                 type="button"

@@ -144,7 +144,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
         ) : (
           cart.map((item) => (
             <div
-              key={`${item.slug}-${item.colour}-${item.size}`}
+              key={`${item.slug}-${item.colour}-${item.size}-${item.designType}`}
               className={`rounded-xl border border-gray-200 bg-gray-50 p-3 transition-all duration-300 ${
                 isEditingBag ? "shadow-[0_8px_24px_rgba(198,167,94,0.15)]" : ""
               }`}
@@ -178,6 +178,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
                   <p className="text-xs text-gray-600">Qty: {item.quantity}</p>
                   <p className="text-xs text-gray-600">Size: {item.size}</p>
                   <p className="text-xs text-gray-600">Colour: {item.colour}</p>
+                  <p className="text-xs text-gray-600">Design: {item.designType === "embroidery" ? "Embroidery" : "Printing"}</p>
                 </div>
 
                 <p className="text-sm font-semibold text-gray-900">
@@ -194,7 +195,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
                   <div className="flex justify-end">
                     <button
                       type="button"
-                      onClick={() => removeFromCart(item.slug, item.colour, item.size)}
+                      onClick={() => removeFromCart(item.slug, item.colour, item.size, item.designType)}
                       className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-red-600 transition hover:border-red-300 hover:bg-red-50"
                     >
                       <FiTrash2 size={13} />

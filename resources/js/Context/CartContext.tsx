@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import type { PricePreviewSnapshot } from "@/Pages/Design/Canvas/Canvas";
+import { normalizeDesignType, type DesignType } from "@/Utils/designType";
 
 type PricePreviewByView = Partial<Record<"front" | "back" | "leftSleeve" | "rightSleeve", PricePreviewSnapshot>>;
 
@@ -12,6 +13,7 @@ export type CartItem = {
   quantity: number;
   colour: string;
   size: string;
+  designType: DesignType;
   image?: string;
   availableSizes: string[]; // sizes user can choose
   previewSnapshot?: PricePreviewSnapshot;
@@ -24,6 +26,7 @@ export type AddToCartPayload = {
   price: number | string;
   colour: string;
   size: string;
+  designType?: DesignType | string | null;
   image?: string;
   availableSizes?: string[];
   quantity?: number;
@@ -34,9 +37,9 @@ export type AddToCartPayload = {
 type CartContextType = {
   cart: CartItem[];
   addToCart: (item: AddToCartPayload) => void;
-  updateQuantity: (slug: string, colour: string, size: string, quantity: number) => void;
-  removeFromCart: (slug: string, colour: string, size: string) => void;
-  updateSize: (slug: string, colour: string, oldSize: string, newSize: string) => void;
+  updateQuantity: (slug: string, colour: string, size: string, quantity: number, designType?: DesignType | string | null) => void;
+  removeFromCart: (slug: string, colour: string, size: string, designType?: DesignType | string | null) => void;
+  updateSize: (slug: string, colour: string, oldSize: string, newSize: string, designType?: DesignType | string | null) => void;
   clearCart: () => void;
   totalPrice: number;
   showCart: boolean;
@@ -53,6 +56,13 @@ const normalizePrice = (p: number | string) => {
   if (typeof p === "string") return parseFloat(p.replace(/[^0-9.]/g, "")) || 0;
   return 0;
 };
+
+const toIdentityKey = (
+  slug: string,
+  colour: string,
+  size: string,
+  designType: DesignType | string | null | undefined
+) => `${slug}__${colour}__${size}__${normalizeDesignType(designType)}`;
 
 const sanitizeCart = (value: unknown): CartItem[] => {
   if (!Array.isArray(value)) return [];
@@ -77,6 +87,7 @@ const sanitizeCart = (value: unknown): CartItem[] => {
         ...(entry as CartItem),
         price: normalizePrice(entry.price as number | string),
         quantity: nextQuantity,
+        designType: normalizeDesignType(entry.designType),
         availableSizes: nextAvailableSizes.length ? nextAvailableSizes : [String(entry.size)],
       };
     });
@@ -124,61 +135,81 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     const price = normalizePrice(item.price);
     const availableSizes = item.availableSizes || [item.size];
     const quantityToAdd = Math.max(1, Math.floor(item.quantity ?? 1));
+    const designType = normalizeDesignType(item.designType);
+    const itemKey = toIdentityKey(item.slug, item.colour, item.size, designType);
 
     setCart((prev) => {
       const existing = prev.find(
-        (i) => i.slug === item.slug && i.colour === item.colour && i.size === item.size
+        (i) => toIdentityKey(i.slug, i.colour, i.size, i.designType) === itemKey
       );
       if (existing) {
         return prev.map((i) =>
-          i.slug === item.slug && i.colour === item.colour && i.size === item.size
+          toIdentityKey(i.slug, i.colour, i.size, i.designType) === itemKey
             ? { ...i, quantity: i.quantity + quantityToAdd }
             : i
         );
       }
-      return [...prev, { ...item, price, quantity: quantityToAdd, availableSizes }];
+      return [...prev, { ...item, designType, price, quantity: quantityToAdd, availableSizes }];
     });
     openCart();
   };
 
-  const updateQuantity = (slug: string, colour: string, size: string, quantity: number) => {
+  const updateQuantity = (
+    slug: string,
+    colour: string,
+    size: string,
+    quantity: number,
+    designType?: DesignType | string | null
+  ) => {
+    const targetKey = toIdentityKey(slug, colour, size, designType);
     setCart((prev) =>
       quantity <= 0
-        ? prev.filter((i) => !(i.slug === slug && i.colour === colour && i.size === size))
+        ? prev.filter((i) => toIdentityKey(i.slug, i.colour, i.size, i.designType) !== targetKey)
         : prev.map((i) =>
-            i.slug === slug && i.colour === colour && i.size === size ? { ...i, quantity } : i
+            toIdentityKey(i.slug, i.colour, i.size, i.designType) === targetKey ? { ...i, quantity } : i
           )
     );
   };
 
-  const removeFromCart = (slug: string, colour: string, size: string) => {
+  const removeFromCart = (slug: string, colour: string, size: string, designType?: DesignType | string | null) => {
+    const targetKey = toIdentityKey(slug, colour, size, designType);
     setCart((prev) =>
-      prev.filter((i) => !(i.slug === slug && i.colour === colour && i.size === size))
+      prev.filter((i) => toIdentityKey(i.slug, i.colour, i.size, i.designType) !== targetKey)
     );
   };
 
-  const updateSize = (slug: string, colour: string, oldSize: string, newSize: string) => {
+  const updateSize = (
+    slug: string,
+    colour: string,
+    oldSize: string,
+    newSize: string,
+    designType?: DesignType | string | null
+  ) => {
+    const normalizedDesignType = normalizeDesignType(designType);
+    const oldKey = toIdentityKey(slug, colour, oldSize, normalizedDesignType);
+    const newKey = toIdentityKey(slug, colour, newSize, normalizedDesignType);
+
     setCart((prev) => {
       const exists = prev.find(
-        (i) => i.slug === slug && i.colour === colour && i.size === newSize
+        (i) => toIdentityKey(i.slug, i.colour, i.size, i.designType) === newKey
       );
       if (exists) {
         // merge quantities if new size already exists
         return prev
           .map((i) =>
-            i.slug === slug && i.colour === colour && i.size === oldSize
+            toIdentityKey(i.slug, i.colour, i.size, i.designType) === oldKey
               ? { ...i, quantity: 0 } // will remove later
               : i
           )
           .filter((i) => i.quantity > 0)
           .map((i) =>
-            i.slug === slug && i.colour === colour && i.size === newSize
-              ? { ...i, quantity: i.quantity + prev.find((x) => x.slug === slug && x.colour === colour && x.size === oldSize)?.quantity! }
+            toIdentityKey(i.slug, i.colour, i.size, i.designType) === newKey
+              ? { ...i, quantity: i.quantity + prev.find((x) => toIdentityKey(x.slug, x.colour, x.size, x.designType) === oldKey)?.quantity! }
               : i
           );
       } else {
         return prev.map((i) =>
-          i.slug === slug && i.colour === colour && i.size === oldSize
+          toIdentityKey(i.slug, i.colour, i.size, i.designType) === oldKey
             ? { ...i, size: newSize }
             : i
         );

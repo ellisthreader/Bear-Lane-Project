@@ -123,13 +123,13 @@ export default function AddressBookSection() {
                 <Autocomplete onLoad={setAutocomplete} onPlaceChanged={handleAddressPick}>
                   <input
                     className={`w-full ${getInputClass("address_line1")}`}
-                    placeholder="Address line 1*"
+                    placeholder="Add your postcode or address *"
                     value={addressForm.address_line1}
                     onChange={(e) => setAddressForm((p) => ({ ...p, address_line1: e.target.value }))}
                   />
                 </Autocomplete>
               ) : (
-                <input className={`w-full ${getInputClass("address_line1")}`} placeholder="Address line 1*" value={addressForm.address_line1} onChange={(e) => setAddressForm((p) => ({ ...p, address_line1: e.target.value }))} />
+                <input className={`w-full ${getInputClass("address_line1")}`} placeholder="Add your postcode or address *" value={addressForm.address_line1} onChange={(e) => setAddressForm((p) => ({ ...p, address_line1: e.target.value }))} />
               )}
               {addressFieldErrors.address_line1 && <p className="mt-1 text-sm text-red-600">{addressFieldErrors.address_line1}</p>}
             </div>

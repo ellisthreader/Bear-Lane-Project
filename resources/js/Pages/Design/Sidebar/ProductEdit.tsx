@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { Star } from "lucide-react";
+import { DESIGN_TYPE_OPTIONS, normalizeDesignType, type DesignType } from "@/Utils/designType";
 
 type Variant = {
   id?: number | string;
@@ -49,15 +50,19 @@ export default function ProductEdit({
   product,
   selectedColour,
   selectedSize,
+  selectedDesignType,
   onColourChange,
   onSizeChange,
+  onDesignTypeChange,
   onOpenChangeProductModal, // ✅ NEW PROP
 }: {
   product: any;
   selectedColour: string | null;
   selectedSize: string | null;
+  selectedDesignType: DesignType;
   onColourChange: (colour: string) => void;
   onSizeChange: (size: string) => void;
+  onDesignTypeChange: (designType: DesignType) => void;
   onOpenChangeProductModal: () => void; // ✅ NEW PROP TYPE
 }) {
   // ---------- Build variants grouped by colour ----------
@@ -116,6 +121,7 @@ export default function ProductEdit({
   // ---------- CLICK HANDLERS ----------
   const handleColourClick = (colour: string) => onColourChange(colour);
   const handleSizeClick = (size: string) => onSizeChange(size);
+  const handleDesignTypeClick = (designType: DesignType) => onDesignTypeChange(designType);
 
   // ---------- OPEN MODAL ----------
   const handleChangeProduct = () => {
@@ -196,6 +202,35 @@ export default function ProductEdit({
                   }`}
               >
                 {s}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Design Type */}
+      <div className="mt-6">
+        <h2 className="text-lg font-semibold mb-2 text-gray-700">Design Type <span className="text-red-600">*</span></h2>
+        <div className="space-y-2">
+          {DESIGN_TYPE_OPTIONS.map((option) => {
+            const normalized = normalizeDesignType(selectedDesignType);
+            const isSelected = normalized === option.value;
+
+            return (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => handleDesignTypeClick(option.value)}
+                className={`w-full rounded-xl border px-3 py-2 text-left transition ${
+                  isSelected
+                    ? "border-[#C6A75E] bg-[#FFF7E6] shadow-sm"
+                    : "border-gray-300 bg-white hover:border-[#C6A75E]/70"
+                }`}
+              >
+                <p className={`text-sm font-semibold ${isSelected ? "text-[#7B6530]" : "text-gray-800"}`}>
+                  {option.label}
+                </p>
+                <p className="mt-0.5 text-xs text-gray-600">{option.helper}</p>
               </button>
             );
           })}

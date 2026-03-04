@@ -1,16 +1,9 @@
 import { ClipartCategoryType } from "./types";
 
-/**
- * 🔹 VITE GLOB PATH MUST MATCH EXACT FOLDER STRUCTURE + CASE
- * Your folder: resources/js/assets/clipart
- * Current file: resources/js/Pages/Design/Sidebar/ClipartSideBar/clipartCategories.ts
- * So we go up 3 levels: ../../../assets/clipart/**
- */
-
 const allClipartModules = import.meta.glob(
-  "/resources/js/assets/clipart/**/*.{svg,png}",
-  { eager: true }
-) as Record<string, { default: string }>;
+  "../../../../../assets/clipart/**/*.{svg,png}",
+  { eager: true, import: "default" }
+) as Record<string, string>;
 
 
 /**
@@ -23,7 +16,7 @@ function loadCategory(
 ): ClipartCategoryType {
   const items = Object.entries(allClipartModules)
     .filter(([filePath]) => filePath.includes(`/clipart/${folder}/`))
-    .map(([filePath, mod]) => {
+    .map(([filePath, url]) => {
       const fileName = filePath.split("/").pop() ?? "clipart";
 
       const label = fileName
@@ -32,10 +25,11 @@ function loadCategory(
 
       return {
         id: filePath,
-        src: mod.default,
+        src: url,
         label, // always a string ✅
       };
-    });
+    })
+    .filter((item) => Boolean(item.src));
 
 
   return {

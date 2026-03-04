@@ -4,7 +4,10 @@ import { Transition } from "@headlessui/react";
 import NavMenu from "@/Components/Menu/NavMenu";
 
 export default function VerifyEmail() {
-  const { props } = usePage<{ auth?: { user?: { email_verified_at?: string | null } } }>();
+  const { props } = usePage<{
+    auth?: { user?: { email_verified_at?: string | null } };
+    flash?: { verified?: number | string | null; status?: string | null };
+  }>();
   const isAlreadyVerified = Boolean(props?.auth?.user?.email_verified_at);
   const [message, setMessage] = useState<string | null>(null);
   const [isCooldown, setIsCooldown] = useState(false);
@@ -17,8 +20,17 @@ export default function VerifyEmail() {
 
   useEffect(() => {
     if (!isAlreadyVerified) return;
-    router.visit("/profile");
+    setMessage("Email verified. Redirecting...");
+    const timeoutId = window.setTimeout(() => {
+      window.location.assign("/profile");
+    }, 900);
+    return () => window.clearTimeout(timeoutId);
   }, [isAlreadyVerified]);
+
+  useEffect(() => {
+    if (!props?.flash?.verified) return;
+    setMessage("Email verified.");
+  }, [props?.flash?.verified]);
 
   useEffect(() => {
     let cancelled = false;
@@ -34,7 +46,12 @@ export default function VerifyEmail() {
 
         const data = await response.json();
         if (!cancelled && data?.verified) {
-          router.visit("/profile");
+          setMessage("Email verified. Redirecting...");
+          window.setTimeout(() => {
+            if (!cancelled) {
+              window.location.assign("/profile");
+            }
+          }, 900);
         }
       } catch {
         // Silent fail: we'll retry on next interval/focus.
@@ -173,7 +190,7 @@ export default function VerifyEmail() {
               <div
                 className={`mt-6 px-6 py-4 rounded-2xl text-sm font-medium border
                   ${
-                    message?.includes("successfully")
+                    message?.toLowerCase().includes("successfully") || message?.toLowerCase().includes("verified")
                       ? "bg-green-50 text-green-700 border-green-200"
                       : "bg-yellow-50 text-yellow-700 border-yellow-200"
                   }

@@ -55,6 +55,9 @@ import { previewSnapshotSignature } from "./utils/previewSnapshotSignature";
 import { buildPricePanelSides } from "./utils/pricePanelSides";
 import { captureCanvasCompositePng } from "./utils/captureCanvasCompositePng";
 import { renderSnapshotToPng } from "./utils/renderSnapshotToPng";
+import { normalizeDesignType, type DesignType } from "@/Utils/designType";
+import { moderateDesignImage, moderateDesignText } from "./utils/moderationClient";
+import { showError } from "@/Utils/toastHelpers";
 
 type RestrictedBoxRatio = { left: number; top: number; width: number; height: number };
 type ImageNaturalSize = { width: number; height: number };
@@ -102,6 +105,7 @@ const isNaturalSizeValid = (size: ImageNaturalSize | undefined): size is ImageNa
       product,
       selectedColour: propColour,
       selectedSize: propSize,
+      selectedDesignType: propDesignType,
       onResizeTextCommit,
       savedDesigns: propSavedDesigns = [],
       initialSavedDesign = null,
@@ -526,6 +530,7 @@ const isNaturalSizeValid = (size: ImageNaturalSize | undefined): size is ImageNa
           currentViewKey,
           selectedColour,
           selectedSize,
+          selectedDesignType,
           baseViewImages: viewImages,
           previewByView: previewByViewForSave,
           compositePngByView,
@@ -635,12 +640,14 @@ const isNaturalSizeValid = (size: ImageNaturalSize | undefined): size is ImageNa
     quantity,
     sizeBreakdown,
     unitPrice,
+    designType,
     previewSnapshot,
     previewByView,
   }: {
     quantity: number;
     sizeBreakdown: Record<string, number>;
     unitPrice: number;
+    designType: DesignType;
     previewSnapshot?: PricePreviewSnapshot;
     previewByView?: Partial<Record<ViewKey, PricePreviewSnapshot>>;
   }) => {
@@ -658,6 +665,7 @@ const isNaturalSizeValid = (size: ImageNaturalSize | undefined): size is ImageNa
           image: viewImages.front,
           availableSizes: safeProduct.sizes ?? [],
           quantity: qty,
+          designType,
           previewSnapshot,
           previewByView,
         });
@@ -672,6 +680,7 @@ const isNaturalSizeValid = (size: ImageNaturalSize | undefined): size is ImageNa
         image: viewImages.front,
         availableSizes: safeProduct.sizes ?? [],
         quantity: Math.max(quantity, 1),
+        designType,
         previewSnapshot,
         previewByView,
       });
@@ -684,16 +693,18 @@ const isNaturalSizeValid = (size: ImageNaturalSize | undefined): size is ImageNa
     quantity,
     sizeBreakdown,
     unitPrice,
+    designType,
     previewSnapshot,
     previewByView,
   }: {
     quantity: number;
     sizeBreakdown: Record<string, number>;
     unitPrice: number;
+    designType: DesignType;
     previewSnapshot?: PricePreviewSnapshot;
     previewByView?: Partial<Record<ViewKey, PricePreviewSnapshot>>;
   }) => {
-    handleAddToCartFromPrice({ quantity, sizeBreakdown, unitPrice, previewSnapshot, previewByView });
+    handleAddToCartFromPrice({ quantity, sizeBreakdown, unitPrice, designType, previewSnapshot, previewByView });
     router.get("/checkout");
   };
 
@@ -1206,6 +1217,9 @@ const pricePanelSides = useMemo(
     const uniqueColours = Object.keys(variantsByColour);
     const [selectedColour, setSelectedColour] = useState<string | null>(null);
     const [selectedSize, setSelectedSize] = useState<string | null>(null);
+    const [selectedDesignType, setSelectedDesignType] = useState<DesignType>(
+      normalizeDesignType(propDesignType)
+    );
 
 const pricePanelAvailableSizes = useMemo(
   () =>
@@ -1451,6 +1465,10 @@ const pricePanelAvailableSizes = useMemo(
       setSelectedSize(payload.selectedSize);
     }
 
+    if (payload.selectedDesignType !== undefined) {
+      setSelectedDesignType(normalizeDesignType(payload.selectedDesignType));
+    }
+
     hasAppliedInitialSavedDesign.current = true;
   }, [initialSavedDesign]);
 
@@ -1460,7 +1478,7 @@ const pricePanelAvailableSizes = useMemo(
   useEffect(() => {
     if (!product) return;
 
-    const incomingSelectionKey = `${String(product?.id ?? "")}|${String(propColour ?? "")}|${String(propSize ?? "")}`;
+    const incomingSelectionKey = `${String(product?.id ?? "")}|${String(propColour ?? "")}|${String(propSize ?? "")}|${String(propDesignType ?? "")}`;
     if (lastAppliedPropSelectionKeyRef.current === incomingSelectionKey) {
       return;
     }
@@ -1491,8 +1509,13 @@ const pricePanelAvailableSizes = useMemo(
       setSelectedSize(matchedSize);
     }
 
+    const savedDesignType = (initialSavedDesign as SavedDesign | null)?.payload?.selectedDesignType;
+    if (savedDesignType === undefined) {
+      setSelectedDesignType(normalizeDesignType(propDesignType));
+    }
+
     lastAppliedPropSelectionKeyRef.current = incomingSelectionKey;
-  }, [product, propColour, propSize, safeProduct.sizes, uniqueColours, variantsByColour]);
+  }, [product, propColour, propSize, propDesignType, safeProduct.sizes, uniqueColours, variantsByColour, initialSavedDesign]);
 
   useEffect(() => {
     if (selectedColour || uniqueColours.length === 0) return;
@@ -1651,12 +1674,13 @@ useEffect(() => {
       sizes: structuredClone(sizes),
       selectedColour,
       selectedSize,
+      selectedDesignType,
     };
 
     setHistory([snapshot]);
     setHistoryIndex(0);
     hasSeededHistory.current = true;
-  }, [currentProduct, selectedColour]);
+  }, [currentProduct, selectedColour, selectedDesignType]);
 
   // ---------- PRODUCT CHANGES ----------
   const handleColourChange = (colour: string) => {
@@ -1708,7 +1732,7 @@ useEffect(() => {
   const handleProductSelect = (product: Product) => {
     router.get(
       route("design.show", { slug: product.slug }), // ✅ must use slug
-      {},
+      { designType: selectedDesignType },
       { preserveState: false } // can be true if you want smoother Inertia reload
     );
   };
@@ -1719,7 +1743,7 @@ useEffect(() => {
 
     router.get(
       route("design.show", { slug: savedDesign.product.slug }),
-      { savedDesign: savedDesign.id },
+      { savedDesign: savedDesign.id, designType: selectedDesignType },
       { preserveState: false }
     );
   };
@@ -1910,6 +1934,22 @@ const handleChangeClipart = () => {
 };
 
 // Upload Image
+const handleValidateUploadImage = async (file: File) => {
+  try {
+    const moderation = await moderateDesignImage(file);
+    if (!moderation.allowed) {
+      showError(moderation.message ?? "Image contains restricted content. Please upload a different image.");
+    }
+    return moderation;
+  } catch (error) {
+    showError("Image moderation is temporarily unavailable. Please try again shortly.");
+    return {
+      allowed: false,
+      message: "Image moderation is temporarily unavailable. Please try again shortly.",
+    };
+  }
+};
+
 const handleUpload = (url: string) => {
   const uid = crypto.randomUUID();
   const defaultSize = { w: 150, h: 150 };
@@ -2094,8 +2134,10 @@ const renderActiveTab = () => {
           product={safeProduct}
           selectedColour={selectedColour}
           selectedSize={selectedSize}
+          selectedDesignType={selectedDesignType}
           onColourChange={handleColourChange}
           onSizeChange={handleSizeChange}
+          onDesignTypeChange={setSelectedDesignType}
           onOpenChangeProductModal={() =>
             setIsChangeProductModalOpen(true)
           }
@@ -2107,6 +2149,7 @@ const renderActiveTab = () => {
         <UploadSidebar
           canvasRef={canvasRef}
           onUpload={handleUpload}
+          onValidateUpload={handleValidateUploadImage}
           recentImages={uploadedImages}
           selectedImage={selectedUploadedImage}
           onSelectImage={setSelectedUploadedImageWithLog}
@@ -2128,7 +2171,20 @@ const renderActiveTab = () => {
   if (!selectedText || !currentImageState[selectedText]) {
     return (
       <AddText
-        onAddText={(layer) => {
+        onAddText={async (layer) => {
+          let moderation;
+          try {
+            moderation = await moderateDesignText(layer.text);
+          } catch {
+            showError("Text moderation is temporarily unavailable. Please try again shortly.");
+            return false;
+          }
+          if (!moderation.allowed) {
+            showError(moderation.message ?? "Text contains restricted content and cannot be used.");
+            return false;
+          }
+
+          const nextSize = layer.size ?? { w: 0, h: 0 };
           updateCurrentImageState({
             [layer.id]: {
               url: "",
@@ -2136,7 +2192,7 @@ const renderActiveTab = () => {
               text: layer.text,
               rotation: 0,
               flip: "none",
-              size: { w: 0, h: 0 },
+              size: nextSize,
               fontFamily: layer.font,
               color: layer.color,
               borderColor: layer.borderColor,
@@ -2148,7 +2204,7 @@ const renderActiveTab = () => {
                 url: "",
                 rotation: 0,
                 flip: "none",
-                size: { w: 0, h: 0 },
+                size: nextSize,
                 text: layer.text,
                 fontFamily: layer.font,
                 fontSize: layer.fontSize,
@@ -2159,9 +2215,13 @@ const renderActiveTab = () => {
               },
             },
           });
+          if (nextSize.w > 0 && nextSize.h > 0) {
+            setSizes((prev) => ({ ...prev, [layer.id]: nextSize }));
+          }
 
           setSelectedText(layer.id);
           setSidebarStack(["text"]);
+          return true;
         }}
       />
     );
@@ -2180,6 +2240,50 @@ const renderActiveTab = () => {
     <TextProperties
       textValue={textLayer.text ?? ""}
       onTextChange={(val) => updateTextLayer(selectedText, { text: val })}
+      onTextCommit={async (value) => {
+        const cleanValue = value.trim();
+        if (cleanValue === "") {
+          updateCurrentImageState((prev) => ({
+            ...prev,
+            [selectedText]: {
+              ...prev[selectedText],
+              original: {
+                ...(prev[selectedText]?.original ?? {}),
+                text: "",
+              },
+            },
+          }));
+          return;
+        }
+
+        let moderation;
+        try {
+          moderation = await moderateDesignText(value);
+        } catch {
+          showError("Text moderation is temporarily unavailable. Please try again shortly.");
+          return;
+        }
+        if (!moderation.allowed) {
+          showError(moderation.message ?? "Text contains restricted content and cannot be used.");
+          const fallbackText = currentImageState[selectedText]?.original?.text ?? "";
+          updateTextLayer(selectedText, {
+            text: fallbackText,
+            renderKey: crypto.randomUUID(),
+          });
+          return;
+        }
+
+        updateCurrentImageState((prev) => ({
+          ...prev,
+          [selectedText]: {
+            ...prev[selectedText],
+            original: {
+              ...(prev[selectedText]?.original ?? {}),
+              text: value,
+            },
+          },
+        }));
+      }}
       fontFamily={textLayer.fontFamily ?? "Arial"}
       onFontChange={(val) => updateTextLayer(selectedText, { fontFamily: val })}
       color={textLayer.color ?? "#000000"}
@@ -2411,6 +2515,8 @@ const designPageContextValue = {
       availableSizes={pricePanelAvailableSizes}
       selectedSize={selectedSize}
       onSizeChange={handleSizeChange}
+      selectedDesignType={selectedDesignType}
+      onDesignTypeChange={setSelectedDesignType}
       onAddToCart={handleAddToCartFromPrice}
       onBuyNow={handleBuyNowFromPrice}
     />

@@ -35,6 +35,7 @@ type UploadSidebarProps = {
     React.SetStateAction<Record<string, ImageState>>
   >;
   onUpload: (url: string) => void;
+  onValidateUpload?: (file: File) => Promise<{ allowed: boolean; message?: string }>;
   recentImages?: string[];
   onSelectImage?: (url: string | null) => void;
 
@@ -58,6 +59,7 @@ export default function UploadSidebar({
   uploadedImages,
   setImageState,
   onUpload,
+  onValidateUpload,
   recentImages = [],
   onSelectImage,
   onDuplicateUploadedImage,
@@ -183,6 +185,7 @@ if (imagePropertiesOpen && layerExists && selectedImage) {
   return (
     <UploadPanel
       onUpload={onUpload}
+      onValidateUpload={onValidateUpload}
       recentImages={uploadOnlyImages}
       imageState={imageState}
       onSelectImage={handleSelectImage}

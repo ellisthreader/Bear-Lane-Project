@@ -21,6 +21,7 @@ class DesignController extends Controller
     {
         $selectedColour = $request->query('colour');
         $selectedSize   = $request->query('size');
+        $selectedDesignType = $request->query('designType');
         $savedDesignId  = $request->query('savedDesign');
 
         // Fetch product by slug instead of default ID binding
@@ -32,6 +33,7 @@ class DesignController extends Controller
             'slug'   => $slug,
             'colour' => $selectedColour,
             'size'   => $selectedSize,
+            'design_type' => $selectedDesignType,
         ]);
 
         // Build colour products
@@ -157,6 +159,7 @@ class DesignController extends Controller
             'product'         => $product,
             'selectedColour'  => $selectedColour,
             'selectedSize'    => $selectedSize,
+            'selectedDesignType' => $selectedDesignType,
             'adultCategories' => $adultCategories,
             'kidsCategories'  => $kidsCategories,
             'relatedProducts' => $relatedProducts,

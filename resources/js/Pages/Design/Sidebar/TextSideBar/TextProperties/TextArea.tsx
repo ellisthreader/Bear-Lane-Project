@@ -7,9 +7,10 @@ const MAX_TEXT_LENGTH = 65;
 type Props = {
   textValue: string;
   onTextChange: (v: string) => void;
+  onTextCommit?: (v: string) => void | Promise<void>;
 };
 
-export default function TextArea({ textValue, onTextChange }: Props) {
+export default function TextArea({ textValue, onTextChange, onTextCommit }: Props) {
   return (
     <div className="space-y-2">
       <label className="text-xs font-medium text-gray-500">Text</label>
@@ -20,6 +21,9 @@ export default function TextArea({ textValue, onTextChange }: Props) {
         onChange={(e) =>
           onTextChange(e.target.value.slice(0, MAX_TEXT_LENGTH))
         }
+        onBlur={(e) => {
+          void onTextCommit?.(e.target.value.slice(0, MAX_TEXT_LENGTH));
+        }}
         className="w-full rounded-xl border border-gray-200 bg-white p-3 shadow-sm"
         rows={2}
       />

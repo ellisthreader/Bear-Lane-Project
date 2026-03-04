@@ -363,6 +363,7 @@ class CheckoutController extends Controller
             }
 
             $supportsDesignPayload = Schema::hasColumn('order_items', 'design_payload');
+            $supportsDesignType = Schema::hasColumn('order_items', 'design_type');
 
             // Save items
             foreach ($data['items'] as $itemPayload) {
@@ -398,11 +399,16 @@ class CheckoutController extends Controller
                 $lineTotal = isset($itemPayload['line_total']) && is_numeric($itemPayload['line_total'])
                     ? floatval($itemPayload['line_total'])
                     : $unitPrice * $quantity;
+                $normalizedDesignType = $this->normalizeDesignType(data_get($itemPayload, 'design_type'));
                 $designPayload = [
+                    'design_type' => $normalizedDesignType,
                     'preview_snapshot' => data_get($itemPayload, 'preview_snapshot'),
                     'preview_by_view' => data_get($itemPayload, 'preview_by_view'),
                 ];
-                $hasDesignPayload = data_get($designPayload, 'preview_snapshot') || data_get($designPayload, 'preview_by_view');
+                $hasDesignPayload =
+                    (!$supportsDesignType && data_get($designPayload, 'design_type'))
+                    || data_get($designPayload, 'preview_snapshot')
+                    || data_get($designPayload, 'preview_by_view');
 
                 $orderItemData = [
                     'order_id' => $order->id,
@@ -415,6 +421,10 @@ class CheckoutController extends Controller
                     'unit_price' => $unitPrice,
                     'line_total' => $lineTotal,
                 ];
+
+                if ($supportsDesignType) {
+                    $orderItemData['design_type'] = $normalizedDesignType;
+                }
 
                 if ($supportsDesignPayload) {
                     $orderItemData['design_payload'] = $hasDesignPayload ? $designPayload : null;
@@ -497,6 +507,7 @@ class CheckoutController extends Controller
                 'product_name' => $prod->name ?? $item->product_name,
                 'size' => $item->size,
                 'colour' => $item->colour,
+                'design_type' => $this->normalizeDesignType($item->design_type ?: data_get($item->design_payload, 'design_type')),
                 'image_url' => $image,
                 'quantity' => $item->quantity,
                 'unit_price' => $item->unit_price,
@@ -706,6 +717,7 @@ class CheckoutController extends Controller
                 'product_name' => $prod->name ?? $item->product_name,
                 'size' => $item->size,
                 'colour' => $item->colour,
+                'design_type' => $this->normalizeDesignType($item->design_type ?: data_get($item->design_payload, 'design_type')),
                 'image_url' => $image,
                 'quantity' => $item->quantity,
                 'unit_price' => $item->unit_price,
@@ -731,6 +743,12 @@ class CheckoutController extends Controller
         }
 
         return 'https://parcelsapp.com/en/tracking/' . urlencode($tracking);
+    }
+
+    private function normalizeDesignType(mixed $value): string
+    {
+        $normalized = strtolower(trim((string) $value));
+        return $normalized === 'embroidery' ? 'embroidery' : 'printing';
     }
 
     private function buildReturnEligibility(Order $order): array

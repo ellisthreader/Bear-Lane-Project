@@ -5,12 +5,14 @@ import { CheckCircle2, FileText, Package, Truck, CreditCard, MapPin } from "luci
 import NavMenu from "@/Components/Menu/NavMenu";
 import { useCart } from "@/Context/CartContext";
 import useAnalyticsConsent from "@/Utils/useAnalyticsConsent";
+import { designTypeLabel, normalizeDesignType } from "@/Utils/designType";
 
 type OrderItem = {
   id: number;
   product_brand?: string | null;
   product_name: string;
   image_url?: string | null;
+  design_type?: "printing" | "embroidery" | string | null;
   quantity: number;
   unit_price: number;
   line_total: number;
@@ -388,6 +390,9 @@ export default function OrderConfirmed() {
                         {item.product_brand && <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">{item.product_brand}</p>}
                         <p className="truncate text-sm font-semibold text-gray-900">{item.product_name}</p>
                         <p className="text-xs text-gray-600">Qty {item.quantity}</p>
+                        <p className="text-xs font-semibold text-[#7B6530]">
+                          Design: {designTypeLabel(normalizeDesignType(item.design_type))}
+                        </p>
                       </div>
                     </div>
                     <p className="text-sm font-semibold">{formatMoney(item.line_total)}</p>

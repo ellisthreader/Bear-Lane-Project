@@ -70,6 +70,7 @@ export type SavedDesignItem = {
     currentViewKey?: "front" | "back" | "leftSleeve" | "rightSleeve";
     selectedColour?: string | null;
     selectedSize?: string | null;
+    selectedDesignType?: "printing" | "embroidery" | null;
     viewImageStates?: Record<string, Record<string, any>>;
     baseViewImages?: Partial<Record<"front" | "back" | "leftSleeve" | "rightSleeve", string>>;
     compositePngByView?: Partial<Record<"front" | "back" | "leftSleeve" | "rightSleeve", string>>;

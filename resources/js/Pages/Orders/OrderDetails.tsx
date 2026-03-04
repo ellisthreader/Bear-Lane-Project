@@ -2,6 +2,7 @@ import React from "react";
 import { usePage, Link, Head } from "@inertiajs/react";
 import { Check, CircleHelp, ExternalLink, FileText, MessageCircle, Receipt, Truck } from "lucide-react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
+import { designTypeLabel, normalizeDesignType } from "@/Utils/designType";
 
 type OrderItem = {
   id: number;
@@ -9,6 +10,7 @@ type OrderItem = {
   quantity?: number;
   size?: string | null;
   colour?: string | null;
+  design_type?: "printing" | "embroidery" | string | null;
   unit_price?: number;
   line_total?: number;
   image_url?: string | null;
@@ -211,6 +213,9 @@ export default function OrderDetails() {
                           Size: {valueOrFallback(item.size, "N/A")} · Quantity: {Number(item.quantity || 0)}
                         </p>
                         <p className="mt-0.5 text-xs text-[#7F704F]">Colour: {valueOrFallback(item.colour, "N/A")}</p>
+                        <p className="mt-0.5 text-xs font-semibold text-[#6A541F]">
+                          Design type: {designTypeLabel(normalizeDesignType(item.design_type))}
+                        </p>
                       </div>
                       <div className="text-right">
                         <p className="text-sm font-semibold text-[#6E5A2E]">£{Number(item.line_total || 0).toFixed(2)}</p>

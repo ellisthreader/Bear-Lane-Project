@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { router } from "@inertiajs/react";
 import { FcGoogle } from "react-icons/fc";
 import { FaFacebookF } from "react-icons/fa";
@@ -15,6 +15,7 @@ export default function AuthPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [verificationNotice, setVerificationNotice] = useState<string | null>(null);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
 
   const gold = "#C6A75E";
@@ -64,6 +65,15 @@ export default function AuthPage() {
   const handleGoogleLogin = () => (window.location.href = "/auth/google");
   const handleFacebookLogin = () => (window.location.href = "/auth/facebook");
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("email_verified") !== "1") return;
+
+    setVerificationNotice("Email verified. You can now sign in.");
+    window.history.replaceState({}, "", window.location.pathname);
+  }, []);
+
   return (
     <div className="min-h-screen flex flex-col overflow-hidden bg-white">
       <NavMenu />
@@ -93,6 +103,12 @@ export default function AuthPage() {
               </div>
             ) : (
               <>
+                {verificationNotice && (
+                  <div className="w-full rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-medium text-green-700">
+                    {verificationNotice}
+                  </div>
+                )}
+
                 {/* Email Step */}
                 {step === "email" && (
                   <div className="w-full space-y-6 animate-fadeIn">

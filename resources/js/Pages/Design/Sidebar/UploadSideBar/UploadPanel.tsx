@@ -7,6 +7,7 @@ import ImagePreviewModal from "../../Components/ImagePreviewModal";
 
 type StencilizeUIProps = {
   onUpload: (url: string) => void;
+  onValidateUpload?: (file: File) => Promise<{ allowed: boolean; message?: string }>;
 
   /** UIDs, NOT URLs */
   recentImages?: string[];
@@ -19,6 +20,7 @@ type StencilizeUIProps = {
 
 export default function StencilizeUI({
   onUpload,
+  onValidateUpload,
   recentImages = [],
   imageState,
   onSelectImage,
@@ -63,6 +65,14 @@ export default function StencilizeUI({
   /* ---------------- Upload ---------------- */
   const handleFile = async (file?: File) => {
     if (!file || loading) return;
+
+    if (onValidateUpload) {
+      const moderation = await onValidateUpload(file);
+      if (!moderation.allowed) {
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        return;
+      }
+    }
 
     resetState();
 
@@ -110,7 +120,7 @@ export default function StencilizeUI({
   /* ---------------- UI ---------------- */
   return (
     <>
-      <div className="p-6 space-y-6 h-full overflow-y-auto rounded-xl border border-[#E7D9B9] bg-gradient-to-b from-[#FFFEFB] to-[#F9F5EA]">
+      <div className="p-6 space-y-6 h-full overflow-y-auto">
         {/* Browse Button */}
         <label className="w-full flex items-center gap-3 cursor-pointer bg-white hover:bg-[#FFF7E6] text-[#2F2617] py-3 px-4 rounded-lg border border-[#DCC89A] transition">
           <UploadCloud size={22} />

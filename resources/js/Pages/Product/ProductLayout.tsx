@@ -14,6 +14,7 @@ import ProductRailSection from "./components/ProductRailSection";
 import { ProductQuoteProvider } from "./QuoteModal/ProductQuoteContext";
 import GetQuoteButton from "./QuoteModal/GetQuoteButton";
 import ProductQuoteModal from "./QuoteModal/ProductQuoteModal";
+import { DESIGN_TYPE_OPTIONS, designTypeLabel, normalizeDesignType, type DesignType } from "@/Utils/designType";
 
 const STANDARD_SIZES = ["XS", "S", "M", "L", "XL"] as const;
 const COMMON_COLOUR_OPTIONS = [
@@ -439,6 +440,11 @@ export default function ProductLayout({ product, recommendedProducts = [], admin
   const [selectedColour, setSelectedColour] = useState(effectiveColourProducts[0]?.colour ?? "");
   const [currentVariant, setCurrentVariant] = useState<ColourProduct | null>(effectiveColourProducts[0] ?? null);
   const [selectedSize, setSelectedSize] = useState<string>("M");
+  const [selectedDesignType, setSelectedDesignType] = useState<DesignType>(() => {
+    if (typeof window === "undefined") return "printing";
+    const fromQuery = new URLSearchParams(window.location.search).get("designType");
+    return normalizeDesignType(fromQuery);
+  });
   const [showSizeError, setShowSizeError] = useState(false);
   const [displayImages, setDisplayImages] = useState<string[]>(
     effectiveColourProducts[0]?.images ?? effectiveProductImages ?? []
@@ -564,6 +570,7 @@ export default function ProductLayout({ product, recommendedProducts = [], admin
       router.get(`/design/${product.slug}`, {
         colour: selectedColour,
         size: selectedSize,
+        designType: selectedDesignType,
       });
       return;
     }
@@ -1755,6 +1762,37 @@ export default function ProductLayout({ product, recommendedProducts = [], admin
                   <p className="mt-2 text-sm text-[#7C4A1D]">Selected size is currently out of stock.</p>
                 ) : null}
               </div>
+
+              {!isAdminEditor ? (
+                <div className="mt-6">
+                  <p className="text-sm font-semibold uppercase tracking-[0.12em] text-[#6D5A34]">
+                    Design type <span className="text-[#A12525]">*</span>
+                  </p>
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                    {DESIGN_TYPE_OPTIONS.map((option) => {
+                      const isSelected = selectedDesignType === option.value;
+                      return (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => setSelectedDesignType(option.value)}
+                          className={`rounded-xl border px-3 py-2 text-left transition ${
+                            isSelected
+                              ? "border-[#B4872A] bg-[#FFF4DC] text-[#2D2415]"
+                              : "border-[#D7C8AA] bg-white text-[#2B2417] hover:border-[#B89C67]"
+                          }`}
+                        >
+                          <p className="text-sm font-semibold">{option.label}</p>
+                          <p className="mt-0.5 text-xs text-[#7E6D4B]">{option.helper}</p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="mt-2 text-xs text-[#7A6742]">
+                    Selected: <span className="font-semibold text-[#2D2415]">{designTypeLabel(selectedDesignType)}</span>
+                  </p>
+                </div>
+              ) : null}
 
               {!isAdminEditor ? (
                 <>

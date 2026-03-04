@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import type { PricePreviewSnapshot } from "../Canvas/Canvas";
 import { calculateDesignPricingFromSides } from "../utils/designPricing";
+import { DESIGN_TYPE_OPTIONS, designTypeLabel, normalizeDesignType, type DesignType } from "@/Utils/designType";
 
 import DesignPreview from "./DesignPreview";
 
@@ -35,10 +36,13 @@ interface GetPriceUIProps {
   availableSizes?: string[];
   selectedSize?: string | null;
   onSizeChange?: (size: string) => void;
+  selectedDesignType?: DesignType | null;
+  onDesignTypeChange?: (designType: DesignType) => void;
   onAddToCart?: (payload: {
     quantity: number;
     sizeBreakdown: Record<string, number>;
     unitPrice: number;
+    designType: DesignType;
     previewSnapshot?: PricePreviewSnapshot;
     previewByView?: Partial<Record<"front" | "back" | "leftSleeve" | "rightSleeve", PricePreviewSnapshot>>;
   }) => void;
@@ -46,6 +50,7 @@ interface GetPriceUIProps {
     quantity: number;
     sizeBreakdown: Record<string, number>;
     unitPrice: number;
+    designType: DesignType;
     previewSnapshot?: PricePreviewSnapshot;
     previewByView?: Partial<Record<"front" | "back" | "leftSleeve" | "rightSleeve", PricePreviewSnapshot>>;
   }) => void;
@@ -67,6 +72,8 @@ const GetPriceUI: React.FC<GetPriceUIProps> = ({
   availableSizes = [],
   selectedSize,
   onSizeChange,
+  selectedDesignType,
+  onDesignTypeChange,
   onAddToCart,
   onBuyNow,
 }) => {
@@ -139,8 +146,8 @@ const GetPriceUI: React.FC<GetPriceUIProps> = ({
     [sides]
   );
   const pricing = useMemo(
-    () => calculateDesignPricingFromSides(sides, basePrice),
-    [sides, basePrice]
+    () => calculateDesignPricingFromSides(sides, basePrice, selectedDesignType),
+    [sides, basePrice, selectedDesignType]
   );
   const designCounts = pricing.counts;
   const unitPrice = pricing.unitPrice;
@@ -154,6 +161,8 @@ const GetPriceUI: React.FC<GetPriceUIProps> = ({
     selectedColour ?? availableColours[0] ?? "White";
   const selectedSizeValue =
     selectedSize ?? availableSizes[0] ?? "One Size";
+  const selectedDesignTypeValue = normalizeDesignType(selectedDesignType);
+  const selectedDesignTypeDisplay = designTypeLabel(selectedDesignTypeValue);
 
   const designTags = [
     {
@@ -194,6 +203,7 @@ const GetPriceUI: React.FC<GetPriceUIProps> = ({
     quantity: Math.max(totalQuantity, 1),
     sizeBreakdown: availableSizes.length ? sizeBreakdown : {},
     unitPrice,
+    designType: selectedDesignTypeValue,
     previewSnapshot: frontSide?.preview,
     previewByView: orderedSides.reduce<Partial<Record<"front" | "back" | "leftSleeve" | "rightSleeve", PricePreviewSnapshot>>>((acc, side) => {
       if (side.preview) {
@@ -272,7 +282,7 @@ const GetPriceUI: React.FC<GetPriceUIProps> = ({
                     <p className="text-xs uppercase tracking-[0.3em] text-gray-500">Product</p>
                     <p className="text-2xl font-semibold text-gray-900">{productName}</p>
                     <p className="mt-1 text-sm text-gray-500">
-                      Colour: {selectedColourValue} • Size: {selectedSizeValue}
+                      Colour: {selectedColourValue} • Size: {selectedSizeValue} • Design: {selectedDesignTypeDisplay}
                     </p>
                   </div>
                   <p className="text-sm font-medium text-gray-700">
@@ -317,6 +327,30 @@ const GetPriceUI: React.FC<GetPriceUIProps> = ({
                     ))}
                   </select>
                 </label>
+              </div>
+
+              <div className="rounded-2xl border border-gray-200 bg-[#FFFCF4] p-3">
+                <p className="mb-2 text-sm font-semibold text-gray-700">Design type <span className="text-red-600">*</span></p>
+                <div className="grid gap-2 md:grid-cols-2">
+                  {DESIGN_TYPE_OPTIONS.map((option) => {
+                    const isSelected = selectedDesignTypeValue === option.value;
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => onDesignTypeChange?.(option.value)}
+                        className={`rounded-xl border px-3 py-2 text-left transition ${
+                          isSelected
+                            ? "border-[#C6A75E] bg-[#FFF7E6] shadow-sm"
+                            : "border-gray-300 bg-white hover:border-[#C6A75E]/70"
+                        }`}
+                      >
+                        <p className={`text-sm font-semibold ${isSelected ? "text-[#7B6530]" : "text-gray-800"}`}>{option.label}</p>
+                        <p className="mt-0.5 text-xs text-gray-600">{option.helper}</p>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               <div className="rounded-3xl border border-dashed border-gray-200 bg-white/80 p-5 shadow-sm flex flex-col gap-3">
@@ -369,6 +403,7 @@ const GetPriceUI: React.FC<GetPriceUIProps> = ({
                 <p className="text-sm text-gray-600">
                   Total {Math.max(totalQuantity, 1)} item(s): {formatGBP(totalPrice)}
                 </p>
+                <p className="text-sm font-medium text-[#7B6530]">Design type: {selectedDesignTypeDisplay}</p>
                 <div className="flex flex-wrap gap-2">
                   {designTags.length > 0 ? (
                     designTags.map(tag => (
@@ -394,6 +429,7 @@ const GetPriceUI: React.FC<GetPriceUIProps> = ({
                 <div className="mt-2 flex flex-col gap-1 text-sm">
                   <p className="text-lg font-semibold text-gray-900">{productName}</p>
                   <p className="text-sm text-gray-500">Colour: {selectedColourValue}</p>
+                  <p className="text-sm text-gray-500">Design type: {selectedDesignTypeDisplay}</p>
                 </div>
                 <div className="flex flex-wrap items-start gap-3 overflow-x-auto">
                   {orderedSides.map(side => (

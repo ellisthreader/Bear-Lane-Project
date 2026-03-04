@@ -127,6 +127,11 @@ export default function Canvas(props: CanvasProps) {
 
   const latestUploadedImageRef = useRef<string | null>(null);
   const [currentViewImage, setCurrentViewImage] = useState(mainImage);
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    uid: string;
+  } | null>(null);
 
   // ---------------- Current View State ----------------
   const currentImageState = viewImageStates[currentViewKey] ?? {};
@@ -439,6 +444,69 @@ export default function Canvas(props: CanvasProps) {
     duplicateImages([drag.selected[0]]);
   };
 
+  const handleCanvasContextMenu = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (compactPriceMode) return;
+    e.preventDefault();
+
+    const target = e.target as HTMLElement;
+    const uid = (target.closest("[data-uid]") as HTMLElement | null)?.dataset.uid;
+    if (!uid) {
+      setContextMenu(null);
+      return;
+    }
+
+    const layer = currentImageState[uid];
+    if (!layer) {
+      setContextMenu(null);
+      return;
+    }
+
+    drag.setSelected([uid]);
+    if (layer.type === "text") {
+      onSelectImage?.(null);
+      onSelectText?.(uid);
+      onSwitchTab?.("text");
+    } else {
+      onSelectText?.(null);
+      onSelectImage?.(uid);
+      onSwitchTab?.(layer.isClipart ? "clipart" : "upload");
+    }
+
+    setContextMenu({
+      x: e.clientX,
+      y: e.clientY,
+      uid,
+    });
+  };
+
+  useEffect(() => {
+    if (!contextMenu) return;
+
+    const closeMenu = (event?: MouseEvent) => {
+      const target = event?.target as HTMLElement | null;
+      if (target?.closest('[data-design-context-menu="true"]')) {
+        return;
+      }
+      setContextMenu(null);
+    };
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setContextMenu(null);
+      }
+    };
+
+    window.addEventListener("mousedown", closeMenu);
+    window.addEventListener("resize", closeMenu);
+    window.addEventListener("scroll", closeMenu, true);
+    window.addEventListener("keydown", onEscape);
+    return () => {
+      window.removeEventListener("mousedown", closeMenu);
+      window.removeEventListener("resize", closeMenu);
+      window.removeEventListener("scroll", closeMenu, true);
+      window.removeEventListener("keydown", onEscape);
+    };
+  }, [contextMenu]);
+
   // ---------------- Product View ----------------
   useEffect(() => {
     if (mainImage) setCurrentViewImage(mainImage);
@@ -541,6 +609,7 @@ export default function Canvas(props: CanvasProps) {
       className="flex-1 relative bg-gray-100"
       onPointerDown={handleCanvasPointerDown}
       onPointerMove={marquee.onPointerMove}
+      onContextMenu={handleCanvasContextMenu}
     >
       <MainProductImage src={currentViewImage} />
       {!compactPriceMode && <RestrictedArea box={restrictedBox} />}
@@ -633,6 +702,43 @@ export default function Canvas(props: CanvasProps) {
 
       {compactPriceMode && (
         <div className="absolute inset-0 z-40 pointer-events-auto" />
+      )}
+
+      {contextMenu && !compactPriceMode && (
+        <div
+          data-design-context-menu="true"
+          data-export-ignore="true"
+          className="fixed z-[12000] min-w-[180px] overflow-hidden rounded-xl border border-gray-200 bg-white/95 py-1 shadow-2xl backdrop-blur-sm"
+          style={{
+            left: contextMenu.x,
+            top: contextMenu.y,
+          }}
+          onContextMenu={(e) => e.preventDefault()}
+        >
+          <button
+            type="button"
+            className="block w-full px-4 py-2 text-left text-sm text-gray-700 transition hover:bg-gray-100"
+            onClick={() => {
+              duplicateImages([contextMenu.uid]);
+              setContextMenu(null);
+            }}
+          >
+            Duplicate
+          </button>
+          <button
+            type="button"
+            className="block w-full px-4 py-2 text-left text-sm text-red-600 transition hover:bg-red-50"
+            onClick={() => {
+              if (props.onDelete) {
+                props.onDelete([contextMenu.uid]);
+              }
+              drag.setSelected([]);
+              setContextMenu(null);
+            }}
+          >
+            Delete
+          </button>
+        </div>
       )}
 
       {!compactPriceMode && (

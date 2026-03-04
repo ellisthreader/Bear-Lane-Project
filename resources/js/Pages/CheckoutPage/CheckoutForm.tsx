@@ -574,6 +574,7 @@ const CheckoutForm = ({ initialEmail = "" }: CheckoutFormProps) => {
       quantity: i.quantity,
       line_total: Number((i.price * i.quantity).toFixed(2)),
       image: i.image,
+      design_type: i.designType,
       preview_snapshot: i.previewSnapshot,
       preview_by_view: i.previewByView,
     })),
@@ -838,6 +839,7 @@ const CheckoutForm = ({ initialEmail = "" }: CheckoutFormProps) => {
             name: i.title,
             quantity: i.quantity,
             unit_price_cents: Math.round(i.price * 100),
+            design_type: i.designType,
           })),
           discount_code: appliedDiscount?.code || null,
           shipping: {

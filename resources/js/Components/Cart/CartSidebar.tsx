@@ -102,14 +102,16 @@ const CartSidebar = () => {
       slug: string,
       colour: string,
       size: string,
-      quantity: number
+      quantity: number,
+      designType?: "printing" | "embroidery" | string | null
     ) => void;
-    removeFromCart: (slug: string, colour: string, size: string) => void;
+    removeFromCart: (slug: string, colour: string, size: string, designType?: "printing" | "embroidery" | string | null) => void;
     updateSize: (
       slug: string,
       colour: string,
       oldSize: string,
-      newSize: string
+      newSize: string,
+      designType?: "printing" | "embroidery" | string | null
     ) => void;
     totalPrice: number;
     openCart: () => void;
@@ -132,14 +134,14 @@ const CartSidebar = () => {
 
   // ===== Handlers =====
   const handleIncrease = (item: CartItem) => {
-    updateQuantity(item.slug, item.colour, item.size, item.quantity + 1);
+    updateQuantity(item.slug, item.colour, item.size, item.quantity + 1, item.designType);
   };
 
   const handleDecrease = (item: CartItem) => {
     if (item.quantity <= 1) {
-      removeFromCart(item.slug, item.colour, item.size);
+      removeFromCart(item.slug, item.colour, item.size, item.designType);
     } else {
-      updateQuantity(item.slug, item.colour, item.size, item.quantity - 1);
+      updateQuantity(item.slug, item.colour, item.size, item.quantity - 1, item.designType);
     }
   };
 
@@ -229,7 +231,7 @@ const CartSidebar = () => {
               ) : (
                 cart.map((item: CartItem) => (
                   <div
-                    key={`${item.slug}-${item.colour}-${item.size}`}
+                    key={`${item.slug}-${item.colour}-${item.size}-${item.designType}`}
                     className="flex justify-between items-start space-x-3 border-b border-gray-200 pb-4"
                   >
                     <div className="w-24 h-24 flex-shrink-0">
@@ -258,13 +260,16 @@ const CartSidebar = () => {
                       <p className="mb-1">
                         Colour: <span className="font-normal text-gray-700">{item.colour}</span>
                       </p>
+                      <p className="mb-1">
+                        Design: <span className="font-normal text-gray-700">{item.designType === "embroidery" ? "Embroidery" : "Printing"}</span>
+                      </p>
 
                       <p className="mb-1 text-gray-700">Size:</p>
 
                       <SizeDropdown
                         value={item.size}
                         onChange={(val) =>
-                          updateSize(item.slug, item.colour, item.size, val)
+                          updateSize(item.slug, item.colour, item.size, val, item.designType)
                         }
                         options={item.availableSizes}
                       />
@@ -298,7 +303,7 @@ const CartSidebar = () => {
                       </span>
                       <button
                         onClick={() =>
-                          removeFromCart(item.slug, item.colour, item.size)
+                          removeFromCart(item.slug, item.colour, item.size, item.designType)
                         }
                         className="mt-2 text-gray-400 hover:text-red-500 transition"
                       >

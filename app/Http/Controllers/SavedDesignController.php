@@ -22,6 +22,7 @@ class SavedDesignController extends Controller
             'payload.currentViewKey' => ['required', 'in:front,back,leftSleeve,rightSleeve'],
             'payload.selectedColour' => ['nullable', 'string', 'max:100'],
             'payload.selectedSize' => ['nullable', 'string', 'max:100'],
+            'payload.selectedDesignType' => ['nullable', 'string', 'in:printing,embroidery'],
             'payload.baseViewImages' => ['nullable', 'array'],
             'payload.baseViewImages.front' => ['nullable', 'string'],
             'payload.baseViewImages.back' => ['nullable', 'string'],

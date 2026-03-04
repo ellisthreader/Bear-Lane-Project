@@ -21,6 +21,7 @@ class OrderItem extends Model
         'product_name',
         'size',
         'colour',
+        'design_type',
         'image_url',
         'design_payload',
         'quantity',
