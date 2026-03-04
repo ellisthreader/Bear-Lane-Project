@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Check, X } from "lucide-react";
 import { isValidPhoneNumber } from "react-phone-number-input";
 import LuxuryPhoneInput from "@/Components/LuxuryPhoneInput";
+import { executeRecaptcha } from "@/Utils/recaptcha";
 
 interface SpeakToArtistProps {
   initialInvoiceReference?: string;
@@ -119,6 +120,8 @@ const handleSubmit = async () => {
   formData.append("invoice_reference", invoiceReference);
   formData.append("budget", budget);
   formData.append("details", details);
+  const recaptchaToken = await executeRecaptcha("quote_request");
+  formData.append("recaptcha_token", recaptchaToken);
   files.forEach((file) => formData.append("images[]", file));
 
   try {
@@ -127,7 +130,12 @@ const handleSubmit = async () => {
       body: formData,
     });
 
-    if (!response.ok) throw new Error("Submission failed");
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}));
+      const captchaError = Array.isArray(payload?.errors?.captcha) ? payload.errors.captcha[0] : null;
+      const message = typeof payload?.message === "string" ? payload.message : null;
+      throw new Error(captchaError || message || "Submission failed");
+    }
 
     setSubmitted(true);
     setName("");
@@ -142,7 +150,7 @@ const handleSubmit = async () => {
 
   } catch (err) {
     console.error(err);
-    setError("Something went wrong. Please try again.");
+    setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
   } finally {
     setLoading(false);
   }
@@ -152,8 +160,8 @@ const handleSubmit = async () => {
 
 
   return (
-    <div className="bg-white px-4 md:px-0 pt-10 pb-20 max-w-4xl mx-auto">
-      <h1 className="text-4xl font-extrabold text-gray-900 text-center mb-12">
+    <div className="bg-white px-3 sm:px-4 md:px-0 pt-6 sm:pt-10 pb-16 sm:pb-20 max-w-4xl mx-auto">
+      <h1 className="text-2xl sm:text-4xl font-extrabold text-gray-900 text-center mb-8 sm:mb-12">
         Speak to an Embroidery Artist
       </h1>
 
@@ -165,14 +173,14 @@ const handleSubmit = async () => {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.45 }}
-            className="space-y-6"
+            className="space-y-4 sm:space-y-6"
           >
             <input
               type="text"
               placeholder="Full Name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full rounded-xl border border-gray-200 px-5 py-4 focus:outline-none focus:ring-2 focus:ring-[#C9A24D]"
+              className="w-full rounded-xl border border-gray-200 px-4 sm:px-5 py-3 sm:py-4 focus:outline-none focus:ring-2 focus:ring-[#C9A24D]"
             />
 
             <div>
@@ -182,10 +190,10 @@ const handleSubmit = async () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 onBlur={() => setTouchedEmail(true)}
-                className={`w-full rounded-xl border px-5 py-4 focus:outline-none focus:ring-2 ${
-                  !emailValid
-                    ? "border-red-400 ring-red-200 focus:ring-red-200"
-                    : "border-gray-200 focus:ring-[#C9A24D]"
+                  className={`w-full rounded-xl border px-4 sm:px-5 py-3 sm:py-4 focus:outline-none focus:ring-2 ${
+                    !emailValid
+                      ? "border-red-400 ring-red-200 focus:ring-red-200"
+                      : "border-gray-200 focus:ring-[#C9A24D]"
                 }`}
               />
               {!emailValid && (
@@ -207,7 +215,7 @@ const handleSubmit = async () => {
               placeholder="Invoice reference number"
               value={invoiceReference}
               onChange={(e) => setInvoiceReference(e.target.value)}
-              className="w-full rounded-xl border border-gray-200 px-5 py-4 focus:outline-none focus:ring-2 focus:ring-[#C9A24D]"
+              className="w-full rounded-xl border border-gray-200 px-4 sm:px-5 py-3 sm:py-4 focus:outline-none focus:ring-2 focus:ring-[#C9A24D]"
             />
 
             <input
@@ -215,7 +223,7 @@ const handleSubmit = async () => {
               placeholder="Estimated Budget"
               value={budget}
               onChange={handleBudgetChange}
-              className="w-full rounded-xl border border-gray-200 px-5 py-4 focus:outline-none focus:ring-2 focus:ring-[#C9A24D]"
+              className="w-full rounded-xl border border-gray-200 px-4 sm:px-5 py-3 sm:py-4 focus:outline-none focus:ring-2 focus:ring-[#C9A24D]"
             />
 
             <div>
@@ -224,7 +232,7 @@ const handleSubmit = async () => {
                 placeholder="Describe your design in detail..."
                 value={details}
                 onChange={(e) => setDetails(e.target.value)}
-                className="w-full rounded-2xl border border-gray-200 px-5 py-4 h-40 focus:outline-none focus:ring-2 focus:ring-[#C9A24D]"
+                className="w-full rounded-2xl border border-gray-200 px-4 sm:px-5 py-3 sm:py-4 h-36 sm:h-40 focus:outline-none focus:ring-2 focus:ring-[#C9A24D]"
               />
               <div className="text-right text-sm text-gray-500 mt-1">
                 {details.length}/{maxCharacters}
@@ -274,7 +282,7 @@ const handleSubmit = async () => {
             <button
               onClick={handleSubmit}
               disabled={!isFormValid || loading}
-              className={`w-full py-5 rounded-2xl text-white font-semibold transition-all duration-200 ${
+              className={`w-full py-3.5 sm:py-5 rounded-2xl text-sm sm:text-base text-white font-semibold transition-all duration-200 ${
                 !isFormValid || loading
                   ? "opacity-60 cursor-not-allowed"
                   : "hover:scale-[1.02]"

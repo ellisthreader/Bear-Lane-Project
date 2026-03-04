@@ -55,17 +55,17 @@ export default function ProductStep({
   /* ================= PRODUCT FORM ================= */
   if (showProductForm) {
     return (
-      <div className="bg-white px-4 md:px-0 pt-0 pb-10 max-w-5xl mx-auto">
+      <div className="bg-white px-3 sm:px-4 md:px-0 pt-0 pb-10 max-w-5xl mx-auto">
         <div className="mb-8">
           <div className="w-fit">
-            <h2 className="text-3xl font-semibold tracking-tight text-gray-900">
+            <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900">
               Select Product
             </h2>
             <div className="h-[2px] mt-3" style={{ backgroundColor: gold }} />
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-14">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-10 sm:mb-14">
           {/* PRODUCT */}
           <select
             value={productType}
@@ -172,7 +172,7 @@ export default function ProductStep({
             setShowProductForm(false);
             onNext();
           }}
-          className="w-full py-5 rounded-2xl text-white font-semibold tracking-wide transition-all duration-300"
+          className="w-full py-3.5 sm:py-5 rounded-2xl text-sm sm:text-base text-white font-semibold tracking-wide transition-all duration-300"
           style={{
             backgroundColor: gold,
             opacity: isValid ? 1 : 0.6, // optional slight visual cue (still gold)
@@ -187,10 +187,10 @@ export default function ProductStep({
 
   /* ================= QUOTE VIEW ================= */
   return (
-    <div className="bg-white px-4 md:px-0 pt-4 pb-10 max-w-5xl mx-auto">
+    <div className="bg-white px-3 sm:px-4 md:px-0 pt-4 pb-10 max-w-5xl mx-auto">
       <div className="mb-8">
         <div className="w-fit">
-          <h2 className="text-3xl font-semibold tracking-tight text-gray-900">
+          <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900">
             Your Quote
           </h2>
           <div className="h-[2px] mt-3" style={{ backgroundColor: gold }} />
@@ -204,7 +204,7 @@ export default function ProductStep({
             className="flex items-center justify-between border-b border-gray-100 pb-6"
           >
             <div>
-              <p className="text-lg font-semibold text-gray-900">
+              <p className="text-base sm:text-lg font-semibold text-gray-900">
                 {item.productType}
               </p>
               <p className="text-sm text-gray-600 mt-1">
@@ -226,10 +226,10 @@ export default function ProductStep({
         ))}
       </div>
 
-      <div className="flex flex-col md:flex-row gap-5">
+      <div className="flex flex-col md:flex-row gap-3 sm:gap-5">
         <button
           onClick={() => setShowProductForm(true)}
-          className="flex-1 py-5 rounded-2xl border-2 font-semibold tracking-wide transition-all duration-300 hover:bg-[#C9A24D] hover:text-white"
+          className="flex-1 py-3.5 sm:py-5 rounded-2xl border-2 text-sm sm:text-base font-semibold tracking-wide transition-all duration-300 hover:bg-[#C9A24D] hover:text-white"
           style={{ borderColor: gold, color: gold }}
         >
           Add Another Item
@@ -237,7 +237,7 @@ export default function ProductStep({
 
         <button
           onClick={onGetQuote}
-          className="flex-1 py-5 rounded-2xl text-white font-semibold tracking-wide transition-all duration-300"
+          className="flex-1 py-3.5 sm:py-5 rounded-2xl text-sm sm:text-base text-white font-semibold tracking-wide transition-all duration-300"
           style={{ backgroundColor: gold }}
         >
           Get Quote Price

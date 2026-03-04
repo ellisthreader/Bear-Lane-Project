@@ -17,9 +17,9 @@ const steps = [
   },
   {
     number: "3",
-    title: "Customize Endlessly",
+    title: "Customise Endlessly",
     description:
-      "Adjust colors, fonts, sizes, and add clipart to perfectly reflect your idea or brand.",
+      "Adjust colours, fonts, sizes, and add clipart to perfectly reflect your idea or brand.",
     image: "/images/steps/Step3.png",
   },
   {

@@ -14,13 +14,13 @@ const saleImages = [
   {
     image: "/sale-tees.jpg",
     title: "Buy 1 Get 1 Free",
-    subtitle: "On all graphic tees — mix and match your favorite designs.",
+    subtitle: "On all graphic tees — mix and match your favourite designs.",
     gradient: "from-pink-500 to-purple-600",
   },
   {
     image: "/sale-winter.jpg",
     title: "Winter Sale — Up to 50% Off",
-    subtitle: "Exclusive deals on jackets, hoodies, and cozy essentials.",
+    subtitle: "Exclusive deals on jackets, hoodies, and cosy essentials.",
     gradient: "from-blue-500 to-cyan-400",
   },
 ];

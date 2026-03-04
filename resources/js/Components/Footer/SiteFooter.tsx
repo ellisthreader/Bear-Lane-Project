@@ -78,7 +78,7 @@ export default function SiteFooter() {
         </div>
 
         <div className="mt-10 rounded-2xl border border-[#E4DCCA] bg-white px-5 py-5 md:px-6">
-          <h4 className="text-lg font-semibold tracking-tight text-[#2A241B]">Let&apos;s get to know eachother</h4>
+          <h4 className="text-lg font-semibold tracking-tight text-[#2A241B]">Let&apos;s get to know each other</h4>
           <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
             <input
               type="email"

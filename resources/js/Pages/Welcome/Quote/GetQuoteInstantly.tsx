@@ -155,20 +155,20 @@ export default function GetQuoteInstantly({ embedded = false }: GetQuoteInstantl
   return (
     <div
       id="get-quote-instantly"
-      className={`bg-white px-4 sm:px-6 ${embedded ? "py-4 sm:py-6" : "min-h-screen py-16"}`}
+      className={`bg-white px-3 sm:px-6 ${embedded ? "py-4 sm:py-6" : "min-h-screen py-10 sm:py-16"}`}
     >
       <div className="max-w-5xl mx-auto">
 
         {/* ===== Main Card ===== */}
-        <div className="bg-white border border-gray-100 rounded-3xl shadow-[0_15px_50px_rgba(0,0,0,0.06)] p-10">
+        <div className="bg-white border border-gray-100 rounded-3xl shadow-[0_15px_50px_rgba(0,0,0,0.06)] p-4 sm:p-6 md:p-8 lg:p-10">
 
           {/* ===== Tabs ===== */}
-          <div className="flex justify-center mb-12">
-            <div className="flex bg-gray-50 rounded-full p-1 border border-gray-200">
+          <div className="flex justify-center mb-6 sm:mb-10 md:mb-12">
+            <div className="grid w-full max-w-2xl grid-cols-2 gap-1 rounded-2xl border border-gray-200 bg-gray-50 p-1">
 
               <button
                 onClick={() => setActiveTab("instant")}
-                className={`px-8 py-3 rounded-full text-sm font-medium transition-all duration-300 ${
+                className={`rounded-xl px-3 py-2.5 text-center text-xs font-medium leading-tight transition-all duration-300 sm:px-6 sm:py-3 sm:text-sm ${
                   activeTab === "instant"
                     ? "bg-[#C6A75E] text-white shadow-md"
                     : "text-gray-600 hover:text-black"
@@ -179,7 +179,7 @@ export default function GetQuoteInstantly({ embedded = false }: GetQuoteInstantl
 
               <button
                 onClick={() => setActiveTab("artist")}
-                className={`px-8 py-3 rounded-full text-sm font-medium transition-all duration-300 ${
+                className={`rounded-xl px-3 py-2.5 text-center text-xs font-medium leading-tight transition-all duration-300 sm:px-6 sm:py-3 sm:text-sm ${
                   activeTab === "artist"
                     ? "bg-[#C6A75E] text-white shadow-md"
                     : "text-gray-600 hover:text-black"

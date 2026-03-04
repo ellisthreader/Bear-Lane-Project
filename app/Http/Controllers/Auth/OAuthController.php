@@ -14,6 +14,7 @@ use App\Services\Stripe\StripeWalletService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Http\Request;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Auth\Events\Registered;
 
 class OAuthController extends Controller
@@ -234,6 +235,26 @@ class OAuthController extends Controller
         return $target;
     }
 
+    private function completeOAuthLogin(Request $request, User $user, bool $created): RedirectResponse
+    {
+        Auth::login($user);
+        $request->session()->regenerate();
+
+        if (!$user->hasVerifiedEmail()) {
+            if ($created) {
+                event(new Registered($user));
+                $user->sendEmailVerificationNotification();
+            }
+
+            // Force all newly signed-up OAuth users through verification flow first.
+            $request->session()->forget('oauth_redirect');
+
+            return redirect()->route('verification.notice');
+        }
+
+        return redirect($this->oauthSuccessRedirect($request));
+    }
+
     // -------------------
     // Google
     // -------------------
@@ -259,18 +280,12 @@ class OAuthController extends Controller
 
             ['user' => $user, 'created' => $created] = $this->findOrCreateOAuthUser($googleUser, 'google');
 
-            Auth::login($user);
-            if ($created && !$user->hasVerifiedEmail()) {
-                event(new Registered($user));
-                $user->sendEmailVerificationNotification();
-            }
-
             Log::info("User logged in via Google OAuth", [
                 'id' => $user->id,
                 'is_oauth' => $user->is_oauth,
             ]);
 
-            return redirect($this->oauthSuccessRedirect($request));
+            return $this->completeOAuthLogin($request, $user, $created);
         } catch (\Exception $e) {
             Log::error("Google OAuth login failed", ['error' => $e->getMessage()]);
             return redirect('/login')->withErrors(['email' => 'Failed to login with Google.']);
@@ -302,18 +317,12 @@ class OAuthController extends Controller
 
             ['user' => $user, 'created' => $created] = $this->findOrCreateOAuthUser($appleUser, 'apple');
 
-            Auth::login($user);
-            if ($created && !$user->hasVerifiedEmail()) {
-                event(new Registered($user));
-                $user->sendEmailVerificationNotification();
-            }
-
             Log::info("User logged in via Apple OAuth", [
                 'id' => $user->id,
                 'is_oauth' => $user->is_oauth,
             ]);
 
-            return redirect($this->oauthSuccessRedirect($request));
+            return $this->completeOAuthLogin($request, $user, $created);
         } catch (\Exception $e) {
             Log::error("Apple OAuth login failed", ['error' => $e->getMessage()]);
             return redirect('/login')->withErrors(['email' => 'Failed to login with Apple.']);
@@ -344,18 +353,12 @@ class OAuthController extends Controller
             ]);
 
             ['user' => $user, 'created' => $created] = $this->findOrCreateOAuthUser($facebookUser, 'facebook');
-            Auth::login($user);
-            if ($created && !$user->hasVerifiedEmail()) {
-                event(new Registered($user));
-                $user->sendEmailVerificationNotification();
-            }
-
             Log::info("User logged in via Facebook OAuth", [
                 'id' => $user->id,
                 'is_oauth' => $user->is_oauth,
             ]);
 
-            return redirect($this->oauthSuccessRedirect($request));
+            return $this->completeOAuthLogin($request, $user, $created);
         } catch (\Exception $e) {
             Log::error("Facebook OAuth login failed", ['error' => $e->getMessage()]);
             return redirect('/login')->withErrors(['email' => 'Failed to login with Facebook.']);

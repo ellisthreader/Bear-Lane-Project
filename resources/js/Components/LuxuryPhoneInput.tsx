@@ -113,13 +113,14 @@ export default function LuxuryPhoneInput({
         <button
           type="button"
           onClick={() => setOpen(!open)}
-          className={`flex items-center border-r ${isModal ? "pr-2 border-[#E1D4B5]" : "pr-3 border-gray-200"}`}
+          className={`flex min-w-[58px] items-center justify-center gap-1 border-r ${isModal ? "pr-2 border-[#E1D4B5]" : "pr-3 border-gray-200"}`}
         >
           <ReactCountryFlag
             countryCode={selectedCountry}
             svg
             style={{ width: "1.6em", height: "1.6em" }}
           />
+          <span className="text-[10px] text-gray-500">▾</span>
         </button>
 
         {/* PHONE INPUT WITH COUNTRY CODE PREFIX */}

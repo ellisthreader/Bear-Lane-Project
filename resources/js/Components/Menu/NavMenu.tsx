@@ -814,6 +814,7 @@ export default function NavMenu() {
               animate={{ opacity: 0.52 }}
               exit={{ opacity: 0 }}
               onClick={closeMobileMenu}
+              onPointerDown={closeMobileMenu}
               className="fixed inset-0 z-50 bg-black lg:hidden"
               aria-label="Close mobile menu backdrop"
             />
@@ -926,7 +927,8 @@ export default function NavMenu() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 0.5 }}
               exit={{ opacity: 0 }}
-              className="absolute left-0 top-full z-20 hidden h-screen w-full bg-black lg:block"
+              onClick={() => setActiveSidebar(null)}
+              className="absolute left-0 top-full z-20 hidden h-screen w-full cursor-pointer bg-black lg:block"
             />
 
             {/* SIDEBAR PANEL */}

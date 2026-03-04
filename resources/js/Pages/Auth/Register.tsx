@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { FcGoogle } from "react-icons/fc";
 import { FaFacebook } from "react-icons/fa";
+import { executeRecaptcha } from "@/Utils/recaptcha";
 
 type RegisterProps = {
   email?: string;
@@ -144,11 +145,14 @@ export default function Register({ email: initialEmail = "" }: RegisterProps) {
     setSignupErrors({});
 
     try {
+      const recaptchaToken = await executeRecaptcha("signup");
+
       const response = await axios.post("/register", {
         username,
         email,
         password,
         password_confirmation: confirmPassword,
+        recaptcha_token: recaptchaToken,
       });
 
       const redirectTo = response?.data?.redirect || "/profile";
@@ -168,6 +172,10 @@ export default function Register({ email: initialEmail = "" }: RegisterProps) {
       });
       if ((!backendErrors || Object.keys(backendErrors).length === 0) && backendMessage) {
         mappedErrors.general = backendMessage;
+      }
+      if (mappedErrors.captcha && !mappedErrors.general) {
+        mappedErrors.general = mappedErrors.captcha;
+        delete mappedErrors.captcha;
       }
       if (!mappedErrors.general && (!backendErrors || Object.keys(backendErrors).length === 0)) {
         mappedErrors.general = "Sign up failed. Please try again.";

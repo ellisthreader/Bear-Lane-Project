@@ -5,6 +5,7 @@ import HelpShell from "./components/HelpShell";
 import HelpSearchBar from "./components/HelpSearchBar";
 import HelpLinkedText from "./components/HelpLinkedText";
 import { HELP_FAQS } from "./data/helpContent";
+import { executeRecaptcha } from "@/Utils/recaptcha";
 
 export default function FAQ() {
   const page = usePage<{
@@ -47,6 +48,8 @@ export default function FAQ() {
     setSubmitMessage(null);
 
     try {
+      const recaptchaToken = await executeRecaptcha("faq_request");
+
       const response = await fetch("/help/faq-requests", {
         method: "POST",
         credentials: "same-origin",
@@ -59,6 +62,7 @@ export default function FAQ() {
         body: JSON.stringify({
           question: trimmedQuestion,
           details: details.trim() || null,
+          recaptcha_token: recaptchaToken,
         }),
       });
 
@@ -66,6 +70,7 @@ export default function FAQ() {
         const payload = await response.json().catch(() => ({}));
         const errors = payload?.errors as Record<string, string[]> | undefined;
         const firstError =
+          errors?.captcha?.[0] ||
           errors?.question?.[0] ||
           errors?.details?.[0] ||
           "Unable to submit your request right now. Please try again.";

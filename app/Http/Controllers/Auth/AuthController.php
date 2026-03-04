@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Models\Order;
 use App\Models\UserAddress;
 use App\Models\UserPaymentMethod;
+use App\Services\Security\RecaptchaService;
 use App\Services\Stripe\StripeWalletService;
 use Illuminate\Support\Facades\Schema;
 
@@ -230,8 +231,10 @@ private function resolveRedirectPath(?string $redirect, string $fallback = '/pro
 // -----------------------
 // REGISTER
 // -----------------------
-public function register(Request $request)
+public function register(Request $request, RecaptchaService $recaptchaService)
 {
+    $recaptchaService->verifyOrFail($request, 'signup');
+
     $request->validate([
         'username' => ['required', 'string', 'max:255', 'unique:users,username'],
         'email'    => ['required', 'string', 'email', 'max:255', 'unique:users,email'],

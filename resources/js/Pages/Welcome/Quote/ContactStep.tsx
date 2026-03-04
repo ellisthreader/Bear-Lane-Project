@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Check } from "lucide-react";
 import { QuoteItem } from "./GetQuoteInstantly";
+import { executeRecaptcha } from "@/Utils/recaptcha";
 
 type Props = {
   name: string;
@@ -53,6 +54,7 @@ export default function ContactStep({
         size: item.size,
         price: item.price,
       }));
+      const recaptchaToken = await executeRecaptcha("instant_quote");
 
       // Use configured API base URL in production, fallback to same-origin.
       const response = await fetch(`${API_URL}/api/instant-quote`, {
@@ -67,16 +69,19 @@ export default function ContactStep({
           quoteNumber: randomQuoteNumber.toString(),
           items: itemsWithDetails,
           total,
+          recaptcha_token: recaptchaToken,
         }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
+        const firstCaptchaError = Array.isArray(data?.errors?.captcha) ? data.errors.captcha[0] : null;
+        const firstGeneralError = typeof data?.message === "string" ? data.message : null;
         setError(
-          data?.errors
-            ? JSON.stringify(data.errors)
-            : "Failed to save quote."
+          firstCaptchaError ||
+            firstGeneralError ||
+            (data?.errors ? JSON.stringify(data.errors) : "Failed to save quote.")
         );
         setIsGenerating(false);
         return;
@@ -92,13 +97,13 @@ export default function ContactStep({
       }, 1700);
     } catch (err) {
       console.error(err);
-      setError("Failed to send quote to the server.");
+      setError(err instanceof Error ? err.message : "Failed to send quote to the server.");
       setIsGenerating(false);
     }
   };
 
   return (
-    <div className="bg-white px-4 md:px-0 pt-4 pb-16 max-w-5xl mx-auto">
+    <div className="bg-white px-3 sm:px-4 md:px-0 pt-4 pb-16 max-w-5xl mx-auto">
       <AnimatePresence mode="wait">
 
         {!hasProceeded && !isGenerating && (
@@ -112,7 +117,7 @@ export default function ContactStep({
             {/* ===== Contact Inputs ===== */}
             <div className="mb-10">
               <div className="w-fit">
-                <h2 className="text-3xl font-semibold tracking-tight text-gray-900">
+                <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900">
                   Contact Information
                 </h2>
                 <div className="h-[2px] mt-3" style={{ backgroundColor: gold }} />
@@ -145,7 +150,7 @@ export default function ContactStep({
             <button
               disabled={!isContactValid}
               onClick={sendQuote}
-              className="w-full py-5 rounded-2xl text-white font-semibold tracking-wide transition-all duration-300 hover:shadow-lg active:scale-[0.98]"
+              className="w-full py-3.5 sm:py-5 rounded-2xl text-sm sm:text-base text-white font-semibold tracking-wide transition-all duration-300 hover:shadow-lg active:scale-[0.98]"
               style={{
                 backgroundColor: gold,
                 opacity: isContactValid ? 1 : 0.6,
@@ -201,7 +206,7 @@ export default function ContactStep({
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
           >
-            <div className="bg-white rounded-3xl border border-[#EFE3C3] p-10 shadow-sm relative overflow-hidden">
+            <div className="bg-white rounded-3xl border border-[#EFE3C3] p-5 sm:p-8 md:p-10 shadow-sm relative overflow-hidden">
               <div className="absolute inset-0 bg-gradient-to-br from-[#C9A24D]/5 via-transparent to-transparent pointer-events-none" />
 
               <div className="relative z-10">
@@ -220,7 +225,7 @@ export default function ContactStep({
                       initial={{ scale: 0.85, opacity: 0 }}
                       animate={{ scale: 1, opacity: 1 }}
                       transition={{ delay: 0.2, duration: 0.5 }}
-                      className="text-5xl font-extrabold text-gray-900 leading-none"
+                      className="text-4xl sm:text-5xl font-extrabold text-gray-900 leading-none"
                     >
                       £{total.toFixed(2)}
                     </motion.p>
@@ -247,8 +252,8 @@ export default function ContactStep({
                       initial={{ opacity: 0, y: 15 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.4 + i * 0.08 }}
-                      className="bg-[#FAF7ED] border border-[#EFE3C3] rounded-2xl p-5"
-                    >
+                    className="bg-[#FAF7ED] border border-[#EFE3C3] rounded-2xl p-4 sm:p-5"
+                  >
                       <p className="font-semibold text-gray-900 text-lg">
                         {item.quantity ?? 1} × {item.productType}
                       </p>

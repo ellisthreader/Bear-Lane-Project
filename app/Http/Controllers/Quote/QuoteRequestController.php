@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Quote;
 
 use App\Http\Controllers\Controller;
 use App\Services\OpenAiModerationService;
+use App\Services\Security\RecaptchaService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -12,8 +13,14 @@ use App\Models\QuoteRequest;
 
 class QuoteRequestController extends Controller
 {
-    public function store(Request $request, OpenAiModerationService $moderationService): JsonResponse
+    public function store(
+        Request $request,
+        OpenAiModerationService $moderationService,
+        RecaptchaService $recaptchaService
+    ): JsonResponse
     {
+        $recaptchaService->verifyOrFail($request, 'quote_request');
+
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email',

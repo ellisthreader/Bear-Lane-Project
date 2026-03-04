@@ -4,14 +4,21 @@ namespace App\Http\Controllers;
 
 use App\Models\FaqRequest;
 use App\Services\OpenAiModerationService;
+use App\Services\Security\RecaptchaService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 class FaqRequestController extends Controller
 {
-    public function store(Request $request, OpenAiModerationService $moderationService): JsonResponse
+    public function store(
+        Request $request,
+        OpenAiModerationService $moderationService,
+        RecaptchaService $recaptchaService
+    ): JsonResponse
     {
+        $recaptchaService->verifyOrFail($request, 'faq_request');
+
         $validated = $request->validate([
             'question' => ['required', 'string', 'max:255'],
             'details' => ['nullable', 'string', 'max:5000'],

@@ -60,7 +60,7 @@ const customerReviews = [
     name: "Aisha Khan",
     role: "Creative Lead, Easton Studio",
     quote:
-      "The customization tools were simple, powerful, and precise. We launched a complete team drop in days.",
+      "The customisation tools were simple, powerful, and precise. We launched a complete team drop in days.",
   },
 ];
 
@@ -71,7 +71,7 @@ const trustSignals = [
     icon: ShieldCheck,
   },
   {
-    title: "Easy Customization Tools",
+    title: "Easy Customisation Tools",
     description: "Design, preview, and approve your products in minutes.",
     icon: SlidersHorizontal,
   },
@@ -187,7 +187,7 @@ const fallbackSpotlightProducts: Product[] = [
 
 const preMadeDesignNotes = [
   "Built by our in-house professionals to give you a polished starting point.",
-  "Specially prepared layouts that can be customized quickly for your brand.",
+  "Specially prepared layouts that can be customised quickly for your brand.",
   "Production-ready compositions designed to look premium on first pass.",
   "Expert-crafted styling so your team can launch merch faster.",
   "Made by our pro designers for clean, balanced, high-conversion visuals.",
@@ -219,11 +219,22 @@ export default function Welcome() {
   const [productCardStep, setProductCardStep] = useState(0);
   const [canScrollPrev, setCanScrollPrev] = useState(false);
   const [canScrollNext, setCanScrollNext] = useState(spotlightProducts.length > 1);
+  const [activePreMadeIndex, setActivePreMadeIndex] = useState(0);
+  const [preMadeCardStep, setPreMadeCardStep] = useState(0);
+  const [canScrollPreMadePrev, setCanScrollPreMadePrev] = useState(false);
+  const [canScrollPreMadeNext, setCanScrollPreMadeNext] = useState(
+    preMadeProducts.length > 1
+  );
   const productRailDraggingRef = useRef(false);
   const productRailMovedRef = useRef(false);
   const productRailPointerIdRef = useRef<number | null>(null);
   const productRailStartXRef = useRef(0);
   const productRailStartScrollRef = useRef(0);
+  const preMadeRailDraggingRef = useRef(false);
+  const preMadeRailMovedRef = useRef(false);
+  const preMadeRailPointerIdRef = useRef<number | null>(null);
+  const preMadeRailStartXRef = useRef(0);
+  const preMadeRailStartScrollRef = useRef(0);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -256,6 +267,32 @@ export default function Welcome() {
     setCanScrollNext(rail.scrollLeft + rail.clientWidth < rail.scrollWidth - 8);
   }, [spotlightProducts.length]);
 
+  const syncPreMadeRailState = useCallback(() => {
+    const rail = preMadeRailRef.current;
+    if (!rail) return;
+
+    const firstCard = rail.querySelector<HTMLElement>("[data-premade-card]");
+    if (firstCard) {
+      const railStyle = window.getComputedStyle(rail);
+      const gapRaw =
+        railStyle.columnGap !== "normal" ? railStyle.columnGap : railStyle.gap;
+      const gap = Number.parseFloat(gapRaw || "0") || 0;
+      const nextStep = firstCard.offsetWidth + gap;
+      if (nextStep > 0) {
+        setPreMadeCardStep(nextStep);
+        const nextIndex = Math.round(rail.scrollLeft / nextStep);
+        setActivePreMadeIndex(
+          Math.max(0, Math.min(preMadeProducts.length - 1, nextIndex))
+        );
+      }
+    }
+
+    setCanScrollPreMadePrev(rail.scrollLeft > 8);
+    setCanScrollPreMadeNext(
+      rail.scrollLeft + rail.clientWidth < rail.scrollWidth - 8
+    );
+  }, [preMadeProducts.length]);
+
   useEffect(() => {
     const rail = productRailRef.current;
     if (!rail) return;
@@ -269,6 +306,20 @@ export default function Welcome() {
       window.removeEventListener("resize", syncProductRailState);
     };
   }, [syncProductRailState]);
+
+  useEffect(() => {
+    const rail = preMadeRailRef.current;
+    if (!rail) return;
+
+    syncPreMadeRailState();
+    rail.addEventListener("scroll", syncPreMadeRailState, { passive: true });
+    window.addEventListener("resize", syncPreMadeRailState);
+
+    return () => {
+      rail.removeEventListener("scroll", syncPreMadeRailState);
+      window.removeEventListener("resize", syncPreMadeRailState);
+    };
+  }, [syncPreMadeRailState]);
 
   const scrollProductRail = (direction: "prev" | "next") => {
     const rail = productRailRef.current;
@@ -284,6 +335,23 @@ export default function Welcome() {
     const rail = productRailRef.current;
     if (!rail) return;
     const step = productCardStep > 0 ? productCardStep : rail.clientWidth * 0.82;
+    rail.scrollTo({ left: step * index, behavior: "smooth" });
+  };
+
+  const scrollPreMadeRail = (direction: "prev" | "next") => {
+    const rail = preMadeRailRef.current;
+    if (!rail) return;
+    const step = preMadeCardStep > 0 ? preMadeCardStep : rail.clientWidth * 0.82;
+    rail.scrollBy({
+      left: direction === "next" ? step : -step,
+      behavior: "smooth",
+    });
+  };
+
+  const jumpToPreMade = (index: number) => {
+    const rail = preMadeRailRef.current;
+    if (!rail) return;
+    const step = preMadeCardStep > 0 ? preMadeCardStep : rail.clientWidth * 0.82;
     rail.scrollTo({ left: step * index, behavior: "smooth" });
   };
 
@@ -325,6 +393,46 @@ export default function Welcome() {
     }
     productRailDraggingRef.current = false;
     productRailPointerIdRef.current = null;
+  };
+
+  const startPreMadeRailDrag = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.pointerType !== "mouse") return;
+    const rail = preMadeRailRef.current;
+    if (!rail) return;
+    preMadeRailDraggingRef.current = true;
+    preMadeRailMovedRef.current = false;
+    preMadeRailPointerIdRef.current = event.pointerId;
+    preMadeRailStartXRef.current = event.clientX;
+    preMadeRailStartScrollRef.current = rail.scrollLeft;
+    rail.setPointerCapture(event.pointerId);
+  };
+
+  const movePreMadeRailDrag = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!preMadeRailDraggingRef.current) return;
+    if (event.pointerType !== "mouse") return;
+    const rail = preMadeRailRef.current;
+    if (!rail) return;
+    const delta = event.clientX - preMadeRailStartXRef.current;
+    if (Math.abs(delta) > 4) {
+      preMadeRailMovedRef.current = true;
+    }
+    rail.scrollLeft = preMadeRailStartScrollRef.current - delta;
+  };
+
+  const endPreMadeRailDrag = (event?: React.PointerEvent<HTMLDivElement>) => {
+    const rail = preMadeRailRef.current;
+    if (rail && preMadeRailPointerIdRef.current !== null) {
+      try {
+        rail.releasePointerCapture(preMadeRailPointerIdRef.current);
+      } catch {
+        // Safe no-op for browsers that already released capture.
+      }
+    }
+    if (event && event.pointerType === "mouse") {
+      event.currentTarget.style.cursor = "grab";
+    }
+    preMadeRailDraggingRef.current = false;
+    preMadeRailPointerIdRef.current = null;
   };
 
   const handleRailWheel = (
@@ -468,25 +576,84 @@ export default function Welcome() {
           </div>
           <p className="mx-auto mt-3 max-w-2xl text-center text-sm text-[#6A5530]">
             Professionally crafted design templates from our studio team, ready
-            to customize in minutes.
+            to customise in minutes.
           </p>
+          <div className="mt-5 flex items-center justify-center gap-2 sm:justify-end">
+            <button
+              type="button"
+              onClick={() => scrollPreMadeRail("prev")}
+              disabled={!canScrollPreMadePrev}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#E5D3AA] bg-[#FFF9ED] text-[#7D5E1A] transition hover:border-[#C9A24D] hover:text-[#6D520D] disabled:cursor-not-allowed disabled:opacity-45"
+              aria-label="Previous pre-made designs"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollPreMadeRail("next")}
+              disabled={!canScrollPreMadeNext}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#E5D3AA] bg-[#FFF9ED] text-[#7D5E1A] transition hover:border-[#C9A24D] hover:text-[#6D520D] disabled:cursor-not-allowed disabled:opacity-45"
+              aria-label="Next pre-made designs"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
 
           <div
             ref={preMadeRailRef}
+            onPointerDown={(event) => {
+              startPreMadeRailDrag(event);
+            }}
+            onPointerMove={(event) => {
+              movePreMadeRailDrag(event);
+            }}
+            onPointerUp={(event) => {
+              endPreMadeRailDrag(event);
+            }}
+            onPointerCancel={(event) => {
+              endPreMadeRailDrag(event);
+            }}
+            onPointerLeave={(event) => {
+              if (event.pointerType === "mouse" && !preMadeRailDraggingRef.current) {
+                event.currentTarget.style.cursor = "grab";
+              }
+            }}
+            onClickCapture={(event) => {
+              if (preMadeRailMovedRef.current) {
+                event.preventDefault();
+                event.stopPropagation();
+              }
+            }}
             onWheel={(event) => handleRailWheel(event, preMadeRailRef.current)}
             onDragStart={(event) => event.preventDefault()}
-            className="mt-6 flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden touch-pan-x"
+            className="mt-6 flex cursor-grab select-none snap-x snap-mandatory gap-4 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden touch-pan-x active:cursor-grabbing"
           >
             {preMadeProducts.map((product, index) => (
               <div
                 key={`premade-${product.id}-${index}`}
+                data-premade-card
                 className="min-w-[76%] snap-start sm:min-w-[48%] md:min-w-[32%] lg:w-[265px] lg:min-w-[265px]"
               >
                 <ProductCard product={product} compact />
-                <p className="mt-3 px-1 text-sm text-[#6F5A34]">
+                <p className="mt-3 rounded-xl border border-[#E7D7B2] bg-[#FFF9EB] px-3 py-2 text-sm font-medium text-[#5B441A] shadow-[0_8px_18px_rgba(95,72,18,0.08)]">
                   {preMadeDesignNotes[index % preMadeDesignNotes.length]}
                 </p>
               </div>
+            ))}
+          </div>
+          <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+            {preMadeProducts.map((product, index) => (
+              <button
+                key={`premade-dot-${product.id}-${index}`}
+                type="button"
+                onClick={() => jumpToPreMade(index)}
+                className={`h-2.5 rounded-full transition-all ${
+                  index === activePreMadeIndex
+                    ? "w-7 bg-[#C9A24D]"
+                    : "w-2.5 bg-[#E4D4B2]"
+                }`}
+                aria-label={`Jump to pre-made design ${index + 1}`}
+              />
             ))}
           </div>
         </div>
@@ -588,7 +755,7 @@ export default function Welcome() {
             </div>
             <p className="mx-auto mt-4 max-w-2xl text-sm text-[#5D4B2E] sm:text-base">
               Every product is reviewed before dispatch to ensure premium
-              finishing, accurate customization, and dependable consistency for
+              finishing, accurate customisation, and dependable consistency for
               your brand.
             </p>
           </div>

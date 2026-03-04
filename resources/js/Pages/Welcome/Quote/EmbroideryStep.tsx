@@ -26,12 +26,12 @@ export default function EmbroideryStep({
   ];
 
   return (
-    <div className="bg-white px-4 md:px-0 pt-0 pb-10 max-w-5xl mx-auto">
+    <div className="bg-white px-3 sm:px-4 md:px-0 pt-0 pb-10 max-w-5xl mx-auto">
       
       {/* HEADER */}
       <div className="mb-8">
         <div className="w-fit">
-          <h2 className="text-3xl font-semibold tracking-tight text-gray-900">
+          <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900">
             Embroidery
           </h2>
           <div className="h-[2px] mt-3" style={{ backgroundColor: gold }} />
@@ -39,7 +39,7 @@ export default function EmbroideryStep({
       </div>
 
       {/* DESIGN TYPE GRID */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 mb-14">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 md:gap-6 mb-10 sm:mb-14">
         {embroideryOptions.map((option) => {
           const selected = designType === option.name;
 
@@ -64,9 +64,9 @@ export default function EmbroideryStep({
                 />
               </div>
 
-              <div className="p-4">
+              <div className="p-3 sm:p-4">
                 <p
-                  className="font-semibold"
+                  className="text-sm sm:text-base font-semibold leading-snug"
                   style={{ color: selected ? gold : "#111827" }}
                 >
                   {option.name}
@@ -78,10 +78,10 @@ export default function EmbroideryStep({
       </div>
 
       {/* BUTTONS */}
-      <div className="flex flex-col md:flex-row gap-5">
+      <div className="flex flex-col md:flex-row gap-3 sm:gap-5">
         <button
           onClick={onBack}
-          className="flex-1 py-5 rounded-2xl border-2 font-semibold tracking-wide transition-all duration-300 hover:bg-[#C9A24D] hover:text-white"
+          className="flex-1 py-3.5 sm:py-5 rounded-2xl border-2 text-sm sm:text-base font-semibold tracking-wide transition-all duration-300 hover:bg-[#C9A24D] hover:text-white"
           style={{ borderColor: gold, color: gold }}
         >
           Back
@@ -92,7 +92,7 @@ export default function EmbroideryStep({
             if (!isValid) return;
             onAdd();
           }}
-          className="flex-1 py-5 rounded-2xl text-white font-semibold tracking-wide transition-all duration-300"
+          className="flex-1 py-3.5 sm:py-5 rounded-2xl text-sm sm:text-base text-white font-semibold tracking-wide transition-all duration-300"
           style={{
             backgroundColor: gold,
             opacity: isValid ? 1 : 0.6,
