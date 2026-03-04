@@ -390,7 +390,7 @@ Route::get('/email/verify/{id}/{hash}', function (EmailVerificationRequest $requ
     return redirect()->route('profile')
         ->with('verified', 1);
 
-})->middleware(['auth', 'signed', 'throttle:6,1'])
+})->middleware(['auth', 'signed:relative', 'throttle:6,1'])
   ->name('verification.verify');
 
 
