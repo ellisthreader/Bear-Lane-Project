@@ -1,7 +1,11 @@
 # syntax=docker/dockerfile:1
 
-FROM composer:2 AS composer_deps
+FROM php:8.3-cli-alpine AS composer_deps
 WORKDIR /app
+
+RUN apk add --no-cache git unzip \
+    && rm -rf /var/cache/apk/*
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 COPY composer.json composer.lock ./
 RUN composer install \
