@@ -180,6 +180,7 @@ class ProfileController extends Controller
     {
         $user = $request->user();
         $remaining = $this->getRemainingCooldown($user);
+        $unsplashAccessKey = trim((string) config('services.unsplash.access_key', ''));
 
         if ($remaining > 0) {
             return response()->json([
@@ -188,6 +189,13 @@ class ProfileController extends Controller
                 'cooldown_ends_at' => $this->getCooldownEndsAt($user),
                 'server_time' => Carbon::now('UTC')->toIso8601String(),
             ], 429);
+        }
+
+        if ($unsplashAccessKey === '') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Avatar generator is not configured. Missing UNSPLASH_ACCESS_KEY.',
+            ], 503);
         }
 
         $randomAvatarUrl = $this->unsplash->getRandomMushroomImage();

@@ -14,10 +14,16 @@ class UnsplashService
      */
     public function getRandomMushroomImage(): ?string
     {
+        $accessKey = trim((string) config('services.unsplash.access_key', ''));
+        if ($accessKey === '') {
+            Log::warning('UnsplashService: UNSPLASH_ACCESS_KEY is missing.');
+            return null;
+        }
+
         Log::info('UnsplashService: Fetching popular mushroom images.');
 
         $response = Http::get("{$this->baseUrl}/search/photos", [
-            'client_id' => config('services.unsplash.access_key'),
+            'client_id' => $accessKey,
             'query'     => 'beautiful bears',
             'order_by'  => 'popular',
             'per_page'  => 30,
