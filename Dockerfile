@@ -36,6 +36,8 @@ RUN apk add --no-cache $PHPIZE_DEPS oniguruma-dev libzip-dev \
 COPY . .
 COPY --from=composer_deps /app/vendor ./vendor
 COPY --from=frontend_build /app/public/build ./public/build
+COPY docker/start.sh /usr/local/bin/start.sh
+RUN chmod +x /usr/local/bin/start.sh
 
 RUN mkdir -p storage/framework/{cache,sessions,views} storage/logs bootstrap/cache \
     && chown -R www-data:www-data storage bootstrap/cache \
@@ -43,4 +45,4 @@ RUN mkdir -p storage/framework/{cache,sessions,views} storage/logs bootstrap/cac
 
 EXPOSE 8080
 
-CMD ["sh", "-lc", "php artisan serve --host=0.0.0.0 --port=${PORT:-8080}"]
+CMD ["/usr/local/bin/start.sh"]
