@@ -15,4 +15,9 @@ if [ "${RUN_MIGRATIONS:-true}" = "true" ]; then
   php artisan migrate --force --ansi
 fi
 
-exec php artisan serve --host=0.0.0.0 --port="${PORT:-8080}"
+if [ -z "${PORT:-}" ]; then
+  echo "ERROR: PORT is not set. Railway should inject this automatically." >&2
+  exit 1
+fi
+
+exec php artisan serve --host=0.0.0.0 --port="$PORT"
