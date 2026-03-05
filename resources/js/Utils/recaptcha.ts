@@ -10,7 +10,12 @@ const loadRecaptchaScript = async (): Promise<void> => {
     return;
   }
 
-  if (window.grecaptcha?.execute) {
+  const hasExecutor =
+    RECAPTCHA_PROVIDER === "enterprise"
+      ? Boolean(window.grecaptcha?.enterprise?.execute)
+      : Boolean(window.grecaptcha?.execute);
+
+  if (hasExecutor) {
     return;
   }
 
@@ -27,6 +32,15 @@ const loadRecaptchaScript = async (): Promise<void> => {
     const existing = document.querySelector<HTMLScriptElement>(`script[src="${src}"]`);
 
     if (existing) {
+      const existingHasExecutor =
+        RECAPTCHA_PROVIDER === "enterprise"
+          ? Boolean(window.grecaptcha?.enterprise?.execute)
+          : Boolean(window.grecaptcha?.execute);
+      if (existingHasExecutor) {
+        resolve();
+        return;
+      }
+
       existing.addEventListener("load", () => resolve(), { once: true });
       existing.addEventListener("error", () => reject(new Error("Failed to load CAPTCHA script.")), { once: true });
       return;

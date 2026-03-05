@@ -1,4 +1,13 @@
-import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Suspense,
+  lazy,
+  startTransition,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Head, usePage } from "@inertiajs/react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import GuestLayout from "@/Layouts/GuestLayout";
@@ -232,6 +241,16 @@ export default function Welcome() {
   const [canScrollPreMadeNext, setCanScrollPreMadeNext] = useState(
     preMadeProducts.length > 1
   );
+  const productCardStepRef = useRef(0);
+  const activeProductIndexRef = useRef(0);
+  const canScrollPrevRef = useRef(false);
+  const canScrollNextRef = useRef(spotlightProducts.length > 1);
+  const preMadeCardStepRef = useRef(0);
+  const activePreMadeIndexRef = useRef(0);
+  const canScrollPreMadePrevRef = useRef(false);
+  const canScrollPreMadeNextRef = useRef(preMadeProducts.length > 1);
+  const productRailRafRef = useRef<number | null>(null);
+  const preMadeRailRafRef = useRef<number | null>(null);
   const productRailDraggingRef = useRef(false);
   const productRailMovedRef = useRef(false);
   const productRailPointerIdRef = useRef<number | null>(null);
@@ -250,10 +269,7 @@ export default function Welcome() {
     return () => clearInterval(interval);
   }, []);
 
-  const syncProductRailState = useCallback(() => {
-    const rail = productRailRef.current;
-    if (!rail) return;
-
+  const syncProductRailState = useCallback((rail: HTMLDivElement) => {
     const firstCard = rail.querySelector<HTMLElement>("[data-product-card]");
     if (firstCard) {
       const railStyle = window.getComputedStyle(rail);
@@ -262,22 +278,33 @@ export default function Welcome() {
       const gap = Number.parseFloat(gapRaw || "0") || 0;
       const nextStep = firstCard.offsetWidth + gap;
       if (nextStep > 0) {
-        setProductCardStep(nextStep);
+        if (productCardStepRef.current !== nextStep) {
+          productCardStepRef.current = nextStep;
+          setProductCardStep(nextStep);
+        }
         const nextIndex = Math.round(rail.scrollLeft / nextStep);
-        setActiveProductIndex(
-          Math.max(0, Math.min(spotlightProducts.length - 1, nextIndex))
-        );
+        const boundedIndex = Math.max(0, Math.min(spotlightProducts.length - 1, nextIndex));
+        if (activeProductIndexRef.current !== boundedIndex) {
+          activeProductIndexRef.current = boundedIndex;
+          startTransition(() => setActiveProductIndex(boundedIndex));
+        }
       }
     }
 
-    setCanScrollPrev(rail.scrollLeft > 8);
-    setCanScrollNext(rail.scrollLeft + rail.clientWidth < rail.scrollWidth - 8);
+    const nextCanScrollPrev = rail.scrollLeft > 8;
+    if (canScrollPrevRef.current !== nextCanScrollPrev) {
+      canScrollPrevRef.current = nextCanScrollPrev;
+      setCanScrollPrev(nextCanScrollPrev);
+    }
+
+    const nextCanScrollNext = rail.scrollLeft + rail.clientWidth < rail.scrollWidth - 8;
+    if (canScrollNextRef.current !== nextCanScrollNext) {
+      canScrollNextRef.current = nextCanScrollNext;
+      setCanScrollNext(nextCanScrollNext);
+    }
   }, [spotlightProducts.length]);
 
-  const syncPreMadeRailState = useCallback(() => {
-    const rail = preMadeRailRef.current;
-    if (!rail) return;
-
+  const syncPreMadeRailState = useCallback((rail: HTMLDivElement) => {
     const firstCard = rail.querySelector<HTMLElement>("[data-premade-card]");
     if (firstCard) {
       const railStyle = window.getComputedStyle(rail);
@@ -286,47 +313,87 @@ export default function Welcome() {
       const gap = Number.parseFloat(gapRaw || "0") || 0;
       const nextStep = firstCard.offsetWidth + gap;
       if (nextStep > 0) {
-        setPreMadeCardStep(nextStep);
+        if (preMadeCardStepRef.current !== nextStep) {
+          preMadeCardStepRef.current = nextStep;
+          setPreMadeCardStep(nextStep);
+        }
         const nextIndex = Math.round(rail.scrollLeft / nextStep);
-        setActivePreMadeIndex(
-          Math.max(0, Math.min(preMadeProducts.length - 1, nextIndex))
-        );
+        const boundedIndex = Math.max(0, Math.min(preMadeProducts.length - 1, nextIndex));
+        if (activePreMadeIndexRef.current !== boundedIndex) {
+          activePreMadeIndexRef.current = boundedIndex;
+          startTransition(() => setActivePreMadeIndex(boundedIndex));
+        }
       }
     }
 
-    setCanScrollPreMadePrev(rail.scrollLeft > 8);
-    setCanScrollPreMadeNext(
-      rail.scrollLeft + rail.clientWidth < rail.scrollWidth - 8
-    );
+    const nextCanScrollPreMadePrev = rail.scrollLeft > 8;
+    if (canScrollPreMadePrevRef.current !== nextCanScrollPreMadePrev) {
+      canScrollPreMadePrevRef.current = nextCanScrollPreMadePrev;
+      setCanScrollPreMadePrev(nextCanScrollPreMadePrev);
+    }
+
+    const nextCanScrollPreMadeNext = rail.scrollLeft + rail.clientWidth < rail.scrollWidth - 8;
+    if (canScrollPreMadeNextRef.current !== nextCanScrollPreMadeNext) {
+      canScrollPreMadeNextRef.current = nextCanScrollPreMadeNext;
+      setCanScrollPreMadeNext(nextCanScrollPreMadeNext);
+    }
   }, [preMadeProducts.length]);
+
+  const scheduleProductRailSync = useCallback(() => {
+    if (productRailRafRef.current !== null) return;
+    productRailRafRef.current = window.requestAnimationFrame(() => {
+      productRailRafRef.current = null;
+      const rail = productRailRef.current;
+      if (!rail) return;
+      syncProductRailState(rail);
+    });
+  }, [syncProductRailState]);
+
+  const schedulePreMadeRailSync = useCallback(() => {
+    if (preMadeRailRafRef.current !== null) return;
+    preMadeRailRafRef.current = window.requestAnimationFrame(() => {
+      preMadeRailRafRef.current = null;
+      const rail = preMadeRailRef.current;
+      if (!rail) return;
+      syncPreMadeRailState(rail);
+    });
+  }, [syncPreMadeRailState]);
 
   useEffect(() => {
     const rail = productRailRef.current;
     if (!rail) return;
 
-    syncProductRailState();
-    rail.addEventListener("scroll", syncProductRailState, { passive: true });
-    window.addEventListener("resize", syncProductRailState);
+    scheduleProductRailSync();
+    rail.addEventListener("scroll", scheduleProductRailSync, { passive: true });
+    window.addEventListener("resize", scheduleProductRailSync);
 
     return () => {
-      rail.removeEventListener("scroll", syncProductRailState);
-      window.removeEventListener("resize", syncProductRailState);
+      rail.removeEventListener("scroll", scheduleProductRailSync);
+      window.removeEventListener("resize", scheduleProductRailSync);
+      if (productRailRafRef.current !== null) {
+        cancelAnimationFrame(productRailRafRef.current);
+        productRailRafRef.current = null;
+      }
     };
-  }, [syncProductRailState]);
+  }, [scheduleProductRailSync]);
 
   useEffect(() => {
     const rail = preMadeRailRef.current;
     if (!rail) return;
 
-    syncPreMadeRailState();
-    rail.addEventListener("scroll", syncPreMadeRailState, { passive: true });
-    window.addEventListener("resize", syncPreMadeRailState);
+    schedulePreMadeRailSync();
+    rail.addEventListener("scroll", schedulePreMadeRailSync, { passive: true });
+    window.addEventListener("resize", schedulePreMadeRailSync);
 
     return () => {
-      rail.removeEventListener("scroll", syncPreMadeRailState);
-      window.removeEventListener("resize", syncPreMadeRailState);
+      rail.removeEventListener("scroll", schedulePreMadeRailSync);
+      window.removeEventListener("resize", schedulePreMadeRailSync);
+      if (preMadeRailRafRef.current !== null) {
+        cancelAnimationFrame(preMadeRailRafRef.current);
+        preMadeRailRafRef.current = null;
+      }
     };
-  }, [syncPreMadeRailState]);
+  }, [schedulePreMadeRailSync]);
 
   const scrollProductRail = (direction: "prev" | "next") => {
     const rail = productRailRef.current;
