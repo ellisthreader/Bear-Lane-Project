@@ -8,6 +8,8 @@
 
     <!-- CSRF Token -->
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="recaptcha-site-key" content="{{ (string) config('services.recaptcha.site_key', '') }}">
+    <meta name="recaptcha-provider" content="{{ (string) config('services.recaptcha.provider', '') }}">
 
     <!-- Routes & Vite -->
     @routes

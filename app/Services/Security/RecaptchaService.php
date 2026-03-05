@@ -11,24 +11,53 @@ class RecaptchaService
 {
     private function provider(): string
     {
-        return strtolower((string) config('services.recaptcha.provider', 'standard'));
+        $provider = strtolower(trim((string) config('services.recaptcha.provider', '')));
+        if ($provider === 'enterprise' || $provider === 'standard') {
+            return $provider;
+        }
+
+        return '';
     }
 
-    private function isEnterpriseEnabled(): bool
+    private function hasEnterpriseCredentials(): bool
     {
-        return $this->provider() === 'enterprise'
-            && filled(config('services.recaptcha.enterprise_project_id'))
+        return filled(config('services.recaptcha.enterprise_project_id'))
             && filled(config('services.recaptcha.enterprise_api_key'))
             && filled(config('services.recaptcha.site_key'));
     }
 
+    private function hasStandardCredentials(): bool
+    {
+        return filled(config('services.recaptcha.secret'));
+    }
+
+    private function shouldUseEnterprise(): bool
+    {
+        $provider = $this->provider();
+        if ($provider === 'standard') {
+            return false;
+        }
+
+        return $this->hasEnterpriseCredentials();
+    }
+
+    private function shouldUseStandard(): bool
+    {
+        $provider = $this->provider();
+        if ($provider === 'enterprise') {
+            return $this->hasStandardCredentials();
+        }
+
+        return $this->hasStandardCredentials();
+    }
+
     public function isEnabled(): bool
     {
-        if ($this->isEnterpriseEnabled()) {
+        if ($this->shouldUseEnterprise()) {
             return true;
         }
 
-        return filled(config('services.recaptcha.secret'));
+        return $this->shouldUseStandard();
     }
 
     public function verifyOrFail(Request $request, string $expectedAction, ?float $minScore = null): void
@@ -45,11 +74,31 @@ class RecaptchaService
         }
 
         $threshold = $minScore ?? (float) config('services.recaptcha.min_score', 0.5);
-        if ($this->isEnterpriseEnabled()) {
-            $this->verifyEnterpriseOrFail($request, $token, $expectedAction, $threshold);
-            return;
+        if ($this->shouldUseEnterprise()) {
+            try {
+                $this->verifyEnterpriseOrFail($request, $token, $expectedAction, $threshold);
+                return;
+            } catch (ValidationException $enterpriseException) {
+                if (!$this->shouldUseStandard()) {
+                    throw $enterpriseException;
+                }
+
+                Log::notice('reCAPTCHA Enterprise rejected, attempting standard fallback', [
+                    'ip' => $request->ip(),
+                    'expected_action' => $expectedAction,
+                ]);
+            }
         }
 
+        $this->verifyStandardOrFail($request, $token, $expectedAction, $threshold);
+    }
+
+    private function verifyStandardOrFail(
+        Request $request,
+        string $token,
+        string $expectedAction,
+        float $threshold
+    ): void {
         $secret = (string) config('services.recaptcha.secret');
 
         $response = Http::asForm()

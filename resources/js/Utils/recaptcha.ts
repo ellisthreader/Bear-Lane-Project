@@ -1,7 +1,14 @@
-const RECAPTCHA_SITE_KEY = (import.meta.env.VITE_RECAPTCHA_SITE_KEY as string | undefined)?.trim() || "";
+const envSiteKey = (import.meta.env.VITE_RECAPTCHA_SITE_KEY as string | undefined)?.trim() || "";
+const envProvider = (import.meta.env.VITE_RECAPTCHA_PROVIDER as string | undefined)?.trim().toLowerCase() || "";
+
+const readMetaValue = (name: string): string =>
+  document.querySelector<HTMLMetaElement>(`meta[name="${name}"]`)?.content?.trim() || "";
+
+const RECAPTCHA_SITE_KEY = envSiteKey || readMetaValue("recaptcha-site-key");
+const providerFromMeta = readMetaValue("recaptcha-provider").toLowerCase();
+const providerCandidate = envProvider || providerFromMeta;
 const RECAPTCHA_PROVIDER =
-  ((import.meta.env.VITE_RECAPTCHA_PROVIDER as string | undefined)?.trim().toLowerCase() ||
-    "standard") as "standard" | "enterprise";
+  (providerCandidate === "enterprise" ? "enterprise" : "standard") as "standard" | "enterprise";
 
 let scriptLoadPromise: Promise<void> | null = null;
 
