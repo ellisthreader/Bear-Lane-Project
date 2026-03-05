@@ -51,6 +51,57 @@ const resolveRecaptchaApi = (): { ready: RecaptchaReady; execute: RecaptchaExecu
   return null;
 };
 
+const getRecaptchaScriptCandidates = (): string[] => {
+  const preferred =
+    RECAPTCHA_PROVIDER === "enterprise"
+      ? "https://www.google.com/recaptcha/enterprise.js"
+      : "https://www.google.com/recaptcha/api.js";
+  const fallback =
+    RECAPTCHA_PROVIDER === "enterprise"
+      ? "https://www.google.com/recaptcha/api.js"
+      : "https://www.google.com/recaptcha/enterprise.js";
+
+  return [preferred, fallback];
+};
+
+const waitForRecaptchaApi = async (timeoutMs = 1500): Promise<boolean> => {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    if (resolveRecaptchaApi()) {
+      return true;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+
+  return Boolean(resolveRecaptchaApi());
+};
+
+const loadScriptSrc = async (src: string): Promise<void> =>
+  new Promise<void>((resolve, reject) => {
+    const existing = document.querySelector<HTMLScriptElement>(`script[src="${src}"]`);
+    if (existing) {
+      if (existing.dataset.recaptchaLoaded === "true") {
+        resolve();
+        return;
+      }
+
+      existing.addEventListener("load", () => resolve(), { once: true });
+      existing.addEventListener("error", () => reject(new Error("Failed to load CAPTCHA script.")), { once: true });
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = src;
+    script.async = true;
+    script.defer = true;
+    script.onload = () => {
+      script.dataset.recaptchaLoaded = "true";
+      resolve();
+    };
+    script.onerror = () => reject(new Error("Failed to load CAPTCHA script."));
+    document.head.appendChild(script);
+  });
+
 const loadRecaptchaScript = async (): Promise<void> => {
   if (!RECAPTCHA_SITE_KEY) {
     return;
@@ -66,33 +117,36 @@ const loadRecaptchaScript = async (): Promise<void> => {
     return scriptLoadPromise;
   }
 
-  scriptLoadPromise = new Promise<void>((resolve, reject) => {
-    const scriptPath =
-      RECAPTCHA_PROVIDER === "enterprise"
-        ? "https://www.google.com/recaptcha/enterprise.js"
-        : "https://www.google.com/recaptcha/api.js";
-    const src = `${scriptPath}?render=${encodeURIComponent(RECAPTCHA_SITE_KEY)}`;
-    const existing = document.querySelector<HTMLScriptElement>(`script[src="${src}"]`);
+  scriptLoadPromise = (async () => {
+    const candidates = getRecaptchaScriptCandidates();
+    const failures: string[] = [];
 
-    if (existing) {
-      const existingHasExecutor = Boolean(resolveRecaptchaApi());
-      if (existingHasExecutor) {
-        resolve();
-        return;
+    for (const scriptPath of candidates) {
+      const src = `${scriptPath}?render=${encodeURIComponent(RECAPTCHA_SITE_KEY)}`;
+      try {
+        await loadScriptSrc(src);
+      } catch (error) {
+        failures.push(
+          `${scriptPath}: ${error instanceof Error ? error.message : "Unknown script load error"}`
+        );
+        continue;
       }
 
-      existing.addEventListener("load", () => resolve(), { once: true });
-      existing.addEventListener("error", () => reject(new Error("Failed to load CAPTCHA script.")), { once: true });
-      return;
+      if (await waitForRecaptchaApi()) {
+        return;
+      }
     }
 
-    const script = document.createElement("script");
-    script.src = src;
-    script.async = true;
-    script.defer = true;
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error("Failed to load CAPTCHA script."));
-    document.head.appendChild(script);
+    const grecaptcha = window.grecaptcha;
+    throw new Error(
+      `CAPTCHA scripts loaded but API unavailable. provider=${RECAPTCHA_PROVIDER}, hasGrecaptcha=${Boolean(
+        grecaptcha
+      )}, hasReady=${Boolean(grecaptcha?.ready)}, hasExecute=${Boolean(
+        grecaptcha?.execute
+      )}, hasEnterpriseReady=${Boolean(grecaptcha?.enterprise?.ready)}, hasEnterpriseExecute=${Boolean(
+        grecaptcha?.enterprise?.execute
+      )}, failures=[${failures.join(" | ")}]`
+    );
   });
 
   return scriptLoadPromise;
@@ -110,7 +164,9 @@ export const executeRecaptcha = async (action: string): Promise<string> => {
   const api = resolveRecaptchaApi();
 
   if (!api) {
-    throw new Error("CAPTCHA failed to initialise.");
+    throw new Error(
+      `CAPTCHA failed to initialise. provider=${RECAPTCHA_PROVIDER}, siteKeyPresent=${RECAPTCHA_SITE_KEY.length > 0}`
+    );
   }
 
   return new Promise<string>((resolve, reject) => {
