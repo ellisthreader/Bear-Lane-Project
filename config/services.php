@@ -68,7 +68,11 @@ return [
     // Google reCAPTCHA
     // ---------------------------
     'recaptcha' => [
+        'provider' => env('RECAPTCHA_PROVIDER', 'standard'),
         'secret' => env('RECAPTCHA_SECRET_KEY'),
+        'site_key' => env('RECAPTCHA_SITE_KEY', env('VITE_RECAPTCHA_SITE_KEY')),
+        'enterprise_project_id' => env('RECAPTCHA_ENTERPRISE_PROJECT_ID'),
+        'enterprise_api_key' => env('RECAPTCHA_ENTERPRISE_API_KEY'),
         'min_score' => (float) env('RECAPTCHA_MIN_SCORE', 0.5),
     ],
 
