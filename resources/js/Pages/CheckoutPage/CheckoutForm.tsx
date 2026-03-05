@@ -1432,7 +1432,7 @@ const CheckoutForm = ({ initialEmail = "" }: CheckoutFormProps) => {
                         </div>
 
                         <div className="self-start lg:w-full">
-                          <img
+                          <img loading="lazy" decoding="async"
                             src="/images/Gift-Wrapping.jpeg"
                             alt="Gift wrapping example"
                             className="h-[320px] w-full rounded-2xl object-cover"

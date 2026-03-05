@@ -40,7 +40,7 @@ export default function DesignNavbar({
         {/* LOGO */}
         <Link href="/" className="flex items-center">
           <div className="relative h-[50px] w-[220px]">
-            <img
+            <img loading="lazy" decoding="async"
               src="/images/BLText.png"
               alt="Bear Lane"
               className="w-full h-full object-contain select-none"

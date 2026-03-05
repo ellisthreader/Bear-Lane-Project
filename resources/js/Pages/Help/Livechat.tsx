@@ -1287,7 +1287,7 @@ export default function Livechat() {
         >
           <header className="flex items-center justify-between border-b border-[#E8DEC9] bg-gradient-to-r from-[#FFF8E6] via-[#FFFDF8] to-[#FFF8E6] px-5 py-4">
             <div className="flex items-center gap-3">
-              <img
+              <img loading="lazy" decoding="async"
                 src={headerAvatar}
                 alt={headerName}
                 className="h-11 w-11 rounded-full border border-[#E3D5B7] bg-white object-cover"
@@ -1358,7 +1358,7 @@ export default function Livechat() {
                       </p>
                       {message.is_image && message.image_url ? (
                         <a href={message.image_url} target="_blank" rel="noreferrer">
-                          <img
+                          <img loading="lazy" decoding="async"
                             src={message.image_url}
                             alt="Chat upload"
                             className="max-h-72 w-auto rounded-xl border border-[#E5D9C0] bg-white object-contain"

@@ -133,7 +133,7 @@ function renderLayerPreview(layer: any, uid: string, scale: number, canvasWidth:
   }
 
   return (
-    <img
+    <img loading="lazy" decoding="async"
       key={uid}
       src={layer?.url}
       alt=""
@@ -315,7 +315,7 @@ export default function MyDesignsSidebar({
                     className="absolute inset-0"
                     aria-label="Expand design preview"
                   >
-                    <img
+                    <img loading="lazy" decoding="async"
                       src={baseImage}
                       alt={design.name}
                       className="absolute inset-0 h-full w-full object-contain p-1"
@@ -398,7 +398,7 @@ export default function MyDesignsSidebar({
             >
               ×
             </button>
-            <img
+            <img loading="lazy" decoding="async"
               src={expandedPreview.src}
               alt={expandedPreview.name}
               className="max-w-[95vw] max-h-[95vh] object-contain rounded-lg bg-white"

@@ -228,7 +228,7 @@ export default function LiveChatTab() {
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[#EAE0CB] bg-[#FFF8EA] px-4 py-3">
           <div className="flex items-start gap-3">
             {activeChat ? (
-              <img
+              <img loading="lazy" decoding="async"
                 src={activeChat.participant_details?.avatar || "/images/DefaultPicture.png"}
                 alt={activeChat.participant}
                 className="mt-0.5 h-10 w-10 rounded-full border border-[#E1D4B8] bg-white object-cover"
@@ -385,7 +385,7 @@ export default function LiveChatTab() {
                       ) : null}
                       {entry.is_image && entry.image_url ? (
                         <a href={entry.image_url} target="_blank" rel="noreferrer">
-                          <img
+                          <img loading="lazy" decoding="async"
                             src={entry.image_url}
                             alt="Chat upload"
                             className="max-h-64 w-auto rounded-xl border border-[#E5D9C0] bg-white object-contain"

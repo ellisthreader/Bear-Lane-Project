@@ -151,12 +151,12 @@ export default function CategoryProductsGrid({ productEditMode = false, category
             ) : null}
 
             <div className="relative h-[280px] w-full overflow-hidden bg-[#E5E7EB] p-3">
-              <img
+              <img loading="lazy" decoding="async"
                 src={image}
                 alt={product.name}
                 className="h-full w-full object-contain transition-all duration-500 group-hover:scale-105 group-hover:opacity-0"
               />
-              <img
+              <img loading="lazy" decoding="async"
                 src={hoverImage}
                 alt={product.name}
                 className="absolute inset-0 h-full w-full object-contain p-3 opacity-0 transition-all duration-500 group-hover:scale-105 group-hover:opacity-100"

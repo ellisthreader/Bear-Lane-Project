@@ -143,7 +143,7 @@ export default function VerifyEmail() {
 
             {/* Logo */}
             <div className="flex justify-center mb-6">
-              <img
+              <img loading="lazy" decoding="async"
                 src="/images/BL-Logo.png"
                 alt="BL Logo"
                 className="h-14 w-auto object-contain"

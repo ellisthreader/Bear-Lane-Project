@@ -13,7 +13,7 @@ function ProductCard({ product }: { product: RecommendedProduct }) {
     <div className="overflow-hidden rounded-xl border border-[#E8DAB8] bg-white shadow-sm transition hover:shadow-md">
       <div className="relative h-44 w-full bg-[#FBF7EE]">
         {product.image ? (
-          <img src={product.image} alt={product.name} className="h-full w-full object-cover" />
+          <img loading="lazy" decoding="async" src={product.image} alt={product.name} className="h-full w-full object-cover" />
         ) : (
           <div className="flex h-full items-center justify-center text-sm text-[#8B7E61]">No image</div>
         )}

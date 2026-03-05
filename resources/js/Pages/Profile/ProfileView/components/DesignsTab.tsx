@@ -77,7 +77,7 @@ function renderLayerPreview(layer: any, uid: string, scale: number, canvasWidth:
     );
   }
 
-  return <img key={uid} src={layer?.url} alt="" style={layerStyle} className="object-contain" />;
+  return <img loading="lazy" decoding="async" key={uid} src={layer?.url} alt="" style={layerStyle} className="object-contain" />;
 }
 
 function getViewBaseImage(design: SavedDesignItem, view: ViewKey): string | null {
@@ -356,7 +356,7 @@ export default function DesignsTab() {
 
       {designList.length === 0 ? (
         <div className="rounded-xl border border-dashed border-[#E6D7B0] bg-[#FFFDF8] px-6 py-12 text-center">
-          <img src="/images/Icons/NoDesign.png" alt="No designs" className="mx-auto mb-6 w-full max-w-[260px]" />
+          <img loading="lazy" decoding="async" src="/images/Icons/NoDesign.png" alt="No designs" className="mx-auto mb-6 w-full max-w-[260px]" />
           <h3 className="text-2xl font-bold text-[#251E11]">No designs yet</h3>
           <p className="mt-2 text-sm text-[#7A6C4D]">Bring your first idea to life.</p>
           <button
@@ -420,7 +420,7 @@ export default function DesignsTab() {
                           className="absolute inset-0"
                           aria-label="Expand design preview"
                         >
-                          <img src={baseImage} alt={design.name} className="absolute inset-0 h-full w-full object-contain p-1" />
+                          <img loading="lazy" decoding="async" src={baseImage} alt={design.name} className="absolute inset-0 h-full w-full object-contain p-1" />
                         </button>
                       ) : (
                         <div className="absolute inset-0 flex items-center justify-center text-sm text-[#8B7E61]">No preview</div>
@@ -558,7 +558,7 @@ export default function DesignsTab() {
             >
               ×
             </button>
-            <img
+            <img loading="lazy" decoding="async"
               src={expandedPreview.src}
               alt={expandedPreview.name}
               className="max-h-[95vh] max-w-[95vw] rounded-lg bg-white object-contain"

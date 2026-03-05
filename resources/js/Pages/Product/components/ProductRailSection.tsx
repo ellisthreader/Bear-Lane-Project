@@ -81,7 +81,7 @@ export default function ProductRailSection({
               className="group min-w-[280px] shrink-0 snap-start overflow-hidden rounded-2xl border border-[#E7DCC6] bg-white transition hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(46,35,14,0.12)] sm:min-w-[330px] lg:min-w-[380px]"
             >
               <div className="h-64 bg-[#E5E7EB] p-3 sm:h-72 lg:h-80">
-                <img
+                <img loading="lazy" decoding="async"
                   src={item.image || "/images/no-image.png"}
                   alt={item.name}
                   draggable={false}

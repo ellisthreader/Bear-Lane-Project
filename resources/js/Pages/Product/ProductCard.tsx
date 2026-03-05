@@ -102,6 +102,8 @@ export default function ProductCard({ product, compact = false }: ProductCardPro
             key="frontImage"
             src={firstImage}
             alt={product.name}
+            loading="lazy"
+            decoding="async"
             draggable={false}
             className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
               hovered ? "opacity-0" : "opacity-100"
@@ -113,6 +115,8 @@ export default function ProductCard({ product, compact = false }: ProductCardPro
             key="hoverImage"
             src={secondImage}
             alt={product.name}
+            loading="lazy"
+            decoding="async"
             draggable={false}
             className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
               hovered ? "opacity-100" : "opacity-0"

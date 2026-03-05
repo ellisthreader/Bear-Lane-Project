@@ -39,7 +39,7 @@ class AppServiceProvider extends ServiceProvider
                 absolute: false
             );
 
-            $appUrl = rtrim((string) config('app.url', ''), '/');
+            $appUrl = rtrim((string) config('app.frontend_url', config('app.url', '')), '/');
             if ($appUrl !== '') {
                 return $appUrl . $relativeSignedPath;
             }

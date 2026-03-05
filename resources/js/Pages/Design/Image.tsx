@@ -21,7 +21,7 @@ export default function DesignImage({
     <div className="w-full h-full flex items-center justify-center relative">
       {/* Main Product Image */}
       {productImage ? (
-        <img
+        <img loading="lazy" decoding="async"
           src={productImage}
           alt={safeName}
           className="object-contain w-full h-full pointer-events-none"
@@ -47,7 +47,7 @@ export default function DesignImage({
                       : "border-gray-300 hover:border-[#C6A75E] hover:scale-105 shadow-sm"}
                   `}
                 >
-                  <img
+                  <img loading="lazy" decoding="async"
                     src={img}
                     alt={`Product ${index + 1}`}
                     className="h-14 w-14 object-contain rounded-lg"

@@ -5,10 +5,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 const images = [
-  "/images/HeroSection/hero-clothing1.jpeg",
-  "/images/HeroSection/hero-clothing2.jpeg",
-  "/images/HeroSection/hero-clothing3.jpeg",
-  "/images/HeroSection/hero-clothing4.png",
+  "/hero.webp",
+  "/images/HeroSection/hero-clothing2.webp",
+  "/images/HeroSection/hero-clothing3.webp",
+  "/images/HeroSection/hero-clothing4.webp",
 ];
 
 export default function HeroSection() {
@@ -53,6 +53,11 @@ export default function HeroSection() {
     resetAutoSlide();
   };
 
+  const backupIndex =
+    currentIndex === 0 && direction === 1
+      ? 0
+      : (currentIndex - direction + images.length) % images.length;
+
   return (
     <div className="relative w-full">
       {/* Hero container */}
@@ -62,6 +67,9 @@ export default function HeroSection() {
             key={currentIndex}
             src={images[currentIndex]}
             alt={`Hero image ${currentIndex + 1}`}
+            loading="eager"
+            fetchPriority={currentIndex === 0 ? "high" : "auto"}
+            decoding="async"
             custom={direction}
             initial={{ x: direction > 0 ? "100%" : "-100%" }}
             animate={{ x: 0 }}
@@ -73,12 +81,10 @@ export default function HeroSection() {
 
         {/* Backup image to prevent white flash */}
         <img
-          src={
-            images[
-              (currentIndex - direction + images.length) % images.length
-            ]
-          }
+          src={images[backupIndex]}
           alt="Previous hero"
+          loading="lazy"
+          decoding="async"
           className="absolute top-0 left-0 w-full h-full object-cover -z-10"
         />
 

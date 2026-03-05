@@ -65,7 +65,7 @@ export default function ProductsIndex({ type, products }: Props) {
               className="bg-white rounded-2xl shadow hover:shadow-lg transition overflow-hidden"
             >
               {/* IMAGE */}
-              <img
+              <img loading="lazy" decoding="async"
                 src={firstImage}
                 alt={product.name}
                 className="w-full h-64 object-cover"

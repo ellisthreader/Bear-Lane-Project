@@ -230,7 +230,7 @@ export default function Products({ categories }: Props) {
                     : "border-[#E5D4AF] hover:border-[#D7BE84]"
                 }`}
               >
-                <img src={tab.image} alt={tab.label} className="absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:scale-105" />
+                <img loading="lazy" decoding="async" src={tab.image} alt={tab.label} className="absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:scale-105" />
                 <div className="absolute inset-0 bg-black/45 transition duration-300 group-hover:bg-black/38" />
                 <div className="absolute inset-0 flex items-center justify-center">
                   <span className="text-base font-extrabold tracking-[0.18em] text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)]">

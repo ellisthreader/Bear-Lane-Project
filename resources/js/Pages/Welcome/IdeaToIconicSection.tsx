@@ -6,19 +6,19 @@ import GetQuoteInstantly from "./Quote/GetQuoteInstantly";
 export default function IdeaToIconicSection() {
   const imageSets = [
     {
-      concept: "/images/Examples/Example1.png",
-      model: "/images/Examples/Example2.png",
-      final: "/images/Examples/Example3.png",
+      concept: "/images/Examples/Example1.webp",
+      model: "/images/Examples/Example2.webp",
+      final: "/images/Examples/Example3.webp",
     },
     {
-      concept: "/images/Examples/Example4.png",
-      model: "/images/Examples/Example5.png",
-      final: "/images/Examples/Example6.jpeg",
+      concept: "/images/Examples/Example4.webp",
+      model: "/images/Examples/Example5.webp",
+      final: "/images/Examples/Example6.webp",
     },
     {
-      concept: "/images/Examples/Example7.png",
-      model: "/images/Examples/Example8.png",
-      final: "/images/Examples/Example9.jpg",
+      concept: "/images/Examples/Example7.webp",
+      model: "/images/Examples/Example8.webp",
+      final: "/images/Examples/Example9.webp",
     },
   ];
 
@@ -145,6 +145,8 @@ export default function IdeaToIconicSection() {
                   <img
                     src={set.final}
                     alt="Final product"
+                    loading="lazy"
+                    decoding="async"
                     className="h-full w-full object-cover"
                   />
                   <span className="absolute left-3 top-3 rounded-full bg-white/90 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[#5B461A]">
@@ -166,6 +168,8 @@ export default function IdeaToIconicSection() {
                       <img
                         src={set.concept}
                         alt="Design concept"
+                        loading="lazy"
+                        decoding="async"
                         className="h-full w-full object-cover"
                       />
                       <span className="absolute left-2 top-2 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#2F2414]">
@@ -195,6 +199,8 @@ export default function IdeaToIconicSection() {
                       <img
                         src={set.model}
                         alt="Real product"
+                        loading="lazy"
+                        decoding="async"
                         className="h-full w-full object-cover"
                       />
                       <span className="absolute left-2 top-2 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#2F2414]">

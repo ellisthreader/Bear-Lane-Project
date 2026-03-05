@@ -126,7 +126,7 @@ function SkillCard({ skill, index }: { skill: any; index: number }) {
         transition={{ type: "spring", stiffness: 300 }}
         className="relative w-full h-64 rounded-2xl overflow-hidden shadow-lg z-10"
       >
-        <img
+        <img loading="lazy" decoding="async"
           src={skill.image}
           alt={skill.title}
           className="w-full h-full object-cover rounded-2xl"

@@ -63,7 +63,7 @@ function DraggableImage({
   }
 
   return (
-    <img
+    <img loading="lazy" decoding="async"
       data-uid={uid}
       src={url}
       draggable={false}

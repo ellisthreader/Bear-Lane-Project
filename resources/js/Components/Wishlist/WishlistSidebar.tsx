@@ -88,7 +88,7 @@ export default function WishlistSidebar() {
                   <div key={item.id} className="flex items-start justify-between gap-3 border-b border-gray-200 pb-4">
                     <div className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-xl border border-gray-200 bg-white">
                       {item.image ? (
-                        <img src={item.image} alt={item.name} className="h-full w-full object-cover" />
+                        <img loading="lazy" decoding="async" src={item.image} alt={item.name} className="h-full w-full object-cover" />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center text-xs text-gray-500">No image</div>
                       )}

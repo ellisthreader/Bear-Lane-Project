@@ -831,7 +831,7 @@ export default function Statistics({
                           #{index + 1}
                         </span>
                         {customer.avatar ? (
-                          <img src={customer.avatar} alt={customer.customer_name} className="h-9 w-9 rounded-full object-cover" />
+                          <img loading="lazy" decoding="async" src={customer.avatar} alt={customer.customer_name} className="h-9 w-9 rounded-full object-cover" />
                         ) : (
                           <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-[#F0E4C8] text-sm font-semibold text-[#7A6435]">
                             {(customer.customer_name || "C").charAt(0).toUpperCase()}

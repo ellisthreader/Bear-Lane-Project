@@ -156,12 +156,12 @@ export default function ProductQuoteModal() {
                           : "border-[#E7DCC6] hover:border-[#C9A24D]"
                       }`}
                     >
-                      <img
+                      <img loading="lazy" decoding="async"
                         src={source.previewImage || "/images/no-image.png"}
                         alt={`${source.productName} preview`}
                         className="absolute inset-0 h-full w-full object-contain bg-[#E5E7EB] p-2"
                       />
-                      <img
+                      <img loading="lazy" decoding="async"
                         src={EMBROIDERY_IMAGES[option]}
                         alt={option}
                         className="absolute left-1/2 top-[32%] h-[34%] w-[34%] -translate-x-1/2 -translate-y-1/2 object-contain"

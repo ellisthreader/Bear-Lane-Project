@@ -46,7 +46,7 @@ const ProductViewSelector: React.FC<ProductViewSelectorProps> = ({
             }`}
             onClick={() => handleClick(viewKey)}
           >
-            <img src={src} alt={key} className="w-full h-full object-cover" />
+            <img loading="lazy" decoding="async" src={src} alt={key} className="w-full h-full object-cover" />
           </button>
         );
       })}

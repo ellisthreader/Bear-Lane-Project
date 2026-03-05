@@ -249,6 +249,8 @@ const handleSubmit = async () => {
                     <img
                       src={src}
                       alt={`Upload ${index}`}
+                      loading="lazy"
+                      decoding="async"
                       className="w-full h-full object-cover"
                     />
                     <button

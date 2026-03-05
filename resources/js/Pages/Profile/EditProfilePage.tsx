@@ -174,7 +174,7 @@ export default function EditProfilePage() {
           <div className="flex justify-center mb-14">
             <div className="flex flex-col md:flex-row items-center gap-10">
               <div className="w-36 h-36 rounded-full overflow-hidden shadow-md">
-                <img
+                <img loading="lazy" decoding="async"
                   src={preview || "/images/default-avatar.png"}
                   alt="Profile"
                   className="w-full h-full object-cover"

@@ -6,35 +6,35 @@ const steps = [
     title: "Pick a Product",
     description:
       "Choose from our wide variety of high-quality products that match your style, needs, or brand identity.",
-    image: "/images/steps/Step1.png",
+    image: "/images/steps/Step1.webp",
   },
   {
     number: "2",
     title: "Start Designing",
     description:
       "Use our custom design canvas to upload your artwork or create a unique design from scratch.",
-    image: "/images/steps/Step2.png",
+    image: "/images/steps/Step2.webp",
   },
   {
     number: "3",
     title: "Customise Endlessly",
     description:
       "Adjust colours, fonts, sizes, and add clipart to perfectly reflect your idea or brand.",
-    image: "/images/steps/Step3.png",
+    image: "/images/steps/Step3.webp",
   },
   {
     number: "4",
     title: "Submit Your Design",
     description:
       "Our professional team reviews your design, clarifies any details, and ensures 100% accuracy before production.",
-    image: "/images/steps/Step4.png",
+    image: "/images/steps/Step4.webp",
   },
   {
     number: "5",
     title: "Receive Your Product",
     description:
       "Once approved, we ship your product quickly, delivering your custom creation with top-notch quality.",
-    image: "/images/steps/Step5.png",
+    image: "/images/steps/Step5.webp",
   },
 ];
 
@@ -60,6 +60,8 @@ export default function StackedScrollCards() {
                 <img
                   src={step.image}
                   alt={step.title}
+                  loading="lazy"
+                  decoding="async"
                   className="h-full w-full object-cover"
                 />
               </div>

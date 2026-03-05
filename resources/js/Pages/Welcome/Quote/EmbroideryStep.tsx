@@ -60,6 +60,8 @@ export default function EmbroideryStep({
                 <img
                   src={option.image}
                   alt={option.name}
+                  loading="lazy"
+                  decoding="async"
                   className="w-full h-full object-contain p-0 scale-105 hover:scale-110 transition-transform duration-500"
                 />
               </div>

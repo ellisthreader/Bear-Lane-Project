@@ -86,7 +86,7 @@ export default function ClipartItemsPage({
               focus:ring-[#C6A75E]
             "
           >
-            <img
+            <img loading="lazy" decoding="async"
               src={item.src}
               alt={`${category.name} clipart`}
               draggable={false}

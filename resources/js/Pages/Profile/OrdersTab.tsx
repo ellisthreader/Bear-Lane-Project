@@ -244,7 +244,7 @@ export default function OrdersTab({ sortBy = "newest" }: OrdersTabProps) {
   if (!orders.length) {
     return (
       <div className="rounded-2xl border border-dashed border-[#E6D7B0] bg-[#FFFDF8] px-6 py-12 text-center">
-        <img src="/icons/NoOrders.png" alt="No orders" className="mx-auto mb-6 w-full max-w-[260px]" />
+        <img loading="lazy" decoding="async" src="/icons/NoOrders.png" alt="No orders" className="mx-auto mb-6 w-full max-w-[260px]" />
         <h3 className="text-2xl font-bold text-[#251E11]">No Orders yet</h3>
         <p className="mt-2 text-sm text-[#7A6C4D]">Browse our store to get started</p>
         <Link
@@ -411,7 +411,7 @@ export default function OrdersTab({ sortBy = "newest" }: OrdersTabProps) {
                       order.items.map((item) => (
                         <div key={item.id} className="rounded-xl border border-[#EADDBB] bg-[#FFFCF5] p-3">
                           <div className="flex items-center gap-3">
-                            <img
+                            <img loading="lazy" decoding="async"
                               src={item.image_url || "/images/placeholder.jpg"}
                               alt={item.product_name}
                               className="h-16 w-16 rounded-lg border border-[#E4D4AE] bg-white object-cover"
@@ -680,7 +680,7 @@ function LeaveReviewModal({
               <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
                 {imagePreviews.map((entry, index) => (
                   <div key={`${entry.file.name}-${index}`} className="relative overflow-hidden rounded-lg border border-[#E7DCC2] bg-white">
-                    <img src={entry.url} alt={`Review upload ${index + 1}`} className="h-20 w-full object-cover" />
+                    <img loading="lazy" decoding="async" src={entry.url} alt={`Review upload ${index + 1}`} className="h-20 w-full object-cover" />
                     <button
                       type="button"
                       onClick={() => removeImage(index)}

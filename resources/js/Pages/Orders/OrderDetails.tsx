@@ -199,7 +199,7 @@ export default function OrderDetails() {
                 order.items.map((item) => (
                   <div key={item.id} className="rounded-xl border border-[#EADDBB] bg-[#FFFCF5] p-3">
                     <div className="flex items-center gap-3">
-                      <img
+                      <img loading="lazy" decoding="async"
                         src={item.image_url || "/images/placeholder.jpg"}
                         alt={item.product_name || "Product"}
                         className="h-16 w-16 rounded-lg border border-[#E4D4AE] bg-white object-cover"

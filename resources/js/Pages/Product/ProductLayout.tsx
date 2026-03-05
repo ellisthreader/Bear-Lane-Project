@@ -1508,7 +1508,7 @@ export default function ProductLayout({ product, recommendedProducts = [], admin
                         }}
                         className="h-full w-full cursor-zoom-in text-left"
                       >
-                        <img
+                        <img loading="lazy" decoding="async"
                           src={img}
                           alt={`${effectiveName}-admin-${i + 1}`}
                           className="absolute inset-0 h-full w-full object-contain transition duration-300 group-hover:scale-[1.02]"
@@ -1574,7 +1574,7 @@ export default function ProductLayout({ product, recommendedProducts = [], admin
                           className="group relative h-[320px] w-full cursor-zoom-in overflow-hidden bg-[#E5E7EB] text-left sm:h-[420px] lg:h-[500px]"
                           aria-label={`Open image ${i + 1} in large view`}
                         >
-                          <img
+                          <img loading="lazy" decoding="async"
                             src={img}
                             alt={`${effectiveName}-${i + 1}`}
                             className="absolute inset-0 h-full w-full object-contain transition duration-300 group-hover:scale-[1.02]"
@@ -1706,7 +1706,7 @@ export default function ProductLayout({ product, recommendedProducts = [], admin
                       >
                         <div className="h-14 w-14 bg-[#F2EBDD]">
                           {cp.images?.[0] ? (
-                            <img src={cp.images[0]} alt={cp.colour} className="h-full w-full object-cover" />
+                            <img loading="lazy" decoding="async" src={cp.images[0]} alt={cp.colour} className="h-full w-full object-cover" />
                           ) : (
                             <div className="h-full w-full bg-[#EFE6D2]" />
                           )}
@@ -1906,7 +1906,7 @@ export default function ProductLayout({ product, recommendedProducts = [], admin
                       <div className="flex items-center gap-3">
                         <div className="h-10 w-10 overflow-hidden rounded-full border border-[#E7DAC0] bg-[#FFF9EC]">
                           {review.user?.avatar_url ? (
-                            <img src={review.user.avatar_url} alt={review.user.username || "Customer"} className="h-full w-full object-cover" />
+                            <img loading="lazy" decoding="async" src={review.user.avatar_url} alt={review.user.username || "Customer"} className="h-full w-full object-cover" />
                           ) : (
                             <div className="flex h-full w-full items-center justify-center text-sm font-bold text-[#8A6D2B]">
                               {String(review.user?.username || "C").slice(0, 1).toUpperCase()}
@@ -1937,7 +1937,7 @@ export default function ProductLayout({ product, recommendedProducts = [], admin
                             rel="noreferrer"
                             className="block overflow-hidden rounded-lg border border-[#E8DDC8] bg-[#FFFDF7]"
                           >
-                            <img
+                            <img loading="lazy" decoding="async"
                               src={imageUrl}
                               alt={`Review image ${imageIndex + 1}`}
                               className="aspect-square w-full object-cover transition-transform duration-300 hover:scale-105"
@@ -1998,14 +1998,14 @@ export default function ProductLayout({ product, recommendedProducts = [], admin
                       }`}
                       aria-label={`Show image ${index + 1}`}
                     >
-                      <img src={img} alt={`${effectiveName}-thumb-${index + 1}`} className="h-full w-full object-cover" />
+                      <img loading="lazy" decoding="async" src={img} alt={`${effectiveName}-thumb-${index + 1}`} className="h-full w-full object-cover" />
                     </button>
                   ))}
                 </div>
               </aside>
 
               <div className="relative flex h-[88vh] min-w-0 flex-1 items-center justify-center rounded-2xl bg-[#E5E7EB] p-4">
-                <img
+                <img loading="lazy" decoding="async"
                   src={displayImages[lightboxIndex]}
                   alt={`${effectiveName}-zoom-${lightboxIndex + 1}`}
                   className="max-h-full max-w-full object-contain"
@@ -2378,7 +2378,7 @@ export default function ProductLayout({ product, recommendedProducts = [], admin
                       const item = PARCEL_SIZE_PRESETS[key];
                       return (
                         <article key={key} className="rounded-2xl border border-[#E6D8BD] bg-white p-4">
-                          <img
+                          <img loading="lazy" decoding="async"
                             src={PARCEL_HELP_IMAGES[key]}
                             alt={`${item.label} parcel size visual`}
                             className="h-24 w-44 rounded-xl object-cover"
@@ -2460,7 +2460,7 @@ export default function ProductLayout({ product, recommendedProducts = [], admin
                         }}
                         className="relative aspect-[4/5] w-full overflow-hidden rounded-xl border border-[#DCC99D] bg-[#F4EFE2]"
                       >
-                        <img
+                        <img loading="lazy" decoding="async"
                           src={restrictedBoxEditor.imageUrl}
                           alt={`${restrictedBoxEditor.colourName}-restricted-editor`}
                           className="absolute inset-0 h-full w-full object-contain"

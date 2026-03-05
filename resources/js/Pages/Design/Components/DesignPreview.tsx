@@ -39,7 +39,7 @@ export default function DesignPreview({
       style={{ width, height }}
     >
       {(fallbackImage || snapshot?.baseImage) && (
-        <img
+        <img loading="lazy" decoding="async"
           src={fallbackImage || snapshot?.baseImage}
           alt={alt}
           className="absolute inset-0 h-full w-full object-contain"
@@ -106,7 +106,7 @@ export default function DesignPreview({
         }
 
         return (
-          <img
+          <img loading="lazy" decoding="async"
             key={layer.uid}
             src={layer.url}
             alt=""

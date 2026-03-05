@@ -476,7 +476,7 @@ export default function AdminOrderReturnsPanel() {
                             rel="noreferrer"
                             className="overflow-hidden rounded-lg border border-[#E4D4AE] bg-[#FFFEFB]"
                           >
-                            <img src={url} alt="Return proof" className="h-28 w-full object-cover" />
+                            <img loading="lazy" decoding="async" src={url} alt="Return proof" className="h-28 w-full object-cover" />
                           </a>
                         ))}
                       </div>

@@ -60,7 +60,7 @@ export default function AdminTopNav() {
           className="inline-flex items-center"
           aria-label="Go to home page"
         >
-          <img src="/images/BLText.png" alt="Bear Lane" className="h-10 w-auto object-contain" />
+          <img loading="lazy" decoding="async" src="/images/BLText.png" alt="Bear Lane" className="h-10 w-auto object-contain" />
         </Link>
 
         <div className="flex flex-1 items-center justify-center gap-2">

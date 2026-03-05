@@ -446,6 +446,9 @@ export default function NavMenu() {
                 <img
                   src="/images/BLText.png"
                   alt="Bear Lane"
+                  loading="eager"
+                  fetchPriority="high"
+                  decoding="async"
                   className="h-full w-full object-contain select-none"
                 />
               </div>
@@ -690,6 +693,8 @@ export default function NavMenu() {
                           <img
                             src={item.image || "/images/no-image.png"}
                             alt={item.name}
+                            loading="lazy"
+                            decoding="async"
                             className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
                           />
                         </div>
@@ -831,6 +836,8 @@ export default function NavMenu() {
                   <img
                     src="/images/BLText.png"
                     alt="Bear Lane"
+                    loading="lazy"
+                    decoding="async"
                     className="h-full w-full object-contain"
                   />
                 </div>

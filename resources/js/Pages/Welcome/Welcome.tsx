@@ -1,14 +1,15 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Head, usePage } from "@inertiajs/react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import GuestLayout from "@/Layouts/GuestLayout";
 import { AnimatePresence, motion } from "framer-motion";
+import DeferredRender from "@/Components/Performance/DeferredRender";
 
 import HeroSection from "./HeroSection";
-import IdeaToIconicSection from "./IdeaToIconicSection";
-import CategorySection from "./CategorySection";
-import StackedScrollCards from "./StackedScrollCards";
-import ProductCard from "../Product/ProductCard";
+const IdeaToIconicSection = lazy(() => import("./IdeaToIconicSection"));
+const CategorySection = lazy(() => import("./CategorySection"));
+const StackedScrollCards = lazy(() => import("./StackedScrollCards"));
+const ProductCard = lazy(() => import("../Product/ProductCard"));
 import {
   CheckCircle2,
   ChevronLeft,
@@ -193,6 +194,12 @@ const preMadeDesignNotes = [
   "Made by our pro designers for clean, balanced, high-conversion visuals.",
   "Ready-made concepts tuned for print and embroidery friendly output.",
 ];
+
+const sectionFallback = (
+  <div className="w-full bg-white px-4 py-16">
+    <div className="mx-auto h-40 max-w-7xl animate-pulse rounded-2xl bg-[#F5EFE2]" />
+  </div>
+);
 
 export default function Welcome() {
   const { props } = usePage<PageProps>();
@@ -447,7 +454,9 @@ export default function Welcome() {
 
   return (
     <Layout>
-      <Head title="Welcome" />
+      <Head title="Welcome">
+        <link rel="preload" as="image" href="/hero.webp" />
+      </Head>
 
       <div className="flex flex-col">
         {/* HERO */}
@@ -457,19 +466,31 @@ export default function Welcome() {
 
         {/* FROM IDEA TO ICONIC SECTION */}
         <div className="order-2 md:order-3">
-          <IdeaToIconicSection />
+          <DeferredRender fallback={sectionFallback}>
+            <Suspense fallback={sectionFallback}>
+              <IdeaToIconicSection />
+            </Suspense>
+          </DeferredRender>
         </div>
 
         {/* CATEGORIES */}
         <div className="order-3 md:order-2">
-          <CategorySection />
+          <DeferredRender fallback={sectionFallback}>
+            <Suspense fallback={sectionFallback}>
+              <CategorySection />
+            </Suspense>
+          </DeferredRender>
         </div>
       </div>
 
      
 
       {/* STACKED FEATURE CARDS */}
-      <StackedScrollCards />
+      <DeferredRender fallback={sectionFallback}>
+        <Suspense fallback={sectionFallback}>
+          <StackedScrollCards />
+        </Suspense>
+      </DeferredRender>
 
       <section className="bg-white py-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -543,7 +564,13 @@ export default function Welcome() {
                 viewport={{ once: true, amount: 0.2 }}
                 transition={{ duration: 0.35 }}
               >
-                <ProductCard product={product} compact />
+                <Suspense
+                  fallback={
+                    <div className="h-64 animate-pulse rounded-2xl border bg-[#F7F1E4] md:h-72" />
+                  }
+                >
+                  <ProductCard product={product} compact />
+                </Suspense>
               </motion.div>
             ))}
           </div>
@@ -634,7 +661,13 @@ export default function Welcome() {
                 data-premade-card
                 className="min-w-[76%] snap-start sm:min-w-[48%] md:min-w-[32%] lg:w-[265px] lg:min-w-[265px]"
               >
-                <ProductCard product={product} compact />
+                <Suspense
+                  fallback={
+                    <div className="h-64 animate-pulse rounded-2xl border bg-[#F7F1E4] md:h-72" />
+                  }
+                >
+                  <ProductCard product={product} compact />
+                </Suspense>
                 <p className="mt-3 rounded-xl border border-[#E7D7B2] bg-[#FFF9EB] px-3 py-2 text-sm font-medium text-[#5B441A] shadow-[0_8px_18px_rgba(95,72,18,0.08)]">
                   {preMadeDesignNotes[index % preMadeDesignNotes.length]}
                 </p>

@@ -6,7 +6,7 @@ export default function ImagePreview({ image }: any) {
 
   return (
     <div className="h-48 border rounded flex justify-center items-center">
-      <img
+      <img loading="lazy" decoding="async"
         src={image.url}
         style={{
           width: image.size.w,

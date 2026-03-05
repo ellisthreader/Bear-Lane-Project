@@ -89,7 +89,7 @@ export default function CheckoutPage() {
           <div className="max-w-[1300px] mx-auto px-6 py-4">
             <Link href="/" className="inline-flex items-center">
               <div className="relative h-[50px] w-[220px]">
-                <img
+                <img loading="lazy" decoding="async"
                   src="/images/BLText.png"
                   alt="Bear Lane"
                   className="w-full h-full object-contain select-none"
@@ -113,7 +113,7 @@ export default function CheckoutPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-2 items-stretch">
                   <div className="p-10 lg:p-12">
                     <div className="flex justify-center mb-6">
-                      <img src="/images/BL-Logo.png" alt="Logo" className="w-44 h-auto" />
+                      <img loading="lazy" decoding="async" src="/images/BL-Logo.png" alt="Logo" className="w-44 h-auto" />
                     </div>
 
                     <h2 className="text-3xl font-semibold tracking-tight text-gray-900">Login</h2>

@@ -246,7 +246,7 @@ const CartSidebar = () => {
                           noFrame
                         />
                       ) : (
-                        <img
+                        <img loading="lazy" decoding="async"
                           src={item.image}
                           alt={item.title}
                           className="w-full h-full object-cover rounded-xl border border-gray-200 bg-white"
@@ -335,7 +335,7 @@ const CartSidebar = () => {
                             key={product.id}
                             className="p-3 border border-gray-200 rounded-xl bg-white flex flex-col items-center text-center w-36 flex-shrink-0"
                           >
-                            <img
+                            <img loading="lazy" decoding="async"
                               src={product.image}
                               alt={product.title}
                               className="w-20 h-20 object-cover rounded-lg mb-2 border border-gray-200"

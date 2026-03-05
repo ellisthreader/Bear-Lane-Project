@@ -382,7 +382,7 @@ export default function OrderConfirmed() {
                   <div key={item.id} className="flex items-center justify-between gap-3 rounded-xl border border-gray-200/80 bg-gray-50/70 p-2.5">
                     <div className="flex min-w-0 items-center gap-3">
                       {item.image_url ? (
-                        <img src={item.image_url} alt={item.product_name} className="h-12 w-12 rounded-lg object-cover" />
+                        <img loading="lazy" decoding="async" src={item.image_url} alt={item.product_name} className="h-12 w-12 rounded-lg object-cover" />
                       ) : (
                         <div className="h-12 w-12 rounded-lg border border-dashed border-gray-300 bg-white" />
                       )}

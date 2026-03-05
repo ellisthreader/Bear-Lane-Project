@@ -223,7 +223,7 @@ export default function Crop({
       <div ref={containerRef} className="relative h-[50vh] overflow-hidden rounded-xl border">
         <div className="absolute inset-0" style={checkerboardStyle} />
 
-        <img
+        <img loading="lazy" decoding="async"
           ref={imgRef}
           src={originalImageUrl}
           onLoad={handleImageLoad}

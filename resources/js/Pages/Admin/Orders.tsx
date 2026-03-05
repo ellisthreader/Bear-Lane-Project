@@ -1138,7 +1138,7 @@ function OrdersWorkspace() {
                                         alt={`${activeProductionItem.product_name}-${activePreview.viewKey}`}
                                       />
                                     ) : (
-                                      <img
+                                      <img loading="lazy" decoding="async"
                                         src={activeProductionItem.image_url || "/images/placeholder.jpg"}
                                         alt={activeProductionItem.product_name}
                                         className="max-h-[360px] w-auto rounded-lg object-contain"
@@ -1179,7 +1179,7 @@ function OrdersWorkspace() {
                                   <div className="mt-2 flex flex-wrap gap-2">
                                     {activeViewAssets.map((asset, index) => (
                                       <div key={asset.id} className="flex items-center gap-2 rounded-lg border border-[#E1D4B8] bg-[#FFFCF6] px-2 py-1">
-                                        <img src={asset.url} alt={`Asset ${index + 1}`} className="h-8 w-8 rounded object-cover" />
+                                        <img loading="lazy" decoding="async" src={asset.url} alt={`Asset ${index + 1}`} className="h-8 w-8 rounded object-cover" />
                                         <button
                                           type="button"
                                           onClick={() => {
@@ -1422,7 +1422,7 @@ function OrdersWorkspace() {
                           {selectedOrder.items.map((item) => (
                             <div key={`parcel-${item.id}`} className="flex flex-col gap-3 rounded-xl border border-[#EADDBF] bg-[#FFFDF8] p-3 md:flex-row md:items-start md:justify-between">
                               <div className="flex min-w-0 flex-1 items-center gap-3">
-                                <img
+                                <img loading="lazy" decoding="async"
                                   src={item.image_url || "/images/placeholder.jpg"}
                                   alt={item.product_name}
                                   className="h-14 w-14 rounded-lg border border-[#E4D4AE] object-cover"
@@ -1505,7 +1505,7 @@ function OrdersWorkspace() {
                                       onClick={() => window.open(item.image_url || "/images/placeholder.jpg", "_blank")}
                                       className="h-14 w-14 overflow-hidden rounded-lg border border-[#E4D4AE] bg-[#FFF9EC]"
                                     >
-                                      <img src={item.image_url || "/images/placeholder.jpg"} alt={item.product_name} className="h-full w-full object-cover" />
+                                      <img loading="lazy" decoding="async" src={item.image_url || "/images/placeholder.jpg"} alt={item.product_name} className="h-full w-full object-cover" />
                                     </button>
                                     <div className="min-w-0">
                                       <p className="truncate text-sm font-semibold text-[#2D2515]">{item.product_name}</p>
@@ -1691,7 +1691,7 @@ function OrdersWorkspace() {
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               {Object.entries(PARCEL_SIZE_PRESETS).map(([key, preset]) => (
                 <div key={key} className="rounded-xl border border-[#E7DCC2] bg-[#FFFEFB] p-3">
-                  <img src={preset.image} alt={`${preset.label} parcel`} className="h-24 w-full rounded-lg object-contain" />
+                  <img loading="lazy" decoding="async" src={preset.image} alt={`${preset.label} parcel`} className="h-24 w-full rounded-lg object-contain" />
                   <p className="mt-2 text-sm font-semibold text-[#2D2515]">{preset.label}</p>
                   <p className="mt-1 text-xs text-[#6B5A34]">{preset.description}</p>
                 </div>
@@ -1734,7 +1734,7 @@ function OrdersWorkspace() {
                 {reviewingEntry ? (
                   <DesignPreview snapshot={reviewingEntry.snapshot} width={650} alt={`${reviewingItem.product_name}-${reviewingEntry.viewKey}`} />
                 ) : (
-                  <img
+                  <img loading="lazy" decoding="async"
                     src={reviewingItem.image_url || "/images/placeholder.jpg"}
                     alt={reviewingItem.product_name}
                     className="max-h-[420px] w-auto rounded-lg object-contain"

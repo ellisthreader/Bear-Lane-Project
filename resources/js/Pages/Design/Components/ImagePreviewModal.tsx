@@ -71,7 +71,7 @@ export default function ImagePreviewModal({
           <div>
             <p className="text-sm font-semibold mb-2 text-[#5B4A2A]">Original Upload</p>
             <div className="border border-[#E7DFC8] rounded-2xl bg-white p-3 shadow-sm flex items-center justify-center">
-              <img
+              <img loading="lazy" decoding="async"
                 src={original}
                 className={`w-full object-contain rounded-xl transition-all duration-300 ${
                   showHowItWorks ? "max-h-[21vh]" : "max-h-[31vh]"
@@ -85,7 +85,7 @@ export default function ImagePreviewModal({
           <div>
             <p className="text-sm font-semibold mb-2 text-[#5B4A2A]">Stencil Output</p>
             <div className="relative border border-[#D8C9A3] rounded-2xl bg-[#FFFDF6] p-3 shadow-sm flex items-center justify-center">
-              <img
+              <img loading="lazy" decoding="async"
                 src={processed}
                 className={`w-full object-contain rounded-xl transition-all duration-300 ${
                   showHowItWorks ? "max-h-[21vh]" : "max-h-[31vh]"

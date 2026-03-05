@@ -12,7 +12,7 @@ interface Props {
 
 export default function ImageItem({ img, isSelected, marqueeActive }: Props) {
   return (
-    <img
+    <img loading="lazy" decoding="async"
       ref={img.ref}
       src={img.url}
       draggable={false}

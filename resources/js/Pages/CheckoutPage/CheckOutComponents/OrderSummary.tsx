@@ -102,7 +102,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
               noFrame
             />
           ) : zoomedItem.image ? (
-            <img
+            <img loading="lazy" decoding="async"
               src={zoomedItem.image}
               alt={zoomedItem.title}
               className="max-h-[75vh] w-auto max-w-full rounded-lg object-contain"
@@ -167,7 +167,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
                       noFrame
                     />
                   ) : item.image ? (
-                    <img src={item.image} alt={item.title} className="h-full w-full object-cover" />
+                    <img loading="lazy" decoding="async" src={item.image} alt={item.title} className="h-full w-full object-cover" />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center text-xs text-gray-400">No image</div>
                   )}

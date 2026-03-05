@@ -75,7 +75,7 @@ export default function Products() {
             >
               {/* Image */}
               <div className="w-full flex items-center justify-center p-4">
-                <img
+                <img loading="lazy" decoding="async"
                   src={product.image}
                   alt={product.title}
                   className="w-full h-56 object-contain rounded-xl"

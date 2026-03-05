@@ -171,7 +171,7 @@ export default function StencilizeUI({
                   onClick={() => onSelectImage?.(url)}
                   className="w-full h-32 rounded-lg overflow-hidden border cursor-pointer hover:ring-2 hover:ring-[#C6A75E] transition"
                 >
-                  <img
+                  <img loading="lazy" decoding="async"
                     src={url}
                     alt={`recent-${i}`}
                     className="w-full h-full object-contain bg-gray-100"

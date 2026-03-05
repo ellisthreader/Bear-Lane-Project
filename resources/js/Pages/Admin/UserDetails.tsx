@@ -650,7 +650,7 @@ export default function UserDetailsPage({
             <div className="flex flex-col items-center justify-start rounded-xl border border-[#EBDDBD] bg-[#FFF9EC] p-4">
               <div className="h-24 w-24 overflow-hidden rounded-full border border-[#E2CCA1] bg-white">
                 {user.avatar_url ? (
-                  <img src={user.avatar_url} alt={`${pretty(user.username)} avatar`} className="h-full w-full object-cover" />
+                  <img loading="lazy" decoding="async" src={user.avatar_url} alt={`${pretty(user.username)} avatar`} className="h-full w-full object-cover" />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center text-2xl font-bold text-[#8A6D2B]">
                     {String(user.username || user.name || "U").slice(0, 1).toUpperCase()}
@@ -985,7 +985,7 @@ export default function UserDetailsPage({
                     <div className="flex items-start gap-3">
                       <div className="h-14 w-14 overflow-hidden rounded-lg border border-[#E2CCA1] bg-white">
                         {design.product_image ? (
-                          <img src={design.product_image} alt={design.name || "Saved design"} className="h-full w-full object-cover" />
+                          <img loading="lazy" decoding="async" src={design.product_image} alt={design.name || "Saved design"} className="h-full w-full object-cover" />
                         ) : (
                           <div className="flex h-full w-full items-center justify-center text-[10px] text-[#8A6D2B]">No image</div>
                         )}
@@ -1056,7 +1056,7 @@ export default function UserDetailsPage({
                     <div className="flex items-start gap-3">
                       <div className="h-14 w-14 overflow-hidden rounded-lg border border-[#E2CCA1] bg-white">
                         {item.image ? (
-                          <img src={item.image} alt={item.name || "Wishlist item"} className="h-full w-full object-cover" />
+                          <img loading="lazy" decoding="async" src={item.image} alt={item.name || "Wishlist item"} className="h-full w-full object-cover" />
                         ) : (
                           <div className="flex h-full w-full items-center justify-center text-[10px] text-[#8A6D2B]">No image</div>
                         )}

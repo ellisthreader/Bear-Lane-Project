@@ -84,7 +84,7 @@ export default function AuthPage() {
           <div className="flex flex-col justify-start items-center w-full max-w-md space-y-6">
             {/* Logo */}
             <div className="flex justify-center mb-4">
-              <img src="/images/BL-Logo.png" alt="Logo" className="w-44 h-auto" />
+              <img loading="lazy" decoding="async" src="/images/BL-Logo.png" alt="Logo" className="w-44 h-auto" />
             </div>
 
             {/* Forgot Password */}
@@ -221,7 +221,7 @@ export default function AuthPage() {
 
         {/* Right Side */}
         <div className="hidden md:flex md:w-1/2 items-stretch overflow-hidden">
-          <img
+          <img loading="lazy" decoding="async"
             src="images/Login-Art.png"
             alt="Decorative"
             className="w-full h-full object-cover animate-fadeInRight"

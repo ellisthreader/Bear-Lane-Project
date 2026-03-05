@@ -49,7 +49,7 @@ export default function ProfileHomeTab() {
           <div className="grid grid-cols-1 gap-6 p-6 lg:grid-cols-[340px_1fr]">
             <div>
               <div className="flex flex-col items-center">
-                <img src={avatarSrc} alt="Profile" className="h-28 w-28 rounded-full object-cover ring-4 ring-[#F3E7C8] ring-offset-4 ring-offset-[#FFFDF7]" />
+                <img loading="lazy" decoding="async" src={avatarSrc} alt="Profile" className="h-28 w-28 rounded-full object-cover ring-4 ring-[#F3E7C8] ring-offset-4 ring-offset-[#FFFDF7]" />
                 <p className="mt-4 text-lg font-semibold text-[#2A2314]">{user.name}</p>
                 <p className="text-sm text-[#8A7652]">@{user.username}</p>
               </div>

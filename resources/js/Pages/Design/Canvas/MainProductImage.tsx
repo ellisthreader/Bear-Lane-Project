@@ -6,7 +6,7 @@ export default function MainProductImage({ src }: { src: string }) {
 
   return (
     <div className="absolute inset-0 pointer-events-none flex items-center justify-center bg-gray-200">
-      <img
+      <img loading="lazy" decoding="async"
         key={src}               // 🔥 THIS IS THE FIX
         src={src}
         alt="Product"

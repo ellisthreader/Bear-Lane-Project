@@ -38,6 +38,8 @@ export default function CategorySection() {
               <img
                 src={category.image}
                 alt={category.name}
+                loading="lazy"
+                decoding="async"
                 className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
               />
             </div>
@@ -61,6 +63,8 @@ export default function CategorySection() {
                 <img
                   src={category.image}
                   alt={category.name}
+                  loading="lazy"
+                  decoding="async"
                   className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                 />
               </div>

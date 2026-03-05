@@ -15,7 +15,6 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Auth\Events\Registered;
 
 class OAuthController extends Controller
 {
@@ -241,9 +240,24 @@ class OAuthController extends Controller
         $request->session()->regenerate();
 
         if (!$user->hasVerifiedEmail()) {
-            if ($created) {
-                event(new Registered($user));
-                $user->sendEmailVerificationNotification();
+            if ($user->canSendVerificationEmail(60)) {
+                try {
+                    $user->sendEmailVerificationNotification();
+                    $user->markVerificationEmailSent();
+                } catch (\Throwable $e) {
+                    Log::error('OAuth verification email failed', [
+                        'user_id' => $user->id,
+                        'created' => $created,
+                        'provider' => $user->oauth_provider,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            } else {
+                Log::info('Skipped OAuth verification email because of cooldown', [
+                    'user_id' => $user->id,
+                    'created' => $created,
+                    'provider' => $user->oauth_provider,
+                ]);
             }
 
             // Force all newly signed-up OAuth users through verification flow first.

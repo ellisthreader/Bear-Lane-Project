@@ -15,7 +15,7 @@ import "../css/google-autocomplete.css";
 import "../css/checkout-toast.css";
 
 // Import all pages for Vite
-const pages = import.meta.glob("./Pages/**/*.tsx");
+const pages = import.meta.glob("./Pages/**/*.tsx", { eager: false });
 
 // Boot Inertia
 createInertiaApp({

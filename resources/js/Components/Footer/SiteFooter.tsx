@@ -106,7 +106,13 @@ export default function SiteFooter() {
       <div className="w-full bg-[#C99B2E]">
         <div className="mx-auto grid max-w-[1400px] items-center gap-4 px-4 py-3 md:grid-cols-3 md:px-8 lg:px-12">
           <div className="flex items-center justify-start">
-            <img src="/images/BLText.png" alt="Bear Lane" className="h-8 w-auto object-contain" />
+            <img
+              src="/images/BLText.png"
+              alt="Bear Lane"
+              loading="lazy"
+              decoding="async"
+              className="h-8 w-auto object-contain"
+            />
           </div>
 
           <div className="flex items-center justify-center gap-5">

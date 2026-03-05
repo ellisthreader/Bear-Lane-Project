@@ -272,7 +272,7 @@ const GetPriceUI: React.FC<GetPriceUIProps> = ({
               <div className="flex gap-4">
                 <div className="h-32 w-32 overflow-hidden rounded-2xl bg-gray-100">
                   {(frontSide?.imageSrc || orderedSides[0]?.imageSrc) && (
-                    <img
+                    <img loading="lazy" decoding="async"
                       src={frontSide?.imageSrc || orderedSides[0]?.imageSrc}
                       alt={`${productName}`}
                       className="h-full w-full object-cover"
@@ -449,7 +449,7 @@ const GetPriceUI: React.FC<GetPriceUIProps> = ({
 
               <div className="flex justify-center">
                 <div className="flex items-center gap-4">
-                  <img
+                  <img loading="lazy" decoding="async"
                     src="/images/BLSatisfaction.png"
                     alt="Satisfaction badge"
                     className="h-20 w-20 object-contain"

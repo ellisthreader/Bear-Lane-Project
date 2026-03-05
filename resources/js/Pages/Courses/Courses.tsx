@@ -111,7 +111,7 @@ export default function Courses() {
           >
             {/* Main Row */}
             <div className="flex flex-col md:flex-row items-stretch">
-              <img
+              <img loading="lazy" decoding="async"
                 src={course.image}
                 alt={course.title}
                 className="w-full md:w-1/3 h-56 object-cover md:rounded-l-2xl"

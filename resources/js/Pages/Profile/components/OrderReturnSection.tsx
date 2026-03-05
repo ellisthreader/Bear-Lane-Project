@@ -912,7 +912,7 @@ export default function OrderReturnSection({ order, isOpen, onClose, onSubmitted
                                 onChange={() => toggleItem(item.id, item.quantity)}
                                 className="h-4 w-4 rounded border-[#CBB37B] text-[#B89443] focus:ring-[#B89443]"
                               />
-                              <img
+                              <img loading="lazy" decoding="async"
                                 src={item.image_url || "/images/placeholder.jpg"}
                                 alt={item.product_name}
                                 className="h-10 w-10 rounded border border-[#E4D4AE] object-cover"
