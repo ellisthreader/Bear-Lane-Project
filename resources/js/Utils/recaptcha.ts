@@ -64,7 +64,7 @@ const getRecaptchaScriptCandidates = (): string[] => {
   return [preferred, fallback];
 };
 
-const waitForRecaptchaApi = async (timeoutMs = 1500): Promise<boolean> => {
+const waitForRecaptchaApi = async (timeoutMs = 8000): Promise<boolean> => {
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
     if (resolveRecaptchaApi()) {
@@ -161,11 +161,22 @@ export const executeRecaptcha = async (action: string): Promise<string> => {
 
   await loadRecaptchaScript();
 
-  const api = resolveRecaptchaApi();
+  let api = resolveRecaptchaApi();
+  if (!api) {
+    await waitForRecaptchaApi();
+    api = resolveRecaptchaApi();
+  }
 
   if (!api) {
+    const grecaptcha = window.grecaptcha;
     throw new Error(
-      `CAPTCHA failed to initialise. provider=${RECAPTCHA_PROVIDER}, siteKeyPresent=${RECAPTCHA_SITE_KEY.length > 0}`
+      `CAPTCHA failed to initialise. provider=${RECAPTCHA_PROVIDER}, siteKeyPresent=${
+        RECAPTCHA_SITE_KEY.length > 0
+      }, hasGrecaptcha=${Boolean(grecaptcha)}, hasReady=${Boolean(
+        grecaptcha?.ready
+      )}, hasExecute=${Boolean(grecaptcha?.execute)}, hasEnterpriseReady=${Boolean(
+        grecaptcha?.enterprise?.ready
+      )}, hasEnterpriseExecute=${Boolean(grecaptcha?.enterprise?.execute)}`
     );
   }
 
