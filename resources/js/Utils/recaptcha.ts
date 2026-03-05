@@ -12,15 +12,51 @@ const RECAPTCHA_PROVIDER =
 
 let scriptLoadPromise: Promise<void> | null = null;
 
+type RecaptchaReady = (cb: () => void) => void;
+type RecaptchaExecute = (siteKey: string, options: { action: string }) => Promise<string>;
+
+const resolveRecaptchaApi = (): { ready: RecaptchaReady; execute: RecaptchaExecute } | null => {
+  const grecaptcha = window.grecaptcha;
+  if (!grecaptcha) {
+    return null;
+  }
+
+  const enterpriseExecute = grecaptcha.enterprise?.execute;
+  const enterpriseReady = grecaptcha.enterprise?.ready;
+  const standardExecute = grecaptcha.execute;
+  const standardReady = grecaptcha.ready;
+  const immediateReady: RecaptchaReady = (cb) => cb();
+
+  if (RECAPTCHA_PROVIDER === "enterprise" && enterpriseExecute) {
+    return {
+      execute: enterpriseExecute,
+      ready: enterpriseReady || standardReady || immediateReady,
+    };
+  }
+
+  if (standardExecute) {
+    return {
+      execute: standardExecute,
+      ready: standardReady || immediateReady,
+    };
+  }
+
+  if (enterpriseExecute) {
+    return {
+      execute: enterpriseExecute,
+      ready: enterpriseReady || standardReady || immediateReady,
+    };
+  }
+
+  return null;
+};
+
 const loadRecaptchaScript = async (): Promise<void> => {
   if (!RECAPTCHA_SITE_KEY) {
     return;
   }
 
-  const hasExecutor =
-    RECAPTCHA_PROVIDER === "enterprise"
-      ? Boolean(window.grecaptcha?.enterprise?.execute)
-      : Boolean(window.grecaptcha?.execute);
+  const hasExecutor = Boolean(resolveRecaptchaApi());
 
   if (hasExecutor) {
     return;
@@ -39,10 +75,7 @@ const loadRecaptchaScript = async (): Promise<void> => {
     const existing = document.querySelector<HTMLScriptElement>(`script[src="${src}"]`);
 
     if (existing) {
-      const existingHasExecutor =
-        RECAPTCHA_PROVIDER === "enterprise"
-          ? Boolean(window.grecaptcha?.enterprise?.execute)
-          : Boolean(window.grecaptcha?.execute);
+      const existingHasExecutor = Boolean(resolveRecaptchaApi());
       if (existingHasExecutor) {
         resolve();
         return;
@@ -74,20 +107,16 @@ export const executeRecaptcha = async (action: string): Promise<string> => {
 
   await loadRecaptchaScript();
 
-  const grecaptcha = window.grecaptcha;
-  const executeFn =
-    RECAPTCHA_PROVIDER === "enterprise"
-      ? grecaptcha?.enterprise?.execute
-      : grecaptcha?.execute;
+  const api = resolveRecaptchaApi();
 
-  if (!executeFn || !grecaptcha?.ready) {
+  if (!api) {
     throw new Error("CAPTCHA failed to initialise.");
   }
 
   return new Promise<string>((resolve, reject) => {
-    grecaptcha.ready(async () => {
+    api.ready(async () => {
       try {
-        const token = await executeFn(RECAPTCHA_SITE_KEY, { action });
+        const token = await api.execute(RECAPTCHA_SITE_KEY, { action });
         if (!token) {
           reject(new Error("CAPTCHA token was empty."));
           return;
