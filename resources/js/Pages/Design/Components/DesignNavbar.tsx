@@ -2,23 +2,37 @@
 
 import React from "react";
 import { Link } from "@inertiajs/react";
-import { ShoppingCart, User, Heart, ChevronRight, Folder } from "lucide-react";
+import {
+  ShoppingCart,
+  User,
+  Heart,
+  ChevronRight,
+  Folder,
+  Save,
+  CircleDollarSign,
+} from "lucide-react";
 import { useCart } from "@/Context/CartContext";
 import { useWishlist } from "@/Context/WishlistContext";
 import WishlistSidebar from "@/Components/Wishlist/WishlistSidebar";
 
 type DesignNavbarProps = {
   designName?: string;
-  onOpenMyDesigns?: () => void; // ✅ callback to open "my-designs" in main sidebar
+  onOpenMyDesigns?: () => void;
+  onSaveDesign?: () => void;
+  onGetPrice?: () => void;
   myDesignsLabel?: string;
 };
 
 export default function DesignNavbar({
   designName = "Untitled Design",
   onOpenMyDesigns,
+  onSaveDesign,
+  onGetPrice,
   myDesignsLabel = "My Designs",
 }: DesignNavbarProps) {
   const canOpenMyDesigns = typeof onOpenMyDesigns === "function";
+  const canSave = typeof onSaveDesign === "function";
+  const canGetPrice = typeof onGetPrice === "function";
   const { openCart } = useCart();
   const { openWishlist } = useWishlist();
 
@@ -65,12 +79,36 @@ export default function DesignNavbar({
       </div>
 
       {/* RIGHT: ICONS */}
-      <div className="ml-auto flex items-center gap-3 text-gray-800 sm:gap-4 lg:gap-6">
+      <div className="ml-auto flex items-center gap-2 text-gray-800 sm:gap-3 lg:gap-5">
+        {canSave ? (
+          <button
+            type="button"
+            onClick={() => onSaveDesign?.()}
+            className="inline-flex items-center justify-center gap-1 rounded-full border border-[#C6A75E]/45 px-2.5 py-1.5 text-[11px] font-semibold text-[#8A6D2B] transition hover:bg-[#F2EAD6] sm:text-xs"
+            aria-label="Save design"
+          >
+            <Save className="h-4 w-4" />
+            <span className="hidden sm:inline">Save</span>
+          </button>
+        ) : null}
+
+        {canGetPrice ? (
+          <button
+            type="button"
+            onClick={() => onGetPrice?.()}
+            className="inline-flex items-center justify-center gap-1 rounded-full border border-[#C6A75E]/45 px-2.5 py-1.5 text-[11px] font-semibold text-[#8A6D2B] transition hover:bg-[#F2EAD6] sm:text-xs"
+            aria-label="Get price"
+          >
+            <CircleDollarSign className="h-4 w-4" />
+            <span className="hidden sm:inline">Price</span>
+          </button>
+        ) : null}
+
         {canOpenMyDesigns ? (
           <button
             type="button"
             onClick={() => onOpenMyDesigns?.()}
-            className="inline-flex items-center justify-center rounded-full p-1.5 text-gray-800 transition hover:bg-[#F2EAD6] md:hidden"
+            className="inline-flex items-center justify-center rounded-full p-1.5 text-gray-800 transition hover:bg-[#F2EAD6]"
             aria-label="Open my designs"
           >
             <Folder className="h-5 w-5" />
@@ -84,7 +122,7 @@ export default function DesignNavbar({
         <button
           type="button"
           onClick={openWishlist}
-          className="inline-flex items-center justify-center"
+          className="hidden items-center justify-center md:inline-flex"
           aria-label="Open wishlist"
         >
           <Heart className="w-5 h-5 cursor-pointer hover:text-[#C6A75E] transition" />
@@ -92,7 +130,7 @@ export default function DesignNavbar({
 
         <button
           onClick={openCart}
-          className="flex items-center justify-center rounded-full p-1.5 transition hover:bg-[#F2EAD6]"
+          className="hidden items-center justify-center rounded-full p-1.5 transition hover:bg-[#F2EAD6] md:flex"
           aria-label="Open cart"
         >
           <ShoppingCart className="w-5 h-5 cursor-pointer hover:text-[#C6A75E] transition" />

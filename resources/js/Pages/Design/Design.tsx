@@ -149,8 +149,17 @@ const isNaturalSizeValid = (size: ImageNaturalSize | undefined): size is ImageNa
     );
     const [selectedClipart, setSelectedClipart] = useState<string | null>(null);
     const [sidebarTitleOverride, setSidebarTitleOverride] = useState<string | null>(null);
-    const [sidebarStack, setSidebarStack] = useState<SidebarView[]>(["product"]);
+    const [sidebarStack, setSidebarStack] = useState<SidebarView[]>(() =>
+      typeof window !== "undefined" && window.matchMedia("(max-width: 1023px)").matches
+        ? ["blank"]
+        : ["product"]
+    );
     const activeSidebar = sidebarStack[sidebarStack.length - 1];
+    const [isMobileViewport, setIsMobileViewport] = useState<boolean>(() =>
+      typeof window !== "undefined"
+        ? window.matchMedia("(max-width: 1023px)").matches
+        : false
+    );
     const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
     const [pendingDesignName, setPendingDesignName] = useState("");
     const [isSavingDesign, setIsSavingDesign] = useState(false);
@@ -162,6 +171,34 @@ const isNaturalSizeValid = (size: ImageNaturalSize | undefined): size is ImageNa
       (initialSavedDesign as SavedDesign | null)?.name ?? (safeName && safeName !== "Unknown" ? safeName : "Untitled Design")
     );
     const [saveMode, setSaveMode] = useState<"overwrite" | "new">("new");
+
+    useEffect(() => {
+      if (typeof window === "undefined") return;
+
+      const query = window.matchMedia("(max-width: 1023px)");
+      const syncViewport = () => setIsMobileViewport(query.matches);
+      syncViewport();
+
+      if (typeof query.addEventListener === "function") {
+        query.addEventListener("change", syncViewport);
+        return () => query.removeEventListener("change", syncViewport);
+      }
+
+      query.addListener(syncViewport);
+      return () => query.removeListener(syncViewport);
+    }, []);
+
+    useEffect(() => {
+      setSidebarStack(prev => {
+        if (isMobileViewport && prev.length === 1 && prev[0] === "product") {
+          return ["blank"];
+        }
+        if (!isMobileViewport && prev.length === 1 && prev[0] === "blank") {
+          return ["product"];
+        }
+        return prev;
+      });
+    }, [isMobileViewport]);
 
     const openMyDesignsSidebar = () => {
   setSidebarStack(["my-designs"]);
@@ -921,8 +958,8 @@ const pricePanelSides = useMemo(
   const setSelectedUploadedImageWithLog = (uid: string | null) => {
     setSelectedUploadedImage(uid);
 
-    // If an uploaded image is selected, always switch sidebar to Upload
-    if (uid) {
+    // Desktop: selecting an uploaded image opens the upload properties panel.
+    if (uid && !isMobileViewport) {
       setSidebarStack(["upload"]);
     }
   };
@@ -1912,7 +1949,7 @@ const handleAddClipart = (src: string) => {
   setUploadedImages(prev => [...prev, uid]);
   setSelectedUploadedImageWithLog(uid);
   setSelectedText(null);
-  setSidebarStack(["clipart"]);
+  setSidebarStack(isMobileViewport ? ["blank"] : ["clipart"]);
   applyFittedClipart(uid, defaultSize.w, defaultSize.h);
   syncClipartNaturalSize(uid, src);
 };
@@ -1982,7 +2019,7 @@ const handleUpload = (url: string) => {
 
   setSizes(prev => ({ ...prev, [uid]: { ...defaultSize } }));
   setSelectedUploadedImageWithLog(uid);
-  setSidebarStack(["upload"]);
+  setSidebarStack(isMobileViewport ? ["blank"] : ["upload"]);
 };
 
 // Duplicate Uploaded Image
@@ -2005,7 +2042,7 @@ const handleDuplicateUploadedImage = (uid: string) => {
     },
   });
   setSelectedUploadedImageWithLog(dup);
-  setSidebarStack(["upload"]);
+  setSidebarStack(isMobileViewport ? ["blank"] : ["upload"]);
 };
 
 // Remove Uploaded Image
@@ -2028,7 +2065,7 @@ const deleteTextLayer = (uid: string) => {
   });
   setSelectedText(null);
   setSelectedObjects(prev => prev.filter(id => id !== uid));
-  setSidebarStack(["text"]);
+  setSidebarStack(isMobileViewport ? ["blank"] : ["text"]);
 };
 
 // Duplicate Text Layer
@@ -2040,7 +2077,7 @@ const duplicateTextLayer = (uid: string) => {
     [newId]: { ...source, renderKey: crypto.randomUUID() },
   });
   setSelectedText(newId);
-  setSidebarStack(["text"]);
+  setSidebarStack(isMobileViewport ? ["blank"] : ["text"]);
 };
 
 // Canvas selection change
@@ -2053,7 +2090,11 @@ const handleCanvasSelectionChange = (objects: string[]) => {
   if (textLayer) {
     setSelectedText(textLayer);
     setSelectedUploadedImageWithLog(null);
-    setSidebarStack(prev => (prev[prev.length - 1] === "text" ? prev : ["product", "text"]));
+    if (isMobileViewport) {
+      setSidebarStack(["blank"]);
+    } else {
+      setSidebarStack(prev => (prev[prev.length - 1] === "text" ? prev : ["product", "text"]));
+    }
     return;
   }
 
@@ -2061,13 +2102,24 @@ const handleCanvasSelectionChange = (objects: string[]) => {
     setSelectedText(null);
     setSelectedUploadedImageWithLog(imageLayer);
     const isClipart = currentImageState[imageLayer]?.isClipart;
-    setSidebarStack(prev => (prev[prev.length - 1] === (isClipart ? "clipart" : "upload") ? prev : ["product", isClipart ? "clipart" : "upload"]));
+    if (isMobileViewport) {
+      setSidebarStack(["blank"]);
+    } else {
+      setSidebarStack(prev =>
+        prev[prev.length - 1] === (isClipart ? "clipart" : "upload")
+          ? prev
+          : ["product", isClipart ? "clipart" : "upload"]
+      );
+    }
     return;
   }
 
   // Nothing selected
   setSelectedText(null);
   setSelectedUploadedImageWithLog(null);
+  if (isMobileViewport) {
+    setSidebarStack(["blank"]);
+  }
 };
 
 // Update Text Layer
@@ -2475,7 +2527,7 @@ const designPageContextValue = {
       onSelectText={setSelectedText}
       onResizeStart={beginResize}
       onSwitchTab={(tab) => {
-        if (!tab) return;
+        if (!tab || isMobileViewport) return;
         setSidebarStack((prev) =>
           prev[prev.length - 1] === tab ? prev : [...prev.slice(0, 1), tab as SidebarView]
         );
@@ -2483,8 +2535,6 @@ const designPageContextValue = {
       onDelete={(uids) => uids.forEach((uid) => handleRemoveUploadedImage(uid))}
       onResizeTextCommit={handleResizeText}
       onSelectionChange={handleCanvasSelectionChange}
-      onGetPrice={handleGetPrice}
-      onSaveDesign={handleOpenSaveDesignDialog}
       productViewImages={viewImages}
       viewImageStates={viewImageStates}
       currentViewKey={currentViewKey}
@@ -2506,6 +2556,7 @@ const designPageContextValue = {
   ),
   pricePanel: (
     <GetPriceUI
+      docked
       onClose={closePricePanel}
       productName={safeProduct.name ?? "Unknown Product"}
       selectedColour={selectedColour}
@@ -2543,6 +2594,8 @@ const designPageContextValue = {
         <DesignNavbar
           designName={currentDesignName}
           onOpenMyDesigns={openMyDesignsSidebar}
+          onSaveDesign={handleOpenSaveDesignDialog}
+          onGetPrice={handleGetPrice}
           myDesignsLabel={isUserSignedIn ? "My Designs" : "Sign in to access"}
         />
 

@@ -40,6 +40,9 @@ export function useDragSelection(args: UseDragSelectionArgs) {
   const onPointerDown = (e: React.PointerEvent, uid: string) => {
     // Only primary button should start drag/select interactions.
     if (e.button !== 0) return;
+    if (e.pointerType === "touch") {
+      e.preventDefault();
+    }
     e.stopPropagation();
 
     if (!args.positions[uid]) return;
@@ -79,6 +82,7 @@ export function useDragSelection(args: UseDragSelectionArgs) {
 
     window.addEventListener("pointermove", onPointerMove);
     window.addEventListener("pointerup", onPointerUp);
+    window.addEventListener("pointercancel", onPointerUp);
   };
 
   const onPointerMove = (e: PointerEvent) => {
@@ -152,6 +156,7 @@ export function useDragSelection(args: UseDragSelectionArgs) {
 
     window.removeEventListener("pointermove", onPointerMove);
     window.removeEventListener("pointerup", onPointerUp);
+    window.removeEventListener("pointercancel", onPointerUp);
     args.onGestureEnd?.();
   };
 
@@ -160,6 +165,7 @@ export function useDragSelection(args: UseDragSelectionArgs) {
     return () => {
       window.removeEventListener("pointermove", onPointerMove);
       window.removeEventListener("pointerup", onPointerUp);
+      window.removeEventListener("pointercancel", onPointerUp);
     };
   }, []);
 

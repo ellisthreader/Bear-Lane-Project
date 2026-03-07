@@ -31,6 +31,9 @@ export function useMarqueeSelection({
   const onPointerDown = (e: React.PointerEvent) => {
     if (e.button !== 0) return;
     if (!canvasRef.current) return;
+    if (e.pointerType === "touch") {
+      e.preventDefault();
+    }
 
     const target = e.target as HTMLElement;
 
@@ -59,6 +62,9 @@ export function useMarqueeSelection({
   // -------------------- Pointer Move --------------------
   const onPointerMove = (e: React.PointerEvent) => {
     if (!marquee || !canvasRef.current) return;
+    if (e.pointerType === "touch") {
+      e.preventDefault();
+    }
 
     const canvasRect = canvasRef.current.getBoundingClientRect();
     const mx = e.clientX - canvasRect.left;
@@ -114,8 +120,10 @@ export function useMarqueeSelection({
     };
 
     window.addEventListener("pointerup", handlePointerUp);
+    window.addEventListener("pointercancel", handlePointerUp);
     return () => {
       window.removeEventListener("pointerup", handlePointerUp);
+      window.removeEventListener("pointercancel", handlePointerUp);
     };
   }, [marquee, hovered, onSelect]);
 

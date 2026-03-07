@@ -107,6 +107,7 @@ useLayoutEffect(() => {
           height: measured.h > 0 ? measured.h : "auto",
           zIndex: highlighted ? zIndex + 10000 : zIndex,
           userSelect: "none",
+          touchAction: "none",
         }}
       >
         {/* Rotated / flipped visual */}

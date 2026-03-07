@@ -55,6 +55,7 @@ function DraggableImage({
           zIndex: highlighted ? zIndex + 10000 : zIndex,
           userSelect: "none",
           pointerEvents: "auto",
+          touchAction: "none",
         }}
       >
         <InlineSvg src={url} color={color || "#000000"} />
@@ -84,6 +85,7 @@ function DraggableImage({
         userSelect: "none",
         pointerEvents: "auto",
         objectFit: "contain",
+        touchAction: "none",
       }}
       alt=""
     />

@@ -18,8 +18,6 @@ import { useTextAutoShrink } from "./Hooks/TextAutoShrink";
 
 import { DEFAULT_TEXT_ALIGN, type TextAlign } from "../Types/Text";
 
-import GetPriceButton from "../Components/Buttons/GetPriceButton";
-import SaveDesignButton from "../Components/Buttons/SaveDesignButton";
 import ProductViewSelector from "../Components/ProductViewSelector";
 import type { ViewKey } from "../types/designTypes";
 
@@ -97,8 +95,6 @@ export type CanvasProps = {
     leftSleeve: string;
     rightSleeve: string;
   };
-  onGetPrice?: () => void;
-  onSaveDesign?: () => void;
   onViewSnapshotChange?: (viewKey: ViewKey, snapshot: PricePreviewSnapshot) => void;
   compactPriceMode?: boolean;
   canvasPositions?: Record<string, { x: number; y: number }>;
@@ -119,8 +115,6 @@ export default function Canvas(props: CanvasProps) {
     onSelectText,
     onSwitchTab,
     onResizeTextCommit,
-    onGetPrice,
-    onSaveDesign,
     onViewSnapshotChange,
     compactPriceMode = false,
   } = props;
@@ -132,6 +126,27 @@ export default function Canvas(props: CanvasProps) {
     y: number;
     uid: string;
   } | null>(null);
+  const [isMobileViewport, setIsMobileViewport] = useState<boolean>(() =>
+    typeof window !== "undefined"
+      ? window.matchMedia("(max-width: 1023px)").matches
+      : false
+  );
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const query = window.matchMedia("(max-width: 1023px)");
+    const syncViewport = () => setIsMobileViewport(query.matches);
+    syncViewport();
+
+    if (typeof query.addEventListener === "function") {
+      query.addEventListener("change", syncViewport);
+      return () => query.removeEventListener("change", syncViewport);
+    }
+
+    query.addListener(syncViewport);
+    return () => query.removeListener(syncViewport);
+  }, []);
 
   // ---------------- Current View State ----------------
   const currentImageState = viewImageStates[currentViewKey] ?? {};
@@ -507,6 +522,207 @@ export default function Canvas(props: CanvasProps) {
     };
   }, [contextMenu]);
 
+  const selectedSingleUid = drag.selected.length === 1 ? drag.selected[0] : null;
+  const selectedSingleLayer = selectedSingleUid
+    ? currentImageState[selectedSingleUid]
+    : null;
+  const selectedSingleSize = selectedSingleUid
+    ? sizes[selectedSingleUid] ?? selectedSingleLayer?.size
+    : undefined;
+
+  const updateLayer = (uid: string, updates: Partial<ImageState>) => {
+    updateCurrentImageState(prev => {
+      const current = prev[uid];
+      if (!current) return prev;
+      return {
+        ...prev,
+        [uid]: {
+          ...current,
+          ...updates,
+        },
+      };
+    });
+  };
+
+  const updateLayerSize = (uid: string, requestedWidth: number) => {
+    const layer = currentImageState[uid];
+    const currentSize = sizes[uid] ?? layer?.size;
+    if (!layer || !currentSize || currentSize.w <= 0 || currentSize.h <= 0) return;
+
+    const aspect = currentSize.h / currentSize.w;
+    if (!Number.isFinite(aspect) || aspect <= 0) return;
+
+    const maxWidth = Math.max(20, Math.round(restrictedBox.width || 600));
+    const maxHeight = Math.max(20, Math.round(restrictedBox.height || 600));
+    let width = Math.max(20, Math.min(requestedWidth, maxWidth));
+    let height = width * aspect;
+
+    if (height > maxHeight) {
+      height = maxHeight;
+      width = height / aspect;
+    }
+
+    setSizes(prev => ({
+      ...prev,
+      [uid]: { w: width, h: height },
+    }));
+
+    updateLayer(uid, {
+      size: { w: width, h: height },
+    });
+  };
+
+  const renderMobilePropertiesBar = () => {
+    if (
+      !isMobileViewport ||
+      compactPriceMode ||
+      !selectedSingleUid ||
+      !selectedSingleLayer
+    ) {
+      return null;
+    }
+
+    const isText = selectedSingleLayer.type === "text";
+    const isClipart = Boolean(selectedSingleLayer.isClipart);
+    const widthValue = Math.round(selectedSingleSize?.w ?? 150);
+    const rotationValue = Math.round(selectedSingleLayer.rotation ?? 0);
+    const fontSizeValue = Math.round(selectedSingleLayer.fontSize ?? 24);
+    const canTint = isText || isClipart;
+    const tintColor = selectedSingleLayer.color ?? "#000000";
+    const flipValue = selectedSingleLayer.flip ?? "none";
+
+    return (
+      <div
+        data-export-ignore="true"
+        className="absolute bottom-[88px] left-0 right-0 z-[65] px-3 md:hidden"
+      >
+        <div className="rounded-2xl border border-gray-200 bg-white/95 px-2 py-2 shadow-[0_10px_26px_rgba(20,20,20,0.18)] backdrop-blur">
+          <div
+            className="flex gap-2 overflow-x-auto pb-1"
+            style={{ touchAction: "pan-x" }}
+          >
+            {!isText ? (
+              <label className="flex min-w-[180px] flex-col gap-1 rounded-xl bg-gray-100 p-2 text-xs font-medium text-gray-700">
+                Size
+                <input
+                  type="range"
+                  min={20}
+                  max={Math.max(20, Math.round(restrictedBox.width || 600))}
+                  value={widthValue}
+                  onChange={(event) =>
+                    updateLayerSize(selectedSingleUid, Number(event.target.value))
+                  }
+                />
+                <span>{widthValue}px</span>
+              </label>
+            ) : (
+              <label className="flex min-w-[180px] flex-col gap-1 rounded-xl bg-gray-100 p-2 text-xs font-medium text-gray-700">
+                Font Size
+                <input
+                  type="range"
+                  min={8}
+                  max={240}
+                  value={fontSizeValue}
+                  onChange={(event) => {
+                    const nextValue = Number(event.target.value);
+                    updateLayer(selectedSingleUid, { fontSize: nextValue });
+                    onResizeTextCommit(selectedSingleUid, nextValue);
+                  }}
+                />
+                <span>{fontSizeValue}px</span>
+              </label>
+            )}
+
+            <label className="flex min-w-[180px] flex-col gap-1 rounded-xl bg-gray-100 p-2 text-xs font-medium text-gray-700">
+              Rotation
+              <input
+                type="range"
+                min={-180}
+                max={180}
+                value={rotationValue}
+                onChange={(event) =>
+                  updateLayer(selectedSingleUid, {
+                    rotation: Number(event.target.value),
+                  })
+                }
+              />
+              <span>{rotationValue}°</span>
+            </label>
+
+            {canTint ? (
+              <label className="flex min-w-[132px] flex-col gap-1 rounded-xl bg-gray-100 p-2 text-xs font-medium text-gray-700">
+                Color
+                <input
+                  type="color"
+                  value={tintColor}
+                  onChange={(event) =>
+                    updateLayer(selectedSingleUid, { color: event.target.value })
+                  }
+                  className="h-9 w-full cursor-pointer rounded-md border border-gray-300 bg-transparent"
+                />
+              </label>
+            ) : null}
+
+            <div className="flex min-w-[210px] items-end gap-2 rounded-xl bg-gray-100 p-2">
+              <button
+                type="button"
+                className={`rounded-lg px-3 py-2 text-xs font-semibold transition ${
+                  flipValue === "horizontal"
+                    ? "bg-[#C6A75E] text-white"
+                    : "bg-white text-gray-700 hover:bg-[#C6A75E]/15"
+                }`}
+                onClick={() =>
+                  updateLayer(selectedSingleUid, {
+                    flip: flipValue === "horizontal" ? "none" : "horizontal",
+                  })
+                }
+              >
+                Flip X
+              </button>
+              <button
+                type="button"
+                className={`rounded-lg px-3 py-2 text-xs font-semibold transition ${
+                  flipValue === "vertical"
+                    ? "bg-[#C6A75E] text-white"
+                    : "bg-white text-gray-700 hover:bg-[#C6A75E]/15"
+                }`}
+                onClick={() =>
+                  updateLayer(selectedSingleUid, {
+                    flip: flipValue === "vertical" ? "none" : "vertical",
+                  })
+                }
+              >
+                Flip Y
+              </button>
+            </div>
+
+            <div className="flex min-w-[210px] items-end gap-2 rounded-xl bg-gray-100 p-2">
+              <button
+                type="button"
+                className="rounded-lg bg-gray-800 px-3 py-2 text-xs font-semibold text-white transition hover:bg-black"
+                onClick={() => duplicateImages([selectedSingleUid])}
+              >
+                Duplicate
+              </button>
+              <button
+                type="button"
+                className="rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-red-700"
+                onClick={() => {
+                  props.onDelete?.([selectedSingleUid]);
+                  drag.setSelected([]);
+                  onSelectImage?.(null);
+                  onSelectText?.(null);
+                }}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   // ---------------- Product View ----------------
   useEffect(() => {
     if (mainImage) setCurrentViewImage(mainImage);
@@ -571,7 +787,13 @@ export default function Canvas(props: CanvasProps) {
   // ---------------- Handlers ----------------
   const handleCanvasPointerDown = (e: React.PointerEvent) => {
     const target = e.target as HTMLElement;
+    if (target.closest('[data-export-ignore="true"]')) return;
     if (target.closest(".selection-button")) return;
+
+    if (e.pointerType === "touch") {
+      e.preventDefault();
+    }
+
     const uid = (target.closest("[data-uid]") as HTMLElement)?.dataset.uid;
     if (!uid) {
       drag.setSelected([]);
@@ -610,6 +832,7 @@ export default function Canvas(props: CanvasProps) {
       onPointerDown={handleCanvasPointerDown}
       onPointerMove={marquee.onPointerMove}
       onContextMenu={handleCanvasContextMenu}
+      style={{ touchAction: compactPriceMode ? "auto" : "none" }}
     >
       <MainProductImage src={currentViewImage} />
       {!compactPriceMode && <RestrictedArea box={restrictedBox} />}
@@ -741,15 +964,7 @@ export default function Canvas(props: CanvasProps) {
         </div>
       )}
 
-      {!compactPriceMode && (
-        <div
-          data-export-ignore="true"
-          className="absolute bottom-4 left-1/2 z-50 flex -translate-x-1/2 gap-2 md:bottom-6 md:left-auto md:right-6 md:translate-x-0 md:gap-4"
-        >
-          <SaveDesignButton onClick={onSaveDesign ?? (() => {})} />
-          <GetPriceButton onClick={onGetPrice ?? (() => {})} />
-        </div>
-      )}
+      {renderMobilePropertiesBar()}
     </div>
   );
 }
