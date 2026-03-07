@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useMemo, useState } from "react";
+import { usePage } from "@inertiajs/react";
 import { SIZE_GUIDE_DATA } from "./sizeGuideData";
-import type { GenderKey } from "./types";
+import type { GenderKey, GenderSizeGuide } from "./types";
 
 type SizeGuideContextValue = {
   isOpen: boolean;
@@ -37,5 +38,51 @@ export function useSizeGuide() {
 
 export function useSizeGuideData() {
   const { gender } = useSizeGuide();
-  return SIZE_GUIDE_DATA[gender];
+  const page = usePage<{
+    storeSettings?: {
+      size_guide?: Record<
+        GenderKey,
+        {
+          heading?: string;
+          subtitle?: string;
+          rows?: Array<{
+            size?: string;
+            chest?: string;
+            length?: string;
+            sleeve?: string;
+          }>;
+        }
+      >;
+    };
+  }>();
+
+  const dynamic = page.props.storeSettings?.size_guide?.[gender];
+  const hasRows = Array.isArray(dynamic?.rows) && (dynamic?.rows?.length ?? 0) > 0;
+
+  if (!dynamic || !hasRows) {
+    return SIZE_GUIDE_DATA[gender];
+  }
+
+  const rows = (dynamic.rows || []).map((row) => [
+    row.size || "",
+    row.chest || "",
+    row.length || "",
+    row.sleeve || "",
+  ]);
+
+  const normalized: GenderSizeGuide = {
+    heading: dynamic.heading || SIZE_GUIDE_DATA[gender].heading,
+    subtitle: dynamic.subtitle || SIZE_GUIDE_DATA[gender].subtitle,
+    sections: [
+      {
+        kind: "table",
+        id: "tops",
+        title: dynamic.heading || SIZE_GUIDE_DATA[gender].heading,
+        columns: ["Size", "Chest", "Length", "Sleeve"],
+        rows,
+      },
+    ],
+  };
+
+  return normalized;
 }

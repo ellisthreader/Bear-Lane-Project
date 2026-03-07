@@ -29,6 +29,7 @@ use App\Http\Controllers\Admin\AdminOrderReturnsController;
 use App\Http\Controllers\Admin\AdminStatisticsController;
 use App\Http\Controllers\Admin\SupportAdminController;
 use App\Http\Controllers\Admin\SupportChatController;
+use App\Http\Controllers\Admin\AdminOtherController;
 use App\Http\Controllers\DesignController;
 use App\Http\Controllers\DesignModerationController;
 use App\Http\Controllers\SavedDesignController;
@@ -487,6 +488,19 @@ Route::get('/company', fn() => Inertia::render('Company'));
 */
 Route::middleware(['auth', 'admin', 'admin.activity'])->prefix('admin')->group(function () {
     Route::get('/dashboard', [SupportAdminController::class, 'dashboard'])->name('admin.dashboard');
+    Route::get('/other', [AdminOtherController::class, 'index'])->name('admin.other');
+    Route::get('/other/prices', [AdminOtherController::class, 'prices'])->name('admin.other.prices');
+    Route::put('/other/prices', [AdminOtherController::class, 'updatePrices'])->name('admin.other.prices.update');
+    Route::get('/other/discount-codes', [AdminOtherController::class, 'discountCodes'])->name('admin.other.discount-codes');
+    Route::post('/other/discount-codes', [AdminOtherController::class, 'storeDiscountCode'])->name('admin.other.discount-codes.store');
+    Route::patch('/other/discount-codes/{coupon}', [AdminOtherController::class, 'updateDiscountCode'])->name('admin.other.discount-codes.update');
+    Route::delete('/other/discount-codes/{coupon}', [AdminOtherController::class, 'deleteDiscountCode'])->name('admin.other.discount-codes.delete');
+    Route::get('/other/site-settings', [AdminOtherController::class, 'siteSettings'])->name('admin.other.site-settings');
+    Route::post('/other/site-settings', [AdminOtherController::class, 'updateSiteSettings'])->name('admin.other.site-settings.update');
+    Route::get('/other/tax-settings', [AdminOtherController::class, 'taxSettings'])->name('admin.other.tax-settings');
+    Route::put('/other/tax-settings', [AdminOtherController::class, 'updateTaxSettings'])->name('admin.other.tax-settings.update');
+    Route::get('/other/size-guide', [AdminOtherController::class, 'sizeGuide'])->name('admin.other.size-guide');
+    Route::put('/other/size-guide', [AdminOtherController::class, 'updateSizeGuide'])->name('admin.other.size-guide.update');
     Route::get('/statistics', [AdminStatisticsController::class, 'index'])->name('admin.statistics');
     Route::get('/statistics/data', [AdminStatisticsController::class, 'data'])->name('admin.statistics.data');
     Route::get('/statistics/{metric}', [AdminStatisticsController::class, 'showMetric'])

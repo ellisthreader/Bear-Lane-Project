@@ -1,8 +1,8 @@
 import React from "react";
-import { router } from "@inertiajs/react";
+import { router, usePage } from "@inertiajs/react";
 import { ArrowLeft, ArrowRight, Check, Pencil, Play, ShoppingCart, Trash2 } from "lucide-react";
 import { useCart } from "@/Context/CartContext";
-import { calculateDesignPricingFromPreviews } from "@/Pages/Design/utils/designPricing";
+import { calculateDesignPricingFromPreviews, type DesignPricingRules } from "@/Pages/Design/utils/designPricing";
 import { useProfileViewContext } from "../ProfileViewContext";
 import type { SavedDesignItem } from "../types";
 import { showCheckoutError, showCheckoutSuccess } from "@/Pages/CheckoutPage/checkoutToasts";
@@ -134,6 +134,8 @@ function getFallbackLayersFromState(design: SavedDesignItem, view: ViewKey) {
 }
 
 export default function DesignsTab() {
+  const page = usePage<{ storeSettings?: { design_pricing?: DesignPricingRules } }>();
+  const designPricingRules = page.props.storeSettings?.design_pricing;
   const { savedDesigns } = useProfileViewContext();
   const { addToCart } = useCart();
 
@@ -220,7 +222,12 @@ export default function DesignsTab() {
       previewByView?.rightSleeve,
     ];
     const designType = normalizeDesignType(design.payload?.selectedDesignType);
-    const pricing = calculateDesignPricingFromPreviews(previews, design.product_price ?? 0, designType);
+    const pricing = calculateDesignPricingFromPreviews(
+      previews,
+      design.product_price ?? 0,
+      designType,
+      designPricingRules
+    );
     const fallbackSize = design.product_sizes?.[0] ?? "One Size";
     const selectedSize = design.payload?.selectedSize || fallbackSize;
     const selectedColour = design.payload?.selectedColour || "Default";

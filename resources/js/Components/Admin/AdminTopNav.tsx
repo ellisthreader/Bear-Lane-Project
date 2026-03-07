@@ -1,6 +1,6 @@
 import React from "react";
 import { Link, usePage } from "@inertiajs/react";
-import { ArrowLeft, BarChart3, LayoutDashboard, MessageSquare, Package, ReceiptText, Users } from "lucide-react";
+import { ArrowLeft, BarChart3, LayoutDashboard, MessageSquare, Package, ReceiptText, Settings2, Users } from "lucide-react";
 
 type AdminNavItem = {
   label: string;
@@ -45,6 +45,12 @@ const items: AdminNavItem[] = [
     href: "/admin/users",
     icon: <Users className="h-4 w-4" />,
     match: (path) => path.startsWith("/admin/users"),
+  },
+  {
+    label: "Other",
+    href: "/admin/other",
+    icon: <Settings2 className="h-4 w-4" />,
+    match: (path) => path.startsWith("/admin/other"),
   },
 ];
 

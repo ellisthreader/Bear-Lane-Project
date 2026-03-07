@@ -1,5 +1,5 @@
 import type { PricePreviewSnapshot } from "../Canvas/Canvas";
-import { EMBROIDERY_SURCHARGE_MULTIPLIER, normalizeDesignType, type DesignType } from "@/Utils/designType";
+import { normalizeDesignType, type DesignType } from "@/Utils/designType";
 
 type PreviewLike = {
   preview?: PricePreviewSnapshot;
@@ -17,6 +17,33 @@ export type DesignPricingResult = {
   designSurchargePerItem: number;
   unitPrice: number;
   counts: DesignPricingCounts;
+};
+
+export type DesignPricingTier = {
+  text_price: number;
+  clipart_price: number;
+  image_price: number;
+  per_side_price: number;
+};
+
+export type DesignPricingRules = {
+  printing: DesignPricingTier;
+  embroidery: DesignPricingTier;
+};
+
+const DEFAULT_PRICING_RULES: DesignPricingRules = {
+  printing: {
+    text_price: 0.75,
+    clipart_price: 1.0,
+    image_price: 1.5,
+    per_side_price: 1.25,
+  },
+  embroidery: {
+    text_price: 1.13,
+    clipart_price: 1.5,
+    image_price: 2.25,
+    per_side_price: 1.88,
+  },
 };
 
 function parsePrice(price: number | string | undefined): number {
@@ -52,17 +79,22 @@ function computeCounts(previews: Array<PricePreviewSnapshot | undefined>): Desig
 export function calculateDesignPricingFromPreviews(
   previews: Array<PricePreviewSnapshot | undefined>,
   basePrice: number | string | undefined,
-  designType: DesignType | string | null | undefined = "printing"
+  designType: DesignType | string | null | undefined = "printing",
+  rules: DesignPricingRules | null | undefined = null
 ): DesignPricingResult {
   const counts = computeCounts(previews);
   const baseUnitPrice = parsePrice(basePrice);
-  const designSurchargePerItemBase =
-    counts.editedSides * 1.25 +
-    counts.text * 0.75 +
-    counts.image * 1.5 +
-    counts.clipart * 1.0;
-  const multiplier = normalizeDesignType(designType) === "embroidery" ? EMBROIDERY_SURCHARGE_MULTIPLIER : 1;
-  const designSurchargePerItem = designSurchargePerItemBase * multiplier;
+  const normalizedType = normalizeDesignType(designType);
+  const mergedRules: DesignPricingRules = {
+    printing: { ...DEFAULT_PRICING_RULES.printing, ...(rules?.printing ?? {}) },
+    embroidery: { ...DEFAULT_PRICING_RULES.embroidery, ...(rules?.embroidery ?? {}) },
+  };
+  const activeRules = normalizedType === "embroidery" ? mergedRules.embroidery : mergedRules.printing;
+  const designSurchargePerItem =
+    counts.editedSides * activeRules.per_side_price +
+    counts.text * activeRules.text_price +
+    counts.image * activeRules.image_price +
+    counts.clipart * activeRules.clipart_price;
 
   return {
     baseUnitPrice,
@@ -75,11 +107,13 @@ export function calculateDesignPricingFromPreviews(
 export function calculateDesignPricingFromSides(
   sides: PreviewLike[],
   basePrice: number | string | undefined,
-  designType: DesignType | string | null | undefined = "printing"
+  designType: DesignType | string | null | undefined = "printing",
+  rules: DesignPricingRules | null | undefined = null
 ): DesignPricingResult {
   return calculateDesignPricingFromPreviews(
     sides.map(side => side.preview),
     basePrice,
-    designType
+    designType,
+    rules
   );
 }

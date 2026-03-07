@@ -3,7 +3,7 @@ import { Link } from "@inertiajs/react";
 import { AnimatePresence, motion } from "framer-motion";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import AdminTopNav from "@/Components/Admin/AdminTopNav";
-import { Archive, ArrowLeft, ArrowUpRight, BarChart3, CircleHelp, Mail, MessageSquare, Package, Pencil, ReceiptText, Shield, Sparkles, Star, TriangleAlert, User, Users, X } from "lucide-react";
+import { Archive, ArrowLeft, ArrowUpRight, BarChart3, CircleHelp, Mail, MessageSquare, Package, Pencil, ReceiptText, Settings2, Shield, Sparkles, Star, TriangleAlert, User, Users, X } from "lucide-react";
 import type { AdminSummary } from "@/Context/AdminSupportContext";
 
 type AdminDashboardProps = {
@@ -75,6 +75,13 @@ export default function AdminDashboard({ auth, summary: incomingSummary }: Admin
       href: "/admin/users",
       icon: <Users className="h-6 w-6" />,
       accentClass: "from-[#E3C88E]/30 to-transparent",
+    },
+    {
+      title: "OTHER",
+      description: "Manage global store settings, tax, size guides, and discount rules.",
+      href: "/admin/other",
+      icon: <Settings2 className="h-6 w-6" />,
+      accentClass: "from-[#C9B17E]/30 to-transparent",
     },
   ];
 

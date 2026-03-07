@@ -27,8 +27,19 @@ export function computeTotalsInCents(args: {
   shippingCost?: number; // in pounds (£)
   extraFeeCost?: number; // in pounds (£)
   appliedDiscount?: AppliedDiscount;
+  taxRatePercent?: number;
+  taxEnabled?: boolean;
+  taxMode?: "inclusive" | "exclusive";
 }) {
-  const { items, shippingCost = 0, extraFeeCost = 0, appliedDiscount = null } = args;
+  const {
+    items,
+    shippingCost = 0,
+    extraFeeCost = 0,
+    appliedDiscount = null,
+    taxRatePercent = 20,
+    taxEnabled = true,
+    taxMode = "exclusive",
+  } = args;
 
   // --- subtotal in cents
   const subtotal_cents = items.reduce((sum, item) => {
@@ -64,14 +75,20 @@ export function computeTotalsInCents(args: {
   const discounted_subtotal_cents = Math.max(subtotal_cents - subtotal_discount_cents, 0);
   const final_shipping_cents = Math.max(shipping_cents - shipping_discount_cents, 0);
 
-  // --- VAT (20% on discounted subtotal only)
-  const vat_cents = Math.round(discounted_subtotal_cents * 0.2);
+  const normalizedTaxRate = Math.max(0, Number(taxRatePercent) || 0);
+  const taxRate = normalizedTaxRate / 100;
+  const normalizedTaxMode = taxMode === "inclusive" ? "inclusive" : "exclusive";
+  const shouldApplyTax = taxEnabled && taxRate > 0;
+  const vat_cents = shouldApplyTax
+    ? normalizedTaxMode === "inclusive"
+      ? Math.round(discounted_subtotal_cents * (taxRate / (1 + taxRate)))
+      : Math.round(discounted_subtotal_cents * taxRate)
+    : 0;
 
   // --- final total (subtotal - discount + VAT + shipping + extra fee)
-  const total_cents = Math.max(
-    discounted_subtotal_cents + vat_cents + final_shipping_cents + extra_fee_cents,
-    0
-  );
+  const total_cents = normalizedTaxMode === "inclusive"
+    ? Math.max(discounted_subtotal_cents + final_shipping_cents + extra_fee_cents, 0)
+    : Math.max(discounted_subtotal_cents + vat_cents + final_shipping_cents + extra_fee_cents, 0);
 
   // --- return breakdown
   return {
@@ -82,6 +99,9 @@ export function computeTotalsInCents(args: {
     shipping_cents: final_shipping_cents,
     extra_fee_cents,
     total_cents,
+    tax_mode: normalizedTaxMode,
+    tax_rate_percent: normalizedTaxRate,
+    tax_enabled: shouldApplyTax,
 
     // Also return readable £ versions for frontend display
     subtotal: (subtotal_cents / 100).toFixed(2),

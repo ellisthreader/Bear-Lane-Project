@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { usePage } from "@inertiajs/react";
 import {
   ChevronLeft,
   ChevronRight,
@@ -13,7 +14,7 @@ import {
   Type,
 } from "lucide-react";
 import type { PricePreviewSnapshot } from "../Canvas/Canvas";
-import { calculateDesignPricingFromSides } from "../utils/designPricing";
+import { calculateDesignPricingFromSides, type DesignPricingRules } from "../utils/designPricing";
 import { designTypeLabel, normalizeDesignType, type DesignType } from "@/Utils/designType";
 
 import DesignPreview from "./DesignPreview";
@@ -81,6 +82,8 @@ const GetPriceUI: React.FC<GetPriceUIProps> = ({
   onAddToCart,
   onBuyNow,
 }) => {
+  const page = usePage<{ storeSettings?: { design_pricing?: DesignPricingRules } }>();
+  const designPricingRules = page.props.storeSettings?.design_pricing;
   const [step, setStep] = useState<"configure" | "summary">("configure");
   const [loadingPrice, setLoadingPrice] = useState(false);
   const [zoomedSide, setZoomedSide] = useState<SideStatus | null>(null);
@@ -154,8 +157,8 @@ const GetPriceUI: React.FC<GetPriceUIProps> = ({
     setActiveOrderSideIndex(0);
   }, [orderedSides.length, step]);
   const pricing = useMemo(
-    () => calculateDesignPricingFromSides(sides, basePrice, selectedDesignType),
-    [sides, basePrice, selectedDesignType]
+    () => calculateDesignPricingFromSides(sides, basePrice, selectedDesignType, designPricingRules),
+    [sides, basePrice, selectedDesignType, designPricingRules]
   );
   const designCounts = pricing.counts;
   const unitPrice = pricing.unitPrice;
@@ -427,7 +430,7 @@ const GetPriceUI: React.FC<GetPriceUIProps> = ({
                 </div>
               </div>
 
-              <div className="min-h-[20rem] w-full rounded-3xl border border-[#DAC885]/60 bg-gradient-to-br from-white via-white/90 to-[#FDFBF6] px-6 py-5 shadow-[0_25px_65px_rgba(198,167,94,0.25)]">
+              <div className="min-h-[23rem] w-full rounded-3xl border border-[#DAC885]/60 bg-gradient-to-br from-white via-white/90 to-[#FDFBF6] px-6 py-5 shadow-[0_25px_65px_rgba(198,167,94,0.25)]">
                 <div className="flex items-center justify-between text-gray-500">
                   <p className="text-[10px] uppercase tracking-[0.5em]">Your Order</p>
                   <span className="text-[10px] uppercase tracking-[0.5em]">Qty {Math.max(totalQuantity, 1)}</span>
@@ -466,7 +469,7 @@ const GetPriceUI: React.FC<GetPriceUIProps> = ({
                       <DesignPreview
                         snapshot={activeOrderSide.preview}
                         fallbackImage={activeOrderSide.imageSrc}
-                        width={176}
+                        width={188}
                         alt={`${activeOrderSide.label} preview`}
                         className="w-full rounded-2xl border border-gray-200 bg-gray-50/80 p-2"
                         noFrame

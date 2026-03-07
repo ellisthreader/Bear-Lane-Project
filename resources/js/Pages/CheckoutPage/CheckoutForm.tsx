@@ -35,8 +35,21 @@ const CHECKOUT_GUEST_EMAIL_KEY = "checkout_guest_email";
 const CHECKOUT_REDIRECT_RECOVERY_KEY = "checkout_redirect_recovery_state";
 
 const CheckoutForm = ({ initialEmail = "" }: CheckoutFormProps) => {
-  const page = usePage<{ auth?: { user?: Record<string, unknown> } }>();
+  const page = usePage<{
+    auth?: { user?: Record<string, unknown> };
+    storeSettings?: {
+      tax?: {
+        enabled?: boolean;
+        rate_percent?: number;
+        price_mode?: "inclusive" | "exclusive";
+      };
+    };
+  }>();
   const authUser = page.props.auth?.user;
+  const taxSettings = page.props.storeSettings?.tax;
+  const taxRatePercent = Number(taxSettings?.rate_percent ?? 20);
+  const taxEnabled = Boolean(taxSettings?.enabled ?? true);
+  const taxMode = taxSettings?.price_mode === "inclusive" ? "inclusive" : "exclusive";
   const isAuthenticated = Boolean(authUser);
   const checkoutDebug = true;
   const stripe = useStripe();
@@ -468,8 +481,11 @@ const CheckoutForm = ({ initialEmail = "" }: CheckoutFormProps) => {
       shippingCost,
       appliedDiscount,
       extraFeeCost: giftPackagingCost,
+      taxRatePercent,
+      taxEnabled,
+      taxMode,
     });
-  }, [cart, shippingCost, appliedDiscount, giftPackagingCost]);
+  }, [cart, shippingCost, appliedDiscount, giftPackagingCost, taxRatePercent, taxEnabled, taxMode]);
 
   const saveRedirectRecoveryState = () => {
     const state: CheckoutRecoveryState = {
@@ -1522,7 +1538,13 @@ const CheckoutForm = ({ initialEmail = "" }: CheckoutFormProps) => {
         </div>
 
         <div className="lg:sticky lg:top-6">
-          <OrderSummary giftPackagingEnabled={giftPackagingEnabled} giftPackagingCost={giftPackagingCost} />
+          <OrderSummary
+            giftPackagingEnabled={giftPackagingEnabled}
+            giftPackagingCost={giftPackagingCost}
+            taxRatePercent={taxRatePercent}
+            taxEnabled={taxEnabled}
+            taxMode={taxMode}
+          />
         </div>
       </div>
       <div className="mt-5 border-t border-[#C6A75E]/30 pt-2 text-[13px] leading-[1.25] text-gray-600">

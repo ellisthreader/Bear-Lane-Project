@@ -65,7 +65,7 @@ class CouponController extends Controller
                 'coupon_id' => $coupon->id,
                 'code' => $coupon->code,
                 'type' => $coupon->type,
-                'value' => $coupon->type === 'fixed' ? ($coupon->value / 100) : $coupon->value,
+                'value' => $coupon->type === 'fixed' ? (((int) $coupon->value) / 100) : $coupon->value,
                 'discount_cents' => $discount,
                 'new_subtotal_cents' => max(0, $subtotal - $discount),
             ]);

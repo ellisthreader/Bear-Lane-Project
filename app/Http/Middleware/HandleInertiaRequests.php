@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Services\StoreSettingsService;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -29,11 +30,14 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
+        $settingsService = app(StoreSettingsService::class);
+
         return [
             ...parent::share($request),
             'auth' => [
                 'user' => $request->user(),
             ],
+            'storeSettings' => fn () => $settingsService->getPublicSettings(),
             'flash' => [
                 'status' => fn () => $request->session()->get('status'),
                 'success' => fn () => $request->session()->get('success'),

@@ -26,6 +26,7 @@ use App\Services\DeliverySlotService;
 use App\Services\DeliveryOptionService;
 use App\Services\ShippoLabelService;
 use App\Services\Stripe\StripeWalletService;
+use App\Services\StoreSettingsService;
 use App\Mail\OrderConfirmedMail;
 use Stripe\Exception\CardException;
 use Carbon\Carbon;
@@ -49,6 +50,7 @@ class CheckoutController extends Controller
         private readonly DeliveryOptionService $deliveryOptionService,
         private readonly ShippoLabelService $shippoLabelService,
         private readonly StripeWalletService $walletService,
+        private readonly StoreSettingsService $storeSettingsService,
     )
     {
     }
@@ -131,7 +133,7 @@ class CheckoutController extends Controller
                     } elseif ($couponType === 'shipping') {
                         $discount_cents = $shipping_cents;
                     } else {
-                        $discount_cents = intval(round($coupon->value * 100));
+                        $discount_cents = intval(round($coupon->value));
                     }
                 }
             }
@@ -145,8 +147,11 @@ class CheckoutController extends Controller
             $discounted_subtotal_cents = max($subtotal_cents - $subtotal_discount_cents, 0);
             $final_shipping_cents = max($shipping_cents - $shipping_discount_cents, 0);
             $discount_cents = $subtotal_discount_cents + $shipping_discount_cents;
-            $vat_cents = intval(round($discounted_subtotal_cents * 0.2));
-            $total_cents = $discounted_subtotal_cents + $vat_cents + $final_shipping_cents + $gift_packaging_cents;
+            $taxSettings = $this->resolveTaxSettings();
+            $vat_cents = $this->calculateTaxCents($discounted_subtotal_cents, $taxSettings);
+            $total_cents = $taxSettings['price_mode'] === 'inclusive'
+                ? $discounted_subtotal_cents + $final_shipping_cents + $gift_packaging_cents
+                : $discounted_subtotal_cents + $vat_cents + $final_shipping_cents + $gift_packaging_cents;
 
             $paymentMethodTypes = match ($paymentType) {
                 'KLARNA' => ['klarna'],
@@ -743,6 +748,49 @@ class CheckoutController extends Controller
         }
 
         return 'https://parcelsapp.com/en/tracking/' . urlencode($tracking);
+    }
+
+    /**
+     * @return array{enabled: bool, rate_percent: float, price_mode: string}
+     */
+    private function resolveTaxSettings(): array
+    {
+        $settings = $this->storeSettingsService->getTaxSettings();
+        $enabled = (bool) ($settings['enabled'] ?? true);
+        $ratePercent = is_numeric($settings['rate_percent'] ?? null)
+            ? (float) $settings['rate_percent']
+            : 20.0;
+        $priceMode = strtolower((string) ($settings['price_mode'] ?? 'exclusive'));
+        if (!in_array($priceMode, ['inclusive', 'exclusive'], true)) {
+            $priceMode = 'exclusive';
+        }
+
+        return [
+            'enabled' => $enabled,
+            'rate_percent' => max(0, min(100, $ratePercent)),
+            'price_mode' => $priceMode,
+        ];
+    }
+
+    /**
+     * @param array{enabled: bool, rate_percent: float, price_mode: string} $taxSettings
+     */
+    private function calculateTaxCents(int $discountedSubtotalCents, array $taxSettings): int
+    {
+        if (!$taxSettings['enabled'] || $discountedSubtotalCents <= 0) {
+            return 0;
+        }
+
+        $rate = ((float) $taxSettings['rate_percent']) / 100;
+        if ($rate <= 0) {
+            return 0;
+        }
+
+        if ($taxSettings['price_mode'] === 'inclusive') {
+            return (int) round($discountedSubtotalCents * ($rate / (1 + $rate)));
+        }
+
+        return (int) round($discountedSubtotalCents * $rate);
     }
 
     private function normalizeDesignType(mixed $value): string

@@ -11,11 +11,17 @@ import DesignPreview from "@/Pages/Design/Components/DesignPreview";
 type OrderSummaryProps = {
   giftPackagingEnabled?: boolean;
   giftPackagingCost?: number;
+  taxRatePercent?: number;
+  taxEnabled?: boolean;
+  taxMode?: "inclusive" | "exclusive";
 };
 
 const OrderSummary: React.FC<OrderSummaryProps> = ({
   giftPackagingEnabled = false,
   giftPackagingCost = 0,
+  taxRatePercent = 20,
+  taxEnabled = true,
+  taxMode = "exclusive",
 }) => {
   const { cart, removeFromCart } = useCart();
   const {
@@ -41,8 +47,11 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       shippingCost,
       appliedDiscount,
       extraFeeCost: giftPackagingCost,
+      taxRatePercent,
+      taxEnabled,
+      taxMode,
     });
-  }, [cart, shippingCost, appliedDiscount, giftPackagingCost]);
+  }, [cart, shippingCost, appliedDiscount, giftPackagingCost, taxRatePercent, taxEnabled, taxMode]);
 
   const handleApplyCode = async () => {
     const code = discountCode.trim();
@@ -274,7 +283,10 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
         </div>
 
         <div className="flex justify-between text-gray-700">
-          <span>VAT (20%)</span>
+          <span>
+            {taxMode === "inclusive" ? "VAT included" : "VAT"}
+            {taxEnabled ? ` (${Number(taxRatePercent || 0).toFixed(2).replace(/\\.00$/, "")}%)` : " (disabled)"}
+          </span>
           <span>£{totals.vat}</span>
         </div>
 
