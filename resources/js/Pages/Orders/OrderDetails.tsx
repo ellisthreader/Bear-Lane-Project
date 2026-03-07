@@ -171,24 +171,26 @@ export default function OrderDetails() {
                 </a>
               ) : null}
             </div>
-            <div className="mt-4 grid grid-cols-4 gap-1 sm:gap-2">
-              {trackingSteps.map((step, stepIndex) => {
-                const isComplete = stepIndex <= trackingStage;
-                const isCurrent = stepIndex === trackingStage;
-                return (
-                  <div key={step} className="relative flex flex-col items-center text-center">
-                    <div
-                      className={`relative flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 transition ${
-                        isComplete ? "border-[#C6A75E] bg-[#C6A75E]" : "border-[#D8C79C] bg-white"
-                      }`}
-                    >
-                      {isComplete && <Check className="h-4 w-4 text-white" />}
-                      {isCurrent && <span className="absolute -inset-1 rounded-full border border-[#C6A75E]/40" />}
+            <div className="-mx-1 mt-4 overflow-x-auto px-1">
+              <div className="grid min-w-[440px] grid-cols-4 gap-1 sm:min-w-0 sm:gap-2">
+                {trackingSteps.map((step, stepIndex) => {
+                  const isComplete = stepIndex <= trackingStage;
+                  const isCurrent = stepIndex === trackingStage;
+                  return (
+                    <div key={step} className="relative flex flex-col items-center text-center">
+                      <div
+                        className={`relative flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 transition ${
+                          isComplete ? "border-[#C6A75E] bg-[#C6A75E]" : "border-[#D8C79C] bg-white"
+                        }`}
+                      >
+                        {isComplete && <Check className="h-4 w-4 text-white" />}
+                        {isCurrent ? <span className="absolute -inset-1 rounded-full border border-[#C6A75E]/40" /> : null}
+                      </div>
+                      <p className={`mt-2 text-[11px] font-semibold leading-tight ${isCurrent ? "text-[#6F5A2D]" : "text-[#8A7B5A]"}`}>{step}</p>
                     </div>
-                    <p className={`mt-2 text-[11px] font-semibold leading-tight ${isCurrent ? "text-[#6F5A2D]" : "text-[#8A7B5A]"}`}>{step}</p>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
           </div>
 
@@ -198,7 +200,7 @@ export default function OrderDetails() {
               {order.items?.length ? (
                 order.items.map((item) => (
                   <div key={item.id} className="rounded-xl border border-[#EADDBB] bg-[#FFFCF5] p-3">
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                       <img loading="lazy" decoding="async"
                         src={item.image_url || "/images/placeholder.jpg"}
                         alt={item.product_name || "Product"}
@@ -217,7 +219,7 @@ export default function OrderDetails() {
                           Design type: {designTypeLabel(normalizeDesignType(item.design_type))}
                         </p>
                       </div>
-                      <div className="text-right">
+                      <div className="w-full text-left sm:w-auto sm:text-right">
                         <p className="text-sm font-semibold text-[#6E5A2E]">£{Number(item.line_total || 0).toFixed(2)}</p>
                         <p className="mt-0.5 text-xs text-[#8A7B5A]">£{Number(item.unit_price || 0).toFixed(2)} each</p>
                       </div>

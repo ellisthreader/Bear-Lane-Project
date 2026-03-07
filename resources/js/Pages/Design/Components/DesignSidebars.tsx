@@ -17,49 +17,74 @@ const SIDEBAR_TABS: Array<{ id: SidebarTab; label: string; icon: React.ReactNode
 export default function DesignSidebars() {
   const {
     activeSidebar,
-    canGoBack,
-    onBack,
     onClose,
     onSelectTab,
     headerTitle,
     sidebarContent,
   } = useDesignPageContext();
+  const showMobilePanel = activeSidebar !== "blank";
 
   return (
     <>
-      <div
-        className="mt-4 mb-6 ml-6 w-[140px] bg-white shadow-lg border border-gray-200 rounded-2xl p-4 flex flex-col gap-4 items-center h-[calc(100vh-160px)] overflow-hidden"
-      >
-        {SIDEBAR_TABS.map(tab => (
+      <div className="mt-4 mb-6 ml-6 hidden h-[calc(100vh-160px)] w-[140px] flex-col items-center gap-4 overflow-hidden rounded-2xl border border-gray-200 bg-white p-4 shadow-lg lg:flex">
+        {SIDEBAR_TABS.map((tab) => (
           <button
             key={tab.id}
             onClick={() => onSelectTab(tab.id)}
-            className={`w-full h-16 flex flex-col items-center justify-center rounded-xl border transition ${
+            className={`h-16 w-full rounded-xl border transition ${
               activeSidebar === tab.id
                 ? "border-[#C6A75E] bg-[#C6A75E]/15 shadow-sm"
                 : "border-gray-200 bg-white hover:border-[#C6A75E]/50 hover:bg-[#C6A75E]/10"
-            }`}
+            } flex flex-col items-center justify-center`}
           >
             {React.cloneElement(tab.icon as React.ReactElement, {
               className: activeSidebar === tab.id ? "text-[#8A6D2B]" : "text-gray-700",
             })}
-            <span
-              className={`text-sm ${activeSidebar === tab.id ? "text-[#8A6D2B] font-semibold" : "text-gray-700"}`}
-            >
+            <span className={`text-sm ${activeSidebar === tab.id ? "font-semibold text-[#8A6D2B]" : "text-gray-700"}`}>
               {tab.label}
             </span>
           </button>
         ))}
       </div>
 
-      <div
-        className="mt-4 mb-6 ml-4 w-[480px] h-[calc(100vh-160px)] overflow-hidden"
-      >
-        <div className="bg-white shadow-lg border border-gray-200 rounded-2xl overflow-y-auto h-full">
-          {activeSidebar !== "blank" && (
-            <SidebarHeader title={headerTitle} canGoBack={canGoBack} onBack={onBack} onClose={onClose} />
-          )}
+      <div className="mt-4 mb-6 ml-4 hidden h-[calc(100vh-160px)] w-[480px] overflow-hidden lg:block">
+        <div className="h-full overflow-y-auto rounded-2xl border border-gray-200 bg-white shadow-lg">
+          {activeSidebar !== "blank" ? (
+            <SidebarHeader title={headerTitle} onClose={onClose} />
+          ) : null}
           <div className="p-4">{sidebarContent}</div>
+        </div>
+      </div>
+
+      {showMobilePanel ? (
+        <div className="fixed inset-x-3 bottom-[86px] top-[100px] z-[65] lg:hidden">
+          <div className="h-full overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-[0_16px_38px_rgba(20,20,20,0.2)]">
+            <SidebarHeader title={headerTitle} onClose={onClose} />
+            <div className="h-[calc(100%-60px)] overflow-y-auto p-4">{sidebarContent}</div>
+          </div>
+        </div>
+      ) : null}
+
+      <div className="fixed inset-x-3 bottom-4 z-[70] rounded-2xl border border-gray-200 bg-white/95 p-2 shadow-[0_10px_26px_rgba(20,20,20,0.18)] backdrop-blur lg:hidden">
+        <div className="grid grid-cols-4 gap-2">
+          {SIDEBAR_TABS.map((tab) => (
+            <button
+              key={`mobile-${tab.id}`}
+              type="button"
+              onClick={() => onSelectTab(tab.id)}
+              className={`inline-flex flex-col items-center justify-center gap-1 rounded-xl px-2 py-2 text-xs font-medium transition ${
+                activeSidebar === tab.id
+                  ? "bg-[#C6A75E]/15 text-[#8A6D2B]"
+                  : "bg-white text-gray-700 hover:bg-[#C6A75E]/10"
+              }`}
+            >
+              {React.cloneElement(tab.icon as React.ReactElement, {
+                size: 18,
+                className: activeSidebar === tab.id ? "text-[#8A6D2B]" : "text-gray-700",
+              })}
+              <span>{tab.label}</span>
+            </button>
+          ))}
         </div>
       </div>
     </>

@@ -742,7 +742,10 @@ export default function Canvas(props: CanvasProps) {
       )}
 
       {!compactPriceMode && (
-        <div data-export-ignore="true" className="absolute bottom-6 right-6 flex gap-4 z-50">
+        <div
+          data-export-ignore="true"
+          className="absolute bottom-4 left-1/2 z-50 flex -translate-x-1/2 gap-2 md:bottom-6 md:left-auto md:right-6 md:translate-x-0 md:gap-4"
+        >
           <SaveDesignButton onClick={onSaveDesign ?? (() => {})} />
           <GetPriceButton onClick={onGetPrice ?? (() => {})} />
         </div>

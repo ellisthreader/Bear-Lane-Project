@@ -1281,31 +1281,31 @@ export default function Livechat() {
       showBackToHelp={false}
       compactTop
     >
-      <div className={isExpanded ? "w-full" : "mx-auto max-w-4xl"}>
+      <div className={isExpanded ? "w-full" : "mx-auto w-full max-w-4xl"}>
         <div
           className="relative overflow-hidden rounded-3xl border border-[#E6DCC4] bg-white shadow-[0_18px_50px_rgba(120,88,28,0.14)]"
         >
-          <header className="flex items-center justify-between border-b border-[#E8DEC9] bg-gradient-to-r from-[#FFF8E6] via-[#FFFDF8] to-[#FFF8E6] px-5 py-4">
-            <div className="flex items-center gap-3">
+          <header className="flex flex-col gap-3 border-b border-[#E8DEC9] bg-gradient-to-r from-[#FFF8E6] via-[#FFFDF8] to-[#FFF8E6] px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+            <div className="flex min-w-0 items-center gap-3">
               <img loading="lazy" decoding="async"
                 src={headerAvatar}
                 alt={headerName}
                 className="h-11 w-11 rounded-full border border-[#E3D5B7] bg-white object-cover"
               />
-              <div>
+              <div className="min-w-0">
                 <p className="text-xs font-semibold uppercase tracking-[0.13em] text-[#8E7747]">{headerRole}</p>
-                <h2 className="mt-0.5 text-base font-semibold text-[#261F14]">{headerName}</h2>
+                <h2 className="mt-0.5 truncate text-base font-semibold text-[#261F14]">{headerName}</h2>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center justify-end gap-2">
               <button
                 type="button"
                 onClick={() => setIsExpanded((prev) => !prev)}
-                className="inline-flex items-center gap-2 rounded-xl border border-[#E1D4B8] bg-white px-3 py-2 text-xs font-semibold uppercase tracking-wide text-[#6A5940] transition hover:border-[#CDAA64] hover:text-[#3B3022]"
+                className="inline-flex items-center gap-2 rounded-xl border border-[#E1D4B8] bg-white px-2.5 py-2 text-xs font-semibold uppercase tracking-wide text-[#6A5940] transition hover:border-[#CDAA64] hover:text-[#3B3022] sm:px-3"
               >
                 {isExpanded ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-                {isExpanded ? "Exit Fullscreen" : "Expand"}
+                <span className="hidden sm:inline">{isExpanded ? "Exit Fullscreen" : "Expand"}</span>
               </button>
               <button
                 type="button"
@@ -1313,17 +1313,17 @@ export default function Livechat() {
                   void closeChatSession();
                 }}
                 disabled={chatDeleted}
-                className="inline-flex items-center gap-2 rounded-xl border border-[#E1D4B8] bg-white px-3 py-2 text-xs font-semibold uppercase tracking-wide text-[#6A5940] transition hover:border-[#CDAA64] hover:text-[#3B3022] disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex items-center gap-2 rounded-xl border border-[#E1D4B8] bg-white px-2.5 py-2 text-xs font-semibold uppercase tracking-wide text-[#6A5940] transition hover:border-[#CDAA64] hover:text-[#3B3022] disabled:cursor-not-allowed disabled:opacity-60 sm:px-3"
               >
                 <X className="h-4 w-4" />
-                Close Chat
+                <span className="hidden sm:inline">Close Chat</span>
               </button>
             </div>
           </header>
 
           <div
             ref={chatBodyRef}
-            className={`${isExpanded ? "h-[78vh]" : "h-[520px]"} relative overflow-y-auto bg-[#FAF8F2] px-5 py-5`}
+            className={`${isExpanded ? "h-[74dvh] sm:h-[78vh]" : "h-[58dvh] min-h-[360px] sm:h-[520px]"} relative overflow-y-auto bg-[#FAF8F2] px-3 py-4 sm:px-5 sm:py-5`}
           >
             <div className="space-y-3">
               {messages.length === 0 ? (
@@ -1347,7 +1347,7 @@ export default function Livechat() {
                 return (
                   <div key={message.id} className={`flex ${fromUser ? "justify-end" : "justify-start"}`}>
                     <div
-                      className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+                      className={`max-w-[90%] rounded-2xl px-3 py-2.5 text-sm leading-relaxed sm:max-w-[80%] sm:px-4 sm:py-3 ${
                         fromUser
                           ? "rounded-br-sm bg-[#B89443] text-white"
                           : "rounded-bl-sm border border-[#E7DCC2] bg-white text-[#3B3124]"
@@ -1412,8 +1412,8 @@ export default function Livechat() {
           </div>
 
           {!chatDeleted ? (
-            <footer className="border-t border-[#E8DEC9] bg-white px-4 py-4">
-              <div className="flex items-center gap-3">
+            <footer className="border-t border-[#E8DEC9] bg-white px-3 py-3 sm:px-4 sm:py-4">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                 <input
                   ref={imageInputRef}
                   type="file"
@@ -1434,13 +1434,13 @@ export default function Livechat() {
                   onKeyDown={(event) => event.key === "Enter" && void sendMessage()}
                   placeholder={transferredToAgent ? "Write to support agent..." : "Type your message..."}
                   disabled={isInputDisabled}
-                  className="h-12 flex-1 rounded-2xl border border-[#E1D4B8] bg-[#FFFEFB] px-4 text-sm text-[#2F281E] outline-none transition focus:border-[#C9A85B] disabled:cursor-not-allowed disabled:opacity-70"
+                  className="order-1 h-12 w-full rounded-2xl border border-[#E1D4B8] bg-[#FFFEFB] px-4 text-sm text-[#2F281E] outline-none transition focus:border-[#C9A85B] disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto sm:flex-1"
                 />
                 <button
                   type="button"
                   onClick={() => imageInputRef.current?.click()}
                   disabled={isInputDisabled || uploadingImage}
-                  className="inline-flex h-12 items-center gap-2 rounded-2xl border border-[#E1D4B8] bg-[#FFFEFB] px-3 text-sm font-semibold text-[#6A541F] transition hover:border-[#C9A85B] disabled:cursor-not-allowed disabled:opacity-60"
+                  className="order-2 inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl border border-[#E1D4B8] bg-[#FFFEFB] px-3 text-sm font-semibold text-[#6A541F] transition hover:border-[#C9A85B] disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none"
                 >
                   <ImagePlus className="h-4 w-4" />
                   {uploadingImage ? "Uploading..." : "Image"}
@@ -1451,7 +1451,7 @@ export default function Livechat() {
                     void sendMessage();
                   }}
                   disabled={isInputDisabled || !newMessage.trim()}
-                  className="inline-flex h-12 items-center gap-2 rounded-2xl bg-[#B89443] px-4 text-sm font-semibold text-white transition hover:bg-[#A58335] disabled:cursor-not-allowed disabled:opacity-50"
+                  className="order-3 inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl bg-[#B89443] px-4 text-sm font-semibold text-white transition hover:bg-[#A58335] disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none"
                 >
                   <SendHorizonal className="h-4 w-4" />
                   Send
@@ -1509,7 +1509,7 @@ export default function Livechat() {
                   Start New Chat
                 </button>
               </div>
-              <div className="mt-2 flex items-center gap-4">
+              <div className="mt-2 flex flex-wrap items-center gap-4">
                 <Link href="/help" className="font-semibold text-[#7B5E24] hover:underline">
                   Return to Help Centre
                 </Link>

@@ -18,10 +18,10 @@ interface Props {
 
 export default function ProductsIndex({ type, products }: Props) {
   return (
-    <div className="p-8">
-      <h1 className="text-4xl font-bold mb-6">{type}</h1>
+    <div className="p-4 sm:p-6 lg:p-8">
+      <h1 className="mb-4 text-2xl font-bold sm:mb-6 sm:text-4xl">{type}</h1>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4 md:gap-6">
         {products.map((product) => {
           // ------------------------------
           // 🔹 SAFELY HANDLE SLUG
@@ -68,7 +68,7 @@ export default function ProductsIndex({ type, products }: Props) {
               <img loading="lazy" decoding="async"
                 src={firstImage}
                 alt={product.name}
-                className="w-full h-64 object-cover"
+                className="h-44 w-full object-cover sm:h-56 lg:h-64"
               />
 
               {/* CONTENT */}

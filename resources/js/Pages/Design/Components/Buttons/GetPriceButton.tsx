@@ -13,7 +13,7 @@ export default function GetPriceButton({ onClick }: GetPriceButtonProps) {
       onClick={onClick}
       className="
         flex items-center gap-2
-        px-6 py-3
+        px-4 py-2 md:px-6 md:py-3
         bg-white text-[#8A6D2B]
         border border-[#C6A75E]/50
         rounded-xl
@@ -25,7 +25,7 @@ export default function GetPriceButton({ onClick }: GetPriceButtonProps) {
       "
     >
       <CreditCard size={18} />
-      <span className="font-medium">Get Price</span>
+      <span className="text-sm font-medium md:text-base">Get Price</span>
     </button>
   );
 }

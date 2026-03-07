@@ -1494,12 +1494,12 @@ export default function ProductLayout({ product, recommendedProducts = [], admin
             })}
           </nav>
 
-          <div className="grid grid-cols-1 gap-8 px-4 md:px-6 lg:grid-cols-[minmax(0,1.6fr)_420px] lg:gap-10 lg:px-10">
+          <div className="grid grid-cols-1 gap-6 px-4 md:px-6 lg:grid-cols-[minmax(0,1.6fr)_420px] lg:gap-10 lg:px-10">
             <section className="min-w-0">
               {isAdminEditor ? (
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
                   {displayImages.map((img, i) => (
-                    <div key={`${img}-${i}`} className="group relative h-[320px] w-full overflow-hidden bg-[#E5E7EB] sm:h-[420px] lg:h-[500px]">
+                    <div key={`${img}-${i}`} className="group relative h-[260px] w-full overflow-hidden bg-[#E5E7EB] sm:h-[360px] lg:h-[500px]">
                       <button
                         type="button"
                         onClick={() => {
@@ -1549,7 +1549,7 @@ export default function ProductLayout({ product, recommendedProducts = [], admin
                   <button
                     type="button"
                     onClick={openImagePicker}
-                    className="group relative h-[320px] w-full overflow-hidden border-2 border-dashed border-[#C8951E] bg-[#FFF8E8] text-left sm:h-[420px] lg:h-[500px]"
+                    className="group relative h-[260px] w-full overflow-hidden border-2 border-dashed border-[#C8951E] bg-[#FFF8E8] text-left sm:h-[360px] lg:h-[500px]"
                   >
                     <div className="absolute inset-0 flex flex-col items-center justify-center px-4 text-center text-[#8A5F00]">
                       <Plus className="h-8 w-8" />
@@ -1560,7 +1560,7 @@ export default function ProductLayout({ product, recommendedProducts = [], admin
                   </button>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
                   {displayImages.length > 0 ? (
                     <>
                       {displayImages.map((img, i) => (
@@ -1571,7 +1571,7 @@ export default function ProductLayout({ product, recommendedProducts = [], admin
                             setLightboxIndex(i);
                             setIsLightboxOpen(true);
                           }}
-                          className="group relative h-[320px] w-full cursor-zoom-in overflow-hidden bg-[#E5E7EB] text-left sm:h-[420px] lg:h-[500px]"
+                          className="group relative h-[260px] w-full cursor-zoom-in overflow-hidden bg-[#E5E7EB] text-left sm:h-[360px] lg:h-[500px]"
                           aria-label={`Open image ${i + 1} in large view`}
                         >
                           <img loading="lazy" decoding="async"
@@ -1587,7 +1587,7 @@ export default function ProductLayout({ product, recommendedProducts = [], admin
                       ))}
                     </>
                   ) : (
-                    <div className="col-span-2 flex h-[420px] items-center justify-center bg-[#E5E7EB] text-[#7D6E4F]">
+                    <div className="flex h-[320px] items-center justify-center bg-[#E5E7EB] text-[#7D6E4F] sm:col-span-2 sm:h-[420px]">
                       No images available
                     </div>
                   )}
@@ -1723,7 +1723,7 @@ export default function ProductLayout({ product, recommendedProducts = [], admin
                   <SizeGuideButton />
                 </div>
 
-                <div className="grid grid-cols-5 gap-2">
+                <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
                   {STANDARD_SIZES.map((size) => {
                     const inStock = isSizeInStock(size);
                     const isSelected = selectedSize === size;
@@ -1985,7 +1985,7 @@ export default function ProductLayout({ product, recommendedProducts = [], admin
               <X className="h-5 w-5" />
             </button>
 
-            <div className="mx-auto flex h-full w-full max-w-[1500px] items-center gap-4">
+            <div className="mx-auto flex h-full w-full max-w-[1500px] items-center gap-3 sm:gap-4">
               <aside className="hidden h-[88vh] w-24 shrink-0 overflow-y-auto rounded-xl bg-black/35 p-2 md:block">
                 <div className="space-y-2">
                   {displayImages.map((img, index) => (
@@ -2004,7 +2004,7 @@ export default function ProductLayout({ product, recommendedProducts = [], admin
                 </div>
               </aside>
 
-              <div className="relative flex h-[88vh] min-w-0 flex-1 items-center justify-center rounded-2xl bg-[#E5E7EB] p-4">
+              <div className="relative flex h-[82dvh] min-w-0 flex-1 items-center justify-center rounded-2xl bg-[#E5E7EB] p-3 sm:h-[88vh] sm:p-4">
                 <img loading="lazy" decoding="async"
                   src={displayImages[lightboxIndex]}
                   alt={`${effectiveName}-zoom-${lightboxIndex + 1}`}
@@ -2102,7 +2102,7 @@ export default function ProductLayout({ product, recommendedProducts = [], admin
 
                         <div className={`grid transition-all duration-300 ease-out ${isOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
                         <div className={`overflow-hidden ${isOpen ? "p-4" : "p-0"}`}>
-                        <div className="mt-2 grid gap-2 md:grid-cols-[1fr_1fr_auto]">
+                        <div className="mt-2 grid gap-2 sm:grid-cols-2 md:grid-cols-[1fr_1fr_auto]">
                           <select
                             value={
                               !colour.name.trim()
@@ -2177,7 +2177,7 @@ export default function ProductLayout({ product, recommendedProducts = [], admin
                         </div>
 
                         <div className="mt-3 rounded-lg border border-[#EFE5D2] bg-[#FFFCF7] p-2">
-                          <div className="mb-2 grid grid-cols-[1fr_1fr_1.5fr_auto] gap-2 px-1 text-[10px] font-bold uppercase tracking-[0.08em] text-[#7A6742]">
+                          <div className="mb-2 hidden grid-cols-[1fr_1fr_1.5fr_auto] gap-2 px-1 text-[10px] font-bold uppercase tracking-[0.08em] text-[#7A6742] sm:grid">
                             <span>Size</span>
                             <span>Quantity</span>
                             <span>Parcel Size</span>
@@ -2186,7 +2186,7 @@ export default function ProductLayout({ product, recommendedProducts = [], admin
                           <div className="space-y-2">
                             {colour.variants.map((variant) => (
                               <div key={variant.id} className="rounded-lg border border-[#EFE3CC] bg-white p-2">
-                                <div className="grid grid-cols-[1fr_1fr_1.5fr_auto] gap-2">
+                                <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_1fr_1.5fr_auto]">
                                   <select
                                     value={variant.size}
                                     onChange={(event) =>
@@ -2253,7 +2253,7 @@ export default function ProductLayout({ product, recommendedProducts = [], admin
                                   <button
                                     type="button"
                                     onClick={() => removeAdminVariant(colour.id, variant.id)}
-                                    className="rounded-lg border border-[#E3B9B9] bg-[#FFF3F3] px-2 py-2 text-xs font-semibold text-[#8C3232]"
+                                    className="rounded-lg border border-[#E3B9B9] bg-[#FFF3F3] px-2 py-2 text-xs font-semibold text-[#8C3232] sm:px-2"
                                   >
                                     Remove
                                   </button>

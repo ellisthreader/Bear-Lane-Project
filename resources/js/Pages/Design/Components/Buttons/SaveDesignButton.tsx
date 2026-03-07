@@ -13,7 +13,7 @@ export default function SaveDesignButton({ onClick }: SaveDesignButtonProps) {
       onClick={onClick}
       className="
         flex items-center gap-2
-        px-6 py-3
+        px-4 py-2 md:px-6 md:py-3
         bg-[#C6A75E] text-white
         rounded-xl
         shadow-md
@@ -24,7 +24,7 @@ export default function SaveDesignButton({ onClick }: SaveDesignButtonProps) {
       "
     >
       <Save size={18} />
-      <span className="font-medium">Save</span>
+      <span className="text-sm font-medium md:text-base">Save</span>
     </button>
   );
 }

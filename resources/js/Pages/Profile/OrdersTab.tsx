@@ -289,14 +289,14 @@ export default function OrdersTab({ sortBy = "newest" }: OrdersTabProps) {
               onClick={() => toggleExpand(order.id)}
               className="w-full rounded-2xl p-4 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C6A75E]/50"
             >
-              <div className="flex items-center justify-between gap-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="text-[11px] uppercase tracking-[0.18em] text-[#978055]">Order Number</p>
                   <p className="text-lg font-bold text-[#2C2415]">#{order.order_number}</p>
                   <p className="mt-1 text-xs text-[#7F704F]">Placed on {formatDate(order.created_at)}</p>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 self-start sm:self-auto">
                   <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold ${getStatusStyles(order)}`}>
                     <span className="h-2 w-2 rounded-full bg-current opacity-75" />
                     {getStatusLabel(order)}
@@ -335,7 +335,7 @@ export default function OrdersTab({ sortBy = "newest" }: OrdersTabProps) {
                     </div>
                   ) : (
                     <div className="rounded-xl border border-[#E6D7B0] bg-gradient-to-r from-[#FFFCF5] to-white p-4">
-                      <div className="mb-3 flex items-center justify-between gap-3">
+                      <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#9B8862]">Tracking</p>
                         {trackingRef && order.tracking_url ? (
                           <a
@@ -354,35 +354,37 @@ export default function OrdersTab({ sortBy = "newest" }: OrdersTabProps) {
                           </span>
                         )}
                       </div>
-                      <div className="grid grid-cols-5 gap-1 sm:gap-2">
-                        {trackingSteps.map((step, stepIndex) => {
-                          const isComplete = stepIndex <= trackingStage;
-                          const isCurrent = stepIndex === trackingStage;
-                          return (
-                            <div key={step.label} className="relative flex flex-col items-center text-center">
-                              <div className="flex w-full items-center justify-center">
-                                <div
-                                  className={`relative flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 transition ${
-                                    isComplete ? "border-[#C6A75E] bg-[#C6A75E]" : "border-[#D8C79C] bg-white"
-                                  }`}
-                                >
-                                  {isComplete && <Check className="h-4 w-4 text-white" />}
-                                  {isCurrent && <span className="absolute -inset-1 rounded-full border border-[#C6A75E]/40" />}
-                                </div>
-                                {stepIndex < trackingSteps.length - 1 && (
+                      <div className="-mx-1 overflow-x-auto px-1">
+                        <div className="grid min-w-[560px] grid-cols-5 gap-1 sm:min-w-0 sm:gap-2">
+                          {trackingSteps.map((step, stepIndex) => {
+                            const isComplete = stepIndex <= trackingStage;
+                            const isCurrent = stepIndex === trackingStage;
+                            return (
+                              <div key={step.label} className="relative flex flex-col items-center text-center">
+                                <div className="flex w-full items-center justify-center">
                                   <div
-                                    className={`absolute left-1/2 top-3.5 z-0 ml-4 h-[3px] w-[calc(100%-2rem)] rounded-full transition ${
-                                      stepIndex < trackingStage ? "bg-[#C6A75E]" : "bg-[#E6D7B0]"
+                                    className={`relative flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 transition ${
+                                      isComplete ? "border-[#C6A75E] bg-[#C6A75E]" : "border-[#D8C79C] bg-white"
                                     }`}
-                                  />
-                                )}
+                                  >
+                                    {isComplete && <Check className="h-4 w-4 text-white" />}
+                                    {isCurrent ? <span className="absolute -inset-1 rounded-full border border-[#C6A75E]/40" /> : null}
+                                  </div>
+                                  {stepIndex < trackingSteps.length - 1 ? (
+                                    <div
+                                      className={`absolute left-1/2 top-3.5 z-0 ml-4 h-[3px] w-[calc(100%-2rem)] rounded-full transition ${
+                                        stepIndex < trackingStage ? "bg-[#C6A75E]" : "bg-[#E6D7B0]"
+                                      }`}
+                                    />
+                                  ) : null}
+                                </div>
+                                <p className={`mt-2 text-[11px] font-semibold leading-tight ${isCurrent ? "text-[#6F5A2D]" : "text-[#8A7B5A]"}`}>
+                                  {step.label}
+                                </p>
                               </div>
-                              <p className={`mt-2 text-[11px] font-semibold leading-tight ${isCurrent ? "text-[#6F5A2D]" : "text-[#8A7B5A]"}`}>
-                                {step.label}
-                              </p>
-                            </div>
-                          );
-                        })}
+                            );
+                          })}
+                        </div>
                       </div>
 
                       <div className="mt-4 space-y-2">
@@ -410,7 +412,7 @@ export default function OrdersTab({ sortBy = "newest" }: OrdersTabProps) {
                     {order.items.length ? (
                       order.items.map((item) => (
                         <div key={item.id} className="rounded-xl border border-[#EADDBB] bg-[#FFFCF5] p-3">
-                          <div className="flex items-center gap-3">
+                          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                             <img loading="lazy" decoding="async"
                               src={item.image_url || "/images/placeholder.jpg"}
                               alt={item.product_name}
@@ -426,7 +428,7 @@ export default function OrdersTab({ sortBy = "newest" }: OrdersTabProps) {
                                 Design type: {designTypeLabel(normalizeDesignType(item.design_type))}
                               </p>
                             </div>
-                            <div className="text-right">
+                            <div className="w-full text-left sm:w-auto sm:text-right">
                               <p className="text-sm font-semibold text-[#6E5A2E]">£{Number(item.line_total || 0).toFixed(2)}</p>
                               <p className="mt-0.5 text-xs text-[#8A7B5A]">£{Number(item.unit_price || 0).toFixed(2)} each</p>
                             </div>
@@ -604,7 +606,7 @@ function LeaveReviewModal({
 
   return (
     <div className="fixed inset-0 z-[140] flex items-center justify-center bg-black/35 p-4 backdrop-blur-[2px]">
-      <div className="w-full max-w-2xl rounded-3xl border border-[#E1CF9F] bg-white shadow-[0_20px_70px_rgba(40,30,10,0.28)]">
+      <div className="max-h-[92dvh] w-full max-w-2xl overflow-y-auto rounded-3xl border border-[#E1CF9F] bg-white shadow-[0_20px_70px_rgba(40,30,10,0.28)]">
         <div className="flex items-start justify-between gap-3 border-b border-[#EFE2C5] bg-gradient-to-r from-[#FFF9EA] to-white px-5 py-4">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#9C8452]">Leave us a review</p>

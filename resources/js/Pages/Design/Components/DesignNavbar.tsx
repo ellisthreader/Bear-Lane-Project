@@ -30,16 +30,16 @@ export default function DesignNavbar({
         bg-white/95
         backdrop-blur-md
         flex items-center
-        pl-3 pr-10 py-4
+        px-3 py-3 sm:py-4 sm:pr-6 lg:pr-10
         border-b border-gray-200
         shadow-sm
       "
     >
       {/* LEFT: LOGO + DESIGN BREADCRUMB */}
-      <div className="flex items-center gap-1">
+      <div className="flex min-w-0 items-center gap-1">
         {/* LOGO */}
         <Link href="/" className="flex items-center">
-          <div className="relative h-[50px] w-[220px]">
+          <div className="relative h-[40px] w-[150px] sm:h-[46px] sm:w-[185px] lg:h-[50px] lg:w-[220px]">
             <img loading="lazy" decoding="async"
               src="/images/BLText.png"
               alt="Bear Lane"
@@ -50,22 +50,33 @@ export default function DesignNavbar({
 
         {/* DESIGN BREADCRUMB */}
         <div
-          className={`flex items-center gap-3 ml-8 text-[16px] tracking-wide text-gray-900 ${
+          className={`ml-3 hidden min-w-0 items-center gap-2 text-sm tracking-wide text-gray-900 md:flex lg:ml-8 lg:gap-3 lg:text-[16px] ${
             canOpenMyDesigns ? "cursor-pointer" : "cursor-default"
           }`}
           onClick={canOpenMyDesigns ? () => onOpenMyDesigns?.() : undefined}
         >
-          <Folder className="w-5 h-5 text-[#8A6D2B]" />
+          <Folder className="h-4 w-4 text-[#8A6D2B] lg:h-5 lg:w-5" />
           <span className="uppercase text-gray-500">{myDesignsLabel}</span>
-          <ChevronRight className="w-4 h-4 text-gray-400" />
-          <span className="font-semibold text-gray-900">
+          <ChevronRight className="h-4 w-4 text-gray-400" />
+          <span className="truncate font-semibold text-gray-900">
             {`'${designName}'`}
           </span>
         </div>
       </div>
 
       {/* RIGHT: ICONS */}
-      <div className="ml-auto flex items-center gap-6 text-gray-800">
+      <div className="ml-auto flex items-center gap-3 text-gray-800 sm:gap-4 lg:gap-6">
+        {canOpenMyDesigns ? (
+          <button
+            type="button"
+            onClick={() => onOpenMyDesigns?.()}
+            className="inline-flex items-center justify-center rounded-full p-1.5 text-gray-800 transition hover:bg-[#F2EAD6] md:hidden"
+            aria-label="Open my designs"
+          >
+            <Folder className="h-5 w-5" />
+          </button>
+        ) : null}
+
         <Link href="/profile">
           <User className="w-5 h-5 cursor-pointer hover:text-[#C6A75E] transition" />
         </Link>

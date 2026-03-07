@@ -2526,7 +2526,7 @@ const designPageContextValue = {
   
   return (
     <>
-      <div className="min-h-screen bg-gray-200 relative disable-selection">
+      <div className="relative min-h-[100dvh] bg-gray-200 disable-selection">
       <Head title="Start Designing" />
 
       {isChangeProductModalOpen && (
@@ -2537,7 +2537,7 @@ const designPageContextValue = {
         />
       )}
 
-      <div className={`${isChangeProductModalOpen ? "blur-lg opacity-40" : ""} min-h-screen bg-gray-200`}>
+      <div className={`${isChangeProductModalOpen ? "blur-lg opacity-40" : ""} min-h-[100dvh] bg-gray-200`}>
 
         {/* ✅ NEW NAVBAR COMPONENT */}
         <DesignNavbar
@@ -2547,7 +2547,7 @@ const designPageContextValue = {
         />
 
         {/* CONTENT */}
-        <div className="pt-[96px] flex min-h-screen w-full bg-gray-200">
+        <div className="flex min-h-[100dvh] w-full bg-gray-200 pt-[88px] sm:pt-[96px]">
 
           <DesignPageProvider value={designPageContextValue}>
             {!isPricePanelOpen ? <DesignSidebars /> : null}

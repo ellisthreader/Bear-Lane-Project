@@ -52,16 +52,18 @@ const resolveRecaptchaApi = (): { ready: RecaptchaReady; execute: RecaptchaExecu
 };
 
 const getRecaptchaScriptCandidates = (): string[] => {
-  const preferred =
-    RECAPTCHA_PROVIDER === "enterprise"
-      ? "https://www.google.com/recaptcha/enterprise.js"
-      : "https://www.google.com/recaptcha/api.js";
-  const fallback =
-    RECAPTCHA_PROVIDER === "enterprise"
-      ? "https://www.google.com/recaptcha/api.js"
-      : "https://www.google.com/recaptcha/enterprise.js";
+  const enterpriseScripts = [
+    "https://www.google.com/recaptcha/enterprise.js",
+    "https://www.recaptcha.net/recaptcha/enterprise.js",
+  ];
+  const standardScripts = [
+    "https://www.google.com/recaptcha/api.js",
+    "https://www.recaptcha.net/recaptcha/api.js",
+  ];
 
-  return [preferred, fallback];
+  return RECAPTCHA_PROVIDER === "enterprise"
+    ? [...enterpriseScripts, ...standardScripts]
+    : [...standardScripts, ...enterpriseScripts];
 };
 
 const waitForRecaptchaApi = async (timeoutMs = 8000): Promise<boolean> => {
@@ -114,7 +116,18 @@ const loadRecaptchaScript = async (): Promise<void> => {
   }
 
   if (scriptLoadPromise) {
-    return scriptLoadPromise;
+    try {
+      await scriptLoadPromise;
+    } catch {
+      scriptLoadPromise = null;
+    }
+
+    if (resolveRecaptchaApi()) {
+      return;
+    }
+
+    // Stale successful promise with no API available anymore: force a fresh load attempt.
+    scriptLoadPromise = null;
   }
 
   scriptLoadPromise = (async () => {
@@ -149,7 +162,12 @@ const loadRecaptchaScript = async (): Promise<void> => {
     );
   });
 
-  return scriptLoadPromise;
+  try {
+    await scriptLoadPromise;
+  } catch (error) {
+    scriptLoadPromise = null;
+    throw error;
+  }
 };
 
 export const isRecaptchaConfigured = (): boolean => RECAPTCHA_SITE_KEY.length > 0;
@@ -163,6 +181,14 @@ export const executeRecaptcha = async (action: string): Promise<string> => {
 
   let api = resolveRecaptchaApi();
   if (!api) {
+    await waitForRecaptchaApi();
+    api = resolveRecaptchaApi();
+  }
+
+  if (!api) {
+    // One recovery pass in case a stale loader state left us without an API.
+    scriptLoadPromise = null;
+    await loadRecaptchaScript();
     await waitForRecaptchaApi();
     api = resolveRecaptchaApi();
   }

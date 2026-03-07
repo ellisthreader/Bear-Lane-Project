@@ -30,7 +30,7 @@ const ProductViewSelector: React.FC<ProductViewSelectorProps> = ({
   return (
     <div
       data-export-ignore="true"
-      className="absolute top-1/2 right-6 transform -translate-y-1/2 flex flex-col gap-4 bg-white p-3 rounded-xl shadow-md border border-gray-200 z-40"
+      className="absolute bottom-4 left-1/2 z-40 flex max-w-[calc(100%-1rem)] -translate-x-1/2 items-center gap-2 overflow-x-auto rounded-xl border border-gray-200 bg-white p-2 shadow-md md:left-auto md:right-6 md:top-1/2 md:max-w-none md:translate-x-0 md:-translate-y-1/2 md:flex-col md:overflow-visible md:p-3"
     >
       {Object.entries(images).map(([key, src]) => {
         const viewKey = key as keyof typeof images;
@@ -39,7 +39,7 @@ const ProductViewSelector: React.FC<ProductViewSelectorProps> = ({
         return (
           <button
             key={key}
-            className={`relative w-20 h-20 rounded-lg overflow-hidden border-2 transition-all ${
+            className={`relative h-14 w-14 shrink-0 overflow-hidden rounded-lg border-2 transition-all sm:h-16 sm:w-16 md:h-20 md:w-20 ${
               isSelected
                 ? "border-[#C6A75E] scale-105 shadow-md"
                 : "border-gray-300 hover:border-[#C6A75E]/70"
