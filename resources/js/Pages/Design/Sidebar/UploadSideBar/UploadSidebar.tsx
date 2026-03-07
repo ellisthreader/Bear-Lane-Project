@@ -50,6 +50,8 @@ type UploadSidebarProps = {
   canvasRef: React.RefObject<HTMLDivElement>; // ✅ ADD THIS
   restrictedBox?: { left: number; top: number; width: number; height: number };
   canvasPositions?: Record<string, { x: number; y: number }>;
+  startInCropMode?: boolean;
+  onStartInCropModeHandled?: () => void;
 };
 
 // -------------------- COMPONENT --------------------
@@ -71,6 +73,8 @@ export default function UploadSidebar({
   onFlipImage,
   restrictedBox: restrictedBoxProp,
   canvasPositions = {},
+  startInCropMode = false,
+  onStartInCropModeHandled,
 }: UploadSidebarProps) {
   const [cropMode, setCropMode] = useState(false);
 
@@ -96,6 +100,12 @@ export default function UploadSidebar({
     setCropMode(false);
     onSelectImage?.(id);
   };
+
+  useEffect(() => {
+    if (!startInCropMode || !selectedImage || !layerExists) return;
+    setCropMode(true);
+    onStartInCropModeHandled?.();
+  }, [startInCropMode, selectedImage, layerExists, onStartInCropModeHandled]);
 
   // ------------------- CROPPING MODE -------------------
   if (cropMode && layerExists && selectedImage) {

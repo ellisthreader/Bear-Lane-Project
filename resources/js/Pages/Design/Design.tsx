@@ -29,6 +29,7 @@ import type {
 
 import DesignPreview from "./Components/DesignPreview";
 import DesignSidebars from "./Components/DesignSidebars";
+import MobileSelectionToolbar from "./Components/MobileSelectionToolbar";
 import DesignWorkspaceLayout from "./Components/DesignWorkspaceLayout";
 import SaveDesignDialog from "./Components/SaveDesignDialog";
 import { DesignPageProvider } from "./Context/DesignPageContext";
@@ -88,6 +89,26 @@ const isRestrictedBoxRatioValid = (value: unknown): value is RestrictedBoxRatio 
 
 const isNaturalSizeValid = (size: ImageNaturalSize | undefined): size is ImageNaturalSize =>
   Boolean(size && size.width > 0 && size.height > 0);
+
+const getLayerDepths = (state: Record<string, ImageState>): number[] =>
+  Object.values(state).map((layer, index) => {
+    const raw = Number((layer as any)?.zIndex);
+    return Number.isFinite(raw) ? raw : index + 1;
+  });
+
+const getNextLayerZIndex = (state: Record<string, ImageState>): number => {
+  const depths = getLayerDepths(state);
+  return (depths.length ? Math.max(...depths) : 0) + 1;
+};
+
+const getCurrentLayerZIndex = (state: Record<string, ImageState>, uid: string): number => {
+  const entries = Object.entries(state);
+  const index = entries.findIndex(([id]) => id === uid);
+  if (index === -1) return 1;
+  const layer = entries[index][1];
+  const raw = Number((layer as any)?.zIndex);
+  return Number.isFinite(raw) ? raw : index + 1;
+};
  
 
   export default function Design() {
@@ -155,6 +176,8 @@ const isNaturalSizeValid = (size: ImageNaturalSize | undefined): size is ImageNa
         : ["product"]
     );
     const activeSidebar = sidebarStack[sidebarStack.length - 1];
+    const [uploadSidebarStartMode, setUploadSidebarStartMode] = useState<"library" | "crop">("library");
+    const [textSidebarInitialPanel, setTextSidebarInitialPanel] = useState<"main" | "fonts" | "outline">("main");
     const [isMobileViewport, setIsMobileViewport] = useState<boolean>(() =>
       typeof window !== "undefined"
         ? window.matchMedia("(max-width: 1023px)").matches
@@ -770,6 +793,31 @@ const isNaturalSizeValid = (size: ImageNaturalSize | undefined): size is ImageNa
 
     const [sizes, setSizes] = useState<Record<string, { w: number; h: number }>>({});
     const canvasSnapshotRef = useRef<CanvasSnapshot | null>(null);
+    const mobileSelectedUid = useMemo(() => {
+      if (selectedObjects.length === 1 && currentImageState[selectedObjects[0]]) {
+        return selectedObjects[0];
+      }
+      if (selectedText && currentImageState[selectedText]) return selectedText;
+      if (selectedUploadedImage && currentImageState[selectedUploadedImage]) return selectedUploadedImage;
+      return null;
+    }, [selectedObjects, currentImageState, selectedText, selectedUploadedImage]);
+    const mobileSelectedLayer = mobileSelectedUid ? currentImageState[mobileSelectedUid] ?? null : null;
+    const mobileSelectedPosition = mobileSelectedUid ? positions[mobileSelectedUid] : undefined;
+    const mobileSelectedSize = mobileSelectedUid
+      ? sizes[mobileSelectedUid] ?? currentImageState[mobileSelectedUid]?.size
+      : undefined;
+    const layerDepthBounds = useMemo(() => {
+      const depths = getLayerDepths(currentImageState);
+      return {
+        min: depths.length ? Math.min(...depths) : 1,
+        max: depths.length ? Math.max(...depths) : 1,
+      };
+    }, [currentImageState]);
+    const mobileSelectedLayerZ = mobileSelectedUid
+      ? getCurrentLayerZIndex(currentImageState, mobileSelectedUid)
+      : 1;
+    const canSendToFront = mobileSelectedUid ? mobileSelectedLayerZ < layerDepthBounds.max : false;
+    const canSendToBack = mobileSelectedUid ? mobileSelectedLayerZ > layerDepthBounds.min : false;
 
   const [displayImages, setDisplayImages] = useState<string[]>(
     normalizeDesignImages(currentProduct?.images ?? [])
@@ -960,6 +1008,7 @@ const pricePanelSides = useMemo(
 
     // Desktop: selecting an uploaded image opens the upload properties panel.
     if (uid && !isMobileViewport) {
+      setUploadSidebarStartMode("library");
       setSidebarStack(["upload"]);
     }
   };
@@ -1803,7 +1852,7 @@ useEffect(() => {
     setCurrentDesignName(trimmed);
     setCurrentViewKey("front");
     setSaveMode("new");
-    setSidebarStack(["product"]);
+    setSidebarStack(isMobileViewport ? ["blank"] : ["product"]);
   };
 
   const handleDeleteSavedDesign = async (savedDesign: SavedDesign) => {
@@ -1920,8 +1969,17 @@ const handleChangeImageColor = (uid: string, color: string) => {
 const syncClipartNaturalSize = (uid: string, src: string) => {
   const image = new Image();
   image.onload = () => {
-    const naturalW = Math.max(1, image.naturalWidth);
-    const naturalH = Math.max(1, image.naturalHeight);
+    let naturalW = Math.max(1, image.naturalWidth);
+    let naturalH = Math.max(1, image.naturalHeight);
+
+    if (isMobileViewport && restrictedBox.width > 0 && restrictedBox.height > 0) {
+      const maxW = Math.max(40, restrictedBox.width * 0.28);
+      const maxH = Math.max(40, restrictedBox.height * 0.28);
+      const scale = Math.min(1, maxW / naturalW, maxH / naturalH);
+      naturalW *= scale;
+      naturalH *= scale;
+    }
+
     const preferredPosition = leftAlignedPreferredPosition(uid, naturalW, naturalH);
     applyFittedClipart(uid, naturalW, naturalH, { preferredPosition });
   };
@@ -1932,8 +1990,9 @@ const syncClipartNaturalSize = (uid: string, src: string) => {
 // Add Clipart
 const handleAddClipart = (src: string) => {
   const uid = crypto.randomUUID();
-  const defaultSize = { w: 150, h: 150 };
-  updateCurrentImageState({
+  const defaultSize = isMobileViewport ? { w: 92, h: 92 } : { w: 150, h: 150 };
+  updateCurrentImageState((prev) => ({
+    ...prev,
     [uid]: {
       url: src,
       type: "image",
@@ -1942,10 +2001,11 @@ const handleAddClipart = (src: string) => {
       flip: "none",
       size: defaultSize,
       color: "#000000",
+      zIndex: getNextLayerZIndex(prev),
       renderKey: crypto.randomUUID(),
       original: { url: src, rotation: 0, flip: "none", size: { ...defaultSize }, color: "#000000" },
     },
-  });
+  }));
   setUploadedImages(prev => [...prev, uid]);
   setSelectedUploadedImageWithLog(uid);
   setSelectedText(null);
@@ -1964,8 +2024,9 @@ const handleAddClipart = (src: string) => {
 
 // Change Clipart
 const handleChangeClipart = () => {
-  if (!selectedUploadedImage) return;
-  setReplaceClipartId(selectedUploadedImage);
+  const targetUid = selectedUploadedImage ?? mobileSelectedUid;
+  if (!targetUid) return;
+  setReplaceClipartId(targetUid);
   setSelectedUploadedImageWithLog(null);
   setSidebarStack(["clipart"]);
 };
@@ -1992,13 +2053,15 @@ const handleUpload = (url: string) => {
   const defaultSize = { w: 150, h: 150 };
   setUploadedImages(prev => [...prev, uid]);
 
-  updateCurrentImageState({
+  updateCurrentImageState((prev) => ({
+    ...prev,
     [uid]: {
       url,
       type: "image",
       rotation: 0,
       flip: "none",
       size: defaultSize,
+      zIndex: getNextLayerZIndex(prev),
       canvasPositions: {
         [currentViewKey]: { x: 100, y: 100, width: defaultSize.w, height: defaultSize.h, scale: 1 },
       },
@@ -2015,7 +2078,7 @@ const handleUpload = (url: string) => {
       width: undefined,
       renderKey: undefined,
     },
-  });
+  }));
 
   setSizes(prev => ({ ...prev, [uid]: { ...defaultSize } }));
   setSelectedUploadedImageWithLog(uid);
@@ -2032,15 +2095,17 @@ const handleDuplicateUploadedImage = (uid: string) => {
     source.canvasPositions?.[uid] ??
     { x: 100, y: 100, width: source.size.w, height: source.size.h, scale: 1 };
   setUploadedImages(prev => [...prev, dup]);
-  updateCurrentImageState({
+  updateCurrentImageState((prev) => ({
+    ...prev,
     [dup]: {
       ...source,
+      zIndex: getNextLayerZIndex(prev),
       renderKey: crypto.randomUUID(),
       canvasPositions: {
         [currentViewKey]: { ...originalPos, x: originalPos.x + 20, y: originalPos.y + 20 },
       },
     },
-  });
+  }));
   setSelectedUploadedImageWithLog(dup);
   setSidebarStack(isMobileViewport ? ["blank"] : ["upload"]);
 };
@@ -2073,10 +2138,16 @@ const duplicateTextLayer = (uid: string) => {
   const source = currentImageState[uid];
   if (!source || source.type !== "text") return;
   const newId = crypto.randomUUID();
-  updateCurrentImageState({
-    [newId]: { ...source, renderKey: crypto.randomUUID() },
-  });
+  updateCurrentImageState((prev) => ({
+    ...prev,
+    [newId]: {
+      ...source,
+      zIndex: getNextLayerZIndex(prev),
+      renderKey: crypto.randomUUID(),
+    },
+  }));
   setSelectedText(newId);
+  setSelectedObjects([newId]);
   setSidebarStack(isMobileViewport ? ["blank"] : ["text"]);
 };
 
@@ -2093,6 +2164,7 @@ const handleCanvasSelectionChange = (objects: string[]) => {
     if (isMobileViewport) {
       setSidebarStack(["blank"]);
     } else {
+      setTextSidebarInitialPanel("main");
       setSidebarStack(prev => (prev[prev.length - 1] === "text" ? prev : ["product", "text"]));
     }
     return;
@@ -2105,6 +2177,7 @@ const handleCanvasSelectionChange = (objects: string[]) => {
     if (isMobileViewport) {
       setSidebarStack(["blank"]);
     } else {
+      setUploadSidebarStartMode("library");
       setSidebarStack(prev =>
         prev[prev.length - 1] === (isClipart ? "clipart" : "upload")
           ? prev
@@ -2158,6 +2231,142 @@ const resetTextLayer = (uid: string) => {
     },
   });
 };
+
+const bringLayerToFront = (uid: string) => {
+  updateCurrentImageState((prev) => {
+    const layer = prev[uid];
+    if (!layer) return prev;
+    return {
+      ...prev,
+      [uid]: {
+        ...layer,
+        zIndex: getNextLayerZIndex(prev),
+      },
+    };
+  });
+};
+
+const sendLayerToBack = (uid: string) => {
+  updateCurrentImageState((prev) => {
+    const layer = prev[uid];
+    if (!layer) return prev;
+    const depths = getLayerDepths(prev);
+    const minDepth = depths.length ? Math.min(...depths) : 1;
+    return {
+      ...prev,
+      [uid]: {
+        ...layer,
+        zIndex: minDepth - 1,
+      },
+    };
+  });
+};
+
+const openUploadCropPanel = () => {
+  const targetUid = mobileSelectedUid ?? selectedUploadedImage;
+  if (!targetUid) return;
+  setSelectedUploadedImageWithLog(targetUid);
+  setUploadSidebarStartMode("crop");
+  setSidebarStack(["upload"]);
+};
+
+const openTextPanel = (panel: "main" | "fonts" | "outline") => {
+  setTextSidebarInitialPanel(panel);
+  setSidebarStack(["text"]);
+};
+
+const quickMeasureText = (value: string, fontFamily: string, fontSize: number, borderWidth = 0) => {
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext("2d");
+  const fallbackWidth = Math.max(40, value.length * fontSize * 0.6);
+  const safeLines = value.split(/\r?\n/).map((line) => line || " ");
+
+  if (!context) {
+    return {
+      w: Math.ceil(fallbackWidth + borderWidth * 2 + 8),
+      h: Math.ceil(fontSize * 1.25 + borderWidth * 2 + 4),
+    };
+  }
+
+  context.font = `${fontSize}px ${fontFamily}`;
+  const widestLine = safeLines.reduce((max, line) => {
+    const width = context.measureText(line).width;
+    return Math.max(max, width);
+  }, 0);
+
+  return {
+    w: Math.ceil(Math.max(24, widestLine) + borderWidth * 2 + 8),
+    h: Math.ceil(safeLines.length * fontSize * 1.2 + borderWidth * 2 + 4),
+  };
+};
+
+const handleQuickAddText = async (value: string) => {
+  const clampedText = value.trim().slice(0, 260);
+  if (!clampedText) return false;
+
+  let moderation;
+  try {
+    moderation = await moderateDesignText(clampedText);
+  } catch {
+    showError("Text moderation is temporarily unavailable. Please try again shortly.");
+    return false;
+  }
+
+  if (!moderation.allowed) {
+    showError(moderation.message ?? "Text contains restricted content and cannot be used.");
+    return false;
+  }
+
+  const layerId = crypto.randomUUID();
+  const baseFont = "Inter";
+  const fontSize = 32;
+  const nextSize = quickMeasureText(clampedText, baseFont, fontSize, 0);
+
+  updateCurrentImageState((prev) => ({
+    ...prev,
+    [layerId]: {
+      url: "",
+      type: "text",
+      text: clampedText,
+      rotation: 0,
+      flip: "none",
+      size: nextSize,
+      zIndex: getNextLayerZIndex(prev),
+      fontFamily: baseFont,
+      color: "#000000",
+      borderColor: "#000000",
+      borderWidth: 0,
+      fontSize,
+      textAlign: DEFAULT_TEXT_ALIGN,
+      width: nextSize.w,
+      original: {
+        url: "",
+        rotation: 0,
+        flip: "none",
+        size: nextSize,
+        text: clampedText,
+        fontFamily: baseFont,
+        fontSize,
+        color: "#000000",
+        borderColor: "#000000",
+        borderWidth: 0,
+        textAlign: DEFAULT_TEXT_ALIGN,
+      },
+    },
+  }));
+
+  setSizes((prev) => ({ ...prev, [layerId]: nextSize }));
+  setSelectedText(layerId);
+  setSelectedUploadedImageWithLog(null);
+  setSelectedObjects([layerId]);
+  if (!isMobileViewport) {
+    setSidebarStack(["text"]);
+  } else {
+    setSidebarStack(["blank"]);
+  }
+  return true;
+};
+
 const renderActiveTab = () => {
   if (selectedObjects.length > 1) {
     return (
@@ -2172,8 +2381,14 @@ const renderActiveTab = () => {
     return (
       <BlankSidebar
         onOpenProduct={() => setSidebarStack(["product"])}
-        onOpenUpload={() => setSidebarStack(["upload"])}
-        onOpenText={() => setSidebarStack(["text"])}
+        onOpenUpload={() => {
+          setUploadSidebarStartMode("library");
+          setSidebarStack(["upload"]);
+        }}
+        onOpenText={() => {
+          setTextSidebarInitialPanel("main");
+          setSidebarStack(["text"]);
+        }}
         onOpenClipart={() => setSidebarStack(["clipart"])}
       />
     );
@@ -2217,6 +2432,8 @@ const renderActiveTab = () => {
           restrictedBox={restrictedBox}
           canvasPositions={positions}
           onResetImage={handleResetImage}
+          startInCropMode={uploadSidebarStartMode === "crop"}
+          onStartInCropModeHandled={() => setUploadSidebarStartMode("library")}
         />
       );
 
@@ -2238,7 +2455,8 @@ const renderActiveTab = () => {
           }
 
           const nextSize = layer.size ?? { w: 0, h: 0 };
-          updateCurrentImageState({
+          updateCurrentImageState((prev) => ({
+            ...prev,
             [layer.id]: {
               url: "",
               type: "text",
@@ -2246,6 +2464,7 @@ const renderActiveTab = () => {
               rotation: 0,
               flip: "none",
               size: nextSize,
+              zIndex: getNextLayerZIndex(prev),
               fontFamily: layer.font,
               color: layer.color,
               borderColor: layer.borderColor,
@@ -2267,12 +2486,14 @@ const renderActiveTab = () => {
                 textAlign: DEFAULT_TEXT_ALIGN,
               },
             },
-          });
+          }));
           if (nextSize.w > 0 && nextSize.h > 0) {
             setSizes((prev) => ({ ...prev, [layer.id]: nextSize }));
           }
 
           setSelectedText(layer.id);
+          setSelectedObjects([layer.id]);
+          setTextSidebarInitialPanel("main");
           setSidebarStack(["text"]);
           return true;
         }}
@@ -2358,6 +2579,8 @@ const renderActiveTab = () => {
       textPosition={positions[selectedText]}
       textAlign={textLayer.textAlign ?? DEFAULT_TEXT_ALIGN}
       onTextAlignChange={handleTextAlignChange}
+      initialPanel={textSidebarInitialPanel}
+      onPanelChange={setTextSidebarInitialPanel}
     />
   );
 }
@@ -2452,8 +2675,14 @@ const renderActiveTab = () => {
       return (
         <BlankSidebar
           onOpenProduct={() => setSidebarStack(["product"])}
-          onOpenUpload={() => setSidebarStack(["upload"])}
-          onOpenText={() => setSidebarStack(["text"])}
+          onOpenUpload={() => {
+            setUploadSidebarStartMode("library");
+            setSidebarStack(["upload"]);
+          }}
+          onOpenText={() => {
+            setTextSidebarInitialPanel("main");
+            setSidebarStack(["text"]);
+          }}
           onOpenClipart={() => setSidebarStack(["clipart"])}
         />
       );
@@ -2479,10 +2708,32 @@ const handleResizeText = (uid: string, newFontSize: number) => {
   }));
 };
 
+const handleDuplicateSelectedLayer = (uid: string) => {
+  const layer = currentImageState[uid];
+  if (!layer) return;
+  if (layer.type === "text") {
+    duplicateTextLayer(uid);
+    return;
+  }
+  handleDuplicateUploadedImage(uid);
+};
+
+const handleResetSelectedLayer = (uid: string) => {
+  const layer = currentImageState[uid];
+  if (!layer) return;
+  if (layer.type === "text") {
+    resetTextLayer(uid);
+    return;
+  }
+  handleResetImage(uid);
+};
+
 const handleCloseSidebar = () => {
   setSelectedObjects([]);
   setSelectedText(null);
   setSelectedUploadedImageWithLog(null);
+  setUploadSidebarStartMode("library");
+  setTextSidebarInitialPanel("main");
   setSidebarStack(["blank"]);
 };
 
@@ -2498,6 +2749,8 @@ const activeSidebarTitle = getSidebarTitle({
 
 const handleSidebarTabSelect = (tab: "product" | "upload" | "text" | "clipart") => {
   setSidebarStack([tab as SidebarView]);
+  if (tab === "upload") setUploadSidebarStartMode("library");
+  if (tab === "text") setTextSidebarInitialPanel("main");
   if (tab !== "clipart" && tab !== "upload") setSelectedUploadedImageWithLog(null);
   if (tab !== "text") setSelectedText(null);
 };
@@ -2542,6 +2795,7 @@ const designPageContextValue = {
       setViewImageStates={setViewImageStates}
       onViewSnapshotChange={handlePricePreviewUpdate}
       compactPriceMode={isPricePanelOpen}
+      showMobilePropertiesBar={false}
     />
   ),
   preview: (
@@ -2597,6 +2851,7 @@ const designPageContextValue = {
           onSaveDesign={handleOpenSaveDesignDialog}
           onGetPrice={handleGetPrice}
           myDesignsLabel={isUserSignedIn ? "My Designs" : "Sign in to access"}
+          isUserSignedIn={isUserSignedIn}
         />
 
         {/* CONTENT */}
@@ -2608,6 +2863,39 @@ const designPageContextValue = {
             {/* MAIN CANVAS */}
             <DesignWorkspaceLayout />
           </DesignPageProvider>
+
+          <MobileSelectionToolbar
+            visible={
+              isMobileViewport &&
+              !isPricePanelOpen &&
+              activeSidebar === "blank" &&
+              selectedObjects.length <= 1 &&
+              Boolean(mobileSelectedUid) &&
+              Boolean(mobileSelectedLayer)
+            }
+            selectedUid={mobileSelectedUid}
+            selectedLayer={mobileSelectedLayer}
+            selectedPosition={mobileSelectedPosition}
+            selectedSize={mobileSelectedSize}
+            canvasRef={canvasRef}
+            restrictedBox={restrictedBox}
+            canGoFront={canSendToFront}
+            canGoBack={canSendToBack}
+            onBringToFront={bringLayerToFront}
+            onSendToBack={sendLayerToBack}
+            onRotate={handleRotateImage}
+            onResize={handleUpdateImageSize}
+            onFlip={handleFlipImage}
+            onDuplicate={handleDuplicateSelectedLayer}
+            onCrop={openUploadCropPanel}
+            onReset={handleResetSelectedLayer}
+            onColor={handleChangeImageColor}
+            onOpenFontPanel={() => openTextPanel("fonts")}
+            onOpenOutlinePanel={() => openTextPanel("outline")}
+            onChangeArt={handleChangeClipart}
+            onAddText={handleQuickAddText}
+            onTextResize={handleResizeText}
+          />
 
           <SaveDesignDialog
             open={isSaveDialogOpen}

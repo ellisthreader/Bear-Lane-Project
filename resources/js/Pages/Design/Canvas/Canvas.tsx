@@ -24,6 +24,7 @@ import type { ViewKey } from "../types/designTypes";
 export type ImageState = {
   url?: string;
   type: "image" | "text" | "clipart";
+  zIndex?: number;
   rotation?: number;
   flip?: "none" | "horizontal" | "vertical";
   size?: { w: number; h: number };
@@ -98,6 +99,7 @@ export type CanvasProps = {
   onViewSnapshotChange?: (viewKey: ViewKey, snapshot: PricePreviewSnapshot) => void;
   compactPriceMode?: boolean;
   canvasPositions?: Record<string, { x: number; y: number }>;
+  showMobilePropertiesBar?: boolean;
 };
 
 export default function Canvas(props: CanvasProps) {
@@ -117,6 +119,7 @@ export default function Canvas(props: CanvasProps) {
     onResizeTextCommit,
     onViewSnapshotChange,
     compactPriceMode = false,
+    showMobilePropertiesBar = true,
   } = props;
 
   const latestUploadedImageRef = useRef<string | null>(null);
@@ -346,7 +349,7 @@ export default function Canvas(props: CanvasProps) {
     drag.setSelected([]);
   };
 
-  const handleUnifiedGroupResize = (startClientX: number) => {
+  const handleUnifiedGroupResize = (startClientX: number, _pointerType?: string) => {
     if (drag.selected.length === 0) return;
     const canvasRect = canvasRef.current?.getBoundingClientRect();
     if (!canvasRect) return;
@@ -387,7 +390,7 @@ export default function Canvas(props: CanvasProps) {
     const boxHeight = boxBottom - boxTop;
     if (boxWidth <= 0 || boxHeight <= 0) return;
 
-    const onMove = (e: MouseEvent) => {
+    const onMove = (e: PointerEvent) => {
       let scale = Math.exp((e.clientX - startClientX) / 200);
 
       if (restrictedBox) {
@@ -446,12 +449,14 @@ export default function Canvas(props: CanvasProps) {
     };
 
     const onUp = () => {
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
     };
 
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
   };
 
   const handleDuplicateFromTextProperties = () => {
@@ -883,6 +888,7 @@ export default function Canvas(props: CanvasProps) {
               onMeasure={(uid, w, h) => {
                 setSizes(prev => ({ ...prev, [uid]: { w, h } }));
               }}
+              zIndex={layer.zIndex ?? 50}
             />
           );
         })}
@@ -964,7 +970,7 @@ export default function Canvas(props: CanvasProps) {
         </div>
       )}
 
-      {renderMobilePropertiesBar()}
+      {showMobilePropertiesBar ? renderMobilePropertiesBar() : null}
     </div>
   );
 }

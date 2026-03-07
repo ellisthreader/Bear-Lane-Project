@@ -56,6 +56,7 @@ export type CanvasPosition = {
 export type ImageState = {
   url: string;
   type: "image" | "text";
+  zIndex?: number;
   isClipart?: boolean;
   isSvg?: boolean;
   text?: string;

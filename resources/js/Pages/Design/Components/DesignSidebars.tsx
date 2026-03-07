@@ -58,7 +58,7 @@ export default function DesignSidebars() {
       </div>
 
       {showMobilePanel ? (
-        <div className="fixed inset-0 top-[88px] z-[75] sm:top-[96px] lg:hidden">
+        <div className="fixed inset-0 z-[90] lg:hidden">
           <div className="h-full overflow-hidden bg-white shadow-[0_16px_38px_rgba(20,20,20,0.2)]">
             <SidebarHeader title={headerTitle} onClose={onClose} />
             <div className="h-[calc(100%-60px)] overflow-y-auto p-4 pb-8">{sidebarContent}</div>

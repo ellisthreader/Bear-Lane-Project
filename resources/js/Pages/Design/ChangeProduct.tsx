@@ -418,36 +418,36 @@ export default function ChangeProductModal({
 
   return (
     <div
-      className="fixed inset-0 z-[10050] flex items-center justify-center bg-[#1A1307]/70 backdrop-blur-md px-4 py-6"
+      className="fixed inset-0 z-[10050] flex items-center justify-center bg-[#1A1307]/70 backdrop-blur-md px-0 py-0 sm:px-4 sm:py-6"
       onClick={onClose}
     >
       <div
-        className="relative flex h-[min(93vh,980px)] w-[min(1540px,99vw)] flex-col overflow-hidden rounded-[30px] border border-[#E7D6B8] bg-[#FFFCF7] shadow-[0_35px_120px_rgba(26,19,7,0.45)]"
+        className="relative flex h-[100dvh] w-full flex-col overflow-hidden rounded-none border border-[#E7D6B8] bg-[#FFFCF7] shadow-[0_35px_120px_rgba(26,19,7,0.45)] sm:h-[min(93vh,980px)] sm:w-[min(1540px,99vw)] sm:rounded-[30px]"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="relative overflow-hidden border-b border-[#E6D7BC] bg-gradient-to-r from-[#FFF6E8] via-[#FFF9F0] to-[#FAF0DE] px-7 pb-6 pt-7">
+        <div className="relative overflow-hidden border-b border-[#E6D7BC] bg-gradient-to-r from-[#FFF6E8] via-[#FFF9F0] to-[#FAF0DE] px-4 pb-4 pt-4 sm:px-7 sm:pb-6 sm:pt-7">
           <div className="pointer-events-none absolute -right-12 -top-12 h-44 w-44 rounded-full bg-[#E7C57B]/25 blur-2xl" />
           <div className="pointer-events-none absolute -bottom-16 left-24 h-44 w-44 rounded-full bg-[#DAB468]/20 blur-2xl" />
 
           <div className="relative flex items-start justify-between gap-4">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#8B6A2E]">Design Editor</p>
-              <h2 className="mt-1 text-3xl font-black tracking-tight text-[#2F2415]">Change Product</h2>
-              <p className="mt-2 max-w-3xl text-sm text-[#6F5A35]">
+              <h2 className="mt-1 text-2xl font-black tracking-tight text-[#2F2415] sm:text-3xl">Change Product</h2>
+              <p className="mt-2 max-w-3xl text-xs text-[#6F5A35] sm:text-sm">
                 Same structure as the main navbar: choose Men, Women or Kids, browse sections, then switch products.
               </p>
             </div>
 
             <button
               onClick={onClose}
-              className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-[#D8C094] bg-white/90 text-[#6B5326] transition hover:-translate-y-0.5 hover:bg-white"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-[#D8C094] bg-white/90 text-[#6B5326] transition hover:-translate-y-0.5 hover:bg-white sm:h-11 sm:w-11"
               aria-label="Close change product modal"
             >
               <X className="h-5 w-5" />
             </button>
           </div>
 
-          <div className="mt-5 grid grid-cols-1 gap-3 lg:grid-cols-[1fr_auto]">
+          <div className="mt-4 grid grid-cols-1 gap-3 lg:mt-5 lg:grid-cols-[1fr_auto]">
             <div className="relative">
               <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8D7141]" />
               <input
@@ -455,7 +455,7 @@ export default function ChangeProductModal({
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
                 placeholder="Search products, categories and sections..."
-                className="h-12 w-full rounded-2xl border border-[#DDC9A3] bg-white/90 pl-11 pr-4 text-sm font-medium text-[#2F2415] outline-none ring-[#C6A75E]/35 transition placeholder:text-[#9D8458] focus:border-[#C6A75E] focus:ring-4"
+                className="h-11 w-full rounded-2xl border border-[#DDC9A3] bg-white/90 pl-11 pr-4 text-sm font-medium text-[#2F2415] outline-none ring-[#C6A75E]/35 transition placeholder:text-[#9D8458] focus:border-[#C6A75E] focus:ring-4 sm:h-12"
               />
             </div>
 
@@ -486,8 +486,8 @@ export default function ChangeProductModal({
           </div>
         </div>
 
-        <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[240px_minmax(0,1fr)]">
-          <aside className="min-h-0 border-r border-[#E6D7BC] bg-[#FFF8EC] p-4">
+        <div className="grid min-h-0 flex-1 grid-cols-1 grid-rows-[minmax(210px,38%)_minmax(0,1fr)] lg:grid-cols-[240px_minmax(0,1fr)] lg:grid-rows-none">
+          <aside className="min-h-0 border-b border-[#E6D7BC] bg-[#FFF8EC] p-3 sm:p-4 lg:border-b-0 lg:border-r">
             <div className="h-full overflow-y-auto pr-1">
               <div className="mb-4 flex items-center justify-between">
                 <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#8C7448]">Sections</p>
@@ -545,7 +545,7 @@ export default function ChangeProductModal({
             </div>
           </aside>
 
-          <main className="min-h-0 bg-white p-5 sm:p-6">
+          <main className="min-h-0 bg-white p-4 sm:p-6">
             {trimmedQuery ? (
               <div className="flex h-full min-h-0 flex-col">
                 <div className="mb-4 rounded-2xl border border-[#E8DABC] bg-[#FFF9EE] px-4 py-3">

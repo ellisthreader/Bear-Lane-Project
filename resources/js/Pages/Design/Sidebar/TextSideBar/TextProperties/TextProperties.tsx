@@ -49,13 +49,15 @@ type Props = {
   onDuplicate: () => void;
   textAlign: TextAlign;
   onTextAlignChange: (align: TextAlign) => void;
+  initialPanel?: "main" | "fonts" | "outline";
+  onPanelChange?: (panel: "main" | "fonts" | "outline") => void;
 
   restrictedBox: { left: number; top: number; width: number; height: number };
   textPosition?: { x: number; y: number };
 };
 
 export default function TextProperties(props: Props) {
-  const [panel, setPanel] = useState<"main" | "fonts" | "outline">("main");
+  const [panel, setPanel] = useState<"main" | "fonts" | "outline">(props.initialPanel ?? "main");
   const measureRef = useRef<HTMLSpanElement>(null);
   const [measuredSize, setMeasuredSize] = useState({ w: 0.5, h: 0.5 });
   const MIN_FONT_SIZE = 4;
@@ -69,6 +71,15 @@ export default function TextProperties(props: Props) {
     { value: "center", Icon: AlignCenter, label: "Align center" },
     { value: "right", Icon: AlignRight, label: "Align right" },
   ];
+
+  React.useEffect(() => {
+    if (!props.initialPanel) return;
+    setPanel(props.initialPanel);
+  }, [props.initialPanel]);
+
+  React.useEffect(() => {
+    props.onPanelChange?.(panel);
+  }, [panel, props.onPanelChange]);
 
   useLayoutEffect(() => {
     const span = measureRef.current;

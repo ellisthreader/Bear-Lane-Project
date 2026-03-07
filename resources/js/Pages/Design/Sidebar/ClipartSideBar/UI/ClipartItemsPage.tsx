@@ -39,12 +39,12 @@ export default function ClipartItemsPage({
       <div className="flex items-center gap-3">
         <button
           onClick={onBack}
-          className="text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white transition transform hover:scale-110"
+          className="text-gray-700 transition transform hover:scale-110 hover:text-gray-900"
         >
           <ArrowLeft size={24} />
         </button>
 
-        <span className="text-sm font-medium text-gray-800 dark:text-gray-100">
+        <span className="text-sm font-medium text-gray-800">
         </span>
       </div>
 
@@ -56,7 +56,7 @@ export default function ClipartItemsPage({
       )}
 
       {/* Clipart grid */}
-      <div className="grid grid-cols-4 gap-5">
+      <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 sm:gap-5">
         {category.items.map((item) => (
           <button
             key={item.id}

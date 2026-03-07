@@ -10,7 +10,7 @@ interface SelectionBoxProps {
   onDelete: (uids: string[]) => void;
   onDuplicate: (uids: string[]) => void;
   onResize: (imageUid: string, width: number, height: number) => void;
-  onStartGroupResize?: (startClientX: number) => any;
+  onStartGroupResize?: (startClientX: number, pointerType?: string) => any;
   onReset?: (uids: string[]) => void;
   onDeselectAll?: () => void;
   imageState?: Record<string, ImageState>;
@@ -136,7 +136,7 @@ const SelectionBox: React.FC<SelectionBoxProps> = ({
 
   // click outside → deselect
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
+    const handleClickOutside = (e: PointerEvent) => {
       if (!canvasRef.current) return;
 
       const clickedOnSelected = selectedImages.some((uid) => {
@@ -147,8 +147,8 @@ const SelectionBox: React.FC<SelectionBoxProps> = ({
       if (!clickedOnSelected) onDeselectAll?.();
     };
 
-    window.addEventListener("mousedown", handleClickOutside);
-    return () => window.removeEventListener("mousedown", handleClickOutside);
+    window.addEventListener("pointerdown", handleClickOutside);
+    return () => window.removeEventListener("pointerdown", handleClickOutside);
   }, [selectedImages, canvasRef, onDeselectAll]);
 
   if (!box || !firstUid) return null;
@@ -162,13 +162,13 @@ const SelectionBox: React.FC<SelectionBoxProps> = ({
     setLabelPos(null);
   };
 
-  const stopAll = (e: React.MouseEvent) => {
+  const stopAll = (e: React.PointerEvent | React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
   };
 
   // --- SIMPLE FIX: disable resize for text elements ---
-  const handleSingleResizeMouseDown = (e: React.MouseEvent) => {
+  const handleSingleResizePointerDown = (e: React.PointerEvent) => {
     stopAll(e);
     if (!firstUid) return;
 
@@ -184,7 +184,7 @@ const SelectionBox: React.FC<SelectionBoxProps> = ({
     const startY = e.clientY;
     const aspect = startW / startH;
 
-    const onMove = (ev: MouseEvent) => {
+    const onMove = (ev: PointerEvent) => {
       const dx = ev.clientX - startX;
       const dy = ev.clientY - startY;
       const delta = Math.max(dx, dy);
@@ -196,20 +196,22 @@ const SelectionBox: React.FC<SelectionBoxProps> = ({
     };
 
     const onUp = () => {
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
     };
 
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
+    window.addEventListener("pointermove", onMove, { passive: false });
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
   };
 
-  const handleGroupResizeMouseDown = (e: React.MouseEvent) => {
+  const handleGroupResizePointerDown = (e: React.PointerEvent) => {
     stopAll(e);
     if (typeof onStartGroupResize === "function") {
-      onStartGroupResize(e.clientX);
+      onStartGroupResize(e.clientX, e.pointerType);
     } else {
-      handleSingleResizeMouseDown(e);
+      handleSingleResizePointerDown(e);
     }
   };
 
@@ -263,7 +265,7 @@ const SelectionBox: React.FC<SelectionBoxProps> = ({
         <div
           className="absolute bg-white rounded-full shadow p-1 cursor-se-resize selection-button"
           style={{ right: -15, bottom: -15, zIndex: 400, pointerEvents: "auto" }}
-          onMouseDown={handleGroupResizeMouseDown}
+          onPointerDown={handleGroupResizePointerDown}
           onMouseEnter={() => showLabel("Resize", box.left + box.width - 10, box.top + box.height + 20)}
           onMouseLeave={hideLabel}
         >

@@ -104,7 +104,7 @@ export default function Crop({
   };
 
   // ---------- DRAG ----------
-  const startDrag = (e: React.MouseEvent, handle: string) => {
+  const startDrag = (e: React.PointerEvent, handle: string) => {
     if (!crop) return;
     dragState.current = {
       dragging: true,
@@ -116,7 +116,7 @@ export default function Crop({
     e.preventDefault();
   };
 
-  const onMouseMove = (e: MouseEvent) => {
+  const onPointerMove = (e: PointerEvent) => {
     const state = dragState.current;
     if (!state.dragging || !state.startCrop) return;
 
@@ -171,11 +171,13 @@ export default function Crop({
 
   useEffect(() => {
     const stop = () => (dragState.current.dragging = false);
-    window.addEventListener("mousemove", onMouseMove);
-    window.addEventListener("mouseup", stop);
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", stop);
+    window.addEventListener("pointercancel", stop);
     return () => {
-      window.removeEventListener("mousemove", onMouseMove);
-      window.removeEventListener("mouseup", stop);
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", stop);
+      window.removeEventListener("pointercancel", stop);
     };
   }, []);
 
@@ -257,7 +259,7 @@ export default function Crop({
             {["nw","ne","sw","se","n","s","w","e"].map((pos) => (
               <div
                 key={pos}
-                onMouseDown={(e) => startDrag(e, pos)}
+                onPointerDown={(e) => startDrag(e, pos)}
                 className="absolute w-3 h-3 bg-white rounded-full cursor-pointer"
                 style={{
                   left: pos.includes("w")

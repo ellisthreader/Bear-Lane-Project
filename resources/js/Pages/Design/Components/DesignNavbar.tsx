@@ -1,15 +1,15 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "@inertiajs/react";
 import {
   ShoppingCart,
   User,
-  Heart,
-  ChevronRight,
   Folder,
   Save,
   CircleDollarSign,
+  ChevronRight,
+  Heart,
 } from "lucide-react";
 import { useCart } from "@/Context/CartContext";
 import { useWishlist } from "@/Context/WishlistContext";
@@ -21,6 +21,7 @@ type DesignNavbarProps = {
   onSaveDesign?: () => void;
   onGetPrice?: () => void;
   myDesignsLabel?: string;
+  isUserSignedIn?: boolean;
 };
 
 export default function DesignNavbar({
@@ -29,12 +30,84 @@ export default function DesignNavbar({
   onSaveDesign,
   onGetPrice,
   myDesignsLabel = "My Designs",
+  isUserSignedIn = false,
 }: DesignNavbarProps) {
   const canOpenMyDesigns = typeof onOpenMyDesigns === "function";
   const canSave = typeof onSaveDesign === "function";
   const canGetPrice = typeof onGetPrice === "function";
   const { openCart } = useCart();
   const { openWishlist } = useWishlist();
+  const [isMobileViewport, setIsMobileViewport] = useState<boolean>(() =>
+    typeof window !== "undefined" ? window.matchMedia("(max-width: 1023px)").matches : false
+  );
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const query = window.matchMedia("(max-width: 1023px)");
+    const sync = () => setIsMobileViewport(query.matches);
+    sync();
+
+    if (typeof query.addEventListener === "function") {
+      query.addEventListener("change", sync);
+      return () => query.removeEventListener("change", sync);
+    }
+
+    query.addListener(sync);
+    return () => query.removeListener(sync);
+  }, []);
+
+  if (isMobileViewport) {
+    return (
+      <>
+        <nav className="fixed left-0 top-0 z-50 w-full border-b border-gray-200 bg-white/95 px-2 py-2 shadow-sm backdrop-blur-md">
+          <div className="flex items-center gap-2">
+            <div className="grid flex-1 grid-cols-4 gap-1">
+              <MobileNavButton
+                label="Designs"
+                ariaLabel="Open my designs"
+                onClick={canOpenMyDesigns ? () => onOpenMyDesigns?.() : undefined}
+              >
+                <Folder className="h-4 w-4" />
+              </MobileNavButton>
+
+              <MobileNavButton
+                label="Save"
+                ariaLabel="Save design"
+                onClick={canSave ? () => onSaveDesign?.() : undefined}
+              >
+                <Save className="h-4 w-4" />
+              </MobileNavButton>
+
+              <Link
+                href={isUserSignedIn ? "/profile" : "/login"}
+                aria-label={isUserSignedIn ? "Open profile" : "Sign in"}
+                className="inline-flex min-h-[58px] flex-col items-center justify-center rounded-xl px-1 py-1 text-center text-[10px] font-semibold text-gray-700 transition hover:bg-[#F2EAD6]"
+              >
+                <User className="h-4 w-4" />
+                <span className="mt-1 leading-none">{isUserSignedIn ? "Profile" : "Sign in"}</span>
+              </Link>
+
+              <MobileNavButton label="Cart" ariaLabel="Open cart" onClick={openCart}>
+                <ShoppingCart className="h-4 w-4" />
+              </MobileNavButton>
+            </div>
+
+            {canGetPrice ? (
+              <button
+                type="button"
+                onClick={() => onGetPrice?.()}
+                className="inline-flex h-[58px] min-w-[102px] items-center justify-center rounded-xl border border-[#C6A75E]/60 bg-[#FAF3E2] px-3 text-sm font-semibold text-[#7A6130] transition hover:bg-[#F2E5C6]"
+                aria-label="Get price"
+              >
+                Get price £
+              </button>
+            ) : null}
+          </div>
+        </nav>
+        <WishlistSidebar />
+      </>
+    );
+  }
 
   return (
     <>
@@ -139,5 +212,29 @@ export default function DesignNavbar({
       </nav>
       <WishlistSidebar />
     </>
+  );
+}
+
+function MobileNavButton({
+  label,
+  ariaLabel,
+  onClick,
+  children,
+}: {
+  label: string;
+  ariaLabel: string;
+  onClick?: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={ariaLabel}
+      className="inline-flex min-h-[58px] flex-col items-center justify-center rounded-xl px-1 py-1 text-center text-[10px] font-semibold text-gray-700 transition hover:bg-[#F2EAD6]"
+    >
+      {children}
+      <span className="mt-1 leading-none">{label}</span>
+    </button>
   );
 }
