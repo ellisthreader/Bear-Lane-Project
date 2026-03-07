@@ -195,7 +195,7 @@ const CartSidebar = () => {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             onClick={toggleCart}
-            className="fixed inset-0 bg-black z-50"
+            className="fixed inset-0 z-[10040] bg-black"
           />
 
           {/* SIDEBAR */}
@@ -204,7 +204,7 @@ const CartSidebar = () => {
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            className="fixed right-0 top-0 z-50 flex h-full w-full max-w-full flex-col bg-[#FAFAF7] text-gray-900 shadow-2xl border-l-0 sm:w-[30rem] sm:max-w-[30rem] sm:border-l sm:border-[#C6A75E]/25"
+            className="fixed right-0 top-0 z-[10050] flex h-full w-full max-w-full flex-col border-l-0 bg-[#FAFAF7] text-gray-900 shadow-2xl sm:w-[30rem] sm:max-w-[30rem] sm:border-l sm:border-[#C6A75E]/25"
           >
             {/* HEADER */}
             <div className="flex items-center justify-between border-b border-[#C6A75E]/25 bg-gradient-to-r from-[#F8F3E6] via-[#FCFAF2] to-white px-3 py-3 sm:px-5 sm:py-4">

@@ -87,6 +87,11 @@ export default function MobileSelectionToolbar({
     setActiveTool(null);
   }, [selectedUid]);
 
+  useEffect(() => {
+    if (!selectedLayer || selectedLayer.type !== "text") return;
+    setDraftText(selectedLayer.text ?? "");
+  }, [selectedUid, selectedLayer?.type, selectedLayer?.text]);
+
   if (!visible || !selectedUid || !selectedLayer) return null;
 
   const isText = selectedLayer.type === "text";
@@ -99,11 +104,6 @@ export default function MobileSelectionToolbar({
   const textSizeValue = Math.round(selectedLayer.fontSize ?? 24);
   const colorValue = selectedLayer.color ?? "#000000";
   const flipValue = (selectedLayer.flip ?? "none") as FlipValue;
-
-  useEffect(() => {
-    if (!isText) return;
-    setDraftText(selectedLayer.text ?? "");
-  }, [isText, selectedLayer.text, selectedUid]);
 
   const applyImageWidth = (nextWidth: number) => {
     const aspect = (layerSize.h || 1) / Math.max(layerSize.w || 1, 1);
