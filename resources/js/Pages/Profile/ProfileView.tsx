@@ -19,14 +19,14 @@ function ProfileViewBody() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#FFFDF8] via-[#FFFCF5] to-[#FDF6E7]">
+    <div className="h-[100dvh] overflow-hidden bg-gradient-to-b from-[#FFFDF8] via-[#FFFCF5] to-[#FDF6E7] lg:min-h-screen lg:h-auto lg:overflow-visible">
       <NavMenu />
 
-      <main className="mx-auto flex w-full max-w-7xl gap-6 px-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] pt-8 md:px-10 lg:pb-16">
+      <main className="mx-auto flex h-[calc(100dvh-4.5rem)] w-full max-w-7xl gap-4 overflow-hidden px-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] pt-3 md:px-10 lg:h-auto lg:gap-6 lg:overflow-visible lg:pb-16 lg:pt-8">
         <div className="hidden lg:block">
           <ProfileSidebar />
         </div>
-        <section className="flex-1">
+        <section className="min-h-0 flex-1 overflow-y-auto">
           <ProfileContent />
         </section>
       </main>

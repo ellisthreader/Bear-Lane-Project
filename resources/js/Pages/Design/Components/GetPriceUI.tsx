@@ -466,7 +466,7 @@ const GetPriceUI: React.FC<GetPriceUIProps> = ({
                       <DesignPreview
                         snapshot={activeOrderSide.preview}
                         fallbackImage={activeOrderSide.imageSrc}
-                        width={240}
+                        width={176}
                         alt={`${activeOrderSide.label} preview`}
                         className="w-full rounded-2xl border border-gray-200 bg-gray-50/80 p-2"
                         noFrame

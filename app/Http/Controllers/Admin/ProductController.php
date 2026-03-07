@@ -417,9 +417,23 @@ class ProductController extends Controller
             $productImageBoxByPath = [];
             foreach ($validated['colours'] as $colourIndex => $colour) {
                 $colourName = trim((string) $colour['name']);
-                $imagePaths = collect($colour['images'])
-                    ->map(fn ($value) => trim((string) $value))
+                $imageEntries = collect($colour['images'])
+                    ->map(function ($value) {
+                        $raw = trim((string) $value);
+                        $path = $this->normalizeProductImagePath($raw);
+
+                        return [
+                            'raw' => $raw,
+                            'path' => $path,
+                        ];
+                    })
+                    ->filter(fn (array $entry) => $entry['path'] !== '')
+                    ->values()
+                    ->all();
+                $imagePaths = collect($imageEntries)
+                    ->pluck('path')
                     ->filter()
+                    ->unique()
                     ->values()
                     ->all();
                 $imageBoxes = is_array($colour['image_boxes'] ?? null)
@@ -435,6 +449,14 @@ class ProductController extends Controller
                 $restrictedBoxesByImagePath = [];
                 foreach ($imagePaths as $imageIndex => $path) {
                     $boxPayload = $imageBoxes[$path] ?? null;
+                    if (!$this->isValidRestrictedBoxPayload($boxPayload)) {
+                        foreach ($imageEntries as $entry) {
+                            if ($entry['path'] === $path && $this->isValidRestrictedBoxPayload($imageBoxes[$entry['raw']] ?? null)) {
+                                $boxPayload = $imageBoxes[$entry['raw']];
+                                break;
+                            }
+                        }
+                    }
                     if (!$this->isValidRestrictedBoxPayload($boxPayload)) {
                         throw ValidationException::withMessages([
                             "colours.{$colourIndex}.image_boxes.{$imageIndex}" => "Colour '{$colourName}' image " . ($imageIndex + 1) . " is missing a valid restricted box.",
@@ -688,9 +710,23 @@ class ProductController extends Controller
             $productImageBoxByPath = [];
             foreach ($validated['colours'] as $colourIndex => $colour) {
                 $colourName = trim((string) $colour['name']);
-                $imagePaths = collect($colour['images'])
-                    ->map(fn ($value) => trim((string) $value))
+                $imageEntries = collect($colour['images'])
+                    ->map(function ($value) {
+                        $raw = trim((string) $value);
+                        $path = $this->normalizeProductImagePath($raw);
+
+                        return [
+                            'raw' => $raw,
+                            'path' => $path,
+                        ];
+                    })
+                    ->filter(fn (array $entry) => $entry['path'] !== '')
+                    ->values()
+                    ->all();
+                $imagePaths = collect($imageEntries)
+                    ->pluck('path')
                     ->filter()
+                    ->unique()
                     ->values()
                     ->all();
                 $imageBoxes = is_array($colour['image_boxes'] ?? null)
@@ -706,6 +742,14 @@ class ProductController extends Controller
                 $restrictedBoxesByImagePath = [];
                 foreach ($imagePaths as $imageIndex => $path) {
                     $boxPayload = $imageBoxes[$path] ?? null;
+                    if (!$this->isValidRestrictedBoxPayload($boxPayload)) {
+                        foreach ($imageEntries as $entry) {
+                            if ($entry['path'] === $path && $this->isValidRestrictedBoxPayload($imageBoxes[$entry['raw']] ?? null)) {
+                                $boxPayload = $imageBoxes[$entry['raw']];
+                                break;
+                            }
+                        }
+                    }
                     if (!$this->isValidRestrictedBoxPayload($boxPayload)) {
                         throw ValidationException::withMessages([
                             "colours.{$colourIndex}.image_boxes.{$imageIndex}" => "Colour '{$colourName}' image " . ($imageIndex + 1) . " is missing a valid restricted box.",
@@ -798,7 +842,7 @@ class ProductController extends Controller
     public function uploadImage(Request $request, OpenAiModerationService $moderationService)
     {
         $validated = $request->validate([
-            'image' => 'required|image|max:8192',
+            'image' => 'required|file|max:8192|mimetypes:image/jpeg,image/png,image/webp,image/gif,image/svg+xml,image/heic,image/heif,image/avif',
         ]);
 
         $image = $validated['image'];
@@ -1028,6 +1072,33 @@ class ProductController extends Controller
             'width' => round($width, 6),
             'height' => round($height, 6),
         ];
+    }
+
+    private function normalizeProductImagePath(string $value): string
+    {
+        $path = trim($value);
+        if ($path === '' || str_starts_with($path, 'data:')) {
+            return '';
+        }
+
+        if (filter_var($path, FILTER_VALIDATE_URL)) {
+            $path = (string) (parse_url($path, PHP_URL_PATH) ?: '');
+        }
+
+        $path = str_replace('\\', '/', $path);
+        $path = preg_replace('#/+#', '/', $path) ?? $path;
+        if ($path === '') {
+            return '';
+        }
+
+        if (str_starts_with($path, '/storage/')) {
+            return ltrim(substr($path, strlen('/storage/')), '/');
+        }
+        if (str_starts_with($path, 'storage/')) {
+            return ltrim(substr($path, strlen('storage/')), '/');
+        }
+
+        return ltrim($path, '/');
     }
 
     private function uniqueVariantSku(Product $product, string $colour, string $size): string

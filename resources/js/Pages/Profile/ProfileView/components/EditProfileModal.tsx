@@ -28,61 +28,63 @@ export default function EditProfileModal() {
 
   return (
     <Modal show={showEditModal} onClose={handleEditCancel} maxWidth="lg">
-      <div className="border-b border-[#EEE1C5] px-6 py-4">
-        <h3 className="text-xl font-semibold text-[#2A2418]">Edit Profile</h3>
+      <div className="max-h-[82dvh] overflow-y-auto">
+        <div className="border-b border-[#EEE1C5] px-4 py-4 sm:px-6">
+          <h3 className="text-xl font-semibold text-[#2A2418]">Edit Profile</h3>
+        </div>
+        <form onSubmit={handleProfileSave} className="space-y-4 px-4 py-5 sm:px-6">
+          <div>
+            <label className="mb-1 block text-sm font-medium text-[#6B5A34]">Name</label>
+            <input
+              type="text"
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              required
+              className={getInputClass("name")}
+            />
+            {fieldErrors.name && <p className="mt-1 text-sm text-red-600">{fieldErrors.name}</p>}
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-[#6B5A34]">Username</label>
+            <input
+              type="text"
+              value={editUsername}
+              onChange={(e) => setEditUsername(e.target.value)}
+              required
+              className={getInputClass("username")}
+            />
+            {fieldErrors.username && <p className="mt-1 text-sm text-red-600">{fieldErrors.username}</p>}
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-[#6B5A34]">Phone</label>
+            <LuxuryPhoneInput
+              value={editPhone}
+              onChange={setEditPhone}
+              forceError={Boolean(fieldErrors.phone)}
+              variant="modal"
+              className={fieldErrors.phone ? "w-full checkout-field-shake" : "w-full"}
+            />
+            {fieldErrors.phone && <p className="mt-1 text-sm text-red-600">{fieldErrors.phone}</p>}
+          </div>
+          {editError && <p className="text-sm text-red-600">{editError}</p>}
+          <div className="flex justify-end gap-2 pt-2">
+            <button
+              type="button"
+              onClick={handleEditCancel}
+              className="rounded-lg border border-[#D7BE84] px-4 py-2 text-sm font-medium text-[#7B6530] transition hover:bg-[#FFF8E8]"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={savingProfile}
+              className="rounded-lg bg-[#C6A75E] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#B3934C] disabled:opacity-70"
+            >
+              {savingProfile ? "Saving..." : "Save Changes"}
+            </button>
+          </div>
+        </form>
       </div>
-      <form onSubmit={handleProfileSave} className="space-y-4 px-6 py-5">
-        <div>
-          <label className="mb-1 block text-sm font-medium text-[#6B5A34]">Name</label>
-          <input
-            type="text"
-            value={editName}
-            onChange={(e) => setEditName(e.target.value)}
-            required
-            className={getInputClass("name")}
-          />
-          {fieldErrors.name && <p className="mt-1 text-sm text-red-600">{fieldErrors.name}</p>}
-        </div>
-        <div>
-          <label className="mb-1 block text-sm font-medium text-[#6B5A34]">Username</label>
-          <input
-            type="text"
-            value={editUsername}
-            onChange={(e) => setEditUsername(e.target.value)}
-            required
-            className={getInputClass("username")}
-          />
-          {fieldErrors.username && <p className="mt-1 text-sm text-red-600">{fieldErrors.username}</p>}
-        </div>
-        <div>
-          <label className="mb-1 block text-sm font-medium text-[#6B5A34]">Phone</label>
-          <LuxuryPhoneInput
-            value={editPhone}
-            onChange={setEditPhone}
-            forceError={Boolean(fieldErrors.phone)}
-            variant="modal"
-            className={fieldErrors.phone ? "w-full checkout-field-shake" : "w-full"}
-          />
-          {fieldErrors.phone && <p className="mt-1 text-sm text-red-600">{fieldErrors.phone}</p>}
-        </div>
-        {editError && <p className="text-sm text-red-600">{editError}</p>}
-        <div className="flex justify-end gap-2 pt-2">
-          <button
-            type="button"
-            onClick={handleEditCancel}
-            className="rounded-lg border border-[#D7BE84] px-4 py-2 text-sm font-medium text-[#7B6530] transition hover:bg-[#FFF8E8]"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={savingProfile}
-            className="rounded-lg bg-[#C6A75E] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#B3934C] disabled:opacity-70"
-          >
-            {savingProfile ? "Saving..." : "Save Changes"}
-          </button>
-        </div>
-      </form>
     </Modal>
   );
 }

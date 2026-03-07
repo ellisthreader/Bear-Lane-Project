@@ -1065,7 +1065,12 @@ export default function ProductLayout({ product, recommendedProducts = [], admin
     setUploadingImage(true);
     try {
       const uploadedPaths: string[] = [];
+      const uploadErrors: string[] = [];
       for (const file of files) {
+        if (file.type && !file.type.startsWith("image/")) {
+          uploadErrors.push(`${file.name} is not a supported image file.`);
+          continue;
+        }
         const formData = new FormData();
         formData.append("image", file);
         const response = await fetch("/admin/products/upload-image", {
@@ -1081,17 +1086,23 @@ export default function ProductLayout({ product, recommendedProducts = [], admin
 
         const payload = await response.json().catch(() => ({}));
         if (!response.ok || !payload?.path) {
-          throw new Error(payload?.message || "Unable to upload image.");
+          uploadErrors.push(payload?.message || `Unable to upload ${file.name}.`);
+          continue;
         }
         uploadedPaths.push(String(payload.path));
       }
 
-      updateAdminColour(targetColour.id, (colour) => ({
-        ...colour,
-        imageUrls: [...colour.imageUrls.map((url) => url.trim()).filter(Boolean), ...uploadedPaths],
-      }));
-      setSelectedColour(getPreviewColourName(targetColour, targetIndex));
-      toast.success(uploadedPaths.length === 1 ? "1 image uploaded." : `${uploadedPaths.length} images uploaded.`);
+      if (uploadedPaths.length > 0) {
+        updateAdminColour(targetColour.id, (colour) => ({
+          ...colour,
+          imageUrls: [...colour.imageUrls.map((url) => url.trim()).filter(Boolean), ...uploadedPaths],
+        }));
+        setSelectedColour(getPreviewColourName(targetColour, targetIndex));
+        toast.success(uploadedPaths.length === 1 ? "1 image uploaded." : `${uploadedPaths.length} images uploaded.`);
+      }
+      if (uploadErrors.length > 0) {
+        toast.error(uploadErrors[0]);
+      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to upload image.");
     } finally {

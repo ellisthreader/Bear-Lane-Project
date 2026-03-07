@@ -69,7 +69,7 @@ export default function AdminTopNav() {
         </button>
         <Link
           href="/"
-          className="inline-flex shrink-0 items-center"
+          className="hidden shrink-0 items-center lg:inline-flex"
           aria-label="Go to home page"
         >
           <img loading="lazy" decoding="async" src="/images/BLText.png" alt="Bear Lane" className="h-10 w-auto object-contain" />
@@ -90,7 +90,7 @@ export default function AdminTopNav() {
                   }`}
                 >
                   {item.icon}
-                  <span className="hidden sm:inline">{item.label}</span>
+                  <span>{item.label}</span>
                 </Link>
               );
             })}
