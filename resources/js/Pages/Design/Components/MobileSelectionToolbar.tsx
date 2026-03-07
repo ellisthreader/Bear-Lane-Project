@@ -270,7 +270,7 @@ export default function MobileSelectionToolbar({
     {
       id: "change-art",
       label: "Change Art",
-      icon: <Wand2 className="h-4 w-4" />,
+      icon: <PaintBucket className="h-4 w-4" />,
       onClick: onChangeArt,
     },
     {

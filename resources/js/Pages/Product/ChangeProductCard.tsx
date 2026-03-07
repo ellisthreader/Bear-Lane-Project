@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { motion } from "framer-motion";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface ProductImage {
   url?: string;
@@ -26,6 +27,7 @@ export default function ChangeProductCard({
   onSelect,
 }: ChangeProductCardProps) {
   const [hovered, setHovered] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   const getImage = (img: string | ProductImage | undefined): string => {
     if (!img) return "/images/no-image.png";
@@ -33,9 +35,10 @@ export default function ChangeProductCard({
     return img.url ?? img.path ?? "/images/no-image.png";
   };
 
-  const firstImage = getImage(product.images?.[0]);
-  const secondImage =
-    product.images?.length > 1 ? getImage(product.images[1]) : firstImage;
+  const imageList = Array.isArray(product.images) && product.images.length > 0
+    ? product.images.map((img) => getImage(img))
+    : ["/images/no-image.png"];
+  const activeImage = imageList[currentImageIndex] ?? imageList[0];
 
   const price = Number(product.price ?? 0);
   const originalPrice =
@@ -54,26 +57,45 @@ export default function ChangeProductCard({
     >
       {/* IMAGE */}
       <div className="relative w-full h-[230px] bg-gray-100 overflow-hidden">
-        <motion.img
-          src={firstImage}
+        <img
+          src={activeImage}
           alt={product.name}
-          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
-            hovered ? "opacity-0" : "opacity-100"
-          }`}
+          className="absolute inset-0 h-full w-full object-cover"
         />
 
-        <motion.img
-          src={secondImage}
-          alt={product.name}
-          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
-            hovered ? "opacity-100" : "opacity-0"
-          }`}
-        />
+        {imageList.length > 1 ? (
+          <>
+            <button
+              type="button"
+              aria-label="Previous image"
+              className="absolute left-2 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-gray-700 shadow md:hidden"
+              onClick={(event) => {
+                event.stopPropagation();
+                event.preventDefault();
+                setCurrentImageIndex((prev) => (prev - 1 + imageList.length) % imageList.length);
+              }}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              aria-label="Next image"
+              className="absolute right-2 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-gray-700 shadow md:hidden"
+              onClick={(event) => {
+                event.stopPropagation();
+                event.preventDefault();
+                setCurrentImageIndex((prev) => (prev + 1) % imageList.length);
+              }}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </>
+        ) : null}
 
         {/* HOVER OVERLAY */}
         {hovered && (
           <motion.div
-            className="absolute inset-0 bg-black/50 flex items-center justify-center"
+            className="absolute inset-0 hidden items-center justify-center bg-black/50 md:flex"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
           >
