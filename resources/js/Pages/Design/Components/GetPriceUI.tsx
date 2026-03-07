@@ -430,7 +430,7 @@ const GetPriceUI: React.FC<GetPriceUIProps> = ({
                 </div>
               </div>
 
-              <div className="min-h-[23rem] w-full rounded-3xl border border-[#DAC885]/60 bg-gradient-to-br from-white via-white/90 to-[#FDFBF6] px-6 py-5 shadow-[0_25px_65px_rgba(198,167,94,0.25)]">
+              <div className="min-h-[23rem] w-full overflow-hidden rounded-3xl border border-[#DAC885]/60 bg-gradient-to-br from-white via-white/90 to-[#FDFBF6] px-6 py-5 shadow-[0_25px_65px_rgba(198,167,94,0.25)]">
                 <div className="flex items-center justify-between text-gray-500">
                   <p className="text-[10px] uppercase tracking-[0.5em]">Your Order</p>
                   <span className="text-[10px] uppercase tracking-[0.5em]">Qty {Math.max(totalQuantity, 1)}</span>
@@ -466,14 +466,19 @@ const GetPriceUI: React.FC<GetPriceUIProps> = ({
                       </button>
                     </div>
                     {activeOrderSide ? (
-                      <DesignPreview
-                        snapshot={activeOrderSide.preview}
-                        fallbackImage={activeOrderSide.imageSrc}
-                        width={188}
-                        alt={`${activeOrderSide.label} preview`}
-                        className="w-full rounded-2xl border border-gray-200 bg-gray-50/80 p-2"
-                        noFrame
-                      />
+                      <div className="rounded-2xl border border-gray-200 bg-gray-50/80 p-2">
+                        <div className="mx-auto w-full max-w-[188px]">
+                          <DesignPreview
+                            snapshot={activeOrderSide.preview}
+                            fallbackImage={activeOrderSide.imageSrc}
+                            width={188}
+                            fixedSize={188}
+                            alt={`${activeOrderSide.label} preview`}
+                            className="w-full rounded-2xl"
+                            noFrame
+                          />
+                        </div>
+                      </div>
                     ) : null}
                   </div>
                 <div className="hidden flex-wrap items-start gap-3 overflow-x-auto lg:flex">

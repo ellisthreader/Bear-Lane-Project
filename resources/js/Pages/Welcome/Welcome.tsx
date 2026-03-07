@@ -515,7 +515,9 @@ export default function Welcome() {
   ) => {
     if (!rail) return;
     if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
-    event.preventDefault();
+    if (event.cancelable) {
+      event.preventDefault();
+    }
     rail.scrollBy({ left: event.deltaY, behavior: "auto" });
   };
 

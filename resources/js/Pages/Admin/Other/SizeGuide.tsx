@@ -197,9 +197,9 @@ export default function SizeGuidePage({ sizeGuide }: Props) {
                 <thead>
                   <tr className="bg-[#FBF4E5] text-left text-xs uppercase tracking-[0.1em] text-[#6A5530]">
                     <th className="px-3 py-2">Size</th>
-                    <th className="px-3 py-2">Chest</th>
-                    <th className="px-3 py-2">Length</th>
-                    <th className="px-3 py-2">Sleeve</th>
+                    <th className="px-3 py-2">Chest CM</th>
+                    <th className="px-3 py-2">Waist CM</th>
+                    <th className="px-3 py-2">Arm Length CM</th>
                     <th className="px-3 py-2">Action</th>
                   </tr>
                 </thead>

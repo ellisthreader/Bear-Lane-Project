@@ -78,7 +78,7 @@ export function useSizeGuideData() {
         kind: "table",
         id: "tops",
         title: dynamic.heading || SIZE_GUIDE_DATA[gender].heading,
-        columns: ["Size", "Chest", "Length", "Sleeve"],
+        columns: ["Size", "Chest CM", "Waist CM", "Arm Length CM"],
         rows,
       },
     ],
