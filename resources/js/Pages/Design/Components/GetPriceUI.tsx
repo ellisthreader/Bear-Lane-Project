@@ -84,9 +84,6 @@ const GetPriceUI: React.FC<GetPriceUIProps> = ({
   const [step, setStep] = useState<"configure" | "summary">("configure");
   const [loadingPrice, setLoadingPrice] = useState(false);
   const [zoomedSide, setZoomedSide] = useState<SideStatus | null>(null);
-  const [isMobileViewport, setIsMobileViewport] = useState<boolean>(() =>
-    typeof window !== "undefined" ? window.matchMedia("(max-width: 1023px)").matches : false
-  );
   const [activeOrderSideIndex, setActiveOrderSideIndex] = useState(0);
   const [sizeBreakdown, setSizeBreakdown] = useState<Record<string, number>>(() => {
     if (!availableSizes.length) return {};
@@ -99,21 +96,6 @@ const GetPriceUI: React.FC<GetPriceUIProps> = ({
   useEffect(() => {
     setStep("configure");
     setLoadingPrice(false);
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const query = window.matchMedia("(max-width: 1023px)");
-    const sync = () => setIsMobileViewport(query.matches);
-    sync();
-
-    if (typeof query.addEventListener === "function") {
-      query.addEventListener("change", sync);
-      return () => query.removeEventListener("change", sync);
-    }
-
-    query.addListener(sync);
-    return () => query.removeListener(sync);
   }, []);
 
   useEffect(() => {
@@ -262,7 +244,7 @@ const GetPriceUI: React.FC<GetPriceUIProps> = ({
   const mutedTextClass = "text-gray-600";
   const inputClass = "w-full rounded-lg border bg-white px-3 py-2";
   const tagClass = "inline-flex items-center gap-1 rounded-full border bg-white px-3 py-1 text-xs font-medium shadow-sm";
-  const orderImageSize = isMobileViewport ? 240 : docked ? 160 : 180;
+  const desktopOrderImageSize = docked ? 160 : 180;
 
   return (
     <div className={wrapperClass}>
@@ -416,12 +398,8 @@ const GetPriceUI: React.FC<GetPriceUIProps> = ({
               </div>
             </div>
           ) : (
-            <div
-              className={`flex h-full flex-col gap-5 overflow-y-auto px-6 py-5 ${
-                isMobileViewport ? "pb-28" : ""
-              }`}
-            >
-              <div className="space-y-3">
+            <div className="flex h-full flex-col gap-5 overflow-y-auto px-6 py-5 pb-28 lg:pb-5">
+              <div className="min-h-[9rem] space-y-3">
                 <p className="text-xs uppercase tracking-[0.4em] text-gray-500">Price per item</p>
                 <div className="text-5xl font-bold text-gray-900">{formatGBP(unitPrice)}</div>
                 <span className="text-sm text-gray-500">each {productName}</span>
@@ -449,7 +427,7 @@ const GetPriceUI: React.FC<GetPriceUIProps> = ({
                 </div>
               </div>
 
-              <div className="rounded-3xl border border-[#DAC885]/60 bg-gradient-to-br from-white via-white/90 to-[#FDFBF6] px-6 py-5 shadow-[0_25px_65px_rgba(198,167,94,0.25)] w-full">
+              <div className="min-h-[20rem] w-full rounded-3xl border border-[#DAC885]/60 bg-gradient-to-br from-white via-white/90 to-[#FDFBF6] px-6 py-5 shadow-[0_25px_65px_rgba(198,167,94,0.25)]">
                 <div className="flex items-center justify-between text-gray-500">
                   <p className="text-[10px] uppercase tracking-[0.5em]">Your Order</p>
                   <span className="text-[10px] uppercase tracking-[0.5em]">Qty {Math.max(totalQuantity, 1)}</span>
@@ -462,8 +440,7 @@ const GetPriceUI: React.FC<GetPriceUIProps> = ({
                     Design type: {selectedDesignTypeDisplay}
                   </p>
                 </div>
-                {isMobileViewport ? (
-                  <div className="space-y-2">
+                <div className="space-y-2 lg:hidden">
                     <div className="flex items-center justify-between rounded-2xl border border-gray-200 bg-gray-50/80 p-2">
                       <button
                         type="button"
@@ -489,20 +466,19 @@ const GetPriceUI: React.FC<GetPriceUIProps> = ({
                       <DesignPreview
                         snapshot={activeOrderSide.preview}
                         fallbackImage={activeOrderSide.imageSrc}
-                        width={orderImageSize}
+                        width={240}
                         alt={`${activeOrderSide.label} preview`}
                         className="w-full rounded-2xl border border-gray-200 bg-gray-50/80 p-2"
                         noFrame
                       />
                     ) : null}
                   </div>
-                ) : (
-                  <div className="flex flex-wrap items-start gap-3 overflow-x-auto">
+                <div className="hidden flex-wrap items-start gap-3 overflow-x-auto lg:flex">
                     {orderedSides.map(side => (
                       <div
                         key={side.key}
                         className="flex flex-col items-center gap-2 rounded-2xl border border-gray-200 bg-gray-50/80 p-2"
-                        style={{ width: orderImageSize }}
+                        style={{ width: desktopOrderImageSize }}
                       >
                         <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-gray-500">
                           {side.label}
@@ -510,7 +486,7 @@ const GetPriceUI: React.FC<GetPriceUIProps> = ({
                         <DesignPreview
                           snapshot={side.preview}
                           fallbackImage={side.imageSrc}
-                          width={orderImageSize}
+                          width={desktopOrderImageSize}
                           alt={`${side.label} preview`}
                           className="w-full"
                           noFrame
@@ -518,10 +494,9 @@ const GetPriceUI: React.FC<GetPriceUIProps> = ({
                       </div>
                     ))}
                   </div>
-                )}
               </div>
 
-              <div className="flex justify-center">
+              <div className="flex min-h-[5rem] justify-center">
                 <div className="flex items-center gap-4">
                   <img loading="lazy" decoding="async"
                     src="/images/BLSatisfaction.png"
@@ -535,57 +510,54 @@ const GetPriceUI: React.FC<GetPriceUIProps> = ({
                 </div>
               </div>
 
-              {isMobileViewport ? (
-                <div
-                  className={`z-30 mt-auto border-t border-gray-200 bg-white px-4 py-3 shadow-[0_-6px_20px_rgba(0,0,0,0.08)] ${
-                    docked
-                      ? "fixed bottom-0 left-0 right-0"
-                      : "sticky bottom-0 -mx-6"
-                  }`}
-                >
-                  <div className="grid grid-cols-3 gap-2">
-                    <button
-                      onClick={() => setStep("configure")}
-                      className="rounded-xl border border-gray-300 px-2 py-2 text-xs font-medium text-gray-700 hover:border-[#C6A75E] hover:bg-[#C6A75E]/10"
-                    >
-                      Edit sizes
-                    </button>
-                    <button
-                      onClick={() => onAddToCart?.(actionPayload)}
-                      className="rounded-xl bg-[#8A6D2B] px-2 py-2 text-xs font-semibold text-white hover:bg-[#755A22]"
-                    >
-                      Add to cart
-                    </button>
-                    <button
-                      onClick={() => onBuyNow?.(actionPayload)}
-                      className="rounded-xl bg-[#C6A75E] px-2 py-2 text-xs font-semibold text-white hover:bg-[#B8994E]"
-                    >
-                      Buy now
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex flex-wrap items-center justify-end gap-3">
+              <div
+                className={`z-30 mt-auto border-t border-gray-200 bg-white px-4 py-3 shadow-[0_-6px_20px_rgba(0,0,0,0.08)] lg:hidden ${
+                  docked
+                    ? "fixed bottom-0 left-0 right-0"
+                    : "sticky bottom-0 -mx-6"
+                }`}
+              >
+                <div className="grid grid-cols-3 gap-2">
                   <button
                     onClick={() => setStep("configure")}
-                    className="rounded-xl border border-gray-300 px-5 py-2 font-medium text-gray-700 hover:border-[#C6A75E] hover:bg-[#C6A75E]/10"
+                    className="rounded-xl border border-gray-300 px-2 py-2 text-xs font-medium text-gray-700 hover:border-[#C6A75E] hover:bg-[#C6A75E]/10"
                   >
-                    Edit quantity / sizes
+                    Edit sizes
                   </button>
                   <button
                     onClick={() => onAddToCart?.(actionPayload)}
-                    className="rounded-xl bg-[#8A6D2B] px-5 py-2 font-semibold text-white hover:bg-[#755A22]"
+                    className="rounded-xl bg-[#8A6D2B] px-2 py-2 text-xs font-semibold text-white hover:bg-[#755A22]"
                   >
-                    Add to Cart
+                    Add to cart
                   </button>
                   <button
                     onClick={() => onBuyNow?.(actionPayload)}
-                    className="rounded-xl bg-[#C6A75E] px-5 py-2 font-semibold text-white hover:bg-[#B8994E]"
+                    className="rounded-xl bg-[#C6A75E] px-2 py-2 text-xs font-semibold text-white hover:bg-[#B8994E]"
                   >
-                    Buy Now
+                    Buy now
                   </button>
                 </div>
-              )}
+              </div>
+              <div className="hidden flex-wrap items-center justify-end gap-3 lg:flex">
+                <button
+                  onClick={() => setStep("configure")}
+                  className="rounded-xl border border-gray-300 px-5 py-2 font-medium text-gray-700 hover:border-[#C6A75E] hover:bg-[#C6A75E]/10"
+                >
+                  Edit quantity / sizes
+                </button>
+                <button
+                  onClick={() => onAddToCart?.(actionPayload)}
+                  className="rounded-xl bg-[#8A6D2B] px-5 py-2 font-semibold text-white hover:bg-[#755A22]"
+                >
+                  Add to Cart
+                </button>
+                <button
+                  onClick={() => onBuyNow?.(actionPayload)}
+                  className="rounded-xl bg-[#C6A75E] px-5 py-2 font-semibold text-white hover:bg-[#B8994E]"
+                >
+                  Buy Now
+                </button>
+              </div>
             </div>
           )}
         </div>

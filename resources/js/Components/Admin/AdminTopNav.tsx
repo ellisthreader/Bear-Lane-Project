@@ -1,6 +1,6 @@
 import React from "react";
 import { Link, usePage } from "@inertiajs/react";
-import { BarChart3, LayoutDashboard, MessageSquare, Package, ReceiptText, Users } from "lucide-react";
+import { ArrowLeft, BarChart3, LayoutDashboard, MessageSquare, Package, ReceiptText, Users } from "lucide-react";
 
 type AdminNavItem = {
   label: string;
@@ -53,37 +53,51 @@ export default function AdminTopNav() {
   const currentPath = page.url.split("?")[0];
 
   return (
-    <div className="sticky top-0 z-20 border-b border-[#E9DFCB] bg-white/95 backdrop-blur-md">
-      <div className="mx-auto flex min-h-[72px] w-full max-w-7xl items-center px-4 sm:px-8">
+    <div className="sticky top-0 z-20 overflow-x-hidden border-b border-[#E9DFCB] bg-white/95 backdrop-blur-md">
+      <div className="mx-auto flex min-h-[72px] w-full max-w-7xl items-center gap-3 px-3 sm:px-8">
+        <button
+          type="button"
+          onClick={() => {
+            if (typeof window !== "undefined") {
+              window.history.back();
+            }
+          }}
+          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#E7DBC3] text-[#6B5A34] transition hover:bg-[#FFFBF2] lg:hidden"
+          aria-label="Go back"
+        >
+          <ArrowLeft className="h-4 w-4" />
+        </button>
         <Link
           href="/"
-          className="inline-flex items-center"
+          className="inline-flex shrink-0 items-center"
           aria-label="Go to home page"
         >
           <img loading="lazy" decoding="async" src="/images/BLText.png" alt="Bear Lane" className="h-10 w-auto object-contain" />
         </Link>
 
-        <div className="flex flex-1 items-center justify-center gap-2">
-          {items.map((item) => {
-            const active = item.match(currentPath);
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold transition ${
-                  active
-                    ? "border-[#D1B46F] bg-[#FFF3D6] text-[#6A541F]"
-                    : "border-transparent text-[#6B5A34] hover:border-[#E7DBC3] hover:bg-[#FFFBF2]"
-                }`}
-              >
-                {item.icon}
-                {item.label}
-              </Link>
-            );
-          })}
+        <div className="flex-1 overflow-x-auto">
+          <div className="flex min-w-max items-center gap-2 pr-1">
+            {items.map((item) => {
+              const active = item.match(currentPath);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`inline-flex shrink-0 items-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold transition ${
+                    active
+                      ? "border-[#D1B46F] bg-[#FFF3D6] text-[#6A541F]"
+                      : "border-transparent text-[#6B5A34] hover:border-[#E7DBC3] hover:bg-[#FFFBF2]"
+                  }`}
+                >
+                  {item.icon}
+                  <span className="hidden sm:inline">{item.label}</span>
+                </Link>
+              );
+            })}
+          </div>
         </div>
 
-        <div className="h-10 w-[140px]" aria-hidden="true" />
+        <div className="hidden h-10 w-[140px] lg:block" aria-hidden="true" />
       </div>
     </div>
   );

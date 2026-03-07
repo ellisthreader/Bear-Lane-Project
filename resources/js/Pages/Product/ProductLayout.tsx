@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Head, Link, router, usePage } from "@inertiajs/react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { useWishlist } from "@/Context/WishlistContext";
-import { CheckCircle2, ChevronDown, CircleHelp, Heart, Plus, Sparkles, Star, X } from "lucide-react";
+import { CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, CircleHelp, Heart, Plus, Sparkles, Star, X } from "lucide-react";
 import { toast } from "react-toastify";
 import SizeGuideButton from "./SizeGuide/SizeGuideButton";
 import SizeGuideModal from "./SizeGuide/SizeGuideModal";
@@ -453,6 +453,7 @@ export default function ProductLayout({ product, recommendedProducts = [], admin
   const [notifyLoading, setNotifyLoading] = useState(false);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
+  const [mobileImageIndex, setMobileImageIndex] = useState(0);
   const [recentlyViewedProducts, setRecentlyViewedProducts] = useState<ProductListItem[]>([]);
   const reviewsRef = useRef<HTMLElement | null>(null);
 
@@ -492,6 +493,10 @@ export default function ProductLayout({ product, recommendedProducts = [], admin
     setSelectedSize(firstInStock ?? STANDARD_SIZES[0]);
     setShowSizeError(false);
   }, [selectedColour, effectiveColourProducts, effectiveProductImages, isAdminEditor]);
+
+  useEffect(() => {
+    setMobileImageIndex(0);
+  }, [displayImages]);
 
   const sizeStockMap = useMemo(() => {
     const map = currentVariant?.size_stock ?? {};
@@ -1289,13 +1294,22 @@ export default function ProductLayout({ product, recommendedProducts = [], admin
           throw new Error(result?.message || "Unable to update product.");
         }
 
+        const updatedSlug =
+          typeof result?.slug === "string" && result.slug.trim().length > 0
+            ? result.slug.trim()
+            : product.slug;
+
         setAdminSaveSuccess({
           mode: "edited",
           name: newName || "Product",
-          slug: product.slug,
+          slug: updatedSlug,
           changes: changeItems.length ? changeItems : ["No visible field changes."],
         });
-        router.reload({ only: ["product"] });
+        if (updatedSlug !== product.slug) {
+          router.get(`/product/${encodeURIComponent(updatedSlug)}?product_mode=1`);
+        } else {
+          router.reload({ only: ["product"] });
+        }
       } catch (error) {
         toast.error(error instanceof Error ? error.message : "Unable to update product.");
       } finally {
@@ -1560,34 +1574,81 @@ export default function ProductLayout({ product, recommendedProducts = [], admin
                   </button>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
+                <div>
                   {displayImages.length > 0 ? (
                     <>
-                      {displayImages.map((img, i) => (
+                      <div className="relative h-[320px] w-full overflow-hidden bg-[#E5E7EB] sm:h-[420px] lg:hidden">
                         <button
-                          key={i}
                           type="button"
                           onClick={() => {
-                            setLightboxIndex(i);
+                            setLightboxIndex(mobileImageIndex);
                             setIsLightboxOpen(true);
                           }}
-                          className="group relative h-[260px] w-full cursor-zoom-in overflow-hidden bg-[#E5E7EB] text-left sm:h-[360px] lg:h-[500px]"
-                          aria-label={`Open image ${i + 1} in large view`}
+                          className="h-full w-full cursor-zoom-in text-left"
+                          aria-label={`Open image ${mobileImageIndex + 1} in large view`}
                         >
-                          <img loading="lazy" decoding="async"
-                            src={img}
-                            alt={`${effectiveName}-${i + 1}`}
-                            className="absolute inset-0 h-full w-full object-contain transition duration-300 group-hover:scale-[1.02]"
+                          <img
+                            loading="lazy"
+                            decoding="async"
+                            src={displayImages[mobileImageIndex]}
+                            alt={`${effectiveName}-${mobileImageIndex + 1}`}
+                            className="absolute inset-0 h-full w-full object-contain"
                           />
-                          <span className="pointer-events-none absolute inset-0 bg-black/0 transition group-hover:bg-black/10" />
-                          <span className="pointer-events-none absolute left-1/2 top-1/2 flex h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-white/70 bg-black/35 opacity-0 transition group-hover:opacity-100">
-                            <Plus className="h-5 w-5 text-white" />
-                          </span>
                         </button>
-                      ))}
+                        {displayImages.length > 1 ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setMobileImageIndex((prev) => (prev - 1 + displayImages.length) % displayImages.length)
+                              }
+                              className="absolute left-3 top-1/2 inline-flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/70 bg-black/45 text-white"
+                              aria-label="Previous image"
+                            >
+                              <ChevronLeft className="h-5 w-5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setMobileImageIndex((prev) => (prev + 1) % displayImages.length)}
+                              className="absolute right-3 top-1/2 inline-flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/70 bg-black/45 text-white"
+                              aria-label="Next image"
+                            >
+                              <ChevronRight className="h-5 w-5" />
+                            </button>
+                          </>
+                        ) : null}
+                        <p className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full border border-white/80 bg-black/50 px-3 py-1 text-xs font-semibold text-white">
+                          {mobileImageIndex + 1} / {displayImages.length}
+                        </p>
+                      </div>
+
+                      <div className="hidden grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid">
+                        {displayImages.map((img, i) => (
+                          <button
+                            key={i}
+                            type="button"
+                            onClick={() => {
+                              setLightboxIndex(i);
+                              setIsLightboxOpen(true);
+                            }}
+                            className="group relative h-[260px] w-full cursor-zoom-in overflow-hidden bg-[#E5E7EB] text-left sm:h-[360px] lg:h-[500px]"
+                            aria-label={`Open image ${i + 1} in large view`}
+                          >
+                            <img loading="lazy" decoding="async"
+                              src={img}
+                              alt={`${effectiveName}-${i + 1}`}
+                              className="absolute inset-0 h-full w-full object-contain transition duration-300 group-hover:scale-[1.02]"
+                            />
+                            <span className="pointer-events-none absolute inset-0 bg-black/0 transition group-hover:bg-black/10" />
+                            <span className="pointer-events-none absolute left-1/2 top-1/2 flex h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-white/70 bg-black/35 opacity-0 transition group-hover:opacity-100">
+                              <Plus className="h-5 w-5 text-white" />
+                            </span>
+                          </button>
+                        ))}
+                      </div>
                     </>
                   ) : (
-                    <div className="flex h-[320px] items-center justify-center bg-[#E5E7EB] text-[#7D6E4F] sm:col-span-2 sm:h-[420px]">
+                    <div className="flex h-[320px] items-center justify-center bg-[#E5E7EB] text-[#7D6E4F] sm:h-[420px]">
                       No images available
                     </div>
                   )}

@@ -3,7 +3,7 @@ import { Link } from "@inertiajs/react";
 import { AnimatePresence, motion } from "framer-motion";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import AdminTopNav from "@/Components/Admin/AdminTopNav";
-import { Archive, ArrowUpRight, BarChart3, CircleHelp, Mail, MessageSquare, Package, Pencil, ReceiptText, Shield, Sparkles, Star, TriangleAlert, User, Users, X } from "lucide-react";
+import { Archive, ArrowLeft, ArrowUpRight, BarChart3, CircleHelp, Mail, MessageSquare, Package, Pencil, ReceiptText, Shield, Sparkles, Star, TriangleAlert, User, Users, X } from "lucide-react";
 import type { AdminSummary } from "@/Context/AdminSupportContext";
 
 type AdminDashboardProps = {
@@ -149,7 +149,7 @@ export default function AdminDashboard({ auth, summary: incomingSummary }: Admin
   return (
     <AuthenticatedLayout>
       <AdminTopNav />
-      <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-[#F9F5EA] via-[#FCF8EE] to-[#F4ECDD] px-6 py-10 text-[#2D2515] sm:px-10">
+      <div className="relative min-h-screen overflow-x-hidden bg-gradient-to-br from-[#F9F5EA] via-[#FCF8EE] to-[#F4ECDD] px-6 py-10 text-[#2D2515] sm:px-10">
         <div className="pointer-events-none absolute inset-0 opacity-[0.55]">
           <div className="absolute -left-20 -top-24 h-80 w-80 rounded-full bg-[#C6A75E]/30 blur-3xl" />
           <div className="absolute right-[-120px] top-[18%] h-[28rem] w-[28rem] rounded-full bg-[#E7D3A3]/30 blur-3xl" />
@@ -162,6 +162,21 @@ export default function AdminDashboard({ auth, summary: incomingSummary }: Admin
           transition={{ duration: 0.5 }}
           className="mx-auto w-full max-w-6xl space-y-6"
         >
+          <div className="lg:hidden">
+            <button
+              type="button"
+              onClick={() => {
+                if (typeof window !== "undefined") {
+                  window.history.back();
+                }
+              }}
+              className="inline-flex items-center gap-2 rounded-full border border-[#D7BE84] bg-[#FFF8E8] px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-[#7B6530]"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back
+            </button>
+          </div>
+
           <div className="w-full rounded-3xl border border-[#E5D4AF] bg-gradient-to-br from-[#FFFDF7] via-[#FFF9EC] to-[#FFFDF8] p-5 shadow-[0_20px_60px_rgba(91,70,27,0.10)] sm:p-6">
             <div className="space-y-4">
               <div className="rounded-2xl border border-[#E8D8B5] bg-white/75 p-4">

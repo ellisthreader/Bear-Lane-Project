@@ -359,7 +359,11 @@ class ProductController extends Controller
                 ]
             );
 
-            return response()->json(['success' => true]);
+            return response()->json([
+                'success' => true,
+                'slug' => (string) $product->slug,
+                'name' => (string) $product->name,
+            ]);
         }
 
         $colourNames = collect($validated['colours'])
@@ -538,7 +542,11 @@ class ProductController extends Controller
             ]
         );
 
-        return response()->json(['success' => true]);
+        return response()->json([
+            'success' => true,
+            'slug' => (string) $product->slug,
+            'name' => (string) $product->name,
+        ]);
     }
 
     public function createLayout(Request $request)

@@ -46,6 +46,7 @@ function ProductCard({ product }: { product: RecommendedProduct }) {
 export default function ProductRecommendations() {
   const { productPanelTab, setProductPanelTab, recommendedProducts, wishlistProducts } = useProfileViewContext();
   const isWishlistView = productPanelTab === "wishlist";
+  const visibleProducts = productPanelTab === "recommended" ? recommendedProducts : wishlistProducts;
 
   return (
     <section className="rounded-3xl border border-[#E2D2A8] bg-white p-6 shadow-sm md:p-8">
@@ -75,27 +76,24 @@ export default function ProductRecommendations() {
         </div>
       </div>
 
-      {productPanelTab === "recommended" ? (
-        recommendedProducts.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-[#E6D7B0] bg-[#FFFDF8] px-4 py-14 text-center text-sm text-[#8A7B5A]">
-            No recommendations available yet.
+      {visibleProducts.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-[#E6D7B0] bg-[#FFFDF8] px-4 py-14 text-center text-sm text-[#8A7B5A]">
+          {productPanelTab === "recommended" ? "No recommendations available yet." : "Your wishlist is empty."}
+        </div>
+      ) : (
+        <div>
+          <div className="-mx-1 flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pb-2 md:hidden">
+            {visibleProducts.map((product) => (
+              <div key={product.id} className="w-[78%] max-w-[240px] shrink-0 snap-start">
+                <ProductCard product={product} />
+              </div>
+            ))}
           </div>
-        ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {recommendedProducts.map((product) => (
+          <div className="hidden grid-cols-1 gap-4 sm:grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {visibleProducts.map((product) => (
               <ProductCard key={product.id} product={product} />
             ))}
           </div>
-        )
-      ) : wishlistProducts.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-[#E6D7B0] bg-[#FFFDF8] px-4 py-14 text-center text-sm text-[#8A7B5A]">
-          Your wishlist is empty.
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {wishlistProducts.map((product) => (
-            <ProductCard key={product.id} product={product} />
-          ))}
         </div>
       )}
     </section>
