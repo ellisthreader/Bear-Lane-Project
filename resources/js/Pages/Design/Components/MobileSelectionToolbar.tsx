@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ArrowLeft,
   Check,
@@ -106,7 +106,7 @@ export default function MobileSelectionToolbar({
   const colorValue = selectedLayer.color ?? "#000000";
   const flipValue = (selectedLayer.flip ?? "none") as FlipValue;
 
-  const popupStyle = useMemo(() => {
+  const popupStyle = (() => {
     const viewportWidth = typeof window !== "undefined" ? window.innerWidth : 0;
     const popupWidth = Math.min(Math.max(viewportWidth - 24, 260), 360);
 
@@ -130,7 +130,7 @@ export default function MobileSelectionToolbar({
       top,
       width: popupWidth,
     } as React.CSSProperties;
-  }, [canvasRef, layerSize.w, selectedPosition]);
+  })();
 
   const applyImageWidth = (nextWidth: number) => {
     const aspect = (layerSize.h || 1) / Math.max(layerSize.w || 1, 1);

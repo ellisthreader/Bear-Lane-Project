@@ -1006,6 +1006,11 @@ const pricePanelSides = useMemo(
   const setSelectedUploadedImageWithLog = (uid: string | null) => {
     setSelectedUploadedImage(uid);
 
+    if (uid && isMobileViewport) {
+      setSidebarStack(["blank"]);
+      return;
+    }
+
     // Desktop: selecting an uploaded image opens the upload properties panel.
     if (uid && !isMobileViewport) {
       setUploadSidebarStartMode("library");
@@ -2755,6 +2760,13 @@ const handleSidebarTabSelect = (tab: "product" | "upload" | "text" | "clipart") 
   if (tab !== "text") setSelectedText(null);
 };
 
+const handleSelectTextFromCanvas = (uid: string | null) => {
+  setSelectedText(uid);
+  if (uid && isMobileViewport) {
+    setSidebarStack(["blank"]);
+  }
+};
+
 const designPageContextValue = {
   isPricePanelOpen,
   activeSidebar,
@@ -2777,7 +2789,7 @@ const designPageContextValue = {
       imageState={currentImageState}
       setImageState={updateCurrentImageState}
       onSelectImage={setSelectedUploadedImageWithLog}
-      onSelectText={setSelectedText}
+      onSelectText={handleSelectTextFromCanvas}
       onResizeStart={beginResize}
       onSwitchTab={(tab) => {
         if (!tab || isMobileViewport) return;
