@@ -288,13 +288,14 @@ export default function MobileSelectionToolbar({
         </div>
       ) : null}
 
-      <div
-        className="fixed inset-x-0 bottom-0 z-[92] border-t border-gray-200 bg-white/95 px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-8px_26px_rgba(20,20,20,0.12)] backdrop-blur md:hidden"
-        data-export-ignore="true"
-      >
-        {activeTool ? (
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
+      {activeTool ? (
+        <div
+          className="fixed inset-x-0 z-[93] px-3 md:hidden"
+          style={{ bottom: "calc(72px + env(safe-area-inset-bottom) + 8px)" }}
+          data-export-ignore="true"
+        >
+          <div className="max-h-[42vh] overflow-y-auto rounded-2xl border border-gray-200 bg-white px-3 py-3 shadow-[0_-8px_26px_rgba(20,20,20,0.12)]">
+            <div className="mb-3 flex items-center justify-between">
               <button
                 type="button"
                 onClick={() => setActiveTool(null)}
@@ -316,23 +317,28 @@ export default function MobileSelectionToolbar({
             </div>
             {renderToolContent()}
           </div>
-        ) : (
-          <div className="flex gap-2 overflow-x-auto" style={{ touchAction: "pan-x" }}>
-            {tools.map((tool) => (
-              <button
-                key={tool.id}
-                type="button"
-                onClick={tool.onClick}
-                className={`inline-flex min-w-[78px] flex-col items-center justify-center gap-1 rounded-xl px-2 py-2 text-xs font-medium transition ${
-                  tool.active ? "bg-gray-900 text-white" : "bg-white text-gray-700 hover:bg-gray-100"
-                }`}
-              >
-                <span>{tool.icon}</span>
-                <span>{tool.label}</span>
-              </button>
-            ))}
-          </div>
-        )}
+        </div>
+      ) : null}
+
+      <div
+        className="fixed inset-x-0 bottom-0 z-[92] border-t border-gray-200 bg-white/95 px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-8px_26px_rgba(20,20,20,0.12)] backdrop-blur md:hidden"
+        data-export-ignore="true"
+      >
+        <div className="flex gap-2 overflow-x-auto" style={{ touchAction: "pan-x" }}>
+          {tools.map((tool) => (
+            <button
+              key={tool.id}
+              type="button"
+              onClick={tool.onClick}
+              className={`inline-flex min-w-[78px] flex-col items-center justify-center gap-1 rounded-xl px-2 py-2 text-xs font-medium transition ${
+                tool.active ? "bg-gray-900 text-white" : "bg-white text-gray-700 hover:bg-gray-100"
+              }`}
+            >
+              <span>{tool.icon}</span>
+              <span>{tool.label}</span>
+            </button>
+          ))}
+        </div>
       </div>
     </>
   );

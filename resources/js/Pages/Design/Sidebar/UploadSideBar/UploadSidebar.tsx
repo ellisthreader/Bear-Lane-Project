@@ -52,6 +52,7 @@ type UploadSidebarProps = {
   canvasPositions?: Record<string, { x: number; y: number }>;
   startInCropMode?: boolean;
   onStartInCropModeHandled?: () => void;
+  onFinishCrop?: () => void;
 };
 
 // -------------------- COMPONENT --------------------
@@ -75,6 +76,7 @@ export default function UploadSidebar({
   canvasPositions = {},
   startInCropMode = false,
   onStartInCropModeHandled,
+  onFinishCrop,
 }: UploadSidebarProps) {
   const [cropMode, setCropMode] = useState(false);
 
@@ -142,8 +144,12 @@ export default function UploadSidebar({
           });
 
           setCropMode(false);
+          onFinishCrop?.();
         }}
-        onClose={() => setCropMode(false)}
+        onClose={() => {
+          setCropMode(false);
+          onFinishCrop?.();
+        }}
       />
     );
   }
