@@ -2365,6 +2365,44 @@ const updateTextLayer = (uid: string, updates: Partial<ImageState>) => {
   });
 };
 
+const handleEditSelectedText = async (uid: string, value: string) => {
+  const layer = currentImageState[uid];
+  if (!layer || layer.type !== "text") return false;
+
+  const nextValue = value.slice(0, 260);
+  const trimmedValue = nextValue.trim();
+
+  if (trimmedValue.length > 0) {
+    let moderation;
+    try {
+      moderation = await moderateDesignText(nextValue);
+    } catch {
+      showError("Text moderation is temporarily unavailable. Please try again shortly.");
+      return false;
+    }
+
+    if (!moderation.allowed) {
+      showError(moderation.message ?? "Text contains restricted content and cannot be used.");
+      return false;
+    }
+  }
+
+  updateCurrentImageState((prev) => ({
+    ...prev,
+    [uid]: {
+      ...prev[uid],
+      text: nextValue,
+      renderKey: crypto.randomUUID(),
+      original: {
+        ...(prev[uid]?.original ?? {}),
+        text: nextValue,
+      },
+    },
+  }));
+
+  return true;
+};
+
 const resetTextLayer = (uid: string) => {
   const layer = currentImageState[uid];
   if (!layer || layer.type !== "text") return;
@@ -2442,99 +2480,6 @@ const openUploadCropPanel = () => {
   setSelectedUploadedImageWithLog(targetUid);
   setUploadSidebarStartMode("crop");
   setSidebarStack(["upload"]);
-};
-
-const quickMeasureText = (value: string, fontFamily: string, fontSize: number, borderWidth = 0) => {
-  const canvas = document.createElement("canvas");
-  const context = canvas.getContext("2d");
-  const fallbackWidth = Math.max(40, value.length * fontSize * 0.6);
-  const safeLines = value.split(/\r?\n/).map((line) => line || " ");
-
-  if (!context) {
-    return {
-      w: Math.ceil(fallbackWidth + borderWidth * 2 + 8),
-      h: Math.ceil(fontSize * 1.25 + borderWidth * 2 + 4),
-    };
-  }
-
-  context.font = `${fontSize}px ${fontFamily}`;
-  const widestLine = safeLines.reduce((max, line) => {
-    const width = context.measureText(line).width;
-    return Math.max(max, width);
-  }, 0);
-
-  return {
-    w: Math.ceil(Math.max(24, widestLine) + borderWidth * 2 + 8),
-    h: Math.ceil(safeLines.length * fontSize * 1.2 + borderWidth * 2 + 4),
-  };
-};
-
-const handleQuickAddText = async (value: string) => {
-  const clampedText = value.trim().slice(0, 260);
-  if (!clampedText) return false;
-
-  let moderation;
-  try {
-    moderation = await moderateDesignText(clampedText);
-  } catch {
-    showError("Text moderation is temporarily unavailable. Please try again shortly.");
-    return false;
-  }
-
-  if (!moderation.allowed) {
-    showError(moderation.message ?? "Text contains restricted content and cannot be used.");
-    return false;
-  }
-
-  const layerId = crypto.randomUUID();
-  const baseFont = "Inter";
-  const fontSize = 32;
-  const nextSize = quickMeasureText(clampedText, baseFont, fontSize, 0);
-
-  updateCurrentImageState((prev) => ({
-    ...prev,
-    [layerId]: {
-      url: "",
-      type: "text",
-      text: clampedText,
-      rotation: 0,
-      flip: "none",
-      size: nextSize,
-      zIndex: getNextLayerZIndex(prev),
-      fontFamily: baseFont,
-      color: "#000000",
-      borderColor: "#000000",
-      borderWidth: 0,
-      fontSize,
-      textAlign: DEFAULT_TEXT_ALIGN,
-      width: nextSize.w,
-      original: {
-        url: "",
-        rotation: 0,
-        flip: "none",
-        size: nextSize,
-        text: clampedText,
-        fontFamily: baseFont,
-        fontSize,
-        color: "#000000",
-        borderColor: "#000000",
-        borderWidth: 0,
-        textAlign: DEFAULT_TEXT_ALIGN,
-      },
-    },
-  }));
-
-  setSizes((prev) => ({ ...prev, [layerId]: nextSize }));
-  setSelectedText(layerId);
-  setSelectedUploadedImageWithLog(null);
-  setSelectedObjects([layerId]);
-  if (!isMobileViewport) {
-    setSidebarStack(["text"]);
-  } else {
-    setSidebarStack(["blank"]);
-    setIsMobileQuickAddTextOpen(false);
-  }
-  return true;
 };
 
 const openMobileQuickAddText = () => {
@@ -3124,7 +3069,7 @@ const designPageContextValue = {
             onOpenFontPanel={() => openMobileTextFullPanel("fonts")}
             onOpenOutlinePanel={() => openMobileTextFullPanel("outline")}
             onChangeArt={handleChangeClipart}
-            onAddText={handleQuickAddText}
+            onEditText={handleEditSelectedText}
             onTextResize={handleResizeText}
           />
 

@@ -21,7 +21,7 @@ import {
 import type { ImageState } from "../types/designTypes";
 
 type FlipValue = "none" | "horizontal" | "vertical";
-type ToolId = "rotate" | "size" | "flip" | "color" | "resize-text" | "add-text";
+type ToolId = "rotate" | "size" | "flip" | "color" | "resize-text" | "edit-text";
 
 type ToolbarAction = {
   id: string;
@@ -51,7 +51,7 @@ type Props = {
   onOpenFontPanel: () => void;
   onOpenOutlinePanel: () => void;
   onChangeArt: () => void;
-  onAddText: (value: string) => Promise<boolean> | boolean;
+  onEditText: (uid: string, value: string) => Promise<boolean> | boolean;
   onTextResize: (uid: string, value: number) => void;
 };
 
@@ -77,7 +77,7 @@ export default function MobileSelectionToolbar({
   onOpenFontPanel,
   onOpenOutlinePanel,
   onChangeArt,
-  onAddText,
+  onEditText,
   onTextResize,
 }: Props) {
   const [activeTool, setActiveTool] = useState<ToolId | null>(null);
@@ -85,7 +85,6 @@ export default function MobileSelectionToolbar({
 
   useEffect(() => {
     setActiveTool(null);
-    setDraftText("");
   }, [selectedUid]);
 
   if (!visible || !selectedUid || !selectedLayer) return null;
@@ -100,6 +99,11 @@ export default function MobileSelectionToolbar({
   const textSizeValue = Math.round(selectedLayer.fontSize ?? 24);
   const colorValue = selectedLayer.color ?? "#000000";
   const flipValue = (selectedLayer.flip ?? "none") as FlipValue;
+
+  useEffect(() => {
+    if (!isText) return;
+    setDraftText(selectedLayer.text ?? "");
+  }, [isText, selectedLayer.text, selectedUid]);
 
   const applyImageWidth = (nextWidth: number) => {
     const aspect = (layerSize.h || 1) / Math.max(layerSize.w || 1, 1);
@@ -121,12 +125,10 @@ export default function MobileSelectionToolbar({
     onResize(selectedUid, width, height);
   };
 
-  const handleAddText = async () => {
-    const value = draftText.trim();
-    if (!value) return;
-    const result = await onAddText(value);
+  const handleEditText = async () => {
+    const value = draftText.slice(0, 260);
+    const result = await onEditText(selectedUid, value);
     if (result !== false) {
-      setDraftText("");
       setActiveTool(null);
     }
   };
@@ -141,7 +143,7 @@ export default function MobileSelectionToolbar({
   ];
 
   const textTools: ToolbarAction[] = [
-    { id: "add-text", label: "Add Text", icon: <Type className="h-4 w-4" />, onClick: () => setActiveTool("add-text"), active: activeTool === "add-text" },
+    { id: "edit-text", label: "Edit Text", icon: <Type className="h-4 w-4" />, onClick: () => setActiveTool("edit-text"), active: activeTool === "edit-text" },
     { id: "color", label: "Colour", icon: <Palette className="h-4 w-4" />, onClick: () => setActiveTool("color"), active: activeTool === "color" },
     { id: "font", label: "Font", icon: <Type className="h-4 w-4" />, onClick: onOpenFontPanel },
     { id: "outline", label: "Outline", icon: <PaintBucket className="h-4 w-4" />, onClick: onOpenOutlinePanel },
@@ -264,7 +266,7 @@ export default function MobileSelectionToolbar({
       );
     }
 
-    if (activeTool === "add-text") {
+    if (activeTool === "edit-text") {
       return (
         <div className="space-y-3">
           <input
@@ -272,15 +274,15 @@ export default function MobileSelectionToolbar({
             value={draftText}
             maxLength={260}
             onChange={(event) => setDraftText(event.target.value)}
-            placeholder="Add text"
+            placeholder="Edit text"
             className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-500"
           />
           <button
             type="button"
-            onClick={handleAddText}
+            onClick={handleEditText}
             className="w-full rounded-xl bg-[#C6A75E] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#B8994E]"
           >
-            Add to design
+            Update text
           </button>
         </div>
       );
