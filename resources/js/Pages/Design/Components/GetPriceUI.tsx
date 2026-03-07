@@ -536,7 +536,13 @@ const GetPriceUI: React.FC<GetPriceUIProps> = ({
               </div>
 
               {isMobileViewport ? (
-                <div className="sticky bottom-0 -mx-6 mt-auto border-t border-gray-200 bg-white px-4 py-3 shadow-[0_-6px_20px_rgba(0,0,0,0.08)]">
+                <div
+                  className={`z-30 mt-auto border-t border-gray-200 bg-white px-4 py-3 shadow-[0_-6px_20px_rgba(0,0,0,0.08)] ${
+                    docked
+                      ? "fixed bottom-0 left-0 right-0"
+                      : "sticky bottom-0 -mx-6"
+                  }`}
+                >
                   <div className="grid grid-cols-3 gap-2">
                     <button
                       onClick={() => setStep("configure")}

@@ -2029,13 +2029,33 @@ const handleUpdateImageSize = (uid: string, w: number, h: number) => {
   const fallbackY = restrictedBox.top + Math.max((restrictedBox.height - safeH) / 2, 0);
   const startX = Number(activeCanvasPos?.x ?? positions[uid]?.x ?? fallbackX);
   const startY = Number(activeCanvasPos?.y ?? positions[uid]?.y ?? fallbackY);
-  const clamped = clampPositionAndSize(startX, startY, safeW, safeH, restrictedBox);
-  const maxWidth = Math.max(minW, restrictedBox.width);
-  const maxHeight = Math.max(minH, restrictedBox.height);
-  const nextW = Math.max(minW, Math.min(clamped.w, maxWidth));
-  const nextH = Math.max(minH, Math.min(clamped.h, maxHeight));
-  const nextX = Number.isFinite(clamped.x) ? clamped.x : startX;
-  const nextY = Number.isFinite(clamped.y) ? clamped.y : startY;
+  const boundedX = Math.min(Math.max(startX, restrictedBox.left), restrictedBox.left + restrictedBox.width);
+  const boundedY = Math.min(Math.max(startY, restrictedBox.top), restrictedBox.top + restrictedBox.height);
+  const maxWidthFromPosition = Math.max(1, restrictedBox.left + restrictedBox.width - boundedX);
+  const maxHeightFromPosition = Math.max(1, restrictedBox.top + restrictedBox.height - boundedY);
+  let nextW = safeW;
+  let nextH = safeH;
+
+  if (nextW > maxWidthFromPosition || nextH > maxHeightFromPosition) {
+    const scale = Math.min(maxWidthFromPosition / Math.max(nextW, 1), maxHeightFromPosition / Math.max(nextH, 1));
+    nextW = nextW * scale;
+    nextH = nextH * scale;
+  }
+
+  if (maxWidthFromPosition > minW) {
+    nextW = Math.min(Math.max(nextW, minW), maxWidthFromPosition);
+  } else {
+    nextW = maxWidthFromPosition;
+  }
+
+  if (maxHeightFromPosition > minH) {
+    nextH = Math.min(Math.max(nextH, minH), maxHeightFromPosition);
+  } else {
+    nextH = maxHeightFromPosition;
+  }
+
+  const nextX = boundedX;
+  const nextY = boundedY;
 
   updateCurrentImageState((prev) => {
     const existing = prev[uid];
@@ -2299,6 +2319,9 @@ const handleCanvasSelectionChange = (objects: string[]) => {
   }
 
   // Nothing selected
+  if (isMobileViewport && activeSidebar !== "blank") {
+    return;
+  }
   setSelectedText(null);
   setSelectedUploadedImageWithLog(null);
   if (isMobileViewport) {

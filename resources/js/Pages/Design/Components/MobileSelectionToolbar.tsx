@@ -35,6 +35,7 @@ type Props = {
   visible: boolean;
   selectedUid: string | null;
   selectedLayer: ImageState | null;
+  selectedPosition?: { x: number; y: number };
   restrictedBox: { left: number; top: number; width: number; height: number };
   canGoFront: boolean;
   canGoBack: boolean;
@@ -60,6 +61,7 @@ export default function MobileSelectionToolbar({
   visible,
   selectedUid,
   selectedLayer,
+  selectedPosition,
   restrictedBox,
   canGoFront,
   canGoBack,
@@ -101,15 +103,19 @@ export default function MobileSelectionToolbar({
 
   const applyImageWidth = (nextWidth: number) => {
     const aspect = (layerSize.h || 1) / Math.max(layerSize.w || 1, 1);
-    const maxWidth = Math.max(20, Math.round(restrictedBox.width || 600));
-    const maxHeight = Math.max(20, Math.round(restrictedBox.height || 600));
+    const anchorX = Number.isFinite(selectedPosition?.x) ? Number(selectedPosition?.x) : restrictedBox.left;
+    const anchorY = Number.isFinite(selectedPosition?.y) ? Number(selectedPosition?.y) : restrictedBox.top;
+    const availableWidth = Math.max(20, restrictedBox.left + restrictedBox.width - anchorX);
+    const availableHeight = Math.max(20, restrictedBox.top + restrictedBox.height - anchorY);
+    const maxWidthByHeight = Math.max(20, availableHeight / Math.max(aspect, 0.0001));
+    const maxWidth = Math.max(20, Math.floor(Math.min(availableWidth, maxWidthByHeight)));
 
     let width = clamp(nextWidth, 20, maxWidth);
     let height = width * aspect;
-
-    if (height > maxHeight) {
-      height = maxHeight;
-      width = height / aspect;
+    const maxHeight = Math.max(20, Math.floor(availableHeight));
+    if (height > maxHeight) height = maxHeight;
+    if (height === maxHeight) {
+      width = Math.min(width, height / Math.max(aspect, 0.0001));
     }
 
     onResize(selectedUid, width, height);
@@ -127,7 +133,7 @@ export default function MobileSelectionToolbar({
 
   const imageTools: ToolbarAction[] = [
     { id: "rotate", label: "Rotate", icon: <RotateCw className="h-4 w-4" />, onClick: () => setActiveTool("rotate"), active: activeTool === "rotate" },
-    { id: "size", label: "Size", icon: <MoveHorizontal className="h-4 w-4" />, onClick: () => setActiveTool("size"), active: activeTool === "size" },
+    { id: "size", label: "Resize", icon: <MoveHorizontal className="h-4 w-4" />, onClick: () => setActiveTool("size"), active: activeTool === "size" },
     { id: "flip", label: "Flip", icon: <FlipHorizontal className="h-4 w-4" />, onClick: () => setActiveTool("flip"), active: activeTool === "flip" },
     { id: "duplicate", label: "Duplicate", icon: <Copy className="h-4 w-4" />, onClick: () => onDuplicate(selectedUid) },
     { id: "crop", label: "Crop", icon: <Crop className="h-4 w-4" />, onClick: () => onCrop(selectedUid) },
@@ -177,7 +183,13 @@ export default function MobileSelectionToolbar({
     }
 
     if (activeTool === "size") {
-      const maxWidth = Math.max(20, Math.round(restrictedBox.width || 600));
+      const aspect = (layerSize.h || 1) / Math.max(layerSize.w || 1, 1);
+      const anchorX = Number.isFinite(selectedPosition?.x) ? Number(selectedPosition?.x) : restrictedBox.left;
+      const anchorY = Number.isFinite(selectedPosition?.y) ? Number(selectedPosition?.y) : restrictedBox.top;
+      const availableWidth = Math.max(20, restrictedBox.left + restrictedBox.width - anchorX);
+      const availableHeight = Math.max(20, restrictedBox.top + restrictedBox.height - anchorY);
+      const maxWidthByHeight = Math.max(20, availableHeight / Math.max(aspect, 0.0001));
+      const maxWidth = Math.max(20, Math.floor(Math.min(availableWidth, maxWidthByHeight)));
       return (
         <>
           <div className="flex items-center justify-between rounded-xl bg-gray-100 px-3 py-2">
@@ -275,6 +287,42 @@ export default function MobileSelectionToolbar({
 
   return (
     <>
+      {activeTool === "color" ? (
+        <div className="fixed inset-0 z-[94] flex items-center justify-center px-6 md:hidden" data-export-ignore="true">
+          <div className="w-full max-w-[320px] rounded-2xl border border-gray-200 bg-white p-4 shadow-[0_16px_40px_rgba(0,0,0,0.25)]">
+            <div className="mb-3 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => setActiveTool(null)}
+                className="inline-flex items-center gap-1 text-sm font-semibold text-[#8A6D2B]"
+                aria-label="Back"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Back
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTool(null)}
+                className="inline-flex items-center gap-1 text-sm font-semibold text-[#8A6D2B]"
+                aria-label="Done"
+              >
+                <Check className="h-4 w-4" />
+                Done
+              </button>
+            </div>
+            <label className="block rounded-xl bg-gray-100 p-3">
+              <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.08em] text-gray-600">Colour</span>
+              <input
+                type="color"
+                value={colorValue}
+                onChange={(event) => onColor(selectedUid, event.target.value)}
+                className="h-12 w-full cursor-pointer rounded-md border border-gray-300 bg-white"
+              />
+            </label>
+          </div>
+        </div>
+      ) : null}
+
       {showOrderAction ? (
         <div className="fixed inset-x-0 bottom-[78px] z-[93] flex justify-center px-4 md:hidden" data-export-ignore="true">
           <button
@@ -292,7 +340,7 @@ export default function MobileSelectionToolbar({
         className="fixed inset-x-0 bottom-0 z-[92] border-t border-gray-200 bg-white/95 px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-8px_26px_rgba(20,20,20,0.12)] backdrop-blur md:hidden"
         data-export-ignore="true"
       >
-        {activeTool ? (
+        {activeTool && activeTool !== "color" ? (
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <button
