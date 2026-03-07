@@ -167,7 +167,7 @@ export default function TextProperties(props: Props) {
 
   if (panel === "fonts") {
     return (
-      <div className="px-6 py-4 overflow-hidden w-full h-full">
+      <div className="h-full w-full overflow-y-auto px-4 py-3 sm:px-6 sm:py-4" style={{ touchAction: "pan-y" }}>
         <FontPage
           fontFamily={props.fontFamily}
           textValue={props.textValue}
@@ -180,7 +180,7 @@ export default function TextProperties(props: Props) {
 
   if (panel === "outline") {
     return (
-      <div className="px-6 py-4 overflow-hidden w-full h-full">
+      <div className="h-full w-full overflow-y-auto px-3 py-3 sm:px-6 sm:py-4" style={{ touchAction: "pan-y" }}>
         <OutlinePage
           borderColor={props.borderColor}
           onBorderColorChange={props.onBorderColorChange}
@@ -193,7 +193,8 @@ export default function TextProperties(props: Props) {
   }
 
   return (
-    <div className="overflow-hidden w-full h-full flex flex-col gap-4 px-6 pb-6 pt-0">
+    <div className="h-full w-full overflow-y-auto px-4 pb-6 pt-1 sm:px-6">
+      <div className="flex flex-col gap-4">
       {/* Text Box at top */}
       <TextArea
         textValue={props.textValue}
@@ -313,6 +314,7 @@ export default function TextProperties(props: Props) {
           <Trash2 size={18} />
           Delete Text
         </button>
+      </div>
       </div>
     </div>
   );

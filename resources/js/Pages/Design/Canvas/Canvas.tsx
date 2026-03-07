@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useRef, useState, useEffect } from "react";
+import { Image as ImageIcon, Type as TypeIcon, Upload as UploadIcon } from "lucide-react";
 import UploadedImagesLayer from "./UploadedImagesLayer";
 import MainProductImage from "./MainProductImage";
 import RestrictedArea from "./RestrictedArea";
@@ -101,6 +102,10 @@ export type CanvasProps = {
   compactPriceMode?: boolean;
   canvasPositions?: Record<string, { x: number; y: number }>;
   showMobilePropertiesBar?: boolean;
+  showMobileStarterActions?: boolean;
+  onOpenUploadFromStarter?: () => void;
+  onOpenTextFromStarter?: () => void;
+  onOpenClipartFromStarter?: () => void;
 };
 
 export default function Canvas(props: CanvasProps) {
@@ -122,6 +127,10 @@ export default function Canvas(props: CanvasProps) {
     clearSelectionSignal,
     compactPriceMode = false,
     showMobilePropertiesBar = true,
+    showMobileStarterActions = false,
+    onOpenUploadFromStarter,
+    onOpenTextFromStarter,
+    onOpenClipartFromStarter,
   } = props;
 
   const latestUploadedImageRef = useRef<string | null>(null);
@@ -932,6 +941,52 @@ export default function Canvas(props: CanvasProps) {
           }}
         />
       )}
+
+      {showMobileStarterActions ? (
+        <div
+          data-export-ignore="true"
+          className="pointer-events-none absolute inset-0 z-[68] flex items-center justify-center px-4 md:hidden"
+        >
+          <div className="pointer-events-auto grid w-full max-w-[320px] grid-cols-1 gap-3">
+            <button
+              type="button"
+              onPointerDown={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+              }}
+              onClick={() => onOpenUploadFromStarter?.()}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white/95 px-4 py-3 text-sm font-semibold text-gray-700 shadow-md"
+            >
+              <UploadIcon className="h-4 w-4 text-[#8A6D2B]" />
+              Upload
+            </button>
+            <button
+              type="button"
+              onPointerDown={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+              }}
+              onClick={() => onOpenTextFromStarter?.()}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white/95 px-4 py-3 text-sm font-semibold text-gray-700 shadow-md"
+            >
+              <TypeIcon className="h-4 w-4 text-[#8A6D2B]" />
+              Add text
+            </button>
+            <button
+              type="button"
+              onPointerDown={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+              }}
+              onClick={() => onOpenClipartFromStarter?.()}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white/95 px-4 py-3 text-sm font-semibold text-gray-700 shadow-md"
+            >
+              <ImageIcon className="h-4 w-4 text-[#8A6D2B]" />
+              Add clipart
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       <Marquee marquee={marquee.marquee} />
 

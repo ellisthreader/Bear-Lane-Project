@@ -28,7 +28,7 @@ export default function OutlinePage({
   const [showCustom, setShowCustom] = useState(false);
 
   return (
-    <div className="space-y-6 p-4">
+    <div className="flex h-full min-h-full flex-col p-2 sm:p-4">
       {/* Header with back arrow */}
       <div className="flex items-center gap-3">
         <button
@@ -40,34 +40,35 @@ export default function OutlinePage({
         <h2 className="text-lg font-semibold text-gray-900">Outline</h2>
       </div>
 
-      {/* Live Preview */}
-      <div className="flex justify-center items-center h-20 bg-[#FBF8F1] border border-[#E9D9B5] rounded-xl mb-4">
-        <span
-          style={{
-            fontSize: 32,
-            fontWeight: 700,
-            color: "#111827",
-            WebkitTextStrokeWidth: `${borderWidth}px`,
-            WebkitTextStrokeColor: borderColor,
-            WebkitTextFillColor: "#111827",
-            textShadow:
-              borderWidth > 0
-                ? `-${borderWidth / 2}px -${borderWidth / 2}px 0 ${borderColor},
-                   ${borderWidth / 2}px -${borderWidth / 2}px 0 ${borderColor},
-                  -${borderWidth / 2}px  ${borderWidth / 2}px 0 ${borderColor},
-                   ${borderWidth / 2}px  ${borderWidth / 2}px 0 ${borderColor}`
-                : "none",
-          }}
-        >
-          Preview
-        </span>
-      </div>
-
-      {/* Width Slider */}
-      <div className="space-y-1">
-        <div className="text-sm font-medium text-gray-700">
-          Width
+      <div className="mt-2 flex-1 space-y-5 overflow-y-auto pr-1">
+        {/* Live Preview */}
+        <div className="mb-4 flex h-36 items-center justify-center rounded-xl border border-[#E9D9B5] bg-[#FBF8F1]">
+          <span
+            style={{
+              fontSize: 36,
+              fontWeight: 700,
+              color: "#111827",
+              WebkitTextStrokeWidth: `${borderWidth}px`,
+              WebkitTextStrokeColor: borderColor,
+              WebkitTextFillColor: "#111827",
+              textShadow:
+                borderWidth > 0
+                  ? `-${borderWidth / 2}px -${borderWidth / 2}px 0 ${borderColor},
+                     ${borderWidth / 2}px -${borderWidth / 2}px 0 ${borderColor},
+                    -${borderWidth / 2}px  ${borderWidth / 2}px 0 ${borderColor},
+                     ${borderWidth / 2}px  ${borderWidth / 2}px 0 ${borderColor}`
+                  : "none",
+            }}
+          >
+            Preview
+          </span>
         </div>
+
+        {/* Width Slider */}
+        <div className="space-y-1">
+          <div className="text-sm font-medium text-gray-700">
+            Width
+          </div>
 
         {/* Labels */}
         <div className="flex justify-between text-xs text-gray-500">
@@ -136,18 +137,19 @@ export default function OutlinePage({
             </div>
           )}
         </div>
+        </div>
+
+        {/* Color Picker */}
+        <ColorPicker
+          label="Colour"
+          color={borderColor}
+          onColorChange={onBorderColorChange}
+          size="md"
+        />
       </div>
 
-      {/* Color Picker */}
-      <ColorPicker
-        label="Colour"
-        color={borderColor}
-        onColorChange={onBorderColorChange}
-        size="md"
-      />
-
       {/* Buttons */}
-      <div className="flex flex-col gap-2 mt-4">
+      <div className="mt-3 flex flex-col gap-2">
         <button
           onClick={() => onBorderWidthChange(0)}
           className="w-full py-2 text-gray-800 bg-[#FBF8F1] hover:bg-[#F4EBD7] border border-[#E9D9B5] rounded-md transition font-medium"

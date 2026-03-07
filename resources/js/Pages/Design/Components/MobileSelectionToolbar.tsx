@@ -275,7 +275,11 @@ export default function MobileSelectionToolbar({
             placeholder="Add text"
             className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-500"
           />
-          <button type="button" onClick={handleAddText} className="w-full rounded-xl bg-gray-900 px-3 py-2 text-sm font-semibold text-white">
+          <button
+            type="button"
+            onClick={handleAddText}
+            className="w-full rounded-xl bg-[#C6A75E] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#B8994E]"
+          >
             Add to design
           </button>
         </div>
@@ -288,9 +292,9 @@ export default function MobileSelectionToolbar({
   return (
     <>
       {activeTool === "color" ? (
-        <div className="fixed inset-0 z-[94] flex items-center justify-center px-6 md:hidden" data-export-ignore="true">
-          <div className="w-full max-w-[320px] rounded-2xl border border-gray-200 bg-white p-4 shadow-[0_16px_40px_rgba(0,0,0,0.25)]">
-            <div className="mb-3 flex items-center justify-between">
+        <div className="fixed inset-x-0 bottom-[80px] z-[94] px-3 md:hidden" data-export-ignore="true">
+          <div className="space-y-3 rounded-2xl border border-gray-200 bg-white px-3 py-3 shadow-[0_-8px_26px_rgba(20,20,20,0.15)]">
+            <div className="flex items-center justify-between">
               <button
                 type="button"
                 onClick={() => setActiveTool(null)}
@@ -310,15 +314,7 @@ export default function MobileSelectionToolbar({
                 Done
               </button>
             </div>
-            <label className="block rounded-xl bg-gray-100 p-3">
-              <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.08em] text-gray-600">Colour</span>
-              <input
-                type="color"
-                value={colorValue}
-                onChange={(event) => onColor(selectedUid, event.target.value)}
-                className="h-12 w-full cursor-pointer rounded-md border border-gray-300 bg-white"
-              />
-            </label>
+            {renderToolContent()}
           </div>
         </div>
       ) : null}

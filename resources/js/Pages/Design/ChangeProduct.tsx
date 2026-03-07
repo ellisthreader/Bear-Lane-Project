@@ -174,6 +174,9 @@ export default function ChangeProductModal({
   const [selectedRoot, setSelectedRoot] = useState<RootKey>(initialRoot);
   const [path, setPath] = useState<MenuNode[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isMobileViewport, setIsMobileViewport] = useState<boolean>(() =>
+    typeof window !== "undefined" ? window.matchMedia("(max-width: 1023px)").matches : false
+  );
 
   const adultCategories = Array.isArray(props.adultCategories) ? props.adultCategories : [];
   const kidsCategories =
@@ -259,6 +262,21 @@ export default function ChangeProductModal({
       document.removeEventListener("keydown", onKeyDown);
     };
   }, [onClose]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const query = window.matchMedia("(max-width: 1023px)");
+    const sync = () => setIsMobileViewport(query.matches);
+    sync();
+
+    if (typeof query.addEventListener === "function") {
+      query.addEventListener("change", sync);
+      return () => query.removeEventListener("change", sync);
+    }
+
+    query.addListener(sync);
+    return () => query.removeListener(sync);
+  }, []);
 
   const rootNode = useMemo<MenuNode | null>(
     () => (menuPayload?.[selectedRoot]?.tree as MenuNode | null) ?? null,
@@ -416,6 +434,16 @@ export default function ChangeProductModal({
     setSearchQuery("");
   };
 
+  const listScrollClass = isMobileViewport
+    ? "min-h-0 flex-1 pb-6"
+    : "min-h-0 flex-1 overflow-y-auto pr-1";
+  const productGridClass = isMobileViewport
+    ? "grid grid-cols-2 gap-2"
+    : "grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4";
+  const sectionGridClass = isMobileViewport
+    ? "grid grid-cols-2 gap-2"
+    : "grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4";
+
   return (
     <div
       className="fixed inset-0 z-[10050] flex items-center justify-center bg-[#1A1307]/70 backdrop-blur-md px-0 py-0 sm:px-4 sm:py-6"
@@ -425,17 +453,29 @@ export default function ChangeProductModal({
         className="relative flex h-[100dvh] w-full flex-col overflow-hidden rounded-none border border-[#E7D6B8] bg-[#FFFCF7] shadow-[0_35px_120px_rgba(26,19,7,0.45)] sm:h-[min(93vh,980px)] sm:w-[min(1540px,99vw)] sm:rounded-[30px]"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="relative overflow-hidden border-b border-[#E6D7BC] bg-gradient-to-r from-[#FFF6E8] via-[#FFF9F0] to-[#FAF0DE] px-4 pb-4 pt-4 sm:px-7 sm:pb-6 sm:pt-7">
-          <div className="pointer-events-none absolute -right-12 -top-12 h-44 w-44 rounded-full bg-[#E7C57B]/25 blur-2xl" />
-          <div className="pointer-events-none absolute -bottom-16 left-24 h-44 w-44 rounded-full bg-[#DAB468]/20 blur-2xl" />
+        <div
+          className={`relative border-b border-[#E6D7BC] px-3 pb-3 pt-3 sm:px-7 sm:pb-6 sm:pt-7 ${
+            isMobileViewport
+              ? "bg-[#FFF8EE]"
+              : "overflow-hidden bg-gradient-to-r from-[#FFF6E8] via-[#FFF9F0] to-[#FAF0DE]"
+          }`}
+        >
+          {!isMobileViewport ? (
+            <>
+              <div className="pointer-events-none absolute -right-12 -top-12 h-44 w-44 rounded-full bg-[#E7C57B]/25 blur-2xl" />
+              <div className="pointer-events-none absolute -bottom-16 left-24 h-44 w-44 rounded-full bg-[#DAB468]/20 blur-2xl" />
+            </>
+          ) : null}
 
           <div className="relative flex items-start justify-between gap-4">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#8B6A2E]">Design Editor</p>
-              <h2 className="mt-1 text-2xl font-black tracking-tight text-[#2F2415] sm:text-3xl">Change Product</h2>
-              <p className="mt-2 max-w-3xl text-xs text-[#6F5A35] sm:text-sm">
+              <h2 className="mt-1 text-xl font-black tracking-tight text-[#2F2415] sm:text-3xl">Change Product</h2>
+              {!isMobileViewport ? (
+                <p className="mt-2 max-w-3xl text-xs text-[#6F5A35] sm:text-sm">
                 Same structure as the main navbar: choose Men, Women or Kids, browse sections, then switch products.
-              </p>
+                </p>
+              ) : null}
             </div>
 
             <button
@@ -447,7 +487,7 @@ export default function ChangeProductModal({
             </button>
           </div>
 
-          <div className="mt-4 grid grid-cols-1 gap-3 lg:mt-5 lg:grid-cols-[1fr_auto]">
+          <div className="mt-3 grid grid-cols-1 gap-2 lg:mt-5 lg:grid-cols-[1fr_auto]">
             <div className="relative">
               <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8D7141]" />
               <input
@@ -455,7 +495,7 @@ export default function ChangeProductModal({
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
                 placeholder="Search products, categories and sections..."
-                className="h-11 w-full rounded-2xl border border-[#DDC9A3] bg-white/90 pl-11 pr-4 text-sm font-medium text-[#2F2415] outline-none ring-[#C6A75E]/35 transition placeholder:text-[#9D8458] focus:border-[#C6A75E] focus:ring-4 sm:h-12"
+                className="h-10 w-full rounded-xl border border-[#DDC9A3] bg-white/90 pl-11 pr-4 text-sm font-medium text-[#2F2415] outline-none ring-[#C6A75E]/35 transition placeholder:text-[#9D8458] focus:border-[#C6A75E] focus:ring-4 sm:h-12 sm:rounded-2xl"
               />
             </div>
 
@@ -468,7 +508,7 @@ export default function ChangeProductModal({
                   <button
                     key={tab.key}
                     onClick={() => setSelectedRoot(tab.key)}
-                    className={`rounded-2xl border px-3 py-2.5 text-left transition ${
+                    className={`rounded-xl border px-2.5 py-2 text-left transition sm:rounded-2xl sm:px-3 sm:py-2.5 ${
                       isActive
                         ? "border-[#B68F43] bg-[#B68F43] text-white shadow-[0_10px_20px_rgba(182,143,67,0.35)]"
                         : "border-[#E5D4B4] bg-white/80 text-[#5A4828] hover:border-[#D3BA8B] hover:bg-white"
@@ -478,7 +518,9 @@ export default function ChangeProductModal({
                       <Icon className="h-4 w-4" />
                       <span>{tab.label}</span>
                     </div>
-                    <div className={`mt-0.5 text-xs ${isActive ? "text-[#F9ECD4]" : "text-[#8F7547]"}`}>{tab.hint}</div>
+                    {!isMobileViewport ? (
+                      <div className={`mt-0.5 text-xs ${isActive ? "text-[#F9ECD4]" : "text-[#8F7547]"}`}>{tab.hint}</div>
+                    ) : null}
                   </button>
                 );
               })}
@@ -486,15 +528,15 @@ export default function ChangeProductModal({
           </div>
         </div>
 
-        <div className="grid min-h-0 flex-1 grid-cols-1 grid-rows-[minmax(210px,38%)_minmax(0,1fr)] lg:grid-cols-[240px_minmax(0,1fr)] lg:grid-rows-none">
-          <aside className="min-h-0 border-b border-[#E6D7BC] bg-[#FFF8EC] p-3 sm:p-4 lg:border-b-0 lg:border-r">
-            <div className="h-full overflow-y-auto pr-1">
-              <div className="mb-4 flex items-center justify-between">
-                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#8C7448]">Sections</p>
+        <div className="grid min-h-0 flex-1 grid-cols-1 grid-rows-[auto_minmax(0,1fr)] lg:grid-cols-[240px_minmax(0,1fr)] lg:grid-rows-none">
+          <aside className="min-h-0 border-b border-[#E6D7BC] bg-[#FFF8EC] p-2 sm:p-4 lg:border-b-0 lg:border-r">
+            <div className={isMobileViewport ? "space-y-2" : "h-full overflow-y-auto pr-1"}>
+              <div className="flex items-center justify-between">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#8C7448] sm:text-xs">Sections</p>
                 {path.length > 0 && (
                   <button
                     onClick={() => setPath((prev) => prev.slice(0, -1))}
-                    className="inline-flex items-center gap-1 rounded-lg border border-[#DFC8A0] bg-white px-2.5 py-1 text-xs font-semibold text-[#6E5528] hover:border-[#C6A75E]"
+                    className="inline-flex items-center gap-1 rounded-lg border border-[#DFC8A0] bg-white px-2 py-1 text-[11px] font-semibold text-[#6E5528] hover:border-[#C6A75E]"
                   >
                     <ArrowLeft className="h-3.5 w-3.5" />
                     Back
@@ -502,62 +544,101 @@ export default function ChangeProductModal({
                 )}
               </div>
 
-              <div className="rounded-xl border border-[#E5D4B4] bg-white/90 px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-[#7A6238]">
+              <div className="rounded-lg border border-[#E5D4B4] bg-white/90 px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#7A6238] sm:rounded-xl sm:px-3 sm:py-2 sm:text-xs">
                 {selectedPathLabel}
               </div>
 
-              <div className="mt-3 space-y-2">
-                {menuLoading && (
-                  <div className="rounded-xl border border-dashed border-[#DCC9A6] bg-white/70 px-3 py-4 text-sm text-[#8B7347]">
-                    Loading categories...
-                  </div>
-                )}
+              {isMobileViewport ? (
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                  {menuLoading && (
+                    <div className="shrink-0 rounded-lg border border-dashed border-[#DCC9A6] bg-white/80 px-3 py-2 text-xs text-[#8B7347]">
+                      Loading...
+                    </div>
+                  )}
 
-                {!menuLoading && menuError && (
-                  <div className="rounded-xl border border-dashed border-[#DCC9A6] bg-white/70 px-3 py-4 text-sm text-[#8B7347]">
-                    {menuError}
-                  </div>
-                )}
+                  {!menuLoading && menuError && (
+                    <div className="shrink-0 rounded-lg border border-dashed border-[#DCC9A6] bg-white/80 px-3 py-2 text-xs text-[#8B7347]">
+                      {menuError}
+                    </div>
+                  )}
 
-                {!menuLoading && !menuError && navOptions.length === 0 && (
-                  <div className="rounded-xl border border-dashed border-[#DCC9A6] bg-white/70 px-3 py-4 text-sm text-[#8B7347]">
-                    No deeper sections here.
-                  </div>
-                )}
+                  {!menuLoading && !menuError && navOptions.length === 0 && (
+                    <div className="shrink-0 rounded-lg border border-dashed border-[#DCC9A6] bg-white/80 px-3 py-2 text-xs text-[#8B7347]">
+                      No deeper sections
+                    </div>
+                  )}
 
-                {!menuLoading && !menuError && navOptions.map((node) => {
-                  const count = collectProductsForNode(node).length;
-                  return (
-                    <button
-                      key={node.id}
-                      onClick={() => openNode(node)}
-                      className="w-full rounded-xl border border-[#E8DABF] bg-white px-3 py-3 text-left transition hover:border-[#C6A75E]"
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="truncate text-sm font-semibold text-[#3D2F1A]">{titleCase(node.name)}</span>
-                        <ChevronRight className="h-4 w-4 text-[#8A6D39]" />
-                      </div>
-                      <div className="mt-1 text-xs text-[#8C7447]">{count} products</div>
-                    </button>
-                  );
-                })}
-              </div>
+                  {!menuLoading &&
+                    !menuError &&
+                    navOptions.map((node) => {
+                      const count = collectProductsForNode(node).length;
+                      return (
+                        <button
+                          key={node.id}
+                          onClick={() => openNode(node)}
+                          className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-[#E8DABF] bg-white px-2.5 py-2 text-xs font-semibold text-[#4A3A1F] transition hover:border-[#C6A75E]"
+                        >
+                          <span className="max-w-[110px] truncate">{titleCase(node.name)}</span>
+                          <span className="text-[10px] text-[#8C7447]">{count}</span>
+                          <ChevronRight className="h-3.5 w-3.5 text-[#8A6D39]" />
+                        </button>
+                      );
+                    })}
+                </div>
+              ) : (
+                <div className="mt-3 space-y-2">
+                  {menuLoading && (
+                    <div className="rounded-xl border border-dashed border-[#DCC9A6] bg-white/70 px-3 py-4 text-sm text-[#8B7347]">
+                      Loading categories...
+                    </div>
+                  )}
+
+                  {!menuLoading && menuError && (
+                    <div className="rounded-xl border border-dashed border-[#DCC9A6] bg-white/70 px-3 py-4 text-sm text-[#8B7347]">
+                      {menuError}
+                    </div>
+                  )}
+
+                  {!menuLoading && !menuError && navOptions.length === 0 && (
+                    <div className="rounded-xl border border-dashed border-[#DCC9A6] bg-white/70 px-3 py-4 text-sm text-[#8B7347]">
+                      No deeper sections here.
+                    </div>
+                  )}
+
+                  {!menuLoading && !menuError && navOptions.map((node) => {
+                    const count = collectProductsForNode(node).length;
+                    return (
+                      <button
+                        key={node.id}
+                        onClick={() => openNode(node)}
+                        className="w-full rounded-xl border border-[#E8DABF] bg-white px-3 py-3 text-left transition hover:border-[#C6A75E]"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="truncate text-sm font-semibold text-[#3D2F1A]">{titleCase(node.name)}</span>
+                          <ChevronRight className="h-4 w-4 text-[#8A6D39]" />
+                        </div>
+                        <div className="mt-1 text-xs text-[#8C7447]">{count} products</div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </aside>
 
-          <main className="min-h-0 bg-white p-4 sm:p-6">
+          <main className="min-h-0 overflow-y-auto bg-white p-3 sm:p-6">
             {trimmedQuery ? (
-              <div className="flex h-full min-h-0 flex-col">
-                <div className="mb-4 rounded-2xl border border-[#E8DABC] bg-[#FFF9EE] px-4 py-3">
+              <div className="flex min-h-0 flex-col">
+                <div className="mb-3 rounded-2xl border border-[#E8DABC] bg-[#FFF9EE] px-3 py-2.5 sm:mb-4 sm:px-4 sm:py-3">
                   <div className="text-xs font-semibold uppercase tracking-[0.12em] text-[#8C7447]">Search Results</div>
-                  <p className="mt-1 text-sm text-[#5C492B]">
+                  <p className="mt-1 text-xs text-[#5C492B] sm:text-sm">
                     {matchingProducts.length} products and {matchingSections.length} sections for "
                     <span className="font-semibold">{searchQuery}</span>"
                   </p>
                 </div>
 
                 {matchingSections.length > 0 && (
-                  <div className="mb-4">
+                  <div className="mb-3 sm:mb-4">
                     <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-[#4A3A1F]">
                       <FolderOpen className="h-4 w-4 text-[#A37D3A]" />
                       Matching Sections
@@ -576,12 +657,12 @@ export default function ChangeProductModal({
                   </div>
                 )}
 
-                <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+                <div className={listScrollClass}>
                   {matchingProducts.length > 0 ? (
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                    <div className={productGridClass}>
                       {matchingProducts.map(({ product, sectionName }) => (
-                        <div key={product.id} className="flex flex-col gap-2">
-                          <div className="rounded-xl border border-[#ECDCBD] bg-[#FFFAF1] px-3 py-2 text-xs font-medium text-[#7F6639]">
+                        <div key={product.id} className="flex flex-col gap-1.5 sm:gap-2">
+                          <div className="rounded-lg border border-[#ECDCBD] bg-[#FFFAF1] px-2 py-1.5 text-[10px] font-medium text-[#7F6639] sm:rounded-xl sm:px-3 sm:py-2 sm:text-xs">
                             {sectionName}
                           </div>
                           <ChangeProductCard
@@ -597,7 +678,7 @@ export default function ChangeProductModal({
                       ))}
                     </div>
                   ) : (
-                    <div className="flex h-full items-center justify-center rounded-3xl border border-dashed border-[#DEC9A1] bg-[#FFF9EF] p-8 text-center">
+                    <div className="flex min-h-[260px] items-center justify-center rounded-3xl border border-dashed border-[#DEC9A1] bg-[#FFF9EF] p-8 text-center">
                       <div>
                         <Package className="mx-auto h-10 w-10 text-[#B8944F]" />
                         <p className="mt-3 text-base font-semibold text-[#6C5428]">No products matched your search</p>
@@ -608,29 +689,29 @@ export default function ChangeProductModal({
                 </div>
               </div>
             ) : (
-              <div className="flex h-full min-h-0 flex-col">
-                <div className="mb-4 rounded-2xl border border-[#E6D7BC] bg-[#FFF9EF] px-4 py-3">
+              <div className="flex min-h-0 flex-col">
+                <div className="mb-3 rounded-2xl border border-[#E6D7BC] bg-[#FFF9EF] px-3 py-2.5 sm:mb-4 sm:px-4 sm:py-3">
                   <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[0.1em] text-[#8B7347]">
                     <span>{selectedPathLabel}</span>
                   </div>
-                  <p className="mt-1 text-sm text-[#5D4A2C]">
+                  <p className="mt-1 text-xs text-[#5D4A2C] sm:text-sm">
                     Showing all sections and products for this navbar level.
                   </p>
                 </div>
 
-                <div className="min-h-0 flex-1 space-y-6 overflow-y-auto pr-1">
+                <div className={`${listScrollClass} space-y-4 sm:space-y-6`}>
                   {sectionsForDisplay.length > 0 ? (
                     sectionsForDisplay.map(({ node, products }) => (
-                      <section key={node.id} className="rounded-3xl border border-[#E6D8BD] bg-[#FFFCF6] p-4 sm:p-5">
-                        <div className="mb-3 flex items-center justify-between gap-3 border-b border-[#E8DCC7] pb-3">
+                      <section key={node.id} className="rounded-2xl border border-[#E6D8BD] bg-[#FFFCF6] p-3 sm:rounded-3xl sm:p-5">
+                        <div className="mb-2.5 flex items-center justify-between gap-2 border-b border-[#E8DCC7] pb-2.5 sm:mb-3 sm:gap-3 sm:pb-3">
                           <div>
-                            <h3 className="text-lg font-bold text-[#2F2415]">{titleCase(node.name)}</h3>
-                            <p className="text-xs text-[#8A7147]">{products.length} products in this section</p>
+                            <h3 className="text-base font-bold text-[#2F2415] sm:text-lg">{titleCase(node.name)}</h3>
+                            <p className="text-[11px] text-[#8A7147] sm:text-xs">{products.length} products in this section</p>
                           </div>
                           {node.children.length > 0 && (
                             <button
                               onClick={() => openNode(node)}
-                              className="rounded-lg border border-[#D8C094] bg-white px-3 py-1.5 text-xs font-semibold text-[#72592B] hover:border-[#C6A75E]"
+                              className="rounded-lg border border-[#D8C094] bg-white px-2.5 py-1 text-[11px] font-semibold text-[#72592B] hover:border-[#C6A75E] sm:px-3 sm:py-1.5 sm:text-xs"
                             >
                               Open Section
                             </button>
@@ -638,7 +719,7 @@ export default function ChangeProductModal({
                         </div>
 
                         {products.length > 0 ? (
-                          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+                          <div className={sectionGridClass}>
                             {products.map((product) => (
                               <ChangeProductCard
                                 key={product.id}
@@ -653,14 +734,14 @@ export default function ChangeProductModal({
                             ))}
                           </div>
                         ) : (
-                          <div className="rounded-2xl border border-dashed border-[#DEC9A1] bg-[#FFF9EF] p-6 text-center text-sm text-[#8C7447]">
+                          <div className="rounded-2xl border border-dashed border-[#DEC9A1] bg-[#FFF9EF] p-5 text-center text-sm text-[#8C7447]">
                             No products in this section yet.
                           </div>
                         )}
                       </section>
                     ))
                   ) : (
-                    <div className="flex h-full items-center justify-center rounded-3xl border border-dashed border-[#DEC9A1] bg-[#FFF9EF] p-8 text-center">
+                    <div className="flex min-h-[260px] items-center justify-center rounded-3xl border border-dashed border-[#DEC9A1] bg-[#FFF9EF] p-8 text-center">
                       <div>
                         <Package className="mx-auto h-10 w-10 text-[#B8944F]" />
                         <p className="mt-3 text-base font-semibold text-[#6C5428]">No sections available</p>

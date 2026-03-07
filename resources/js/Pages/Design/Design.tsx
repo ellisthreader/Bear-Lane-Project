@@ -3,11 +3,12 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
   import { Head, usePage, router } from "@inertiajs/react";
   import { route } from "ziggy-js";
+import { X } from "lucide-react";
 
 
 
   import ProductEdit from "./Sidebar/ProductEdit";
-  import AddText from "./Sidebar/TextSideBar/AddText";
+  import AddText, { type TextLayer } from "./Sidebar/TextSideBar/AddText";
   import Clipart from "./Sidebar/ClipartSideBar/UI/Clipart";
   import UploadSidebar from "./Sidebar/UploadSideBar/UploadSidebar";
   import ChangeProductModal from "./ChangeProduct";
@@ -202,6 +203,7 @@ const normalizeLayerZOrder = (state: Record<string, ImageState>) => {
     const activeSidebar = sidebarStack[sidebarStack.length - 1];
     const [uploadSidebarStartMode, setUploadSidebarStartMode] = useState<"library" | "crop">("library");
     const [textSidebarInitialPanel, setTextSidebarInitialPanel] = useState<"main" | "fonts" | "outline">("main");
+    const [isMobileQuickAddTextOpen, setIsMobileQuickAddTextOpen] = useState(false);
     const [isMobileViewport, setIsMobileViewport] = useState<boolean>(() =>
       typeof window !== "undefined"
         ? window.matchMedia("(max-width: 1023px)").matches
@@ -246,6 +248,12 @@ const normalizeLayerZOrder = (state: Record<string, ImageState>) => {
         return prev;
       });
     }, [isMobileViewport]);
+
+    useEffect(() => {
+      if (!isMobileViewport || activeSidebar !== "blank") {
+        setIsMobileQuickAddTextOpen(false);
+      }
+    }, [activeSidebar, isMobileViewport]);
 
     const openMyDesignsSidebar = () => {
   setSidebarStack(["my-designs"]);
@@ -831,6 +839,7 @@ const normalizeLayerZOrder = (state: Record<string, ImageState>) => {
     const mobileSelectedSize = mobileSelectedUid
       ? sizes[mobileSelectedUid] ?? currentImageState[mobileSelectedUid]?.size
       : undefined;
+    const hasCanvasLayers = Object.keys(currentImageState).length > 0;
     const showMobileSelectionToolbar =
       isMobileViewport &&
       !isPricePanelOpen &&
@@ -838,6 +847,19 @@ const normalizeLayerZOrder = (state: Record<string, ImageState>) => {
       selectedObjects.length <= 1 &&
       Boolean(mobileSelectedUid) &&
       Boolean(mobileSelectedLayer);
+    const showMobileQuickAddTextPanel =
+      isMobileViewport &&
+      !isPricePanelOpen &&
+      activeSidebar === "blank" &&
+      isMobileQuickAddTextOpen &&
+      !showMobileSelectionToolbar;
+    const showMobileCanvasStarterActions =
+      isMobileViewport &&
+      !isPricePanelOpen &&
+      activeSidebar === "blank" &&
+      !hasCanvasLayers &&
+      !showMobileSelectionToolbar &&
+      !showMobileQuickAddTextPanel;
     const mobileToolbarReservedHeight = showMobileSelectionToolbar ? 240 : 0;
     const layerDepthBounds = useMemo(() => {
       const depths = getLayerDepths(currentImageState);
@@ -1073,6 +1095,9 @@ const pricePanelSides = useMemo(
   // ---------------- UTILS ----------------
   const setSelectedUploadedImageWithLog = (uid: string | null) => {
     setSelectedUploadedImage(uid);
+    if (uid) {
+      setIsMobileQuickAddTextOpen(false);
+    }
 
     if (uid && isMobileViewport) {
       setSidebarStack(["blank"]);
@@ -2285,6 +2310,9 @@ const duplicateTextLayer = (uid: string) => {
 // Canvas selection change
 const handleCanvasSelectionChange = (objects: string[]) => {
   setSelectedObjects(objects);
+  if (objects.length > 0) {
+    setIsMobileQuickAddTextOpen(false);
+  }
 
   const textLayer = objects.find(uid => currentImageState[uid]?.type === "text") ?? null;
   const imageLayer = objects.find(uid => currentImageState[uid]?.type === "image") ?? null;
@@ -2504,6 +2532,86 @@ const handleQuickAddText = async (value: string) => {
     setSidebarStack(["text"]);
   } else {
     setSidebarStack(["blank"]);
+    setIsMobileQuickAddTextOpen(false);
+  }
+  return true;
+};
+
+const openMobileQuickAddText = () => {
+  if (!isMobileViewport) {
+    setTextSidebarInitialPanel("main");
+    setSidebarStack(["text"]);
+    return;
+  }
+  setSelectedObjects([]);
+  setClearCanvasSelectionSignal((prev) => prev + 1);
+  setSelectedUploadedImageWithLog(null);
+  setSelectedText(null);
+  setTextSidebarInitialPanel("main");
+  setSidebarStack(["blank"]);
+  setIsMobileQuickAddTextOpen(true);
+};
+
+const handleAddTextLayerFromPanel = async (layer: TextLayer) => {
+  let moderation;
+  try {
+    moderation = await moderateDesignText(layer.text);
+  } catch {
+    showError("Text moderation is temporarily unavailable. Please try again shortly.");
+    return false;
+  }
+  if (!moderation.allowed) {
+    showError(moderation.message ?? "Text contains restricted content and cannot be used.");
+    return false;
+  }
+
+  const nextSize = layer.size ?? { w: 0, h: 0 };
+  updateCurrentImageState((prev) => ({
+    ...prev,
+    [layer.id]: {
+      url: "",
+      type: "text",
+      text: layer.text,
+      rotation: 0,
+      flip: "none",
+      size: nextSize,
+      zIndex: getNextLayerZIndex(prev),
+      fontFamily: layer.font,
+      color: layer.color,
+      borderColor: layer.borderColor,
+      borderWidth: layer.borderWidth,
+      fontSize: layer.fontSize,
+      textAlign: DEFAULT_TEXT_ALIGN,
+      width: layer.width,
+      original: {
+        url: "",
+        rotation: 0,
+        flip: "none",
+        size: nextSize,
+        text: layer.text,
+        fontFamily: layer.font,
+        fontSize: layer.fontSize,
+        color: layer.color,
+        borderColor: layer.borderColor,
+        borderWidth: layer.borderWidth,
+        textAlign: DEFAULT_TEXT_ALIGN,
+      },
+    },
+  }));
+
+  if (nextSize.w > 0 && nextSize.h > 0) {
+    setSizes((prev) => ({ ...prev, [layer.id]: nextSize }));
+  }
+
+  setSelectedUploadedImageWithLog(null);
+  setSelectedText(layer.id);
+  setSelectedObjects([layer.id]);
+  setTextSidebarInitialPanel("main");
+  if (isMobileViewport) {
+    setSidebarStack(["blank"]);
+    setIsMobileQuickAddTextOpen(false);
+  } else {
+    setSidebarStack(["text"]);
   }
   return true;
 };
@@ -2527,8 +2635,7 @@ const renderActiveTab = () => {
           setSidebarStack(["upload"]);
         }}
         onOpenText={() => {
-          setTextSidebarInitialPanel("main");
-          setSidebarStack(["text"]);
+          openMobileQuickAddText();
         }}
         onOpenClipart={() => setSidebarStack(["clipart"])}
       />
@@ -2586,64 +2693,7 @@ const renderActiveTab = () => {
   case "text": {
   if (!selectedText || !currentImageState[selectedText]) {
     return (
-      <AddText
-        onAddText={async (layer) => {
-          let moderation;
-          try {
-            moderation = await moderateDesignText(layer.text);
-          } catch {
-            showError("Text moderation is temporarily unavailable. Please try again shortly.");
-            return false;
-          }
-          if (!moderation.allowed) {
-            showError(moderation.message ?? "Text contains restricted content and cannot be used.");
-            return false;
-          }
-
-          const nextSize = layer.size ?? { w: 0, h: 0 };
-          updateCurrentImageState((prev) => ({
-            ...prev,
-            [layer.id]: {
-              url: "",
-              type: "text",
-              text: layer.text,
-              rotation: 0,
-              flip: "none",
-              size: nextSize,
-              zIndex: getNextLayerZIndex(prev),
-              fontFamily: layer.font,
-              color: layer.color,
-              borderColor: layer.borderColor,
-              borderWidth: layer.borderWidth,
-              fontSize: layer.fontSize,
-              textAlign: DEFAULT_TEXT_ALIGN,
-              width: layer.width,
-              original: {
-                url: "",
-                rotation: 0,
-                flip: "none",
-                size: nextSize,
-                text: layer.text,
-                fontFamily: layer.font,
-                fontSize: layer.fontSize,
-                color: layer.color,
-                borderColor: layer.borderColor,
-                borderWidth: layer.borderWidth,
-                textAlign: DEFAULT_TEXT_ALIGN,
-              },
-            },
-          }));
-          if (nextSize.w > 0 && nextSize.h > 0) {
-            setSizes((prev) => ({ ...prev, [layer.id]: nextSize }));
-          }
-
-          setSelectedText(layer.id);
-          setSelectedObjects([layer.id]);
-          setTextSidebarInitialPanel("main");
-          setSidebarStack(isMobileViewport ? ["blank"] : ["text"]);
-          return true;
-        }}
-      />
+      <AddText onAddText={handleAddTextLayerFromPanel} />
     );
   }
 
@@ -2831,8 +2881,7 @@ const renderActiveTab = () => {
             setSidebarStack(["upload"]);
           }}
           onOpenText={() => {
-            setTextSidebarInitialPanel("main");
-            setSidebarStack(["text"]);
+            openMobileQuickAddText();
           }}
           onOpenClipart={() => setSidebarStack(["clipart"])}
         />
@@ -2885,6 +2934,7 @@ const handleCloseSidebar = () => {
   setSelectedUploadedImageWithLog(null);
   setUploadSidebarStartMode("library");
   setTextSidebarInitialPanel("main");
+  setIsMobileQuickAddTextOpen(false);
   setSidebarStack(["blank"]);
 };
 
@@ -2899,6 +2949,12 @@ const activeSidebarTitle = getSidebarTitle({
 });
 
 const handleSidebarTabSelect = (tab: "product" | "upload" | "text" | "clipart") => {
+  if (isMobileViewport && tab === "text") {
+    openMobileQuickAddText();
+    return;
+  }
+
+  setIsMobileQuickAddTextOpen(false);
   setSidebarStack([tab as SidebarView]);
   if (tab === "upload") setUploadSidebarStartMode("library");
   if (tab === "text") setTextSidebarInitialPanel("main");
@@ -2908,6 +2964,9 @@ const handleSidebarTabSelect = (tab: "product" | "upload" | "text" | "clipart") 
 
 const handleSelectTextFromCanvas = (uid: string | null) => {
   setSelectedText(uid);
+  if (uid) {
+    setIsMobileQuickAddTextOpen(false);
+  }
   if (uid && isMobileViewport) {
     setSidebarStack(["blank"]);
   }
@@ -2919,6 +2978,7 @@ const openMobileTextFullPanel = (panel: "fonts" | "outline") => {
   setClearCanvasSelectionSignal((prev) => prev + 1);
   setSelectedUploadedImageWithLog(null);
   setTextSidebarInitialPanel(panel);
+  setIsMobileQuickAddTextOpen(false);
   setSidebarStack(["text"]);
 };
 
@@ -2965,6 +3025,17 @@ const designPageContextValue = {
       onViewSnapshotChange={handlePricePreviewUpdate}
       compactPriceMode={isPricePanelOpen}
       showMobilePropertiesBar={false}
+      showMobileStarterActions={showMobileCanvasStarterActions}
+      onOpenUploadFromStarter={() => {
+        setUploadSidebarStartMode("library");
+        setIsMobileQuickAddTextOpen(false);
+        setSidebarStack(["upload"]);
+      }}
+      onOpenTextFromStarter={openMobileQuickAddText}
+      onOpenClipartFromStarter={() => {
+        setIsMobileQuickAddTextOpen(false);
+        setSidebarStack(["clipart"]);
+      }}
     />
   ),
   preview: (
@@ -3038,8 +3109,6 @@ const designPageContextValue = {
             selectedUid={mobileSelectedUid}
             selectedLayer={mobileSelectedLayer}
             selectedPosition={mobileSelectedPosition}
-            selectedSize={mobileSelectedSize}
-            canvasRef={canvasRef}
             restrictedBox={restrictedBox}
             canGoFront={canSendToFront}
             canGoBack={canSendToBack}
@@ -3058,6 +3127,25 @@ const designPageContextValue = {
             onAddText={handleQuickAddText}
             onTextResize={handleResizeText}
           />
+
+          {showMobileQuickAddTextPanel ? (
+            <div className="fixed inset-x-0 bottom-[74px] z-[91] px-3 md:hidden" data-export-ignore="true">
+              <div className="rounded-2xl border border-gray-200 bg-white px-3 py-3 shadow-[0_-8px_26px_rgba(20,20,20,0.14)]">
+                <div className="mb-3 flex items-center justify-between">
+                  <span className="text-sm font-semibold text-gray-800">Add Text</span>
+                  <button
+                    type="button"
+                    onClick={() => setIsMobileQuickAddTextOpen(false)}
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-full text-gray-500 transition hover:bg-gray-100 hover:text-gray-700"
+                    aria-label="Close add text"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+                <AddText onAddText={handleAddTextLayerFromPanel} />
+              </div>
+            </div>
+          ) : null}
 
           <SaveDesignDialog
             open={isSaveDialogOpen}

@@ -48,7 +48,7 @@ export default function ChangeProductCard({
 
   return (
     <motion.div
-      className="relative bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 border overflow-hidden cursor-pointer h-full flex flex-col"
+      className="relative flex h-full cursor-pointer flex-col overflow-hidden rounded-lg border bg-white shadow-sm transition-all duration-300 hover:shadow-lg sm:rounded-2xl"
       whileHover={{ scale: 1.02 }}
       transition={{ duration: 0.25 }}
       onMouseEnter={() => setHovered(true)}
@@ -56,7 +56,7 @@ export default function ChangeProductCard({
       onClick={() => onSelect(product)}
     >
       {/* IMAGE */}
-      <div className="relative w-full h-[230px] bg-gray-100 overflow-hidden">
+      <div className="relative h-[100px] w-full overflow-hidden bg-gray-100 sm:h-[190px]">
         <img
           src={activeImage}
           alt={product.name}
@@ -68,26 +68,26 @@ export default function ChangeProductCard({
             <button
               type="button"
               aria-label="Previous image"
-              className="absolute left-2 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-gray-700 shadow md:hidden"
+              className="absolute left-1.5 top-1/2 z-10 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-gray-700 shadow md:hidden"
               onClick={(event) => {
                 event.stopPropagation();
                 event.preventDefault();
                 setCurrentImageIndex((prev) => (prev - 1 + imageList.length) % imageList.length);
               }}
             >
-              <ChevronLeft className="h-4 w-4" />
+              <ChevronLeft className="h-3.5 w-3.5" />
             </button>
             <button
               type="button"
               aria-label="Next image"
-              className="absolute right-2 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-gray-700 shadow md:hidden"
+              className="absolute right-1.5 top-1/2 z-10 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-gray-700 shadow md:hidden"
               onClick={(event) => {
                 event.stopPropagation();
                 event.preventDefault();
                 setCurrentImageIndex((prev) => (prev + 1) % imageList.length);
               }}
             >
-              <ChevronRight className="h-4 w-4" />
+              <ChevronRight className="h-3.5 w-3.5" />
             </button>
           </>
         ) : null}
@@ -107,22 +107,22 @@ export default function ChangeProductCard({
       </div>
 
       {/* INFO */}
-      <div className="p-4 space-y-1 flex-grow flex flex-col">
-        <p className="text-sm uppercase tracking-wide text-gray-500 font-medium">
+      <div className="flex flex-grow flex-col space-y-1 p-1.5 sm:p-4">
+        <p className="text-[9px] font-medium uppercase tracking-wide text-gray-500 sm:text-sm">
           {product.brand}
         </p>
 
-        <p className="text-lg font-semibold text-gray-800 leading-tight flex-grow">
+        <p className="flex-grow text-[11px] font-semibold leading-tight text-gray-800 sm:text-lg">
           {product.name}
         </p>
 
-        <div className="pt-2">
-          <span className="text-lg font-bold text-gray-900">
+        <div className="pt-0.5 sm:pt-2">
+          <span className="text-xs font-bold text-gray-900 sm:text-lg">
             £{price.toFixed(2)}
           </span>
 
           {originalPrice !== null && (
-            <span className="text-gray-400 line-through ml-2 text-sm">
+            <span className="ml-2 text-xs text-gray-400 line-through sm:text-sm">
               £{originalPrice.toFixed(2)}
             </span>
           )}

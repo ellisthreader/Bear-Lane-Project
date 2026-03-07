@@ -141,7 +141,7 @@ export default function AddText({
         className="w-full py-3 bg-[#C6A75E] text-white font-semibold rounded-xl transition hover:bg-[#B8994E]"
         onClick={handleAddText}
       >
-        Add Text
+        Add to design
       </button>
 
       {/* Optional Tip */}
