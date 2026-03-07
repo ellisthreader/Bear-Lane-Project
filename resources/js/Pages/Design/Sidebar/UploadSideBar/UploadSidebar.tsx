@@ -52,6 +52,7 @@ type UploadSidebarProps = {
   canvasPositions?: Record<string, { x: number; y: number }>;
   startInCropMode?: boolean;
   onStartInCropModeHandled?: () => void;
+  onFinishCrop?: () => void;
 };
 
 // -------------------- COMPONENT --------------------
@@ -75,6 +76,8 @@ export default function UploadSidebar({
   canvasPositions = {},
   startInCropMode = false,
   onStartInCropModeHandled,
+  onUpdateImageSize,
+  onFinishCrop,
 }: UploadSidebarProps) {
   const [cropMode, setCropMode] = useState(false);
 
@@ -142,8 +145,12 @@ export default function UploadSidebar({
           });
 
           setCropMode(false);
+          onFinishCrop?.();
         }}
-        onClose={() => setCropMode(false)}
+        onClose={() => {
+          setCropMode(false);
+          onFinishCrop?.();
+        }}
       />
     );
   }
@@ -158,6 +165,11 @@ if (imagePropertiesOpen && layerExists && selectedImage) {
 
   // ✅ Define updateImageSize function
   const updateImageSize = (id: string, w: number, h: number) => {
+    if (onUpdateImageSize) {
+      onUpdateImageSize(id, w, h);
+      return;
+    }
+
     setImageState((prev) => {
       const current = prev[id];
       if (!current) return prev;

@@ -93,7 +93,7 @@ const isNaturalSizeValid = (size: ImageNaturalSize | undefined): size is ImageNa
 const getLayerDepths = (state: Record<string, ImageState>): number[] =>
   Object.values(state).map((layer, index) => {
     const raw = Number((layer as any)?.zIndex);
-    return Number.isFinite(raw) ? raw : index + 1;
+    return Number.isFinite(raw) ? raw : index + 10;
   });
 
 const getNextLayerZIndex = (state: Record<string, ImageState>): number => {
@@ -104,10 +104,34 @@ const getNextLayerZIndex = (state: Record<string, ImageState>): number => {
 const getCurrentLayerZIndex = (state: Record<string, ImageState>, uid: string): number => {
   const entries = Object.entries(state);
   const index = entries.findIndex(([id]) => id === uid);
-  if (index === -1) return 1;
+  if (index === -1) return 10;
   const layer = entries[index][1];
   const raw = Number((layer as any)?.zIndex);
-  return Number.isFinite(raw) ? raw : index + 1;
+  return Number.isFinite(raw) ? raw : index + 10;
+};
+
+const normalizeLayerZOrder = (state: Record<string, ImageState>) => {
+  const entries = Object.entries(state);
+  const sorted = entries
+    .map(([uid, layer], index) => {
+      const raw = Number((layer as any)?.zIndex);
+      return {
+        uid,
+        index,
+        z: Number.isFinite(raw) ? raw : index + 1,
+      };
+    })
+    .sort((a, b) => (a.z === b.z ? a.index - b.index : a.z - b.z));
+
+  const normalized: Record<string, ImageState> = { ...state };
+  sorted.forEach((entry, idx) => {
+    normalized[entry.uid] = {
+      ...normalized[entry.uid],
+      zIndex: idx + 10,
+    };
+  });
+
+  return { normalized, sortedUids: sorted.map((entry) => entry.uid) };
 };
  
 
@@ -778,6 +802,7 @@ const getCurrentLayerZIndex = (state: Record<string, ImageState>, uid: string): 
     const canvasResizeGuardRef = useRef(isPricePanelOpen);
     const triggerCanvasResizeRef = useRef<() => void>(() => {});
   const [selectedObjects, setSelectedObjects] = useState<string[]>([]);
+    const [clearCanvasSelectionSignal, setClearCanvasSelectionSignal] = useState(0);
     const [replaceClipartId, setReplaceClipartId] = useState<string | null>(null);
     const [positions, setPositions] = useState<Record<string, {
       
@@ -853,6 +878,14 @@ const getCurrentLayerZIndex = (state: Record<string, ImageState>, uid: string): 
       mobileToolbarReservedHeight,
       canvasRef,
     ]);
+
+    useEffect(() => {
+      if (!isMobileViewport) return;
+      if (activeSidebar === "blank") return;
+
+      setSelectedObjects((prev) => (prev.length ? [] : prev));
+      setClearCanvasSelectionSignal((prev) => prev + 1);
+    }, [isMobileViewport, activeSidebar]);
 
   const [displayImages, setDisplayImages] = useState<string[]>(
     normalizeDesignImages(currentProduct?.images ?? [])
@@ -1850,11 +1883,6 @@ useEffect(() => {
     setSelectedSize(size);
   };
 
-
-  const beginResize = () => {
-  };
-
-
   const handleProductSelect = (product: Product) => {
     router.get(
       route("design.show", { slug: product.slug }), // ✅ must use slug
@@ -1989,13 +2017,53 @@ const handleFlipImage = (uid: string, flip: "none" | "horizontal" | "vertical") 
 
 // Update image size
 const handleUpdateImageSize = (uid: string, w: number, h: number) => {
-  updateCurrentImageState({
-    [uid]: {
-      ...(currentImageState[uid] ?? { rotation: 0, flip: "none", size: { w: 150, h: 150 } }),
-      size: { w, h },
-    },
+  const layer = currentImageState[uid];
+  if (!layer) return;
+
+  const minW = 20;
+  const minH = 20;
+  const safeW = Math.max(minW, Number.isFinite(w) ? w : layer.size?.w ?? 150);
+  const safeH = Math.max(minH, Number.isFinite(h) ? h : layer.size?.h ?? 150);
+  const activeCanvasPos = layer.canvasPositions?.[currentViewKey];
+  const fallbackX = restrictedBox.left + Math.max((restrictedBox.width - safeW) / 2, 0);
+  const fallbackY = restrictedBox.top + Math.max((restrictedBox.height - safeH) / 2, 0);
+  const startX = Number(activeCanvasPos?.x ?? positions[uid]?.x ?? fallbackX);
+  const startY = Number(activeCanvasPos?.y ?? positions[uid]?.y ?? fallbackY);
+  const clamped = clampPositionAndSize(startX, startY, safeW, safeH, restrictedBox);
+  const maxWidth = Math.max(minW, restrictedBox.width);
+  const maxHeight = Math.max(minH, restrictedBox.height);
+  const nextW = Math.max(minW, Math.min(clamped.w, maxWidth));
+  const nextH = Math.max(minH, Math.min(clamped.h, maxHeight));
+  const nextX = Number.isFinite(clamped.x) ? clamped.x : startX;
+  const nextY = Number.isFinite(clamped.y) ? clamped.y : startY;
+
+  updateCurrentImageState((prev) => {
+    const existing = prev[uid];
+    if (!existing) return prev;
+    return {
+      ...prev,
+      [uid]: {
+        ...existing,
+        size: { w: nextW, h: nextH },
+        canvasPositions: {
+          ...(existing.canvasPositions ?? {}),
+          [currentViewKey]: {
+            ...(existing.canvasPositions?.[currentViewKey] ?? {}),
+            x: nextX,
+            y: nextY,
+            width: nextW,
+            height: nextH,
+          },
+        },
+      },
+    };
   });
-  setSizes(prev => ({ ...prev, [uid]: { w, h } }));
+
+  setPositions((prev) => ({
+    ...prev,
+    [uid]: { x: nextX, y: nextY },
+  }));
+  setSizes(prev => ({ ...prev, [uid]: { w: nextW, h: nextH } }));
 };
 
 // Change color
@@ -2067,7 +2135,10 @@ const handleChangeClipart = () => {
   const targetUid = selectedUploadedImage ?? mobileSelectedUid;
   if (!targetUid) return;
   setReplaceClipartId(targetUid);
+  setSelectedObjects([]);
+  setClearCanvasSelectionSignal((prev) => prev + 1);
   setSelectedUploadedImageWithLog(null);
+  setSelectedText(null);
   setSidebarStack(["clipart"]);
 };
 
@@ -2274,13 +2345,14 @@ const resetTextLayer = (uid: string) => {
 
 const bringLayerToFront = (uid: string) => {
   updateCurrentImageState((prev) => {
-    const layer = prev[uid];
-    if (!layer) return prev;
+    const { normalized } = normalizeLayerZOrder(prev);
+    const layer = normalized[uid];
+    if (!layer) return normalized;
     return {
-      ...prev,
+      ...normalized,
       [uid]: {
         ...layer,
-        zIndex: getNextLayerZIndex(prev),
+        zIndex: getNextLayerZIndex(normalized),
       },
     };
   });
@@ -2288,15 +2360,23 @@ const bringLayerToFront = (uid: string) => {
 
 const sendLayerToBack = (uid: string) => {
   updateCurrentImageState((prev) => {
-    const layer = prev[uid];
-    if (!layer) return prev;
-    const depths = getLayerDepths(prev);
-    const minDepth = depths.length ? Math.min(...depths) : 1;
+    const { normalized, sortedUids } = normalizeLayerZOrder(prev);
+    const layer = normalized[uid];
+    if (!layer) return normalized;
+    const reordered: Record<string, ImageState> = { ...normalized };
+    sortedUids
+      .filter((id) => id !== uid)
+      .forEach((id, index) => {
+        reordered[id] = {
+          ...reordered[id],
+          zIndex: index + 11,
+        };
+      });
     return {
-      ...prev,
+      ...reordered,
       [uid]: {
         ...layer,
-        zIndex: minDepth - 1,
+        zIndex: 10,
       },
     };
   });
@@ -2305,6 +2385,9 @@ const sendLayerToBack = (uid: string) => {
 const openUploadCropPanel = () => {
   const targetUid = mobileSelectedUid ?? selectedUploadedImage;
   if (!targetUid) return;
+  setSelectedObjects([]);
+  setSelectedText(null);
+  setClearCanvasSelectionSignal((prev) => prev + 1);
   setSelectedUploadedImageWithLog(targetUid);
   setUploadSidebarStartMode("crop");
   setSidebarStack(["upload"]);
@@ -2469,6 +2552,11 @@ const renderActiveTab = () => {
           onResetImage={handleResetImage}
           startInCropMode={uploadSidebarStartMode === "crop"}
           onStartInCropModeHandled={() => setUploadSidebarStartMode("library")}
+          onFinishCrop={() => {
+            if (isMobileViewport) {
+              setSidebarStack(["blank"]);
+            }
+          }}
         />
       );
 
@@ -2616,6 +2704,11 @@ const renderActiveTab = () => {
       onTextAlignChange={handleTextAlignChange}
       initialPanel={textSidebarInitialPanel}
       onPanelChange={setTextSidebarInitialPanel}
+      onExitToCanvas={() => {
+        if (!isMobileViewport) return;
+        setTextSidebarInitialPanel("main");
+        setSidebarStack(["blank"]);
+      }}
     />
   );
 }
@@ -2800,6 +2893,7 @@ const handleSelectTextFromCanvas = (uid: string | null) => {
 const openMobileTextFullPanel = (panel: "fonts" | "outline") => {
   if (!isMobileViewport) return;
   setSelectedObjects([]);
+  setClearCanvasSelectionSignal((prev) => prev + 1);
   setSelectedUploadedImageWithLog(null);
   setTextSidebarInitialPanel(panel);
   setSidebarStack(["text"]);
@@ -2829,7 +2923,7 @@ const designPageContextValue = {
       setImageState={updateCurrentImageState}
       onSelectImage={setSelectedUploadedImageWithLog}
       onSelectText={handleSelectTextFromCanvas}
-      onResizeStart={beginResize}
+      onResize={handleUpdateImageSize}
       onSwitchTab={(tab) => {
         if (!tab || isMobileViewport) return;
         setSidebarStack((prev) =>
@@ -2839,6 +2933,7 @@ const designPageContextValue = {
       onDelete={(uids) => uids.forEach((uid) => handleRemoveUploadedImage(uid))}
       onResizeTextCommit={handleResizeText}
       onSelectionChange={handleCanvasSelectionChange}
+      clearSelectionSignal={clearCanvasSelectionSignal}
       productViewImages={viewImages}
       viewImageStates={viewImageStates}
       currentViewKey={currentViewKey}

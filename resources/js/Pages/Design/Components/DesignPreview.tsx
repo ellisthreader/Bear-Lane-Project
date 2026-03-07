@@ -25,7 +25,11 @@ export default function DesignPreview({
   const canvasWidth = snapshot?.canvasWidth && snapshot.canvasWidth > 0 ? snapshot.canvasWidth : 1000;
   const canvasHeight = snapshot?.canvasHeight && snapshot.canvasHeight > 0 ? snapshot.canvasHeight : 1000;
   const height = fixedSize ?? width * (canvasHeight / canvasWidth);
-  const scale = width / canvasWidth;
+  const fitScale = Math.min(width / canvasWidth, height / canvasHeight);
+  const renderedWidth = canvasWidth * fitScale;
+  const renderedHeight = canvasHeight * fitScale;
+  const offsetX = (width - renderedWidth) / 2;
+  const offsetY = (height - renderedHeight) / 2;
 
   return (
     <div
@@ -42,7 +46,13 @@ export default function DesignPreview({
         <img loading="lazy" decoding="async"
           src={fallbackImage || snapshot?.baseImage}
           alt={alt}
-          className="absolute inset-0 h-full w-full object-contain"
+          className="absolute object-contain"
+          style={{
+            left: offsetX,
+            top: offsetY,
+            width: renderedWidth,
+            height: renderedHeight,
+          }}
         />
       )}
 
@@ -51,10 +61,10 @@ export default function DesignPreview({
         const scaleY = layer.flip === "vertical" ? -1 : 1;
         const layerStyle: React.CSSProperties = {
           position: "absolute",
-          left: layer.position.x * scale,
-          top: layer.position.y * scale,
-          width: layer.size.w * scale,
-          height: layer.size.h * scale,
+          left: offsetX + layer.position.x * fitScale,
+          top: offsetY + layer.position.y * fitScale,
+          width: layer.size.w * fitScale,
+          height: layer.size.h * fitScale,
           transform: `rotate(${layer.rotation}deg) scale(${scaleX}, ${scaleY})`,
           transformOrigin: "center center",
         };
@@ -65,11 +75,11 @@ export default function DesignPreview({
               <span
                 style={{
                   fontFamily: layer.fontFamily ?? "Arial",
-                  fontSize: `${(layer.fontSize ?? 24) * scale}px`,
+                  fontSize: `${(layer.fontSize ?? 24) * fitScale}px`,
                   whiteSpace: "pre-wrap",
                   color: layer.color ?? "#000000",
                   WebkitTextStrokeColor: layer.borderColor ?? "#000000",
-                  WebkitTextStrokeWidth: `${(layer.borderWidth ?? 0) * scale}px`,
+                  WebkitTextStrokeWidth: `${(layer.borderWidth ?? 0) * fitScale}px`,
                   WebkitTextFillColor: layer.color ?? "#000000",
                   lineHeight: 1,
                 }}

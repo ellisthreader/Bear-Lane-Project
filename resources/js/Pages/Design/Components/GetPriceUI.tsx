@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
+  ChevronLeft,
+  ChevronRight,
   CircleDollarSign,
   Images,
   Palette,
@@ -82,6 +84,10 @@ const GetPriceUI: React.FC<GetPriceUIProps> = ({
   const [step, setStep] = useState<"configure" | "summary">("configure");
   const [loadingPrice, setLoadingPrice] = useState(false);
   const [zoomedSide, setZoomedSide] = useState<SideStatus | null>(null);
+  const [isMobileViewport, setIsMobileViewport] = useState<boolean>(() =>
+    typeof window !== "undefined" ? window.matchMedia("(max-width: 1023px)").matches : false
+  );
+  const [activeOrderSideIndex, setActiveOrderSideIndex] = useState(0);
   const [sizeBreakdown, setSizeBreakdown] = useState<Record<string, number>>(() => {
     if (!availableSizes.length) return {};
     const defaultSize = selectedSize && availableSizes.includes(selectedSize) ? selectedSize : availableSizes[0];
@@ -93,6 +99,21 @@ const GetPriceUI: React.FC<GetPriceUIProps> = ({
   useEffect(() => {
     setStep("configure");
     setLoadingPrice(false);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const query = window.matchMedia("(max-width: 1023px)");
+    const sync = () => setIsMobileViewport(query.matches);
+    sync();
+
+    if (typeof query.addEventListener === "function") {
+      query.addEventListener("change", sync);
+      return () => query.removeEventListener("change", sync);
+    }
+
+    query.addListener(sync);
+    return () => query.removeListener(sync);
   }, []);
 
   useEffect(() => {
@@ -147,6 +168,9 @@ const GetPriceUI: React.FC<GetPriceUIProps> = ({
     () => [...sides].sort((a, b) => a.pictureNumber - b.pictureNumber),
     [sides]
   );
+  useEffect(() => {
+    setActiveOrderSideIndex(0);
+  }, [orderedSides.length, step]);
   const pricing = useMemo(
     () => calculateDesignPricingFromSides(sides, basePrice, selectedDesignType),
     [sides, basePrice, selectedDesignType]
@@ -165,6 +189,17 @@ const GetPriceUI: React.FC<GetPriceUIProps> = ({
     selectedSize ?? availableSizes[0] ?? "One Size";
   const selectedDesignTypeValue = normalizeDesignType(selectedDesignType);
   const selectedDesignTypeDisplay = designTypeLabel(selectedDesignTypeValue);
+  const activeOrderSide = orderedSides[activeOrderSideIndex] ?? orderedSides[0];
+
+  const showNextOrderSide = () => {
+    if (!orderedSides.length) return;
+    setActiveOrderSideIndex((prev) => (prev + 1) % orderedSides.length);
+  };
+
+  const showPreviousOrderSide = () => {
+    if (!orderedSides.length) return;
+    setActiveOrderSideIndex((prev) => (prev - 1 + orderedSides.length) % orderedSides.length);
+  };
 
   const designTags = [
     {
@@ -227,7 +262,7 @@ const GetPriceUI: React.FC<GetPriceUIProps> = ({
   const mutedTextClass = "text-gray-600";
   const inputClass = "w-full rounded-lg border bg-white px-3 py-2";
   const tagClass = "inline-flex items-center gap-1 rounded-full border bg-white px-3 py-1 text-xs font-medium shadow-sm";
-  const orderImageSize = docked ? 160 : 180;
+  const orderImageSize = isMobileViewport ? 240 : docked ? 160 : 180;
 
   return (
     <div className={wrapperClass}>
@@ -381,7 +416,11 @@ const GetPriceUI: React.FC<GetPriceUIProps> = ({
               </div>
             </div>
           ) : (
-            <div className="flex h-full flex-col gap-5 overflow-y-auto px-6 py-5">
+            <div
+              className={`flex h-full flex-col gap-5 overflow-y-auto px-6 py-5 ${
+                isMobileViewport ? "pb-28" : ""
+              }`}
+            >
               <div className="space-y-3">
                 <p className="text-xs uppercase tracking-[0.4em] text-gray-500">Price per item</p>
                 <div className="text-5xl font-bold text-gray-900">{formatGBP(unitPrice)}</div>
@@ -423,28 +462,63 @@ const GetPriceUI: React.FC<GetPriceUIProps> = ({
                     Design type: {selectedDesignTypeDisplay}
                   </p>
                 </div>
-                <div className="flex flex-wrap items-start gap-3 overflow-x-auto">
-                  {orderedSides.map(side => (
-                    <div
-                      key={side.key}
-                      className="flex flex-col items-center gap-2 rounded-2xl border border-gray-200 bg-gray-50/80 p-2"
-                      style={{ width: orderImageSize }}
-                    >
+                {isMobileViewport ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between rounded-2xl border border-gray-200 bg-gray-50/80 p-2">
+                      <button
+                        type="button"
+                        onClick={showPreviousOrderSide}
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-gray-300 bg-white text-gray-700"
+                        aria-label="Previous side"
+                      >
+                        <ChevronLeft size={16} />
+                      </button>
                       <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-gray-500">
-                        {side.label}
+                        {activeOrderSide?.label ?? "Preview"}
                       </p>
+                      <button
+                        type="button"
+                        onClick={showNextOrderSide}
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-gray-300 bg-white text-gray-700"
+                        aria-label="Next side"
+                      >
+                        <ChevronRight size={16} />
+                      </button>
+                    </div>
+                    {activeOrderSide ? (
                       <DesignPreview
-                        snapshot={side.preview}
-                        fallbackImage={side.imageSrc}
+                        snapshot={activeOrderSide.preview}
+                        fallbackImage={activeOrderSide.imageSrc}
                         width={orderImageSize}
-                        fixedSize={orderImageSize}
-                        alt={`${side.label} preview`}
-                        className="h-[160px] w-full"
+                        alt={`${activeOrderSide.label} preview`}
+                        className="w-full rounded-2xl border border-gray-200 bg-gray-50/80 p-2"
                         noFrame
                       />
-                    </div>
-                  ))}
-                </div>
+                    ) : null}
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap items-start gap-3 overflow-x-auto">
+                    {orderedSides.map(side => (
+                      <div
+                        key={side.key}
+                        className="flex flex-col items-center gap-2 rounded-2xl border border-gray-200 bg-gray-50/80 p-2"
+                        style={{ width: orderImageSize }}
+                      >
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-gray-500">
+                          {side.label}
+                        </p>
+                        <DesignPreview
+                          snapshot={side.preview}
+                          fallbackImage={side.imageSrc}
+                          width={orderImageSize}
+                          alt={`${side.label} preview`}
+                          className="w-full"
+                          noFrame
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="flex justify-center">
@@ -461,26 +535,51 @@ const GetPriceUI: React.FC<GetPriceUIProps> = ({
                 </div>
               </div>
 
-              <div className="flex flex-wrap items-center justify-end gap-3">
-                <button
-                  onClick={() => setStep("configure")}
-                  className="rounded-xl border border-gray-300 px-5 py-2 font-medium text-gray-700 hover:border-[#C6A75E] hover:bg-[#C6A75E]/10"
-                >
-                  Edit quantity / sizes
-                </button>
-                <button
-                  onClick={() => onAddToCart?.(actionPayload)}
-                  className="rounded-xl bg-[#8A6D2B] px-5 py-2 font-semibold text-white hover:bg-[#755A22]"
-                >
-                  Add to Cart
-                </button>
-                <button
-                  onClick={() => onBuyNow?.(actionPayload)}
-                  className="rounded-xl bg-[#C6A75E] px-5 py-2 font-semibold text-white hover:bg-[#B8994E]"
-                >
-                  Buy Now
-                </button>
-              </div>
+              {isMobileViewport ? (
+                <div className="sticky bottom-0 -mx-6 mt-auto border-t border-gray-200 bg-white px-4 py-3 shadow-[0_-6px_20px_rgba(0,0,0,0.08)]">
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      onClick={() => setStep("configure")}
+                      className="rounded-xl border border-gray-300 px-2 py-2 text-xs font-medium text-gray-700 hover:border-[#C6A75E] hover:bg-[#C6A75E]/10"
+                    >
+                      Edit sizes
+                    </button>
+                    <button
+                      onClick={() => onAddToCart?.(actionPayload)}
+                      className="rounded-xl bg-[#8A6D2B] px-2 py-2 text-xs font-semibold text-white hover:bg-[#755A22]"
+                    >
+                      Add to cart
+                    </button>
+                    <button
+                      onClick={() => onBuyNow?.(actionPayload)}
+                      className="rounded-xl bg-[#C6A75E] px-2 py-2 text-xs font-semibold text-white hover:bg-[#B8994E]"
+                    >
+                      Buy now
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-wrap items-center justify-end gap-3">
+                  <button
+                    onClick={() => setStep("configure")}
+                    className="rounded-xl border border-gray-300 px-5 py-2 font-medium text-gray-700 hover:border-[#C6A75E] hover:bg-[#C6A75E]/10"
+                  >
+                    Edit quantity / sizes
+                  </button>
+                  <button
+                    onClick={() => onAddToCart?.(actionPayload)}
+                    className="rounded-xl bg-[#8A6D2B] px-5 py-2 font-semibold text-white hover:bg-[#755A22]"
+                  >
+                    Add to Cart
+                  </button>
+                  <button
+                    onClick={() => onBuyNow?.(actionPayload)}
+                    className="rounded-xl bg-[#C6A75E] px-5 py-2 font-semibold text-white hover:bg-[#B8994E]"
+                  >
+                    Buy Now
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>

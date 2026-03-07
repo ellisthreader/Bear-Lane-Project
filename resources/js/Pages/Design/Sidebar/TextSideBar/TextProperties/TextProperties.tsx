@@ -51,6 +51,7 @@ type Props = {
   onTextAlignChange: (align: TextAlign) => void;
   initialPanel?: "main" | "fonts" | "outline";
   onPanelChange?: (panel: "main" | "fonts" | "outline") => void;
+  onExitToCanvas?: () => void;
 
   restrictedBox: { left: number; top: number; width: number; height: number };
   textPosition?: { x: number; y: number };
@@ -58,6 +59,9 @@ type Props = {
 
 export default function TextProperties(props: Props) {
   const [panel, setPanel] = useState<"main" | "fonts" | "outline">(props.initialPanel ?? "main");
+  const [isMobileViewport, setIsMobileViewport] = useState<boolean>(() =>
+    typeof window !== "undefined" ? window.matchMedia("(max-width: 1023px)").matches : false
+  );
   const measureRef = useRef<HTMLSpanElement>(null);
   const [measuredSize, setMeasuredSize] = useState({ w: 0.5, h: 0.5 });
   const MIN_FONT_SIZE = 4;
@@ -80,6 +84,29 @@ export default function TextProperties(props: Props) {
   React.useEffect(() => {
     props.onPanelChange?.(panel);
   }, [panel, props.onPanelChange]);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const query = window.matchMedia("(max-width: 1023px)");
+    const sync = () => setIsMobileViewport(query.matches);
+    sync();
+
+    if (typeof query.addEventListener === "function") {
+      query.addEventListener("change", sync);
+      return () => query.removeEventListener("change", sync);
+    }
+
+    query.addListener(sync);
+    return () => query.removeListener(sync);
+  }, []);
+
+  const handleCloseFullPanel = React.useCallback(() => {
+    if (isMobileViewport && props.onExitToCanvas) {
+      props.onExitToCanvas();
+      return;
+    }
+    setPanel("main");
+  }, [isMobileViewport, props.onExitToCanvas]);
 
   useLayoutEffect(() => {
     const span = measureRef.current;
@@ -145,7 +172,7 @@ export default function TextProperties(props: Props) {
           fontFamily={props.fontFamily}
           textValue={props.textValue}
           onFontChange={props.onFontChange}
-          onBack={() => setPanel("main")}
+          onBack={handleCloseFullPanel}
         />
       </div>
     );
@@ -159,7 +186,7 @@ export default function TextProperties(props: Props) {
           onBorderColorChange={props.onBorderColorChange}
           borderWidth={props.borderWidth}
           onBorderWidthChange={props.onBorderWidthChange}
-          onBack={() => setPanel("main")}
+          onBack={handleCloseFullPanel}
         />
       </div>
     );

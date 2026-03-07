@@ -61,6 +61,16 @@ export default function DesignNavbar({
       <>
         <nav className="fixed left-0 top-0 z-50 w-full border-b border-gray-200 bg-white/95 px-2 py-2 shadow-sm backdrop-blur-md">
           <div className="flex items-center gap-2">
+            <Link href="/" className="shrink-0" aria-label="Go to home">
+              <img
+                src="/images/BLText.png"
+                alt="Bear Lane"
+                className="h-8 w-auto object-contain"
+                loading="lazy"
+                decoding="async"
+              />
+            </Link>
+
             <div className="grid flex-1 grid-cols-4 gap-1">
               <MobileNavButton
                 label="Designs"
@@ -96,7 +106,7 @@ export default function DesignNavbar({
               <button
                 type="button"
                 onClick={() => onGetPrice?.()}
-                className="inline-flex h-[58px] min-w-[102px] items-center justify-center rounded-xl border border-[#C6A75E]/60 bg-[#FAF3E2] px-3 text-sm font-semibold text-[#7A6130] transition hover:bg-[#F2E5C6]"
+                className="inline-flex h-[58px] min-w-[92px] items-center justify-center rounded-xl border border-[#C6A75E]/60 bg-[#FAF3E2] px-2 text-sm font-semibold text-[#7A6130] transition hover:bg-[#F2E5C6]"
                 aria-label="Get price"
               >
                 Get price £

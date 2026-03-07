@@ -90,6 +90,7 @@ export type CanvasProps = {
   onSelectText?: (uid: string | null) => void;
   onSwitchTab?: (tab: string) => void;
   onSelectionChange?: (uids: string[]) => void;
+  clearSelectionSignal?: number;
   productViewImages?: {
     front: string;
     back: string;
@@ -118,6 +119,7 @@ export default function Canvas(props: CanvasProps) {
     onSwitchTab,
     onResizeTextCommit,
     onViewSnapshotChange,
+    clearSelectionSignal,
     compactPriceMode = false,
     showMobilePropertiesBar = true,
   } = props;
@@ -322,6 +324,10 @@ export default function Canvas(props: CanvasProps) {
     onReset: props.onReset,
     multiDrag: true,
   });
+
+  useEffect(() => {
+    drag.setSelected([]);
+  }, [clearSelectionSignal]);
 
   // ---------------- Marquee ----------------
   const marquee = useMarqueeSelection({
