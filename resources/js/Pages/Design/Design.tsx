@@ -813,6 +813,7 @@ const getCurrentLayerZIndex = (state: Record<string, ImageState>, uid: string): 
       selectedObjects.length <= 1 &&
       Boolean(mobileSelectedUid) &&
       Boolean(mobileSelectedLayer);
+    const mobileToolbarReservedHeight = showMobileSelectionToolbar ? 240 : 0;
     const layerDepthBounds = useMemo(() => {
       const depths = getLayerDepths(currentImageState);
       return {
@@ -831,7 +832,7 @@ const getCurrentLayerZIndex = (state: Record<string, ImageState>, uid: string): 
       if (!canvasRef.current) return;
 
       const canvasRect = canvasRef.current.getBoundingClientRect();
-      const reservedUiHeight = 160;
+      const reservedUiHeight = mobileToolbarReservedHeight;
       const maxVisibleY = Math.max(0, canvasRect.height - mobileSelectedSize.h - reservedUiHeight);
       if (!Number.isFinite(maxVisibleY) || mobileSelectedPosition.y <= maxVisibleY) return;
 
@@ -844,7 +845,14 @@ const getCurrentLayerZIndex = (state: Record<string, ImageState>, uid: string): 
           [mobileSelectedUid]: { ...current, y: nextY },
         };
       });
-    }, [showMobileSelectionToolbar, mobileSelectedUid, mobileSelectedPosition, mobileSelectedSize, canvasRef]);
+    }, [
+      showMobileSelectionToolbar,
+      mobileSelectedUid,
+      mobileSelectedPosition,
+      mobileSelectedSize,
+      mobileToolbarReservedHeight,
+      canvasRef,
+    ]);
 
   const [displayImages, setDisplayImages] = useState<string[]>(
     normalizeDesignImages(currentProduct?.images ?? [])
@@ -2789,6 +2797,14 @@ const handleSelectTextFromCanvas = (uid: string | null) => {
   }
 };
 
+const openMobileTextFullPanel = (panel: "fonts" | "outline") => {
+  if (!isMobileViewport) return;
+  setSelectedObjects([]);
+  setSelectedUploadedImageWithLog(null);
+  setTextSidebarInitialPanel(panel);
+  setSidebarStack(["text"]);
+};
+
 const designPageContextValue = {
   isPricePanelOpen,
   activeSidebar,
@@ -2918,9 +2934,8 @@ const designPageContextValue = {
             onCrop={openUploadCropPanel}
             onReset={handleResetSelectedLayer}
             onColor={handleChangeImageColor}
-            onFontChange={(uid, font) => updateTextLayer(uid, { fontFamily: font })}
-            onBorderColorChange={(uid, color) => updateTextLayer(uid, { borderColor: color })}
-            onBorderWidthChange={(uid, width) => updateTextLayer(uid, { borderWidth: width })}
+            onOpenFontPanel={() => openMobileTextFullPanel("fonts")}
+            onOpenOutlinePanel={() => openMobileTextFullPanel("outline")}
             onChangeArt={handleChangeClipart}
             onAddText={handleQuickAddText}
             onTextResize={handleResizeText}
