@@ -7,6 +7,7 @@ type SidebarTab = "product" | "upload" | "text" | "clipart";
 type DesignPageContextValue = {
   isPricePanelOpen: boolean;
   activeSidebar: string;
+  hideMobileTabs?: boolean;
   canGoBack: boolean;
   onBack: () => void;
   onClose: () => void;
@@ -36,4 +37,3 @@ export function useDesignPageContext() {
   if (!context) throw new Error("useDesignPageContext must be used within DesignPageProvider");
   return context;
 }
-

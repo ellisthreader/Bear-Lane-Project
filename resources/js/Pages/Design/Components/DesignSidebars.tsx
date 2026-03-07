@@ -17,13 +17,14 @@ const SIDEBAR_TABS: Array<{ id: SidebarTab; label: string; icon: React.ReactNode
 export default function DesignSidebars() {
   const {
     activeSidebar,
+    hideMobileTabs,
     onClose,
     onSelectTab,
     headerTitle,
     sidebarContent,
   } = useDesignPageContext();
   const showMobilePanel = activeSidebar !== "blank";
-  const showMobileTabs = !showMobilePanel;
+  const showMobileTabs = !showMobilePanel && !hideMobileTabs;
 
   return (
     <>
