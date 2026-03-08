@@ -54,6 +54,11 @@ class AdminOtherController extends Controller
                     'description' => 'Control featured products and pre-made design cards on the homepage.',
                     'href' => '/admin/other/front-page',
                 ],
+                [
+                    'title' => 'Notifications',
+                    'description' => 'Configure which admin alerts appear on-site and which trigger email delivery.',
+                    'href' => '/admin/other/notifications',
+                ],
             ],
         ]);
     }
@@ -350,6 +355,33 @@ class AdminOtherController extends Controller
         }
 
         return back()->with('success', 'Front page product selections updated.');
+    }
+
+    public function notifications(): Response
+    {
+        return Inertia::render('Admin/Other/Notifications', [
+            'notificationSettings' => $this->settings->getAdminNotificationSettings(),
+            'notificationCatalog' => $this->settings->getAdminNotificationCatalog(),
+        ]);
+    }
+
+    public function updateNotifications(Request $request): JsonResponse|RedirectResponse
+    {
+        $request->validate([
+            'events' => ['required', 'array'],
+        ]);
+
+        $settings = $this->settings->saveAdminNotificationSettings($request->all());
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'notification_settings' => $settings,
+                'message' => 'Admin notification settings updated.',
+            ]);
+        }
+
+        return back()->with('success', 'Admin notification settings updated.');
     }
 
     /**

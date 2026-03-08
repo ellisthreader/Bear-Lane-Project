@@ -25,6 +25,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use App\Services\DeliverySlotService;
 use App\Services\DeliveryOptionService;
 use App\Services\ShippoLabelService;
+use App\Services\AdminNotificationService;
 use App\Services\Stripe\StripeWalletService;
 use App\Services\StoreSettingsService;
 use App\Mail\OrderConfirmedMail;
@@ -51,6 +52,7 @@ class CheckoutController extends Controller
         private readonly ShippoLabelService $shippoLabelService,
         private readonly StripeWalletService $walletService,
         private readonly StoreSettingsService $storeSettingsService,
+        private readonly AdminNotificationService $adminNotificationService,
     )
     {
     }
@@ -460,7 +462,19 @@ class CheckoutController extends Controller
 
             try {
                 $order->loadMissing('items.product');
-                Mail::to($order->email)->send(new OrderConfirmedMail($order));
+                $recipientEmail = filter_var((string) $order->email, FILTER_VALIDATE_EMAIL)
+                    ? (string) $order->email
+                    : (filter_var((string) optional(auth()->user())->email, FILTER_VALIDATE_EMAIL)
+                        ? (string) optional(auth()->user())->email
+                        : null);
+
+                if (!$recipientEmail) {
+                    throw new \RuntimeException('No valid recipient email found for order confirmation.');
+                }
+
+                retry(2, function () use ($recipientEmail, $order) {
+                    Mail::to($recipientEmail)->send(new OrderConfirmedMail($order));
+                }, 250);
             } catch (\Throwable $mailEx) {
                 Log::warning('[storeOrder] order confirmation email failed', [
                     'order_number' => $order->order_number,
@@ -468,6 +482,13 @@ class CheckoutController extends Controller
                     'error' => $mailEx->getMessage(),
                 ]);
             }
+
+            $this->adminNotificationService->sendAdminEventEmail(
+                'new_order',
+                "New Order Placed #{$order->order_number}",
+                'A new order has been placed',
+                "Order number: {$order->order_number}\nCustomer email: {$order->email}\nTotal: £" . number_format((float) $order->total, 2)
+            );
 
             return response()->json([
                 'success' => true,

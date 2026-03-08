@@ -7,9 +7,9 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use App\Models\Chat;
 use App\Models\Message;
-use App\Models\User;
 use App\Events\MessageSent;
 use App\Events\ChatDeleted;
+use App\Services\AdminNotificationService;
 use App\Services\OpenAiModerationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
@@ -24,6 +24,10 @@ class LiveChatController extends Controller
     private const MESSAGE_RATE_LIMIT_MAX = 6;
     private const MESSAGE_RATE_LIMIT_WINDOW_SECONDS = 12;
 
+    public function __construct(private readonly AdminNotificationService $adminNotificationService)
+    {
+    }
+
     private function safeBroadcast(object $event): void
     {
         try {
@@ -37,13 +41,14 @@ class LiveChatController extends Controller
 
     private function notifyAdminsOfNewChat(Chat $chat, Request $request): void
     {
-        $adminEmails = User::query()
-            ->where('is_admin', true)
-            ->whereNotNull('email')
+        if (!$this->adminNotificationService->emailEnabled('new_live_chat')) {
+            return;
+        }
+
+        $adminEmails = $this->adminNotificationService->adminRecipients()
             ->pluck('email')
-            ->filter(fn ($email) => is_string($email) && trim($email) !== '')
             ->map(fn ($email) => trim((string) $email))
-            ->unique()
+            ->filter(fn ($email) => $email !== '')
             ->values();
 
         if ($adminEmails->isEmpty()) {

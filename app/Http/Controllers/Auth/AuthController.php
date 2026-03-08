@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Models\Order;
 use App\Models\UserAddress;
 use App\Models\UserPaymentMethod;
+use App\Services\AdminNotificationService;
 use App\Services\Security\RecaptchaService;
 use App\Services\Stripe\StripeWalletService;
 use Illuminate\Support\Facades\Schema;
@@ -232,7 +233,7 @@ private function resolveRedirectPath(?string $redirect, string $fallback = '/pro
 // -----------------------
 // REGISTER
 // -----------------------
-public function register(Request $request, RecaptchaService $recaptchaService)
+public function register(Request $request, RecaptchaService $recaptchaService, AdminNotificationService $adminNotificationService)
 {
     $recaptchaService->verifyOrFail($request, 'signup');
 
@@ -253,6 +254,13 @@ public function register(Request $request, RecaptchaService $recaptchaService)
 
     Auth::login($user);
     $this->claimGuestCheckoutData($user);
+
+    $adminNotificationService->sendAdminEventEmail(
+        'new_user_registered',
+        'New User Registration',
+        'A new customer account was created',
+        "Username: {$user->username}\nEmail: {$user->email}\nUser ID: {$user->id}"
+    );
 
     try {
         // Fire registered event (important for email verification)

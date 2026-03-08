@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Quote;
 
 use App\Http\Controllers\Controller;
+use App\Models\SupportMessage;
+use App\Services\AdminNotificationService;
 use App\Services\OpenAiModerationService;
 use App\Services\Security\RecaptchaService;
 use Illuminate\Http\JsonResponse;
@@ -17,7 +19,8 @@ class QuoteRequestController extends Controller
     public function store(
         Request $request,
         OpenAiModerationService $moderationService,
-        RecaptchaService $recaptchaService
+        RecaptchaService $recaptchaService,
+        AdminNotificationService $adminNotificationService
     ): JsonResponse
     {
         $recaptchaService->verifyOrFail($request, 'quote_request');
@@ -90,6 +93,23 @@ class QuoteRequestController extends Controller
             'images' => $imagePaths,
         ]);
 
+        SupportMessage::query()->create([
+            'user_id' => $request->user()?->id,
+            'quote_request_id' => $quote->id,
+            'source_type' => 'artist_request',
+            'name' => (string) $quote->name,
+            'email' => (string) $quote->email,
+            'phone' => (string) ($quote->phone ?? ''),
+            'subject' => 'Speak to an Embroidery Artist',
+            'message' => (string) ($quote->details ?? ''),
+            'attachments' => (array) ($quote->images ?? []),
+            'metadata' => [
+                'budget' => (string) ($quote->budget ?? ''),
+                'invoice_reference' => trim((string) $request->input('invoice_reference', '')),
+            ],
+            'status' => 'new',
+        ]);
+
         try {
             Mail::send('emails.quote-request-confirmation', [
                 'name' => (string) $quote->name,
@@ -110,6 +130,13 @@ class QuoteRequestController extends Controller
                 'error' => $exception->getMessage(),
             ]);
         }
+
+        $adminNotificationService->sendAdminEventEmail(
+            'quote_request_submitted',
+            'New Embroidery Artist Request',
+            'New embroidery artist request submitted',
+            "Reference: BL-ARTIST-{$quote->id}\nName: {$quote->name}\nEmail: {$quote->email}\nPhone: {$quote->phone}\nBudget: " . ($quote->budget ?: 'Not provided')
+        );
 
         return response()->json([
             'message' => 'Quote request submitted successfully',

@@ -68,6 +68,7 @@ export default function AdminDashboard({ auth, summary: incomingSummary }: Admin
     reviews_left: 0,
     quotes_generated: 0,
     live_chat_notifications: 0,
+    support_messages_notifications: 0,
     ...(incomingSummary || {}),
   } as AdminSummary;
 
@@ -371,9 +372,9 @@ export default function AdminDashboard({ auth, summary: incomingSummary }: Admin
                       </div>
                       <div className="mt-4 flex items-center gap-2">
                         <h2 className="text-lg font-semibold">{card.title}</h2>
-                        {card.title === "Support & Live Chat" && summary.live_chat_notifications > 0 ? (
+                        {card.title === "Support & Live Chat" && (Number(summary.live_chat_notifications || 0) + Number(summary.support_messages_notifications || 0)) > 0 ? (
                           <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-[#B42318] px-2 text-xs font-bold text-white">
-                            {summary.live_chat_notifications}
+                            {Number(summary.live_chat_notifications || 0) + Number(summary.support_messages_notifications || 0)}
                           </span>
                         ) : null}
                         {card.title === "Orders" && Number(summary.orders_new_count || 0) > 0 ? (
@@ -400,9 +401,9 @@ export default function AdminDashboard({ auth, summary: incomingSummary }: Admin
                       </div>
                       <div className="mt-4 flex items-center gap-2">
                         <h2 className="text-lg font-semibold">{card.title}</h2>
-                        {card.title === "Support & Live Chat" && summary.live_chat_notifications > 0 ? (
+                        {card.title === "Support & Live Chat" && (Number(summary.live_chat_notifications || 0) + Number(summary.support_messages_notifications || 0)) > 0 ? (
                           <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-[#B42318] px-2 text-xs font-bold text-white">
-                            {summary.live_chat_notifications}
+                            {Number(summary.live_chat_notifications || 0) + Number(summary.support_messages_notifications || 0)}
                           </span>
                         ) : null}
                         {card.title === "Orders" && Number(summary.orders_new_count || 0) > 0 ? (

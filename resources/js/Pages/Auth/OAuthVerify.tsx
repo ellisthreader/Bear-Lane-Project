@@ -116,8 +116,8 @@ export default function OAuthVerify({ email }: Props) {
   };
 
   return (
-    <div className="w-full space-y-8 animate-fadeIn">
-      <p className="text-gray-800 text-center text-xl leading-relaxed">
+    <div className="w-full space-y-6 px-3 pb-2 pt-1 animate-fadeIn sm:space-y-8 sm:px-0">
+      <p className="text-center text-lg leading-relaxed text-gray-800 sm:text-xl">
         {sending
           ? "Sending verification code..."
           : "A 6-digit code has been sent to "}
@@ -132,8 +132,8 @@ export default function OAuthVerify({ email }: Props) {
         )}
       </p>
 
-      <form onSubmit={handleVerify} className="space-y-8">
-        <div className="flex justify-center gap-4">
+      <form onSubmit={handleVerify} className="space-y-6 sm:space-y-8">
+        <div className="flex justify-center gap-2 sm:gap-4">
           {code.map((digit, index) => (
             <input
               key={index}
@@ -143,7 +143,7 @@ export default function OAuthVerify({ email }: Props) {
               maxLength={1}
               onChange={(e) => handleChange(e.target.value, index)}
               onKeyDown={(e) => handleKeyDown(e, index)}
-              className="w-14 h-16 text-2xl text-center rounded-2xl border border-gray-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#C6A75E] focus:border-[#C6A75E] transition-all duration-200 bg-white"
+              className="h-14 w-11 rounded-2xl border border-gray-200 bg-white text-center text-xl shadow-sm transition-all duration-200 focus:border-[#C6A75E] focus:outline-none focus:ring-2 focus:ring-[#C6A75E] sm:h-16 sm:w-14 sm:text-2xl"
             />
           ))}
         </div>
@@ -155,7 +155,7 @@ export default function OAuthVerify({ email }: Props) {
         <button
           type="submit"
           disabled={loading}
-          className="w-full py-5 bg-[#C6A75E] hover:bg-[#b89148] text-white font-semibold rounded-2xl text-xl shadow-md hover:shadow-lg transition-all duration-300"
+          className="w-full rounded-2xl bg-[#C6A75E] py-4 text-lg font-semibold text-white shadow-md transition-all duration-300 hover:bg-[#b89148] hover:shadow-lg sm:py-5 sm:text-xl"
         >
           {loading ? "Verifying..." : "Continue"}
         </button>

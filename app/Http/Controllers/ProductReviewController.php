@@ -6,6 +6,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\ProductReview;
 use App\Models\ProductReviewImage;
+use App\Services\AdminNotificationService;
 use App\Services\OpenAiModerationService;
 use App\Services\Security\RecaptchaService;
 use Carbon\Carbon;
@@ -25,7 +26,8 @@ class ProductReviewController extends Controller
         Order $order,
         OrderItem $orderItem,
         OpenAiModerationService $moderationService,
-        RecaptchaService $recaptchaService
+        RecaptchaService $recaptchaService,
+        AdminNotificationService $adminNotificationService
     ): JsonResponse
     {
         $recaptchaService->verifyOrFail($request, 'review_submit');
@@ -217,6 +219,14 @@ class ProductReviewController extends Controller
             'user:id,username,name,avatar',
             'images',
         ]);
+
+        $orderNumber = (string) ($order->order_number ?: $order->id);
+        $adminNotificationService->sendAdminEventEmail(
+            'new_review_submitted',
+            "New Product Review on Order #{$orderNumber}",
+            'A new product review was submitted',
+            "Order: #{$orderNumber}\nProduct ID: {$orderItem->product_id}\nRating: {$rating}/5\nReviewer: " . ($user->username ?: $user->name ?: $user->email)
+        );
 
         return response()->json([
             'success' => true,

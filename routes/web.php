@@ -35,6 +35,7 @@ use App\Http\Controllers\DesignModerationController;
 use App\Http\Controllers\SavedDesignController;
 use App\Http\Controllers\ProductSearchController;
 use App\Http\Controllers\FaqRequestController;
+use App\Http\Controllers\SupportMessageController;
 use App\Http\Controllers\SupportContentController;
 use App\Http\Controllers\Auth\OAuthController;
 use App\Http\Controllers\Auth\EmailVerificationController;
@@ -529,6 +530,7 @@ Route::get('/help/technical', fn() => Inertia::render('Help/TechnicalSupport'))-
 Route::get('/help/privacy', fn() => Inertia::render('Help/PrivacySecurity'))->name('help.privacy');
 Route::get('/help/articles/{slug}', [SupportContentController::class, 'article'])->name('help.article');
 Route::get('/support', fn() => Inertia::render('Help/Support'))->name('support');
+Route::post('/support/messages', [SupportMessageController::class, 'store'])->name('support.messages.store');
 Route::get('/faq', [SupportContentController::class, 'faq'])->name('faq');
 Route::get('/help/livechat', fn() => Inertia::render('Help/Livechat'))->name('help.livechat');
 Route::middleware('auth')->post('/help/faq-requests', [FaqRequestController::class, 'store'])->name('help.faq-requests.store');
@@ -578,6 +580,8 @@ Route::middleware(['auth', 'admin', 'admin.activity'])->prefix('admin')->group(f
     Route::put('/other/size-guide', [AdminOtherController::class, 'updateSizeGuide'])->name('admin.other.size-guide.update');
     Route::get('/other/front-page', [AdminOtherController::class, 'frontPage'])->name('admin.other.front-page');
     Route::put('/other/front-page', [AdminOtherController::class, 'updateFrontPage'])->name('admin.other.front-page.update');
+    Route::get('/other/notifications', [AdminOtherController::class, 'notifications'])->name('admin.other.notifications');
+    Route::put('/other/notifications', [AdminOtherController::class, 'updateNotifications'])->name('admin.other.notifications.update');
     Route::get('/statistics', [AdminStatisticsController::class, 'index'])->name('admin.statistics');
     Route::get('/statistics/data', [AdminStatisticsController::class, 'data'])->name('admin.statistics.data');
     Route::get('/statistics/{metric}', [AdminStatisticsController::class, 'showMetric'])
@@ -593,6 +597,8 @@ Route::middleware(['auth', 'admin', 'admin.activity'])->prefix('admin')->group(f
     Route::delete('/support/articles/{article}', [SupportAdminController::class, 'destroyArticle'])->name('admin.support.articles.delete');
     Route::patch('/support/faqs/{faqRequest}', [SupportAdminController::class, 'answerFaq'])->name('admin.support.faqs.answer');
     Route::delete('/support/faqs/{faqRequest}', [SupportAdminController::class, 'destroyFaq'])->name('admin.support.faqs.delete');
+    Route::patch('/support/messages/{supportMessage}/read', [SupportAdminController::class, 'markSupportMessageRead'])->name('admin.support.messages.read');
+    Route::post('/support/messages/{supportMessage}/reply', [SupportAdminController::class, 'replySupportMessage'])->name('admin.support.messages.reply');
     Route::get('/support/chats/{chat}/messages', [SupportChatController::class, 'messages'])->name('admin.support.chats.messages');
     Route::post('/support/chats/{chat}/join', [SupportChatController::class, 'join'])->name('admin.support.chats.join');
     Route::post('/support/chats/{chat}/messages', [SupportChatController::class, 'sendMessage'])->name('admin.support.chats.send');

@@ -33,6 +33,33 @@ const GIFT_PACKAGING_PRICE = 10;
 const PENDING_REDIRECT_ORDER_KEY = "checkout_pending_redirect_order";
 const CHECKOUT_GUEST_EMAIL_KEY = "checkout_guest_email";
 const CHECKOUT_REDIRECT_RECOVERY_KEY = "checkout_redirect_recovery_state";
+const COUNTRY_NAME_TO_ISO2: Record<string, string> = {
+  "united kingdom": "GB",
+  "great britain": "GB",
+  "england": "GB",
+  "scotland": "GB",
+  "wales": "GB",
+  "northern ireland": "GB",
+  "united states": "US",
+  "united states of america": "US",
+  "usa": "US",
+  "ireland": "IE",
+  "germany": "DE",
+  "france": "FR",
+  "spain": "ES",
+  "italy": "IT",
+  "netherlands": "NL",
+  "belgium": "BE",
+  "sweden": "SE",
+  "norway": "NO",
+  "denmark": "DK",
+  "finland": "FI",
+  "austria": "AT",
+  "switzerland": "CH",
+  "canada": "CA",
+  "australia": "AU",
+  "new zealand": "NZ",
+};
 
 const CheckoutForm = ({ initialEmail = "" }: CheckoutFormProps) => {
   const page = usePage<{
@@ -51,7 +78,6 @@ const CheckoutForm = ({ initialEmail = "" }: CheckoutFormProps) => {
   const taxEnabled = Boolean(taxSettings?.enabled ?? true);
   const taxMode = taxSettings?.price_mode === "inclusive" ? "inclusive" : "exclusive";
   const isAuthenticated = Boolean(authUser);
-  const checkoutDebug = true;
   const stripe = useStripe();
   const elements = useElements();
   const { cart } = useCart();
@@ -206,12 +232,6 @@ const CheckoutForm = ({ initialEmail = "" }: CheckoutFormProps) => {
     let cancelled = false;
     (async () => {
       try {
-        if (checkoutDebug) {
-          console.group("[Checkout][Step1] Saved details fetch");
-          console.log("isAuthenticated:", isAuthenticated);
-          console.log("auth user:", authUser);
-          console.log("initialEmail:", initialEmail);
-        }
         const res = await fetch("/checkout/saved-details", {
           method: "GET",
           credentials: "same-origin",
@@ -220,14 +240,8 @@ const CheckoutForm = ({ initialEmail = "" }: CheckoutFormProps) => {
             "X-Requested-With": "XMLHttpRequest",
           },
         });
-        if (checkoutDebug) {
-          console.log("saved-details status:", res.status, res.statusText);
-        }
         if (!res.ok) return;
         const payload = await res.json();
-        if (checkoutDebug) {
-          console.log("saved-details payload:", payload);
-        }
         if (cancelled) return;
 
         const nextAddresses = Array.isArray(payload.addresses) ? (payload.addresses as SavedAddress[]) : [];
@@ -237,10 +251,6 @@ const CheckoutForm = ({ initialEmail = "" }: CheckoutFormProps) => {
 
         setSavedAddresses(nextAddresses);
         setSavedPaymentMethods(nextPaymentMethods);
-        if (checkoutDebug) {
-          console.log("mapped addresses:", nextAddresses);
-          console.log("mapped payment methods:", nextPaymentMethods);
-        }
 
         const defaultAddress = nextAddresses.find((entry) => entry.is_default) || nextAddresses[0];
         if (defaultAddress) {
@@ -260,9 +270,6 @@ const CheckoutForm = ({ initialEmail = "" }: CheckoutFormProps) => {
             postcode: defaultAddress.postcode || "",
           }));
           setCountry(defaultAddress.country || "United Kingdom");
-          if (checkoutDebug) {
-            console.log("selected default saved address:", defaultAddress);
-          }
         }
 
         const defaultCardMethod =
@@ -271,25 +278,18 @@ const CheckoutForm = ({ initialEmail = "" }: CheckoutFormProps) => {
           || null;
         if (defaultCardMethod) {
           setSelectedSavedPaymentMethodId(defaultCardMethod.id);
-          if (checkoutDebug) {
-            console.log("selected default card payment method:", defaultCardMethod);
-          }
         } else {
           setSelectedSavedPaymentMethodId(null);
         }
       } catch {
         // Ignore; checkout still works without saved details.
-      } finally {
-        if (checkoutDebug) {
-          console.groupEnd();
-        }
       }
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [authUser, checkoutDebug, initialEmail, isAuthenticated, setAddress, setCountry]);
+  }, [authUser, initialEmail, isAuthenticated, setAddress, setCountry]);
 
   const {
     firstName,
@@ -393,9 +393,6 @@ const CheckoutForm = ({ initialEmail = "" }: CheckoutFormProps) => {
   }, [paymentType, savedPaymentMethods, selectedSavedPaymentMethodId]);
 
   const applySavedAddress = (addressCard: SavedAddress) => {
-    if (checkoutDebug) {
-      console.log("[Checkout][Step1] applySavedAddress:", addressCard);
-    }
     setSelectedSavedAddressId(addressCard.id);
     setShowNewAddressForm(false);
     setAddress((prev) => ({
@@ -415,9 +412,6 @@ const CheckoutForm = ({ initialEmail = "" }: CheckoutFormProps) => {
   };
 
   const startNewAddressEntry = () => {
-    if (checkoutDebug) {
-      console.log("[Checkout][Step1] startNewAddressEntry");
-    }
     setSelectedSavedAddressId(null);
     setShowNewAddressForm(true);
     setAddress((prev) => ({
@@ -434,28 +428,6 @@ const CheckoutForm = ({ initialEmail = "" }: CheckoutFormProps) => {
     }));
     setCountry(checkoutCountry || "United Kingdom");
   };
-
-  useEffect(() => {
-    if (!checkoutDebug) return;
-    console.log("[Checkout][Step1] view-state", {
-      hasSavedAddresses,
-      showNewAddressForm,
-      selectedSavedAddressId,
-      showSavedAddressSummary,
-      deliveryAddressSummary,
-    });
-  }, [checkoutDebug, hasSavedAddresses, showNewAddressForm, selectedSavedAddressId, showSavedAddressSummary, deliveryAddressSummary]);
-
-  useEffect(() => {
-    if (!checkoutDebug) return;
-    console.log("[Checkout][Step3] payment-state", {
-      paymentType,
-      selectedSavedPaymentMethodId,
-      selectedSavedPaymentMethod,
-      savedCardCvcComplete,
-      savedPaymentMethods,
-    });
-  }, [checkoutDebug, paymentType, selectedSavedPaymentMethodId, selectedSavedPaymentMethod, savedCardCvcComplete, savedPaymentMethods]);
 
   useEffect(() => {
     if (!useDeliveryAddressAsBilling) return;
@@ -573,9 +545,26 @@ const CheckoutForm = ({ initialEmail = "" }: CheckoutFormProps) => {
     return true;
   };
 
-  const mapCountryCode = (value?: string) => {
-    if (!value) return "GB";
-    return value === "United Kingdom" ? "GB" : value;
+  const mapCountryCode = (value?: string): string | undefined => {
+    const normalized = String(value ?? "").trim();
+    if (!normalized) return "GB";
+    if (/^[A-Za-z]{2}$/.test(normalized)) return normalized.toUpperCase();
+    return COUNTRY_NAME_TO_ISO2[normalized.toLowerCase()];
+  };
+
+  const getFriendlyCheckoutError = (error: unknown, fallback = "Payment failed. Please try again.") => {
+    const raw = error instanceof Error ? String(error.message || "").trim() : "";
+    if (!raw) return fallback;
+    if (/did not match the expected pattern/i.test(raw)) {
+      return "Some payment details are in an invalid format. Please check your billing country, postcode, and card details, then try again.";
+    }
+    if (/invalid.+country|country.+invalid/i.test(raw)) {
+      return "Please select a valid billing country and try again.";
+    }
+    if (/postal|postcode|zip/i.test(raw) && /invalid|pattern/i.test(raw)) {
+      return "Please check your billing postcode and try again.";
+    }
+    return raw;
   };
 
   const buildOrderPayload = () => ({
@@ -767,8 +756,9 @@ const CheckoutForm = ({ initialEmail = "" }: CheckoutFormProps) => {
         showCheckoutSuccess("Payment successful! Order saved.");
         router.visit(`/order-confirmed/${orderData.order_number}`);
       } catch (err: any) {
-        showCheckoutError(err.message || "Payment failed. Try again.");
-        setError(err.message || "Payment failed. Try again.");
+        const message = getFriendlyCheckoutError(err, "Payment failed. Please try again.");
+        showCheckoutError(message);
+        setError(message);
         setRedirectProcessingNotice(null);
         setActiveSection(3);
       } finally {
@@ -1072,7 +1062,7 @@ const CheckoutForm = ({ initialEmail = "" }: CheckoutFormProps) => {
               email,
               name: billingName,
               address: {
-                country: billingCountry,
+                country: billingCountry || "GB",
               },
             },
           },
@@ -1100,8 +1090,9 @@ const CheckoutForm = ({ initialEmail = "" }: CheckoutFormProps) => {
       }
       return;
     } catch (err: any) {
-      showCheckoutError(err.message || "Payment failed. Try again.");
-      setError(err.message);
+      const message = getFriendlyCheckoutError(err, "Payment failed. Please try again.");
+      showCheckoutError(message);
+      setError(message);
       setActiveSection(3);
     }
 

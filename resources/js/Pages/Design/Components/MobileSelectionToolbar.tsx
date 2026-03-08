@@ -276,7 +276,7 @@ export default function MobileSelectionToolbar({
             maxLength={260}
             onChange={(event) => setDraftText(event.target.value)}
             placeholder="Edit text"
-            className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-500"
+            className="w-full rounded-xl border border-gray-300 px-3 py-2 text-base text-gray-900 outline-none focus:border-gray-500 md:text-sm"
           />
           <button
             type="button"
@@ -327,9 +327,9 @@ export default function MobileSelectionToolbar({
           <button
             type="button"
             onClick={() => (orderToFront ? onBringToFront(selectedUid) : onSendToBack(selectedUid))}
-            className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white/96 px-3 py-1.5 text-xs font-semibold text-gray-700 shadow-md"
+            className="inline-flex items-center gap-2 rounded-full border border-[#C6A75E]/60 bg-[#FFF7E3] px-4 py-2 text-sm font-semibold text-[#6B5222] shadow-[0_8px_20px_rgba(0,0,0,0.18)]"
           >
-            <Layers className="h-3.5 w-3.5" />
+            <Layers className="h-5 w-5" />
             {orderToFront ? "Send to front" : "Send to back"}
           </button>
         </div>

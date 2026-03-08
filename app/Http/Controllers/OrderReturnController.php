@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Order;
 use App\Models\ReturnRequest;
+use App\Services\AdminNotificationService;
 use App\Services\OpenAiModerationService;
 use App\Services\ShippoRateService;
 use Carbon\Carbon;
@@ -29,6 +30,7 @@ class OrderReturnController extends Controller
 
     public function __construct(
         private readonly ShippoRateService $shippoRateService,
+        private readonly AdminNotificationService $adminNotificationService,
     ) {
     }
 
@@ -218,6 +220,14 @@ class OrderReturnController extends Controller
                 ? strtoupper((string) ($validated['selected_rate_currency'] ?? 'GBP'))
                 : null,
         ]);
+
+        $orderNumber = (string) ($order->order_number ?: $order->id);
+        $this->adminNotificationService->sendAdminEventEmail(
+            'return_request_submitted',
+            "New Return Request for Order #{$orderNumber}",
+            'A customer submitted a return request',
+            "Order: #{$orderNumber}\nReturn request ID: {$requestRecord->id}\nReason: {$requestRecord->reason_code}\nCustomer email: {$order->email}"
+        );
 
         return response()->json([
             'success' => true,

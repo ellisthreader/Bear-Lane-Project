@@ -3,6 +3,7 @@ import { Head, Link } from "@inertiajs/react";
 import { LifeBuoy, Mail, MessageCircle, SendHorizonal } from "lucide-react";
 import HelpShell from "./components/HelpShell";
 import HelpSearchBar from "./components/HelpSearchBar";
+import { executeRecaptcha } from "@/Utils/recaptcha";
 
 export default function Support() {
   const [form, setForm] = useState({
@@ -13,16 +14,58 @@ export default function Support() {
   });
 
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const update = (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setSubmitted(false);
+    setError(null);
     setForm((prev) => ({ ...prev, [event.target.name]: event.target.value }));
   };
 
-  const submit = (event: React.FormEvent) => {
+  const submit = async (event: React.FormEvent) => {
     event.preventDefault();
-    setSubmitted(true);
-    setForm({ name: "", email: "", subject: "", message: "" });
+    setSubmitted(false);
+    setError(null);
+    setSubmitting(true);
+
+    try {
+      const token = await executeRecaptcha("support_message");
+      const response = await fetch("/support/messages", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          "X-Requested-With": "XMLHttpRequest",
+          "X-CSRF-TOKEN":
+            document.querySelector('meta[name=\"csrf-token\"]')?.getAttribute("content") || "",
+        },
+        body: JSON.stringify({
+          ...form,
+          recaptcha_token: token,
+        }),
+      });
+
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const firstValidationError = payload?.errors
+          ? Object.values(payload.errors).flat()?.[0]
+          : null;
+        throw new Error(
+          (typeof firstValidationError === "string" ? firstValidationError : null) ||
+            (typeof payload?.message === "string" ? payload.message : null) ||
+            "Unable to send your message right now."
+        );
+      }
+
+      setSubmitted(true);
+      setForm({ name: "", email: "", subject: "", message: "" });
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Unable to send your message right now.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -82,6 +125,11 @@ export default function Support() {
                 Thanks, your message has been sent. Our team will get back to you shortly.
               </div>
             ) : null}
+            {error ? (
+              <div className="mt-4 rounded-xl border border-[#E5C3BB] bg-[#FFF3F1] px-4 py-3 text-sm text-[#8F2D22]">
+                {error}
+              </div>
+            ) : null}
 
             <form onSubmit={submit} className="mt-5 grid gap-4 md:grid-cols-2">
               <label className="block">
@@ -133,10 +181,11 @@ export default function Support() {
               <div className="md:col-span-2">
                 <button
                   type="submit"
+                  disabled={submitting}
                   className="inline-flex items-center gap-2 rounded-xl bg-[#B89443] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#A58335]"
                 >
                   <SendHorizonal className="h-4 w-4" />
-                  Send message
+                  {submitting ? "Sending..." : "Send message"}
                 </button>
               </div>
             </form>

@@ -1,116 +1,76 @@
-<!doctype html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Order Confirmed</title>
-</head>
-<body style="margin:0; padding:0; background:#f8f5ee; font-family:Arial,Helvetica,sans-serif; color:#1f2937;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f8f5ee; padding:28px 12px;">
-    <tr>
-        <td align="center">
-            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:680px; background:#ffffff; border:1px solid #eadfc8; border-radius:18px; overflow:hidden;">
-                <tr>
-                    <td style="padding:24px 28px; border-bottom:1px solid #efe6d3; background:linear-gradient(135deg,#fff6e3 0%,#ffffff 72%);">
-                        <img src="{{ $logoUrl }}" alt="Bear Lane" style="display:block; width:170px; max-width:100%; height:auto;">
-                        <p style="margin:14px 0 0; font-size:12px; letter-spacing:0.12em; text-transform:uppercase; color:#8a6d2b; font-weight:700;">
-                            Order Confirmation
-                        </p>
-                        <h1 style="margin:8px 0 0; font-size:24px; line-height:1.3; color:#1f1a13;">
-                            Your order is confirmed
-                        </h1>
-                    </td>
-                </tr>
+@extends('emails.layouts.base')
 
-                <tr>
-                    <td style="padding:22px 28px 8px;">
-                        <p style="margin:0 0 12px; font-size:15px; line-height:1.7; color:#4b5563;">
-                            Hi {{ trim(($order->first_name ?? '') . ' ' . ($order->last_name ?? '')) ?: 'there' }},
-                        </p>
-                        <p style="margin:0 0 14px; font-size:15px; line-height:1.7; color:#4b5563;">
-                            Thank you for your order. We have received your payment and our team has started processing it.
-                        </p>
-                    </td>
-                </tr>
+@php
+    $emailTitle = 'Order Confirmed';
+    $emailEyebrow = 'Order Confirmation';
+    $emailHeading = 'Your order is confirmed';
+    $emailSubheading = 'Payment has been received and your order is now being prepared.';
+@endphp
 
-                <tr>
-                    <td style="padding:8px 28px 0;">
-                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #eadfc8; background:#fffcf4; border-radius:12px;">
-                            <tr>
-                                <td style="padding:14px 16px; font-size:14px; color:#1f2937;">
-                                    <strong style="color:#1f1a13;">Order Number:</strong> {{ $order->order_number }}<br>
-                                    <strong style="color:#1f1a13;">Email:</strong> {{ $order->email }}<br>
-                                    <strong style="color:#1f1a13;">Total:</strong> £{{ number_format((float) $order->total, 2) }}
-                                </td>
-                            </tr>
-                        </table>
-                    </td>
-                </tr>
+@section('content')
+    <p style="margin:0 0 12px;font-size:15px;line-height:1.7;color:#4b5563;">
+        Hi {{ trim(($order->first_name ?? '') . ' ' . ($order->last_name ?? '')) ?: 'there' }},
+    </p>
+    <p style="margin:0;font-size:15px;line-height:1.7;color:#4b5563;">
+        Thanks for your order. We will keep you updated as your order progresses.
+    </p>
 
-                <tr>
-                    <td style="padding:16px 28px 6px;">
-                        <p style="margin:0 0 10px; font-size:13px; letter-spacing:0.08em; text-transform:uppercase; color:#8a6d2b; font-weight:700;">
-                            Items
-                        </p>
-                        @foreach($order->items as $item)
-                            <div style="padding:10px 0; border-top:1px solid #f3ebda;">
-                                <p style="margin:0; font-size:15px; color:#1f1a13; font-weight:600;">
-                                    {{ $item->product_name ?? optional($item->product)->name ?? 'Product' }}
-                                </p>
-                                <p style="margin:3px 0 0; font-size:13px; color:#6b7280;">
-                                    Qty {{ (int) $item->quantity }} • £{{ number_format((float) $item->line_total, 2) }}
-                                </p>
-                            </div>
-                        @endforeach
-                    </td>
-                </tr>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:16px;border:1px solid #e8dcc0;border-radius:14px;background:#fffbf2;">
+        <tr>
+            <td style="padding:16px 18px;">
+                <p style="margin:0 0 8px;font-size:12px;color:#8a6d2b;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;">Order Details</p>
+                <p style="margin:0;font-size:14px;line-height:1.85;color:#1f2937;">
+                    <strong style="color:#1f1a13;">Order Number:</strong> {{ $order->order_number }}<br>
+                    <strong style="color:#1f1a13;">Email:</strong> {{ $order->email }}<br>
+                    <strong style="color:#1f1a13;">Total Paid:</strong> £{{ number_format((float) $order->total, 2) }}
+                </p>
+            </td>
+        </tr>
+    </table>
 
-                <tr>
-                    <td style="padding:20px 28px 4px;">
-                        @if(!empty($invoiceUrl))
-                            <a href="{{ $invoiceUrl }}" style="display:inline-block; background:#b89443; color:#ffffff; text-decoration:none; font-weight:700; font-size:14px; padding:12px 18px; border-radius:10px;">
-                                Download Invoice
-                            </a>
-                        @endif
-                    </td>
-                </tr>
+    <p style="margin:18px 0 8px;font-size:12px;letter-spacing:0.1em;text-transform:uppercase;color:#8a6d2b;font-weight:700;">Items</p>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+        @foreach($order->items as $item)
+            <tr>
+                <td style="padding:12px 0;border-top:1px solid #f3ebda;">
+                    <p style="margin:0;font-size:15px;color:#1f1a13;font-weight:600;">
+                        {{ $item->product_name ?? optional($item->product)->name ?? 'Product' }}
+                    </p>
+                    <p style="margin:4px 0 0;font-size:13px;color:#6b7280;">
+                        Qty {{ (int) $item->quantity }} • £{{ number_format((float) $item->line_total, 2) }}
+                    </p>
+                </td>
+            </tr>
+        @endforeach
+    </table>
 
-                <tr>
-                    <td style="padding:12px 28px 4px;">
-                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #eadfc8; background:#fffaf0; border-radius:12px;">
-                            <tr>
-                                <td style="padding:14px 16px;">
-                                    <p style="margin:0; font-size:14px; color:#3f3421; font-weight:700;">Leave us a review</p>
-                                    <p style="margin:6px 0 0; font-size:13px; line-height:1.6; color:#6b7280;">
-                                        Once your order is delivered, sign in and leave a 5-star (or half-star) review with photos.
-                                    </p>
-                                    <a href="{{ $reviewUrl }}" style="display:inline-block; margin-top:10px; background:#ffffff; border:1px solid #d7be84; color:#7b6530; text-decoration:none; font-weight:700; font-size:13px; padding:10px 14px; border-radius:10px;">
-                                        Leave us a review
-                                    </a>
-                                </td>
-                            </tr>
-                        </table>
-                    </td>
-                </tr>
+    @if(!empty($invoiceUrl))
+        <table role="presentation" cellspacing="0" cellpadding="0" style="margin-top:16px;">
+            <tr>
+                <td style="border-radius:12px;background:#b89443;">
+                    <a href="{{ $invoiceUrl }}" style="display:inline-block;padding:12px 20px;color:#ffffff;text-decoration:none;font-weight:700;font-size:14px;">
+                        Download Invoice
+                    </a>
+                </td>
+            </tr>
+        </table>
+    @endif
 
-                <tr>
-                    <td style="padding:14px 28px 24px;">
-                        <p style="margin:0; font-size:13px; line-height:1.7; color:#6b7280;">
-                            Need help with your order? Reply to this email and our support team will assist you.
-                        </p>
-                    </td>
-                </tr>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:14px;border:1px solid #eadfc8;background:#fffaf0;border-radius:14px;">
+        <tr>
+            <td style="padding:16px 18px;">
+                <p style="margin:0;font-size:14px;color:#3f3421;font-weight:700;">Share your feedback</p>
+                <p style="margin:7px 0 0;font-size:13px;line-height:1.65;color:#6b7280;">
+                    Once delivered, sign in and leave a review with photos to help other customers.
+                </p>
+                <a href="{{ $reviewUrl }}" style="display:inline-block;margin-top:11px;background:#ffffff;border:1px solid #d7be84;color:#7b6530;text-decoration:none;font-weight:700;font-size:13px;padding:10px 14px;border-radius:10px;">
+                    Leave a review
+                </a>
+            </td>
+        </tr>
+    </table>
 
-                <tr>
-                    <td style="padding:14px 20px; border-top:1px solid #efe6d3; background:#fffcf4; text-align:center;">
-                        <p style="margin:0; font-size:12px; color:#8f7b56;">
-                            © {{ date('Y') }} Bear Lane. All rights reserved.
-                        </p>
-                    </td>
-                </tr>
-            </table>
-        </td>
-    </tr>
-</table>
-</body>
-</html>
+    <p style="margin:16px 0 0;font-size:13px;line-height:1.7;color:#6b7280;">
+        Need help with this order? Reply to this email and our team will assist you.
+    </p>
+@endsection

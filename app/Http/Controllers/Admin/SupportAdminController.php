@@ -7,11 +7,14 @@ use App\Models\Chat;
 use App\Models\FaqRequest;
 use App\Models\HelpArticle;
 use App\Models\InstantQuote;
+use App\Models\SupportMessage;
 use App\Services\AdminActivityLogService;
 use App\Services\AdminSummaryService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -156,11 +159,118 @@ class SupportAdminController extends Controller
             report($exception);
         }
 
+        $supportMessages = collect();
+        try {
+            if (Schema::hasTable('support_messages')) {
+                $supportMessages = SupportMessage::query()
+                    ->with(['user:id,name,username,email', 'repliedByAdmin:id,name,username,email'])
+                    ->latest('created_at')
+                    ->limit(250)
+                    ->get()
+                    ->map(fn (SupportMessage $supportMessage) => $this->mapSupportMessage($supportMessage))
+                    ->values();
+            }
+        } catch (\Throwable $exception) {
+            report($exception);
+        }
+
         return response()->json([
             'articles' => $articles,
             'faq_requests' => $faqRequests,
             'chats' => $chats,
+            'support_messages' => $supportMessages,
             'summary' => $this->adminSummaryService->getSummary(),
+        ]);
+    }
+
+    public function markSupportMessageRead(Request $request, SupportMessage $supportMessage): JsonResponse
+    {
+        if (!$supportMessage->admin_read_at) {
+            $supportMessage->admin_read_at = now();
+        }
+
+        if ((string) $supportMessage->status === 'new') {
+            $supportMessage->status = 'read';
+        }
+
+        $supportMessage->save();
+        $supportMessage->load(['user:id,name,username,email', 'repliedByAdmin:id,name,username,email']);
+
+        return response()->json([
+            'success' => true,
+            'support_message' => $this->mapSupportMessage($supportMessage),
+        ]);
+    }
+
+    public function replySupportMessage(Request $request, SupportMessage $supportMessage): JsonResponse
+    {
+        $validated = $request->validate([
+            'subject' => ['required', 'string', 'max:220'],
+            'message' => ['required', 'string', 'max:5000'],
+        ]);
+
+        $recipient = trim((string) ($supportMessage->email ?: ''));
+        if ($recipient === '') {
+            return response()->json([
+                'success' => false,
+                'message' => 'This message has no valid recipient email.',
+            ], 422);
+        }
+
+        $subject = trim((string) $validated['subject']);
+        $messageBody = trim((string) $validated['message']);
+
+        try {
+            Mail::send('emails.admin-message', [
+                'heading' => $subject,
+                'type' => 'message',
+                'userName' => trim((string) ($supportMessage->name ?: 'there')),
+                'messageBody' => $messageBody,
+                'logoUrl' => asset('images/BLText.png'),
+            ], function ($mail) use ($recipient, $subject) {
+                $mail->to($recipient)->subject($subject);
+            });
+        } catch (\Throwable $exception) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Email could not be sent right now. Please try again shortly.',
+            ], 500);
+        }
+
+        $supportMessage->status = 'replied';
+        $supportMessage->admin_read_at = $supportMessage->admin_read_at ?: now();
+        $supportMessage->admin_replied_at = now();
+        $supportMessage->replied_by_admin_id = $request->user()?->id;
+
+        $metadata = (array) ($supportMessage->metadata ?? []);
+        $metadata['last_reply_subject'] = $subject;
+        $metadata['last_reply_message'] = $messageBody;
+        $metadata['last_reply_at'] = now()->toIso8601String();
+        $supportMessage->metadata = $metadata;
+        $supportMessage->save();
+
+        $this->activityLogService->logFromRequest(
+            $request,
+            'support_message_replied',
+            'Support message replied',
+            "Replied to support message #{$supportMessage->id} ({$supportMessage->email})",
+            [
+                'icon' => 'mail',
+                ...$this->activityLogService->modelContext($supportMessage, "Support message #{$supportMessage->id}"),
+                'metadata' => [
+                    'support_message_id' => $supportMessage->id,
+                    'recipient_email' => $supportMessage->email,
+                    'subject' => $subject,
+                ],
+            ]
+        );
+
+        $supportMessage->load(['user:id,name,username,email', 'repliedByAdmin:id,name,username,email']);
+
+        return response()->json([
+            'success' => true,
+            'support_message' => $this->mapSupportMessage($supportMessage),
+            'message' => 'Reply sent successfully.',
         ]);
     }
 
@@ -488,6 +598,53 @@ class SupportAdminController extends Controller
                 'content' => $latestImageUrl ? 'Image attachment' : $latestMessage->content,
                 'created_at' => optional($latestMessage->created_at)?->toIso8601String(),
             ] : null,
+        ];
+    }
+
+    private function mapSupportMessage(SupportMessage $supportMessage): array
+    {
+        $attachments = collect(is_array($supportMessage->attachments) ? $supportMessage->attachments : [])
+            ->map(function ($path) {
+                $value = trim((string) $path);
+                if ($value === '') {
+                    return null;
+                }
+                if (str_starts_with($value, 'http://') || str_starts_with($value, 'https://')) {
+                    return $value;
+                }
+
+                return Storage::disk('public')->url($value);
+            })
+            ->filter()
+            ->values()
+            ->all();
+
+        return [
+            'id' => $supportMessage->id,
+            'source_type' => (string) $supportMessage->source_type,
+            'name' => (string) $supportMessage->name,
+            'email' => (string) $supportMessage->email,
+            'phone' => $supportMessage->phone ? (string) $supportMessage->phone : null,
+            'subject' => $supportMessage->subject ? (string) $supportMessage->subject : null,
+            'message' => (string) $supportMessage->message,
+            'attachments' => $attachments,
+            'metadata' => is_array($supportMessage->metadata) ? $supportMessage->metadata : [],
+            'status' => (string) ($supportMessage->status ?: 'new'),
+            'admin_read_at' => optional($supportMessage->admin_read_at)?->toIso8601String(),
+            'admin_replied_at' => optional($supportMessage->admin_replied_at)?->toIso8601String(),
+            'replied_by_admin' => $supportMessage->repliedByAdmin ? [
+                'id' => $supportMessage->repliedByAdmin->id,
+                'name' => (string) ($supportMessage->repliedByAdmin->name ?: $supportMessage->repliedByAdmin->username ?: 'Admin'),
+                'email' => (string) $supportMessage->repliedByAdmin->email,
+            ] : null,
+            'user' => $supportMessage->user ? [
+                'id' => $supportMessage->user->id,
+                'name' => (string) ($supportMessage->user->name ?: $supportMessage->user->username ?: 'Customer'),
+                'email' => (string) $supportMessage->user->email,
+            ] : null,
+            'quote_request_id' => $supportMessage->quote_request_id,
+            'created_at' => optional($supportMessage->created_at)?->toIso8601String(),
+            'updated_at' => optional($supportMessage->updated_at)?->toIso8601String(),
         ];
     }
 }

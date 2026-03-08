@@ -8,7 +8,12 @@ import CheckoutForm from "./CheckoutForm";
 import { CheckoutProvider } from "@/Context/CheckoutContext";
 
 const stripeKey = (import.meta.env.VITE_STRIPE_KEY as string | undefined)?.trim() || "";
-const stripePromise = stripeKey ? loadStripe(stripeKey) : null;
+const stripePromise = stripeKey
+  ? loadStripe(stripeKey, {
+      // Reduces blocked telemetry requests (for ad blockers/privacy extensions).
+      advancedFraudSignals: false,
+    })
+  : null;
 
 export default function CheckoutPage() {
   const page = usePage<{ auth?: { user?: unknown } }>();

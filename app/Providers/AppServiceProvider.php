@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use Illuminate\Auth\Notifications\VerifyEmail;
+use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
@@ -45,6 +46,18 @@ class AppServiceProvider extends ServiceProvider
             }
 
             return URL::to($relativeSignedPath);
+        });
+
+        VerifyEmail::toMailUsing(function (object $notifiable, string $url) {
+            return (new MailMessage)
+                ->subject('Verify Your Email Address')
+                ->view('emails.auth.verify-email', [
+                    'name' => method_exists($notifiable, 'getAttribute')
+                        ? ($notifiable->getAttribute('name') ?: $notifiable->getAttribute('username') ?: 'there')
+                        : 'there',
+                    'verificationUrl' => $url,
+                    'logoUrl' => asset('images/BLText.png'),
+                ]);
         });
 
         // Prefetch assets via Vite

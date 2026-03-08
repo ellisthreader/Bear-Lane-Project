@@ -31,6 +31,7 @@ export default function StencilizeUI({
   const [original, setOriginal] = useState<string | null>(null);
   const [processed, setProcessed] = useState<string | null>(null);
   const [processingProgress, setProcessingProgress] = useState(0);
+  const [processingStage, setProcessingStage] = useState<"moderating" | "stencilizing">("moderating");
   const [isMobileViewport, setIsMobileViewport] = useState<boolean>(() =>
     typeof window !== "undefined" ? window.matchMedia("(max-width: 1023px)").matches : false
   );
@@ -53,16 +54,25 @@ export default function StencilizeUI({
 
   useEffect(() => {
     if (!loading) return;
-    setProcessingProgress(3);
+    setProcessingProgress((prev) => (prev > 0 ? prev : 3));
     const interval = window.setInterval(() => {
       setProcessingProgress((prev) => {
         if (prev >= 92) return prev;
-        const step = prev < 40 ? 6 : prev < 70 ? 3 : 1;
+        const step =
+          processingStage === "moderating"
+            ? prev < 20
+              ? 4
+              : 2
+            : prev < 40
+            ? 6
+            : prev < 70
+            ? 3
+            : 1;
         return Math.min(92, prev + step);
       });
     }, 320);
     return () => window.clearInterval(interval);
-  }, [loading]);
+  }, [loading, processingStage]);
 
   useEffect(() => {
     if (!loading && processed) {
@@ -84,6 +94,7 @@ export default function StencilizeUI({
     setProcessed(null);
     setLoading(false);
     setProcessingProgress(0);
+    setProcessingStage("moderating");
   };
 
   const runStencilize = async (sourceUrl: string, randomize = false) => {
@@ -119,9 +130,25 @@ export default function StencilizeUI({
   const handleFile = async (file?: File) => {
     if (!file || loading) return;
 
+    resetState();
+    const objectUrl = URL.createObjectURL(file);
+    objectUrlRef.current = objectUrl;
+    setOriginal(objectUrl);
+    setLoading(true);
+    setProcessingStage("moderating");
+    setProcessingProgress(4);
+
     if (onValidateUpload) {
-      const moderation = await onValidateUpload(file);
-      if (!moderation.allowed) {
+      try {
+        const moderation = await onValidateUpload(file);
+        if (!moderation.allowed) {
+          resetState();
+          if (fileInputRef.current) fileInputRef.current.value = "";
+          return;
+        }
+      } catch (error) {
+        console.error("Upload moderation failed:", error);
+        resetState();
         if (fileInputRef.current) fileInputRef.current.value = "";
         return;
       }
@@ -129,25 +156,22 @@ export default function StencilizeUI({
 
     if (!enableStencilProcessing) {
       try {
+        setProcessingStage("stencilizing");
+        setProcessingProgress((prev) => Math.max(prev, 55));
         const rawDataUrl = await toDataUrl(file);
         onUpload(rawDataUrl);
       } catch (err) {
         console.error("Image read failed:", err);
       } finally {
+        resetState();
         if (fileInputRef.current) fileInputRef.current.value = "";
       }
       return;
     }
 
-    resetState();
-
-    const objectUrl = URL.createObjectURL(file);
-    objectUrlRef.current = objectUrl;
-
-    setOriginal(objectUrl);
-    setLoading(true);
-
     try {
+      setProcessingStage("stencilizing");
+      setProcessingProgress((prev) => Math.max(prev, 45));
       const processedImage = await runStencilize(objectUrl, false);
       setProcessed(processedImage);
     } catch (err) {
@@ -186,11 +210,34 @@ export default function StencilizeUI({
   return (
     <>
       <div className="p-6 space-y-6 h-full overflow-y-auto">
+        {loading && original ? (
+          <div className="rounded-xl border border-[#C6A75E]/45 bg-gradient-to-r from-[#FFF7E4] via-[#FFFDF7] to-[#F3E4BE] px-4 py-3 shadow-sm">
+            <div className="mb-1 flex items-center justify-between gap-2">
+              <p className="text-sm font-semibold text-[#6F5724]">
+                {processingStage === "moderating" ? "Checking image safety..." : "Processing your image..."}
+              </p>
+              <span className="text-xs font-semibold text-[#6F5724]">{Math.round(processingProgress)}%</span>
+            </div>
+            <div className="h-2 overflow-hidden rounded-full bg-[#EBDDB9]">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-[#CFAC52] to-[#B9902E] transition-all duration-300"
+                style={{ width: `${Math.max(6, Math.min(100, processingProgress))}%` }}
+              />
+            </div>
+          </div>
+        ) : null}
+
         {/* Browse Button */}
         <label className="w-full flex items-center gap-3 cursor-pointer bg-white hover:bg-[#FFF7E6] text-[#2F2617] py-3 px-4 rounded-lg border border-[#DCC89A] transition">
           <UploadCloud size={22} />
           <span className="font-medium">
-            {loading ? "Processing…" : isMobileViewport ? "Browse your device" : "Browse your computer"}
+            {loading
+              ? processingStage === "moderating"
+                ? "Checking upload…"
+                : "Processing…"
+              : isMobileViewport
+              ? "Browse your device"
+              : "Browse your computer"}
           </span>
           <input
             ref={fileInputRef}
@@ -226,7 +273,7 @@ export default function StencilizeUI({
         </div>
 
         {/* Recent Uploads */}
-        {recentImages.length > 0 && (
+        {(loading || recentImages.length > 0) && (
           <div className="pb-4">
             <p className="text-sm font-semibold mb-2 text-gray-800">
               Recent Uploads
@@ -248,7 +295,7 @@ export default function StencilizeUI({
                   />
                   <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
                     <span className="rounded-full bg-black/40 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.05em]">
-                      Processing
+                      {processingStage === "moderating" ? "Moderating" : "Processing"}
                     </span>
                     <span className="mt-1 text-sm font-bold">{Math.round(processingProgress)}%</span>
                   </div>

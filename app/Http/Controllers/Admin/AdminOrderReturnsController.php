@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Chat;
 use App\Models\Message;
 use App\Models\ReturnRequest;
+use App\Services\AdminNotificationService;
 use App\Services\AdminActivityLogService;
 use App\Services\ShippoLabelService;
 use App\Services\ShippoRateService;
@@ -36,6 +37,7 @@ class AdminOrderReturnsController extends Controller
         private readonly ShippoLabelService $shippoLabelService,
         private readonly ShippoRateService $shippoRateService,
         private readonly AdminActivityLogService $activityLogService,
+        private readonly AdminNotificationService $adminNotificationService,
     ) {
     }
 
@@ -320,6 +322,15 @@ class AdminOrderReturnsController extends Controller
                     'status' => $returnRequest->status,
                 ],
             ]
+        );
+
+        $orderNumber = (string) ($returnRequest->order?->order_number ?: $returnRequest->order_id);
+        $this->adminNotificationService->sendAdminEventEmail(
+            'return_status_changed',
+            "Return Status Updated #{$returnRequest->id}",
+            'Return request status changed',
+            "Return request: #{$returnRequest->id}\nOrder: #{$orderNumber}\nAction: {$action}\nCurrent status: {$returnRequest->status}",
+            $request->user()?->id
         );
 
         return response()->json([

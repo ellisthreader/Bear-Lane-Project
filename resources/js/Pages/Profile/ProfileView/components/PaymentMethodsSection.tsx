@@ -7,7 +7,11 @@ import AddPaymentMethodModal from "./AddPaymentMethodModal";
 import { useProfileViewContext } from "../ProfileViewContext";
 
 const stripeKey = (import.meta.env.VITE_STRIPE_KEY as string | undefined)?.trim() || "";
-const stripePromise = stripeKey ? loadStripe(stripeKey) : null;
+const stripePromise = stripeKey
+  ? loadStripe(stripeKey, {
+      advancedFraudSignals: false,
+    })
+  : null;
 
 export default function PaymentMethodsSection() {
   const { loadingSavedData, paymentMethods, setDefaultPaymentMethod, deletePaymentMethod } = useProfileViewContext();

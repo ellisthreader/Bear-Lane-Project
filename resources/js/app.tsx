@@ -14,6 +14,27 @@ import "react-toastify/dist/ReactToastify.css";
 import "../css/google-autocomplete.css";
 import "../css/checkout-toast.css";
 
+if (typeof window !== "undefined") {
+  window.addEventListener("unhandledrejection", (event) => {
+    const reason = event.reason;
+    const message =
+      typeof reason === "string"
+        ? reason
+        : typeof reason?.message === "string"
+        ? reason.message
+        : "";
+
+    // Stripe telemetry endpoint can be blocked by browser extensions (ad/privacy blockers).
+    // Silence only this known non-critical rejection to avoid console spam.
+    if (
+      /r\.stripe\.com\/b/i.test(message) ||
+      (/ERR_BLOCKED_BY_CLIENT/i.test(message) && /stripe/i.test(message))
+    ) {
+      event.preventDefault();
+    }
+  });
+}
+
 // Import all pages for Vite
 const pages = import.meta.glob("./Pages/**/*.tsx", { eager: false });
 

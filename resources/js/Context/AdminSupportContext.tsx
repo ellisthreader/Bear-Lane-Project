@@ -86,6 +86,34 @@ type SupportMessage = {
   created_at: string;
 };
 
+type SupportInboxMessage = {
+  id: number;
+  source_type: "support_form" | "artist_request" | string;
+  name: string;
+  email: string;
+  phone: string | null;
+  subject: string | null;
+  message: string;
+  attachments: string[];
+  metadata: Record<string, unknown>;
+  status: "new" | "read" | "replied" | string;
+  admin_read_at: string | null;
+  admin_replied_at: string | null;
+  replied_by_admin: {
+    id: number;
+    name: string;
+    email: string;
+  } | null;
+  user: {
+    id: number;
+    name: string;
+    email: string;
+  } | null;
+  quote_request_id: number | null;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
 type AdminSummary = {
   product_sales_count: number;
   orders_total_count?: number;
@@ -97,6 +125,7 @@ type AdminSummary = {
   reviews_left: number;
   quotes_generated: number;
   live_chat_notifications: number;
+  support_messages_notifications?: number;
   chat_active_count?: number;
   chat_inactive_count?: number;
   chat_archived_count?: number;
@@ -136,12 +165,16 @@ type AdminSupportContextValue = {
   articles: SupportArticle[];
   faqRequests: SupportFaqRequest[];
   chats: SupportChat[];
+  supportInboxMessages: SupportInboxMessage[];
   summary: AdminSummary;
   liveChatNotifications: number;
+  supportInboxNotifications: number;
   activeChatId: number | null;
+  activeSupportInboxMessageId: number | null;
   activeChatMessages: SupportMessage[];
   refreshData: () => Promise<void>;
   selectChat: (chatId: number) => Promise<void>;
+  selectSupportInboxMessage: (supportMessageId: number) => Promise<void>;
   createArticle: (payload: CreateArticleInput) => Promise<void>;
   updateArticle: (articleId: number, payload: UpdateArticleInput) => Promise<void>;
   deleteArticle: (articleId: number) => Promise<void>;
@@ -153,6 +186,7 @@ type AdminSupportContextValue = {
   closeChat: (chatId: number) => Promise<void>;
   archiveChat: (chatId: number) => Promise<void>;
   deleteChat: (chatId: number) => Promise<void>;
+  replySupportInboxMessage: (supportMessageId: number, payload: { subject: string; message: string }) => Promise<void>;
 };
 
 const AdminSupportContext = createContext<AdminSupportContextValue | null>(null);
@@ -179,6 +213,7 @@ export function AdminSupportProvider({ children }: Props) {
   const [articles, setArticles] = useState<SupportArticle[]>([]);
   const [faqRequests, setFaqRequests] = useState<SupportFaqRequest[]>([]);
   const [chats, setChats] = useState<SupportChat[]>([]);
+  const [supportInboxMessages, setSupportInboxMessages] = useState<SupportInboxMessage[]>([]);
   const [summary, setSummary] = useState<AdminSummary>({
     product_sales_count: 0,
     product_sales_value: 0,
@@ -188,8 +223,10 @@ export function AdminSupportProvider({ children }: Props) {
     reviews_left: 0,
     quotes_generated: 0,
     live_chat_notifications: 0,
+    support_messages_notifications: 0,
   });
   const [activeChatId, setActiveChatId] = useState<number | null>(null);
+  const [activeSupportInboxMessageId, setActiveSupportInboxMessageId] = useState<number | null>(null);
   const [messagesByChat, setMessagesByChat] = useState<Record<number, SupportMessage[]>>({});
 
   const fetchChatMessages = useCallback(async (chatId: number, join = false) => {
@@ -289,6 +326,7 @@ export function AdminSupportProvider({ children }: Props) {
       setArticles([...dbArticles, ...staticArticles]);
       setFaqRequests([...dbFaqRequests, ...staticFaqs]);
       setChats(payload.chats || []);
+      setSupportInboxMessages((payload.support_messages || []) as SupportInboxMessage[]);
       if (payload.summary) {
         setSummary(payload.summary as AdminSummary);
       }
@@ -398,6 +436,42 @@ export function AdminSupportProvider({ children }: Props) {
 
     await fetchChatMessages(chatId, false);
   }, [chats, fetchChatMessages]);
+
+  const selectSupportInboxMessage = useCallback(async (supportMessageId: number) => {
+    setActiveSupportInboxMessageId(supportMessageId);
+
+    const target = supportInboxMessages.find((entry) => entry.id === supportMessageId);
+    if (!target) {
+      return;
+    }
+
+    if (target.admin_read_at) {
+      return;
+    }
+
+    const response = await fetch(`/admin/support/messages/${supportMessageId}/read`, {
+      method: "PATCH",
+      credentials: "same-origin",
+      headers: {
+        Accept: "application/json",
+        "X-CSRF-TOKEN": getCsrfToken(),
+      },
+    });
+
+    if (!response.ok) {
+      return;
+    }
+
+    const payload = await response.json().catch(() => ({}));
+    const updated = payload.support_message as SupportInboxMessage | undefined;
+    if (!updated) {
+      return;
+    }
+
+    setSupportInboxMessages((prev) =>
+      prev.map((entry) => (entry.id === supportMessageId ? updated : entry))
+    );
+  }, [supportInboxMessages]);
 
   useEffect(() => {
     if (!activeChatId) return;
@@ -768,6 +842,34 @@ export function AdminSupportProvider({ children }: Props) {
     setActiveChatId((prev) => (prev === chatId ? null : prev));
   }, []);
 
+  const replySupportInboxMessage = useCallback(
+    async (supportMessageId: number, payload: { subject: string; message: string }) => {
+      const response = await fetch(`/admin/support/messages/${supportMessageId}/reply`, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          "X-CSRF-TOKEN": getCsrfToken(),
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data?.message || "Unable to send email reply.");
+      }
+
+      const updated = data.support_message as SupportInboxMessage | undefined;
+      if (updated) {
+        setSupportInboxMessages((prev) =>
+          prev.map((entry) => (entry.id === supportMessageId ? updated : entry))
+        );
+      }
+    },
+    []
+  );
+
   const activeChatMessages = useMemo(
     () => (activeChatId ? messagesByChat[activeChatId] || [] : []),
     [activeChatId, messagesByChat]
@@ -780,12 +882,18 @@ export function AdminSupportProvider({ children }: Props) {
       articles,
       faqRequests,
       chats,
+      supportInboxMessages,
       summary,
       liveChatNotifications: summary.live_chat_notifications || summary.new_live_chats || 0,
+      supportInboxNotifications:
+        summary.support_messages_notifications ??
+        supportInboxMessages.filter((entry) => !entry.admin_read_at).length,
       activeChatId,
+      activeSupportInboxMessageId,
       activeChatMessages,
       refreshData,
       selectChat,
+      selectSupportInboxMessage,
       createArticle,
       updateArticle,
       deleteArticle,
@@ -797,6 +905,7 @@ export function AdminSupportProvider({ children }: Props) {
       closeChat,
       archiveChat,
       deleteChat,
+      replySupportInboxMessage,
     }),
     [
       loading,
@@ -804,11 +913,14 @@ export function AdminSupportProvider({ children }: Props) {
       articles,
       faqRequests,
       chats,
+      supportInboxMessages,
       summary,
       activeChatId,
+      activeSupportInboxMessageId,
       activeChatMessages,
       refreshData,
       selectChat,
+      selectSupportInboxMessage,
       createArticle,
       updateArticle,
       deleteArticle,
@@ -820,6 +932,7 @@ export function AdminSupportProvider({ children }: Props) {
       closeChat,
       archiveChat,
       deleteChat,
+      replySupportInboxMessage,
     ]
   );
 
@@ -839,6 +952,7 @@ export type {
   SupportArticle,
   SupportChat,
   SupportFaqRequest,
+  SupportInboxMessage,
   SupportMessage,
   CreateArticleInput,
   UpdateArticleInput,

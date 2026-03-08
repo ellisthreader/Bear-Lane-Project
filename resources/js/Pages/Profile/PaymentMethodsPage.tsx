@@ -21,7 +21,11 @@ type SavedPaymentMethod = {
 };
 
 const stripeKey = (import.meta.env.VITE_STRIPE_KEY as string | undefined)?.trim() || "";
-const stripePromise = stripeKey ? loadStripe(stripeKey) : null;
+const stripePromise = stripeKey
+  ? loadStripe(stripeKey, {
+      advancedFraudSignals: false,
+    })
+  : null;
 
 const formatCardNumber = (last4?: string | null) => {
   const digits = (last4 || "0000").slice(-4);

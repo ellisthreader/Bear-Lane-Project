@@ -7,6 +7,7 @@ use App\Models\Chat;
 use App\Models\Message;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Services\AdminNotificationService;
 use App\Services\AdminActivityLogService;
 use App\Services\AdminSummaryService;
 use App\Services\ShippoLabelService;
@@ -33,6 +34,7 @@ class AdminOrdersController extends Controller
         private readonly AdminSummaryService $adminSummaryService,
         private readonly AdminActivityLogService $activityLogService,
         private readonly ShippoLabelService $shippoLabelService,
+        private readonly AdminNotificationService $adminNotificationService,
     ) {
     }
 
@@ -157,6 +159,14 @@ class AdminOrdersController extends Controller
             'user:id,name,username,email,avatar',
             'items.product.images',
         ]);
+
+        $this->adminNotificationService->sendAdminEventEmail(
+            'order_status_changed',
+            "Order Status Updated #{$order->order_number}",
+            'Order status changed by admin',
+            "Order: #{$order->order_number}\nNew status: {$nextStatus}\nTracking number: " . ($order->shippo_tracking_number ?: 'Not set'),
+            $request->user()?->id
+        );
 
         return response()->json([
             'success' => true,

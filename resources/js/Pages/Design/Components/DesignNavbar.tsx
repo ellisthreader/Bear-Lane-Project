@@ -86,7 +86,7 @@ export default function DesignNavbar({
                 ariaLabel="Open my designs"
                 onClick={canOpenMyDesigns ? () => onOpenMyDesigns?.() : undefined}
               >
-                <Folder className="h-4 w-4" />
+                <Folder className="h-5 w-5" />
               </MobileNavButton>
 
               <MobileNavButton
@@ -94,20 +94,20 @@ export default function DesignNavbar({
                 ariaLabel="Save design"
                 onClick={canSave ? () => onSaveDesign?.() : undefined}
               >
-                <Save className="h-4 w-4" />
+                <Save className="h-5 w-5" />
               </MobileNavButton>
 
               <Link
                 href={isUserSignedIn ? "/profile" : "/login"}
                 aria-label={isUserSignedIn ? "Open profile" : "Sign in"}
-                className="inline-flex min-h-[58px] flex-col items-center justify-center rounded-xl px-1 py-1 text-center text-[10px] font-semibold text-gray-700 transition hover:bg-[#F2EAD6]"
+                className="inline-flex min-h-[58px] flex-col items-center justify-center rounded-xl px-1 py-1 text-center text-[11px] font-semibold text-gray-700 transition hover:bg-[#F2EAD6]"
               >
-                <User className="h-4 w-4" />
+                <User className="h-5 w-5" />
                 <span className="mt-1 leading-none">{isUserSignedIn ? "Profile" : "Sign in"}</span>
               </Link>
 
               <MobileNavButton label="Cart" ariaLabel="Open cart" onClick={openCart}>
-                <ShoppingCart className="h-4 w-4" />
+                <ShoppingCart className="h-5 w-5" />
               </MobileNavButton>
             </div>
 
@@ -250,7 +250,7 @@ function MobileNavButton({
       type="button"
       onClick={onClick}
       aria-label={ariaLabel}
-      className="inline-flex min-h-[52px] flex-col items-center justify-center rounded-xl px-2 py-1 text-center text-[10px] font-semibold text-gray-700 transition hover:bg-[#F2EAD6]"
+      className="inline-flex min-h-[54px] flex-col items-center justify-center rounded-xl px-2 py-1 text-center text-[11px] font-semibold text-gray-700 transition hover:bg-[#F2EAD6]"
     >
       {children}
       <span className="mt-1 leading-none">{label}</span>

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Quote;
 
 use App\Http\Controllers\Controller;
+use App\Services\AdminNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Mail;
@@ -13,7 +14,7 @@ use App\Services\Security\RecaptchaService;
 
 class InstantQuoteController extends Controller
 {
-    public function store(Request $request, RecaptchaService $recaptchaService)
+    public function store(Request $request, RecaptchaService $recaptchaService, AdminNotificationService $adminNotificationService)
     {
         $recaptchaService->verifyOrFail($request, 'instant_quote');
 
@@ -58,6 +59,13 @@ class InstantQuoteController extends Controller
                 'error' => $e->getMessage(),
             ]);
         }
+
+        $adminNotificationService->sendAdminEventEmail(
+            'instant_quote_generated',
+            'New Instant Quote Generated',
+            'A customer generated an instant quote',
+            "Quote number: {$quote->quote_number}\nName: {$quote->name}\nEmail: {$quote->email}\nTotal: £" . number_format((float) $quote->total, 2)
+        );
 
         return response()->json(['success' => true, 'quote' => $quote]);
     }

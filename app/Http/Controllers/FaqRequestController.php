@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\FaqRequest;
+use App\Services\AdminNotificationService;
 use App\Services\OpenAiModerationService;
 use App\Services\Security\RecaptchaService;
 use Illuminate\Http\JsonResponse;
@@ -14,7 +15,8 @@ class FaqRequestController extends Controller
     public function store(
         Request $request,
         OpenAiModerationService $moderationService,
-        RecaptchaService $recaptchaService
+        RecaptchaService $recaptchaService,
+        AdminNotificationService $adminNotificationService
     ): JsonResponse
     {
         $recaptchaService->verifyOrFail($request, 'faq_request');
@@ -72,6 +74,13 @@ class FaqRequestController extends Controller
             'details' => $validated['details'] ?? null,
             'status' => 'pending',
         ]);
+
+        $adminNotificationService->sendAdminEventEmail(
+            'faq_request_submitted',
+            'New FAQ Request Submitted',
+            'A customer submitted a new FAQ request',
+            "Question: {$faqRequest->question}\nFrom user ID: {$faqRequest->user_id}"
+        );
 
         return response()->json([
             'success' => true,

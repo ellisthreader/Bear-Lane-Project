@@ -443,6 +443,21 @@ const GetPriceUI: React.FC<GetPriceUIProps> = ({
                     Design type: {selectedDesignTypeDisplay}
                   </p>
                 </div>
+                <div className="mt-2 flex flex-wrap gap-1.5 lg:hidden">
+                  {designTags.length > 0 ? (
+                    designTags.map(tag => (
+                      <span key={`order-${tag.key}`} className="inline-flex items-center gap-1 rounded-full border border-[#E6D8B7] bg-white px-2 py-0.5 text-[11px] font-medium text-[#6C5530]">
+                        {tag.icon}
+                        {tag.label}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="inline-flex items-center gap-1 rounded-full border border-[#E6D8B7] bg-white px-2 py-0.5 text-[11px] font-medium text-[#6C5530]">
+                      <CircleDollarSign size={13} />
+                      No design extras
+                    </span>
+                  )}
+                </div>
                 <div className="space-y-2 lg:hidden">
                     <div className="flex items-center justify-between rounded-2xl border border-gray-200 bg-gray-50/80 p-2">
                       <button

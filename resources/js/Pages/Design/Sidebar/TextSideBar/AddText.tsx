@@ -123,7 +123,7 @@ export default function AddText({
       <input
         type="text"
         placeholder="Enter text here..."
-        className="w-full p-3 text-gray-800 text-sm rounded-xl border border-gray-300 focus:ring-2 focus:ring-[#C6A75E] focus:outline-none transition placeholder-gray-400"
+        className="w-full rounded-xl border border-gray-300 p-3 text-base text-gray-800 transition placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#C6A75E] md:text-sm"
         value={text}
         maxLength={MAX_TEXT_LENGTH}
         onChange={(e) =>

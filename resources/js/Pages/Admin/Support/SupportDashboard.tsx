@@ -1,24 +1,26 @@
 import { Link } from "@inertiajs/react";
 import { useMemo, useState, type ReactNode } from "react";
-import { BookText, CircleHelp, MessageSquareText, Sparkles } from "lucide-react";
+import { BookText, CircleHelp, Mail, MessageSquareText, Sparkles } from "lucide-react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import AdminTopNav from "@/Components/Admin/AdminTopNav";
 import { AdminSupportProvider, useAdminSupport } from "@/Context/AdminSupportContext";
 import ArticlesTab from "./components/ArticlesTab";
 import FaqTab from "./components/FaqTab";
 import LiveChatTab from "./components/LiveChatTab";
+import MessagesTab from "./components/MessagesTab";
 
-type TabKey = "articles" | "faq" | "chat";
+type TabKey = "articles" | "faq" | "chat" | "messages";
 
 const tabs: Array<{ key: TabKey; label: string; icon: ReactNode }> = [
   { key: "articles", label: "Help Centre Articles", icon: <BookText className="h-4 w-4" /> },
   { key: "faq", label: "FAQ Inbox", icon: <CircleHelp className="h-4 w-4" /> },
+  { key: "messages", label: "Messages", icon: <Mail className="h-4 w-4" /> },
   { key: "chat", label: "Live Chat", icon: <MessageSquareText className="h-4 w-4" /> },
 ];
 
 function SupportDashboardContent() {
   const [activeTab, setActiveTab] = useState<TabKey>("articles");
-  const { loading, summary, liveChatNotifications, articles, faqRequests } = useAdminSupport();
+  const { loading, summary, liveChatNotifications, supportInboxNotifications, supportInboxMessages, articles, faqRequests } = useAdminSupport();
 
   const mergedActiveArticlesCount = useMemo(
     () => articles.filter((article) => article.is_published).length,
@@ -83,6 +85,23 @@ function SupportDashboardContent() {
       ];
     }
 
+    if (activeTab === "messages") {
+      return [
+        {
+          label: "Unread Messages",
+          value: `${supportInboxNotifications}`,
+          subValue: "Awaiting first admin response",
+          icon: <Mail className="h-5 w-5" />,
+        },
+        {
+          label: "Total Inbox",
+          value: `${supportInboxMessages.length}`,
+          subValue: "Support + artist enquiries",
+          icon: <MessageSquareText className="h-5 w-5" />,
+        },
+      ];
+    }
+
     return [
       {
         label: "Published Answers",
@@ -104,6 +123,8 @@ function SupportDashboardContent() {
     mergedArchivedArticlesCount,
     mergedFaqPublishedAnswersCount,
     mergedFaqQuestionsCount,
+    supportInboxNotifications,
+    supportInboxMessages.length,
   ]);
 
   return (
@@ -126,9 +147,9 @@ function SupportDashboardContent() {
 
           <div className="mt-4 flex items-center gap-2 rounded-xl border border-[#E9D8AE] bg-[#FFF7E0] px-3 py-2 text-xs font-semibold text-[#7B5E24]">
             <Sparkles className="h-4 w-4" />
-            Live Chat Notifications
+            Live Notifications
             <span className="ml-1 inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-[#B42318] px-1.5 text-[11px] font-bold text-white">
-              {liveChatNotifications}
+              {liveChatNotifications + supportInboxNotifications}
             </span>
           </div>
 
@@ -167,6 +188,11 @@ function SupportDashboardContent() {
                     {liveChatNotifications}
                   </span>
                 ) : null}
+                {tab.key === "messages" && supportInboxNotifications > 0 ? (
+                  <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#B42318] px-1.5 text-xs font-bold text-white">
+                    {supportInboxNotifications}
+                  </span>
+                ) : null}
               </button>
             );
           })}
@@ -178,6 +204,7 @@ function SupportDashboardContent() {
           ) : null}
           {!loading && activeTab === "articles" ? <ArticlesTab /> : null}
           {!loading && activeTab === "faq" ? <FaqTab /> : null}
+          {!loading && activeTab === "messages" ? <MessagesTab /> : null}
           {!loading && activeTab === "chat" ? <LiveChatTab /> : null}
         </div>
       </div>

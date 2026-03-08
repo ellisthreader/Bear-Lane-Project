@@ -12,6 +12,7 @@ class StoreSettingsService
     public const KEY_TAX_SETTINGS = 'tax_settings';
     public const KEY_SIZE_GUIDE = 'size_guide';
     public const KEY_FRONT_PAGE_PRODUCTS = 'front_page_products';
+    public const KEY_ADMIN_NOTIFICATION_SETTINGS = 'admin_notification_settings';
 
     public function getDesignPricing(): array
     {
@@ -109,6 +110,86 @@ class StoreSettingsService
         $stored = $this->get(self::KEY_FRONT_PAGE_PRODUCTS, []);
 
         return $this->mergeDefaults($this->defaultFrontPageProducts(), is_array($stored) ? $stored : []);
+    }
+
+    public function getAdminNotificationCatalog(): array
+    {
+        return [
+            [
+                'id' => 'commerce',
+                'title' => 'Commerce',
+                'description' => 'Orders, returns, and checkout activity.',
+                'items' => [
+                    ['key' => 'new_order', 'title' => 'New order placed', 'description' => 'Triggered when a customer successfully places an order.'],
+                    ['key' => 'order_status_changed', 'title' => 'Order status changed', 'description' => 'Triggered when an admin updates order status.'],
+                    ['key' => 'return_request_submitted', 'title' => 'Return request submitted', 'description' => 'Triggered when a customer requests a return.'],
+                    ['key' => 'return_status_changed', 'title' => 'Return status changed', 'description' => 'Triggered when a return request status is updated.'],
+                ],
+            ],
+            [
+                'id' => 'sales_support',
+                'title' => 'Sales & Support',
+                'description' => 'Quotes, chats, and support flow.',
+                'items' => [
+                    ['key' => 'instant_quote_generated', 'title' => 'Instant quote generated', 'description' => 'Triggered when a customer generates an instant quote.'],
+                    ['key' => 'quote_request_submitted', 'title' => 'Embroidery artist request', 'description' => 'Triggered when a customer submits an embroidery artist request.'],
+                    ['key' => 'support_message_submitted', 'title' => 'Support form message', 'description' => 'Triggered when a customer sends a message via the support page.'],
+                    ['key' => 'new_live_chat', 'title' => 'New live chat started', 'description' => 'Triggered when a new live chat is opened.'],
+                    ['key' => 'faq_request_submitted', 'title' => 'FAQ request submitted', 'description' => 'Triggered when a customer submits an FAQ request.'],
+                ],
+            ],
+            [
+                'id' => 'account_content',
+                'title' => 'Account & Content',
+                'description' => 'User signups and social proof updates.',
+                'items' => [
+                    ['key' => 'new_user_registered', 'title' => 'New user registered', 'description' => 'Triggered when a new customer account is created.'],
+                    ['key' => 'new_review_submitted', 'title' => 'New review submitted', 'description' => 'Triggered when a customer leaves a product review.'],
+                ],
+            ],
+        ];
+    }
+
+    public function getAdminNotificationSettings(): array
+    {
+        $stored = $this->get(self::KEY_ADMIN_NOTIFICATION_SETTINGS, []);
+
+        return $this->mergeDefaults($this->defaultAdminNotificationSettings(), is_array($stored) ? $stored : []);
+    }
+
+    public function saveAdminNotificationSettings(array $payload): array
+    {
+        $defaults = $this->defaultAdminNotificationSettings();
+        $inputEvents = data_get($payload, 'events', []);
+        if (!is_array($inputEvents)) {
+            $inputEvents = [];
+        }
+
+        $normalizedEvents = [];
+        foreach ((array) data_get($defaults, 'events', []) as $eventKey => $defaultEventValue) {
+            $inAppValue = data_get($inputEvents, "{$eventKey}.in_app");
+            $emailValue = data_get($inputEvents, "{$eventKey}.email");
+
+            $normalizedEvents[$eventKey] = [
+                'in_app' => $this->toBool($inAppValue, (bool) data_get($defaultEventValue, 'in_app', true)),
+                'email' => $this->toBool($emailValue, (bool) data_get($defaultEventValue, 'email', true)),
+            ];
+        }
+
+        $normalized = ['events' => $normalizedEvents];
+        $this->put(self::KEY_ADMIN_NOTIFICATION_SETTINGS, $normalized);
+
+        return $this->getAdminNotificationSettings();
+    }
+
+    public function isAdminEmailNotificationEnabled(string $eventKey): bool
+    {
+        return (bool) data_get($this->getAdminNotificationSettings(), "events.{$eventKey}.email", true);
+    }
+
+    public function isAdminInAppNotificationEnabled(string $eventKey): bool
+    {
+        return (bool) data_get($this->getAdminNotificationSettings(), "events.{$eventKey}.in_app", true);
     }
 
     public function saveFrontPageProducts(array $payload): array
@@ -251,6 +332,28 @@ class StoreSettingsService
         return round(max(0, (float) $sanitized), 2);
     }
 
+    private function toBool(mixed $value, bool $fallback): bool
+    {
+        if ($value === null) {
+            return $fallback;
+        }
+
+        if (is_bool($value)) {
+            return $value;
+        }
+
+        if (is_numeric($value)) {
+            return ((int) $value) === 1;
+        }
+
+        $normalized = strtolower(trim((string) $value));
+        if ($normalized === '') {
+            return $fallback;
+        }
+
+        return in_array($normalized, ['1', 'true', 'yes', 'on'], true);
+    }
+
     private function publicUrlForPath(string $path): ?string
     {
         $trimmed = trim($path);
@@ -367,5 +470,25 @@ class StoreSettingsService
             'premade_product_ids' => [],
             'premade_quotes' => [],
         ];
+    }
+
+    private function defaultAdminNotificationSettings(): array
+    {
+        $events = [];
+        foreach ($this->getAdminNotificationCatalog() as $section) {
+            foreach ((array) data_get($section, 'items', []) as $item) {
+                $key = trim((string) data_get($item, 'key', ''));
+                if ($key === '') {
+                    continue;
+                }
+
+                $events[$key] = [
+                    'in_app' => true,
+                    'email' => true,
+                ];
+            }
+        }
+
+        return ['events' => $events];
     }
 }
