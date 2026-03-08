@@ -329,7 +329,7 @@ export default function AdminDashboard({ auth, summary: incomingSummary }: Admin
                     Expand History
                   </button>
                 </div>
-                <div className="mt-3 max-h-[320px] space-y-2 overflow-y-auto pr-1">
+                <div className="mt-3 space-y-2">
                   {activities.length === 0 ? (
                     <p className="rounded-xl border border-dashed border-[#E2D2AE] bg-[#FFF9EB] px-3 py-4 text-sm text-[#6B5A34]">
                       No recent activity yet.

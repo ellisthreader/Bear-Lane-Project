@@ -8,7 +8,10 @@ use Illuminate\Support\Facades\Log;
 
 class ShippoLabelService
 {
-    public function __construct(private readonly ShippoRateService $shippoRateService)
+    public function __construct(
+        private readonly ShippoRateService $shippoRateService,
+        private readonly ParcelEstimatorService $parcelEstimatorService,
+    )
     {
     }
 
@@ -39,14 +42,7 @@ class ShippoLabelService
             throw new \RuntimeException('Delivery label requires a destination postcode.');
         }
 
-        $parcel = [
-            'length' => '30',
-            'width' => '25',
-            'height' => '5',
-            'distance_unit' => 'cm',
-            'weight' => '1.2',
-            'mass_unit' => 'kg',
-        ];
+        $parcel = $this->parcelEstimatorService->forOrder($order);
 
         $shipDateSource = $order->calculated_ship_date
             ?: $order->selected_delivery_date
@@ -148,14 +144,7 @@ class ShippoLabelService
             throw new \RuntimeException('Return label requires a valid customer postcode.');
         }
 
-        $parcel = [
-            'length' => '30',
-            'width' => '25',
-            'height' => '5',
-            'distance_unit' => 'cm',
-            'weight' => '1.2',
-            'mass_unit' => 'kg',
-        ];
+        $parcel = $this->parcelEstimatorService->forOrder($order);
 
         $shipDateIso = Carbon::now('Europe/London')
             ->addDay()

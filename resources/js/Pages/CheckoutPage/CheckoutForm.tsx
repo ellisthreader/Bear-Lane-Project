@@ -843,6 +843,8 @@ const CheckoutForm = ({ initialEmail = "" }: CheckoutFormProps) => {
           items: cart.map((i) => ({
             slug: i.slug,
             name: i.title,
+            size: i.size,
+            colour: i.colour,
             quantity: i.quantity,
             unit_price_cents: Math.round(i.price * 100),
             design_type: i.designType,
@@ -852,6 +854,12 @@ const CheckoutForm = ({ initialEmail = "" }: CheckoutFormProps) => {
             method: shippingMethod,
             cost: totals.shipping_cents,
             gift_packaging_cost: Math.round(giftPackagingCost * 100),
+            address: {
+              postcode: postcode || "",
+              country: mapCountryCode(country) || "GB",
+              city: city || "",
+              street1: addressLine1 || "",
+            },
           },
           payment_type: paymentType,
           selected_saved_payment_method_id: selectedSavedPaymentMethodId,

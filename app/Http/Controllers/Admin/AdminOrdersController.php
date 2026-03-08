@@ -48,6 +48,20 @@ class AdminOrdersController extends Controller
     public function data(): JsonResponse
     {
         $orders = Order::query()
+            ->select([
+                'id',
+                'user_id',
+                'order_number',
+                'status',
+                'total',
+                'created_at',
+                'first_name',
+                'last_name',
+                'email',
+                'shippo_label_url',
+                'shippo_tracking_number',
+                'archived_at',
+            ])
             ->with(['user:id,name,username,email,avatar'])
             ->withCount('items')
             ->latest('created_at')
@@ -59,16 +73,12 @@ class AdminOrdersController extends Controller
             'orders' => $orders,
             'new_orders_count' => $this->countNewOrders($orders),
             'status_options' => self::STATUS_OPTIONS,
-            'summary' => $this->adminSummaryService->getSummary(),
         ]);
     }
 
     public function show(Order $order): JsonResponse
     {
-        $order->load([
-            'user:id,name,username,email,avatar',
-            'items.product.images',
-        ]);
+        $order = $this->loadOrderWorkspaceRelations($order);
 
         return response()->json([
             'order' => $this->mapOrderDetail($order),
@@ -155,10 +165,7 @@ class AdminOrdersController extends Controller
             ]
         );
 
-        $order->load([
-            'user:id,name,username,email,avatar',
-            'items.product.images',
-        ]);
+        $order = $this->loadOrderWorkspaceRelations($order);
 
         $this->adminNotificationService->sendAdminEventEmail(
             'order_status_changed',
@@ -226,6 +233,9 @@ class AdminOrdersController extends Controller
         $message = trim((string) $validated['message']);
         $subject = trim((string) ($validated['subject'] ?? ''));
         $subject = $subject !== '' ? $subject : "Update about your order #{$order->order_number}";
+        if (!str_contains(strtolower($subject), strtolower((string) $order->order_number))) {
+            $subject .= " (Order #{$order->order_number})";
+        }
         $adminName = $request->user()?->name ?: $request->user()?->username ?: 'BearLane Support';
 
         $sentToInbox = false;
@@ -254,21 +264,32 @@ class AdminOrdersController extends Controller
             $sentToInbox = true;
         }
 
-        if ($order->email) {
-            try {
-                Mail::send('emails.admin-message', [
-                    'heading' => $subject,
-                    'type' => 'message',
-                    'userName' => trim(($order->first_name ?: '') . ' ' . ($order->last_name ?: '')) ?: 'there',
-                    'messageBody' => $message,
-                    'logoUrl' => asset('images/BLText.png'),
-                ], function ($mail) use ($order, $subject) {
-                    $mail->to($order->email)->subject($subject);
-                });
-                $sentEmail = true;
-            } catch (\Throwable $exception) {
-                report($exception);
-            }
+        $recipientEmail = trim((string) ($order->email ?: $order->user?->email ?: ''));
+        if ($recipientEmail === '') {
+            return response()->json([
+                'success' => false,
+                'message' => 'No customer email is available for this order.',
+            ], 422);
+        }
+
+        try {
+            Mail::send('emails.admin-message', [
+                'heading' => $subject,
+                'type' => 'message',
+                'userName' => trim(($order->first_name ?: '') . ' ' . ($order->last_name ?: '')) ?: ($order->user?->name ?: 'there'),
+                'messageBody' => $message,
+                'orderNumber' => (string) $order->order_number,
+                'logoUrl' => asset('images/BLText.png'),
+            ], function ($mail) use ($recipientEmail, $subject) {
+                $mail->to($recipientEmail)->subject($subject);
+            });
+            $sentEmail = true;
+        } catch (\Throwable $exception) {
+            report($exception);
+            return response()->json([
+                'success' => false,
+                'message' => 'Clarification email could not be sent right now. Please try again shortly.',
+            ], 500);
         }
 
         $this->activityLogService->logFromRequest(
@@ -301,7 +322,7 @@ class AdminOrdersController extends Controller
         if ($order->shippo_label_url) {
             return response()->json([
                 'success' => true,
-                'order' => $this->mapOrderDetail($order->load(['user:id,name,username,email,avatar', 'items.product.images'])),
+                'order' => $this->mapOrderDetail($this->loadOrderWorkspaceRelations($order)),
             ]);
         }
 
@@ -362,13 +383,39 @@ class AdminOrdersController extends Controller
 
             return response()->json([
                 'success' => true,
-                'order' => $this->mapOrderDetail($order->load(['user:id,name,username,email,avatar', 'items.product.images'])),
+                'order' => $this->mapOrderDetail($this->loadOrderWorkspaceRelations($order)),
             ]);
         } catch (\Throwable $exception) {
             return response()->json([
                 'message' => $exception->getMessage() ?: 'Unable to generate label right now.',
             ], 422);
         }
+    }
+
+    private function loadOrderWorkspaceRelations(Order $order): Order
+    {
+        $order->load([
+            'user:id,name,username,email,avatar',
+            'items' => function ($query) {
+                $query->select([
+                    'id',
+                    'order_id',
+                    'product_id',
+                    'product_name',
+                    'size',
+                    'colour',
+                    'design_type',
+                    'image_url',
+                    'quantity',
+                    'unit_price',
+                    'line_total',
+                    'design_payload',
+                ]);
+            },
+            'items.product:id,length,width,height',
+        ]);
+
+        return $order;
     }
 
     private function mapOrderSummary(Order $order): array
@@ -467,67 +514,9 @@ class AdminOrdersController extends Controller
             'quantity' => (int) $item->quantity,
             'unit_price' => (float) $item->unit_price,
             'line_total' => (float) $item->line_total,
-            'product_images' => $item->product?->images?->map(fn ($image) => $image->url)->filter()->values() ?? [],
             'preview_snapshot' => is_array($previewSnapshot) ? $previewSnapshot : null,
             'preview_by_view' => is_array($previewByView) ? $previewByView : [],
-            'layer_assets' => $this->extractLayerAssets(collect([
-                ...(is_array($previewSnapshot) ? [$previewSnapshot] : []),
-                ...($this->normalizeSnapshots($previewByView)),
-            ])),
-            'design_payload' => $payload ?: null,
         ];
-    }
-
-    private function normalizeSnapshots(mixed $previewByView): array
-    {
-        if (!is_array($previewByView)) {
-            return [];
-        }
-
-        return collect($previewByView)
-            ->filter(fn ($value) => is_array($value))
-            ->values()
-            ->all();
-    }
-
-    private function extractLayerAssets(Collection $snapshots): array
-    {
-        $assets = [];
-
-        foreach ($snapshots as $snapshot) {
-            if (!is_array($snapshot)) {
-                continue;
-            }
-
-            $layers = $snapshot['layers'] ?? null;
-            if (!is_array($layers)) {
-                continue;
-            }
-
-            foreach ($layers as $layer) {
-                if (!is_array($layer)) {
-                    continue;
-                }
-                $url = $layer['url'] ?? null;
-                if (!is_string($url) || trim($url) === '') {
-                    continue;
-                }
-
-                $assets[] = [
-                    'uid' => (string) ($layer['uid'] ?? ''),
-                    'type' => (string) ($layer['type'] ?? 'image'),
-                    'url' => trim($url),
-                    'position' => $layer['position'] ?? null,
-                    'size' => $layer['size'] ?? null,
-                    'rotation' => $layer['rotation'] ?? 0,
-                ];
-            }
-        }
-
-        return collect($assets)
-            ->unique(fn (array $asset) => ($asset['uid'] ?: $asset['url']) . '|' . $asset['url'])
-            ->values()
-            ->all();
     }
 
     private function isNewOrderStatus(?string $status): bool

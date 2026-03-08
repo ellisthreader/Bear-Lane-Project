@@ -7,7 +7,6 @@ use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
-use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
 use App\Models\User;
 use App\Observers\UserObserver;
@@ -66,23 +65,5 @@ class AppServiceProvider extends ServiceProvider
         // Register UserObserver
         User::observe(UserObserver::class);
 
-        // Share auth.user with Inertia pages
-        Inertia::share([
-            'auth' => [
-                'user' => function () {
-                    $user = auth()->user();
-                    if (!$user) return null;
-
-                    return [
-                        'id' => $user->id,
-                        'username' => $user->username,
-                        'name' => $user->name,
-                        'is_admin' => (bool) ($user->is_admin ?? false),
-                        'avatar_url' => $user->avatar_url ?? $user->avatar ?? '/images/default-avatar.png',
-                        'created_at' => $user->created_at,
-                    ];
-                },
-            ],
-        ]);
     }
 }

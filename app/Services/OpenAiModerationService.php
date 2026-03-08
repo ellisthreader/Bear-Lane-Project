@@ -5,6 +5,7 @@ namespace App\Services;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Client\Response;
+use Illuminate\Http\Client\ConnectionException;
 use RuntimeException;
 
 class OpenAiModerationService
@@ -182,15 +183,38 @@ class OpenAiModerationService
         $configuredModel = trim((string) config('services.openai.moderation_model', 'omni-moderation-latest'));
         $timeout = (int) config('services.openai.timeout', 10);
 
-        $modelsToTry = array_values(array_unique(array_filter([
-            $configuredModel !== '' ? $configuredModel : null,
-            // Resilient fallback if a configured model alias is unavailable.
-            'omni-moderation-latest',
-        ])));
+        $isImagePayload = is_array($input);
+        $modelsToTry = $isImagePayload
+            ? array_values(array_unique(array_filter([
+                // Image moderation is most reliable on omni-moderation-latest.
+                'omni-moderation-latest',
+                $configuredModel !== '' ? $configuredModel : null,
+            ])))
+            : array_values(array_unique(array_filter([
+                $configuredModel !== '' ? $configuredModel : null,
+                // Resilient fallback if a configured model alias is unavailable.
+                'omni-moderation-latest',
+            ])));
 
         $lastError = 'Unknown moderation error.';
         foreach ($modelsToTry as $model) {
-            $response = $this->requestModeration($apiKey, $model, $input, $timeout);
+            try {
+                $response = $this->requestModeration($apiKey, $model, $input, $timeout);
+            } catch (ConnectionException $exception) {
+                $lastError = 'network/connection failure: ' . $exception->getMessage();
+                Log::warning('OpenAI moderation connection failed, trying fallback model', [
+                    'attempted_model' => $model,
+                    'error' => $exception->getMessage(),
+                ]);
+                continue;
+            } catch (\Throwable $exception) {
+                $lastError = $exception->getMessage();
+                Log::warning('OpenAI moderation transport failed, trying fallback model', [
+                    'attempted_model' => $model,
+                    'error' => $exception->getMessage(),
+                ]);
+                continue;
+            }
 
             if ($response->successful()) {
                 return $this->parseModerationResult($response, $textForLocalChecks);
@@ -201,14 +225,38 @@ class OpenAiModerationService
             $errorCode = (string) ($response->json('error.code') ?: '');
             $lastError = "status {$status}" . ($errorCode !== '' ? ", code {$errorCode}" : '') . ($errorMessage !== '' ? ", {$errorMessage}" : '');
 
+            if (in_array($status, [401, 403], true)) {
+                throw new RuntimeException(sprintf(
+                    'OpenAI moderation authentication failed: %s',
+                    $lastError
+                ));
+            }
+
+            // Retry/fallback for transient provider failures.
+            if ($status === 408 || $status === 409 || $status === 429 || $status >= 500) {
+                Log::warning('OpenAI moderation transient failure, trying fallback model', [
+                    'attempted_model' => $model,
+                    'status' => $status,
+                    'error_code' => $errorCode,
+                    'error_message' => $errorMessage,
+                ]);
+                continue;
+            }
+
             $isModelIssue = $status === 400 && (
                 str_contains(strtolower($errorCode), 'model')
                 || str_contains(strtolower($errorMessage), 'model')
                 || str_contains(strtolower($errorMessage), 'unavailable')
             );
+            $isCompatibilityIssue = $status === 400 && (
+                str_contains(strtolower($errorMessage), 'unsupported')
+                || str_contains(strtolower($errorMessage), 'image')
+                || str_contains(strtolower($errorMessage), 'input type')
+                || str_contains(strtolower($errorMessage), 'invalid input')
+            );
 
-            if ($isModelIssue) {
-                Log::warning('OpenAI moderation model unavailable, trying fallback model', [
+            if ($isModelIssue || $isCompatibilityIssue) {
+                Log::warning('OpenAI moderation model unavailable/incompatible, trying fallback model', [
                     'attempted_model' => $model,
                     'status' => $status,
                     'error_code' => $errorCode,
@@ -234,7 +282,21 @@ class OpenAiModerationService
      */
     private function requestModeration(string $apiKey, string $model, string|array $input, int $timeout): Response
     {
-        return Http::timeout(max($timeout, 1))
+        return Http::retry(
+            3,
+            fn (int $attempt) => $attempt * 250,
+            function (\Throwable $exception, $request) {
+                if ($exception instanceof ConnectionException) {
+                    return true;
+                }
+
+                $response = method_exists($exception, 'response') ? $exception->response : null;
+                $status = $response?->status();
+                return in_array($status, [408, 409, 429], true) || ($status !== null && $status >= 500);
+            },
+            throw: false
+        )
+            ->timeout(max($timeout, 1))
             ->acceptJson()
             ->withToken($apiKey)
             ->post('https://api.openai.com/v1/moderations', [

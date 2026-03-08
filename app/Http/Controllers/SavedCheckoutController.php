@@ -22,7 +22,7 @@ class SavedCheckoutController extends Controller
     {
         return Inertia::render('Profile/AddressBookPage', [
             'auth' => [
-                'user' => $request->user()->toArray(),
+                'user' => $this->mapUserForFrontend($request->user()),
             ],
         ]);
     }
@@ -31,9 +31,21 @@ class SavedCheckoutController extends Controller
     {
         return Inertia::render('Profile/PaymentMethodsPage', [
             'auth' => [
-                'user' => $request->user()->toArray(),
+                'user' => $this->mapUserForFrontend($request->user()),
             ],
         ]);
+    }
+
+    private function mapUserForFrontend(User $user): array
+    {
+        return [
+            'id' => $user->id,
+            'name' => $user->name,
+            'username' => $user->username,
+            'email' => $user->email,
+            'is_admin' => (bool) ($user->is_admin ?? false),
+            'avatar_url' => $user->avatar_url ?? $user->avatar ?? '/images/default-avatar.png',
+        ];
     }
 
     public function index(Request $request): JsonResponse

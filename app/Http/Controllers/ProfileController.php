@@ -88,7 +88,7 @@ class ProfileController extends Controller
 
         return inertia('Profile/ProfileView', [
             'auth' => [
-                'user' => array_merge($user->toArray(), [
+                'user' => array_merge($this->mapUserForFrontend($user), [
                     'avatar_url' => $user->avatar_url,
                     'remaining_seconds' => $this->getRemainingCooldown($user),
                     'cooldown_ends_at' => $this->getCooldownEndsAt($user),
@@ -120,7 +120,7 @@ class ProfileController extends Controller
 
         return inertia('Profile/EditProfilePage', [
             'auth' => [
-                'user' => array_merge($user->toArray(), [
+                'user' => array_merge($this->mapUserForFrontend($user), [
                     'remaining_seconds' => $this->getRemainingCooldown($user),
                     'cooldown_ends_at' => $this->getCooldownEndsAt($user),
                     'server_time' => Carbon::now('UTC')->toIso8601String(),
@@ -250,7 +250,7 @@ class ProfileController extends Controller
 
         return response()->json([
             'success' => true,
-            'user' => array_merge($user->toArray(), [
+            'user' => array_merge($this->mapUserForFrontend($user), [
                 'cooldown_ends_at' => $this->getCooldownEndsAt($user),
                 'server_time' => Carbon::now('UTC')->toIso8601String(),
             ]),
@@ -333,5 +333,21 @@ class ProfileController extends Controller
         }
 
         return 'data:' . $mime . ';base64,' . base64_encode($binary);
+    }
+
+    private function mapUserForFrontend($user): array
+    {
+        return [
+            'id' => $user->id,
+            'name' => $user->name,
+            'username' => $user->username,
+            'email' => $user->email,
+            'phone' => $user->phone,
+            'is_oauth' => (bool) ($user->is_oauth ?? false),
+            'oauth_provider' => $user->oauth_provider,
+            'is_admin' => (bool) ($user->is_admin ?? false),
+            'avatar' => $user->avatar,
+            'avatar_url' => $user->avatar_url ?? $user->avatar ?? '/images/default-avatar.png',
+        ];
     }
 }

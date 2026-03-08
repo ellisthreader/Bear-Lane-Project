@@ -121,6 +121,40 @@ export const renderSnapshotToPng = async (snapshot?: PricePreviewSnapshot): Prom
   }
 };
 
+export const renderTextLayerToPng = async (layer?: PricePreviewLayer): Promise<string | null> => {
+  if (!layer || layer.type !== "text") return null;
+
+  const width = Math.max(1, Math.round(Number(layer.size?.w ?? 0)));
+  const height = Math.max(1, Math.round(Number(layer.size?.h ?? 0)));
+  const textValue = (layer.text ?? "").toString();
+  if (!textValue.trim()) return null;
+
+  const fontFamily = layer.fontFamily ?? "Arial";
+  const fontSize = Math.max(1, Number(layer.fontSize ?? 24));
+
+  if (typeof document !== "undefined" && (document as any).fonts?.load) {
+    try {
+      await (document as any).fonts.load(`${fontSize}px ${fontFamily}`);
+    } catch {
+      // Ignore and continue with browser fallback fonts.
+    }
+  }
+
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+
+  ctx.clearRect(0, 0, width, height);
+  ctx.save();
+  ctx.translate(width / 2, height / 2);
+  drawTextLayer(ctx, layer, width, height);
+  ctx.restore();
+
+  return canvas.toDataURL("image/png");
+};
+
 export const renderSnapshotsToPngByView = async (
   snapshots: Partial<Record<ViewKey, PricePreviewSnapshot | undefined>>
 ): Promise<Partial<Record<ViewKey, string>>> => {

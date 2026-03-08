@@ -124,33 +124,6 @@ export default function CategoryProductsGrid({ productEditMode = false, category
               <Heart className={`h-4 w-4 ${inWishlist ? "fill-current text-[#EF4444]" : ""}`} />
             </button>
 
-            {productEditMode ? (
-              <div className="absolute left-2 top-2 z-10 flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    router.get(`/product/${encodeURIComponent(product.slug)}?product_mode=1`);
-                  }}
-                  className="rounded-md border border-[#D7BE84] bg-white/95 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-[#6A541F]"
-                >
-                  Edit
-                </button>
-                <button
-                  type="button"
-                  onClick={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    handleDeleteCard(Number(product.id));
-                  }}
-                  disabled={deletingProductId === Number(product.id)}
-                  className="rounded-md border border-[#E3B9B9] bg-white/95 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-[#8C3232]"
-                >
-                  {deletingProductId === Number(product.id) ? "Deleting..." : "Delete"}
-                </button>
-              </div>
-            ) : null}
             <div className="relative h-[280px] w-full overflow-hidden bg-[#E5E7EB] p-3">
               <img loading="lazy" decoding="async"
                 src={image}
@@ -189,6 +162,36 @@ export default function CategoryProductsGrid({ productEditMode = false, category
                 <p className={`text-sm font-semibold ${onSale ? "text-[#B42318]" : "text-[#1E1A14]"}`}>£{price.toFixed(2)}</p>
                 {onSale ? <p className="text-xs text-[#9B8B6A] line-through">£{originalPrice.toFixed(2)}</p> : null}
               </div>
+
+              {productEditMode ? (
+                <div className="pt-2">
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        router.get(`/product/${encodeURIComponent(product.slug)}?product_mode=1`);
+                      }}
+                      className="flex-1 rounded-md border border-[#D7BE84] bg-white px-2 py-1.5 text-[10px] font-bold uppercase tracking-[0.08em] text-[#6A541F]"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        handleDeleteCard(Number(product.id));
+                      }}
+                      disabled={deletingProductId === Number(product.id)}
+                      className="flex-1 rounded-md border border-[#E3B9B9] bg-white px-2 py-1.5 text-[10px] font-bold uppercase tracking-[0.08em] text-[#8C3232]"
+                    >
+                      {deletingProductId === Number(product.id) ? "Deleting..." : "Delete"}
+                    </button>
+                  </div>
+                </div>
+              ) : null}
             </div>
           </Link>
         );

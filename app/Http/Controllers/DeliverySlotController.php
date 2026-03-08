@@ -37,6 +37,14 @@ class DeliverySlotController extends Controller
             'country' => ['nullable', 'string', 'max:2'],
             'city' => ['nullable', 'string', 'max:120'],
             'street1' => ['nullable', 'string', 'max:180'],
+            'cart_items' => ['nullable', 'array'],
+            'cart_items.*.id' => ['nullable'],
+            'cart_items.*.slug' => ['nullable', 'string', 'max:255'],
+            'cart_items.*.name' => ['nullable', 'string', 'max:255'],
+            'cart_items.*.title' => ['nullable', 'string', 'max:255'],
+            'cart_items.*.size' => ['nullable', 'string', 'max:40'],
+            'cart_items.*.colour' => ['nullable', 'string', 'max:100'],
+            'cart_items.*.quantity' => ['nullable', 'integer', 'min:1', 'max:999'],
         ]);
 
         try {
@@ -45,6 +53,7 @@ class DeliverySlotController extends Controller
                 'country' => $validated['country'] ?? null,
                 'city' => $validated['city'] ?? null,
                 'street1' => $validated['street1'] ?? null,
+                'cart_items' => is_array($validated['cart_items'] ?? null) ? $validated['cart_items'] : [],
             ]);
 
             return response()->json([

@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import { router } from "@inertiajs/react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import AdminTopNav from "@/Components/Admin/AdminTopNav";
+import { CheckCircle2 } from "lucide-react";
 
 type Category = {
   id: number;
@@ -23,6 +24,18 @@ const SECTION_TABS = [
   { key: "kids", label: "KIDS", image: "/images/Admin/KidsCategory.jpeg" },
   { key: "sale", label: "SALE", image: "/images/Admin/SaleCategory.jpeg" },
 ] as const;
+
+const SECTION_ROOT_ALIASES: Record<string, string[]> = {
+  men: ["men", "mens", "man"],
+  women: ["women", "womens", "woman", "ladies", "female"],
+  kids: ["kids", "kid", "children", "child", "youth", "junior"],
+  sale: ["sale", "sales", "discount", "offers", "clearance", "outlet"],
+};
+
+const normalizeToken = (value: string) =>
+  value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "");
 
 const getCsrfToken = () =>
   document.querySelector('meta[name="csrf-token"]')?.getAttribute("content") || "";
@@ -60,13 +73,29 @@ export default function Products({ categories }: Props) {
   const [error, setError] = useState<string | null>(null);
 
   const tree = useMemo(() => buildTree(categories), [categories]);
-  const rootBySlug = useMemo(() => {
-    const map = new Map<string, CategoryTreeNode>();
-    tree.forEach((node) => map.set(node.slug.toLowerCase(), node));
-    return map;
-  }, [tree]);
+  const activeRoot = useMemo(() => {
+    const sectionKey = activeSection.toLowerCase();
+    const aliases = SECTION_ROOT_ALIASES[sectionKey] ?? [sectionKey];
+    const aliasSet = new Set(aliases.map(normalizeToken));
 
-  const activeRoot = rootBySlug.get(activeSection.toLowerCase()) ?? null;
+    const exactSlug = tree.find((node) => normalizeToken(node.slug) === normalizeToken(sectionKey));
+    if (exactSlug) return exactSlug;
+
+    const slugMatch = tree.find((node) => {
+      const slugToken = normalizeToken(node.slug);
+      return aliases.some((alias) => slugToken.includes(normalizeToken(alias)));
+    });
+    if (slugMatch) return slugMatch;
+
+    const nameMatch = tree.find((node) => {
+      const nameToken = normalizeToken(node.name);
+      if (aliasSet.has(nameToken)) return true;
+      return aliases.some((alias) => nameToken.includes(normalizeToken(alias)));
+    });
+    if (nameMatch) return nameMatch;
+
+    return null;
+  }, [activeSection, tree]);
   const sectionCategories = activeRoot?.children ?? [];
 
   const reload = () => router.reload({ only: ["categories"] });
@@ -220,25 +249,41 @@ export default function Products({ categories }: Props) {
 
           <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
             {SECTION_TABS.map((tab) => (
+              (() => {
+                const isActive = activeSection === tab.key;
+                return (
               <button
                 key={tab.key}
                 type="button"
                 onClick={() => setActiveSection(tab.key)}
-                className={`group relative h-28 overflow-hidden rounded-2xl border text-center transition sm:h-32 ${
-                  activeSection === tab.key
-                    ? "border-[#D1B46F] ring-2 ring-[#E8D39B]"
-                    : "border-[#E5D4AF] hover:border-[#D7BE84]"
+                aria-pressed={isActive}
+                className={`group relative h-28 overflow-hidden rounded-2xl border text-center transition-all duration-200 sm:h-32 ${
+                  isActive
+                    ? "border-[#B38A2D] ring-2 ring-[#E0BF68] shadow-[0_0_0_3px_rgba(224,191,104,0.22),0_10px_24px_rgba(123,90,25,0.22)] scale-[1.01]"
+                    : "border-[#E5D4AF] opacity-90 hover:border-[#D7BE84] hover:opacity-100"
                 }`}
               >
                 <img loading="lazy" decoding="async" src={tab.image} alt={tab.label} className="absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:scale-105" />
-                <div className="absolute inset-0 bg-black/45 transition duration-300 group-hover:bg-black/38" />
+                <div className={`absolute inset-0 transition duration-300 ${isActive ? "bg-black/35" : "bg-black/45 group-hover:bg-black/38"}`} />
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-base font-extrabold tracking-[0.18em] text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)]">
+                  <span className={`text-base font-extrabold tracking-[0.18em] drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)] ${isActive ? "text-[#FFE9B0]" : "text-white"}`}>
                     {tab.label}
                   </span>
                 </div>
+                {isActive ? (
+                  <div className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full border border-[#F2DC9E] bg-[#3B2C10]/85 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.08em] text-[#FFE8AA]">
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    Selected
+                  </div>
+                ) : null}
               </button>
+                );
+              })()
             ))}
+          </div>
+          <div className="mt-3 inline-flex items-center gap-2 rounded-xl border border-[#DCC48F] bg-[#FFF8E8] px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-[#7B6530]">
+            <CheckCircle2 className="h-4 w-4 text-[#B38A2D]" />
+            Active Section: {activeSection}
           </div>
 
           <form onSubmit={createCategory} className="mt-5 grid grid-cols-1 gap-3 rounded-2xl border border-[#E5D4AF] bg-[#FFFDF7] p-4 md:grid-cols-2">

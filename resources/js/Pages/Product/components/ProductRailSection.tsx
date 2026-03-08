@@ -98,7 +98,6 @@ export default function ProductRailSection({
                 />
               </div>
               <div className="space-y-1 p-3">
-                {item.brand ? <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#8A7854]">{item.brand}</p> : null}
                 <p className="line-clamp-2 text-sm font-semibold text-[#231C12]">{item.name}</p>
                 {typeof item.price === "number" ? <p className="text-sm font-bold text-[#17120A]">£{item.price.toFixed(2)}</p> : null}
               </div>

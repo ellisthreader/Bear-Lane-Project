@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Category;
-use Illuminate\Support\Facades\Log;
 
 class ProductSearchController extends Controller
 {
@@ -17,23 +16,33 @@ class ProductSearchController extends Controller
     {
         $q = trim((string) $request->query('q', ''));
 
-        // Base query with eager loading of products + images
-        $baseQuery = Category::query()->with(['products.images']);
+        // Base query with constrained eager loading to reduce payload size.
+        $baseQuery = Category::query()
+            ->select(['id', 'name', 'slug', 'section', 'subsection', 'age_group'])
+            ->with([
+                'products' => fn ($query) => $query
+                    ->select(['products.id', 'products.name', 'products.slug', 'products.price'])
+                    ->orderByDesc('products.created_at')
+                    ->limit(8)
+                    ->with([
+                        'images' => fn ($imageQuery) => $imageQuery
+                            ->select(['id', 'imageable_id', 'imageable_type', 'path'])
+                            ->orderBy('id')
+                            ->limit(1),
+                    ]),
+            ]);
 
         // If there's no query, return all categories (or you might choose to return nothing)
         if ($q === '') {
-            $categories = $baseQuery
+            $categories = (clone $baseQuery)
                 ->orderBy('age_group')
                 ->orderBy('section')
                 ->orderBy('subsection')
                 ->orderBy('name')
+                ->limit(20)
                 ->get();
 
             $results = $this->formatCategories($categories);
-
-            Log::info('📦 Category Search (empty query) - returning all categories', [
-                'count' => $categories->count(),
-            ]);
 
             return response()->json($results);
         }
@@ -48,13 +57,6 @@ class ProductSearchController extends Controller
             ->orderBy('subsection')
             ->orderBy('name')
             ->get();
-
-        Log::info('🔎 Exact name matches for category search', [
-            'query' => $q,
-            'exact_count' => $exactMatches->count(),
-            'exact_ids' => $exactMatches->pluck('id')->all(),
-            'exact_names' => $exactMatches->pluck('name')->all(),
-        ]);
 
         // 2) If we found exact matches, use them. If not, do a broader LIKE search.
         if ($exactMatches->isNotEmpty()) {
@@ -74,27 +76,14 @@ class ProductSearchController extends Controller
                 ->orderBy('section')
                 ->orderBy('subsection')
                 ->orderBy('name')
+                ->limit(20)
                 ->get();
-
-            Log::info('🔎 LIKE matches for category search (fallback)', [
-                'query' => $q,
-                'like_count' => $likeMatches->count(),
-                'like_ids' => $likeMatches->pluck('id')->all(),
-                'like_names' => $likeMatches->pluck('name')->all(),
-            ]);
 
             $categories = $likeMatches;
         }
 
         // Format to the frontend shape (with products & first image)
         $results = $this->formatCategories($categories);
-
-        // Final log of payload (keeps it readable)
-        Log::info('📦 Category Search Response Sent', [
-            'query' => $q,
-            'categories_found' => count($results),
-            'categories' => $results,
-        ]);
 
         return response()->json($results);
     }

@@ -20,6 +20,7 @@ class DeliverySlotService
     public function __construct(
         private readonly UkDeliveryDateService $ukDeliveryDateService,
         private readonly ShippoRateService $shippoRateService,
+        private readonly ParcelEstimatorService $parcelEstimatorService,
     )
     {
     }
@@ -266,14 +267,9 @@ class DeliverySlotService
             'country' => strtoupper((string) ($addressContext['country'] ?? 'GB')),
         ];
 
-        $parcel = [
-            'length' => '30',
-            'width' => '25',
-            'height' => '5',
-            'distance_unit' => 'cm',
-            'weight' => '1.2',
-            'mass_unit' => 'kg',
-        ];
+        $parcel = $this->parcelEstimatorService->forCheckoutItems(
+            is_array($addressContext['cart_items'] ?? null) ? $addressContext['cart_items'] : []
+        );
 
         try {
             $rawRates = $this->shippoRateService->getRates($fromAddress, $toAddress, $parcel);

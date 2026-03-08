@@ -16,13 +16,14 @@ import {
   Send,
   Sparkles,
   Truck,
+  Type,
   UserRound,
 } from "lucide-react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import AdminTopNav from "@/Components/Admin/AdminTopNav";
 import DesignPreview from "@/Pages/Design/Components/DesignPreview";
-import { renderSnapshotToPng } from "@/Pages/Design/utils/renderSnapshotToPng";
-import type { PricePreviewSnapshot } from "@/Pages/Design/Canvas/Canvas";
+import { renderSnapshotToPng, renderTextLayerToPng } from "@/Pages/Design/utils/renderSnapshotToPng";
+import type { PricePreviewLayer, PricePreviewSnapshot } from "@/Pages/Design/Canvas/Canvas";
 import { AdminOrdersProvider, useAdminOrders, type AdminOrderItem } from "@/Context/AdminOrdersContext";
 import { AdminOrderReturnsProvider, useAdminOrderReturns } from "@/Context/AdminOrderReturnsContext";
 import AdminOrderReturnsPanel from "@/Pages/Admin/Orders/ReturnsPanel";
@@ -578,6 +579,53 @@ function OrdersWorkspace() {
         };
       })
       .filter((entry): entry is { id: string; url: string; type: string } => Boolean(entry));
+  }, [activePreview?.snapshot?.layers, safeDesignIndex]);
+  const activeViewTextAssets = useMemo(() => {
+    const layers = activePreview?.snapshot?.layers;
+    if (!Array.isArray(layers)) return [];
+
+    return layers
+      .map((layer, index) => {
+        const candidate = layer as {
+          type?: unknown;
+          text?: unknown;
+          fontFamily?: unknown;
+          fontSize?: unknown;
+          size?: { w?: number; h?: number };
+        };
+        if (candidate.type !== "text") return null;
+
+        const textValue = typeof candidate.text === "string" ? candidate.text : "";
+        if (!textValue.trim()) return null;
+
+        const fontFamily = typeof candidate.fontFamily === "string" && candidate.fontFamily.trim() !== ""
+          ? candidate.fontFamily
+          : "Arial";
+        const fontSize = Number(candidate.fontSize ?? 24);
+        const width = Math.max(1, Math.round(Number(candidate.size?.w ?? 0)));
+        const height = Math.max(1, Math.round(Number(candidate.size?.h ?? 0)));
+
+        return {
+          id: `${safeDesignIndex}-text-${index}`,
+          index,
+          text: textValue,
+          fontFamily,
+          fontSize: Number.isFinite(fontSize) ? fontSize : 24,
+          width,
+          height,
+          layer: layer as PricePreviewLayer,
+        };
+      })
+      .filter((entry): entry is {
+        id: string;
+        index: number;
+        text: string;
+        fontFamily: string;
+        fontSize: number;
+        width: number;
+        height: number;
+        layer: PricePreviewLayer;
+      } => Boolean(entry));
   }, [activePreview?.snapshot?.layers, safeDesignIndex]);
 
   const topActionLabel = useMemo(() => {
@@ -1175,27 +1223,74 @@ function OrdersWorkspace() {
                                   </div>
                                 ) : null}
 
-                                {activeViewAssets.length > 0 ? (
-                                  <div className="mt-2 flex flex-wrap gap-2">
-                                    {activeViewAssets.map((asset, index) => (
-                                      <div key={asset.id} className="flex items-center gap-2 rounded-lg border border-[#E1D4B8] bg-[#FFFCF6] px-2 py-1">
-                                        <img loading="lazy" decoding="async" src={asset.url} alt={`Asset ${index + 1}`} className="h-8 w-8 rounded object-cover" />
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            const link = document.createElement("a");
-                                            link.href = asset.url;
-                                            link.download = `${selectedOrder?.order_number || "order"}_item${activeProductionItem.id}_asset${index + 1}.png`;
-                                            document.body.appendChild(link);
-                                            link.click();
-                                            link.remove();
-                                          }}
-                                          className="rounded border border-[#D7BE84] bg-white px-1.5 py-0.5 text-[10px] font-semibold text-[#7B6530] hover:bg-[#FFF4DF]"
-                                        >
-                                          Download
-                                        </button>
+                                {(activeViewAssets.length > 0 || activeViewTextAssets.length > 0) ? (
+                                  <div className="mt-2 grid gap-2 md:grid-cols-2">
+                                    {activeViewAssets.length > 0 ? (
+                                      <div className="rounded-lg border border-[#E7DCC2] bg-[#FFFCF6] p-2">
+                                        <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.1em] text-[#8A6D2B]">Image Assets</p>
+                                        <div className="flex flex-wrap gap-2">
+                                          {activeViewAssets.map((asset, index) => (
+                                            <div key={asset.id} className="flex items-center gap-2 rounded-lg border border-[#E1D4B8] bg-white px-2 py-1">
+                                              <img loading="lazy" decoding="async" src={asset.url} alt={`Asset ${index + 1}`} className="h-8 w-8 rounded object-cover" />
+                                              <button
+                                                type="button"
+                                                onClick={() => {
+                                                  const link = document.createElement("a");
+                                                  link.href = asset.url;
+                                                  link.download = `${selectedOrder?.order_number || "order"}_item${activeProductionItem.id}_asset${index + 1}.png`;
+                                                  document.body.appendChild(link);
+                                                  link.click();
+                                                  link.remove();
+                                                }}
+                                                className="rounded border border-[#D7BE84] bg-white px-1.5 py-0.5 text-[10px] font-semibold text-[#7B6530] hover:bg-[#FFF4DF]"
+                                              >
+                                                Download
+                                              </button>
+                                            </div>
+                                          ))}
+                                        </div>
                                       </div>
-                                    ))}
+                                    ) : null}
+
+                                    {activeViewTextAssets.length > 0 ? (
+                                      <div className="rounded-lg border border-[#E7DCC2] bg-[#FFFCF6] p-2">
+                                        <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.1em] text-[#8A6D2B]">Text Assets</p>
+                                        <div className="space-y-2">
+                                          {activeViewTextAssets.map((asset, index) => (
+                                            <div key={asset.id} className="rounded-lg border border-[#E1D4B8] bg-white px-2 py-2">
+                                              <div className="flex items-center justify-between gap-2">
+                                                <div className="min-w-0">
+                                                  <p className="truncate text-[11px] font-semibold text-[#6A541F]">
+                                                    Font: <span style={{ fontFamily: asset.fontFamily }}>{asset.fontFamily}</span>
+                                                  </p>
+                                                  <p className="mt-0.5 text-[10px] text-[#7B6530]">
+                                                    Size: {Math.round(asset.fontSize)}px • Canvas: {asset.width}x{asset.height}
+                                                  </p>
+                                                </div>
+                                                <button
+                                                  type="button"
+                                                  onClick={async () => {
+                                                    const png = await renderTextLayerToPng(asset.layer);
+                                                    if (!png) return;
+                                                    downloadDataUrl(
+                                                      png,
+                                                      `${selectedOrder?.order_number || "order"}_item${activeProductionItem.id}_${activePreview?.viewKey || "front"}_text${index + 1}.png`
+                                                    );
+                                                  }}
+                                                  className="inline-flex items-center gap-1 rounded border border-[#D7BE84] bg-white px-1.5 py-0.5 text-[10px] font-semibold text-[#7B6530] hover:bg-[#FFF4DF]"
+                                                >
+                                                  <Type className="h-3 w-3" />
+                                                  Download
+                                                </button>
+                                              </div>
+                                              <p className="mt-1 line-clamp-2 text-[11px] text-[#2D2515]">
+                                                {asset.text}
+                                              </p>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    ) : null}
                                   </div>
                                 ) : null}
 

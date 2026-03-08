@@ -85,7 +85,6 @@ export default function ProductsIndex({ type, products }: Props) {
 
               {/* CONTENT */}
               <div className="p-4">
-                <p className="font-bold text-gray-800">{product.brand}</p>
                 <p className="text-gray-700">{product.name}</p>
                 <p className="mt-2 font-semibold">
                   £{price.toFixed(2)}

@@ -7,6 +7,7 @@ use App\Models\Product;
 use App\Services\ProductBadgeService;
 use App\Services\StoreSettingsService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 
 class CategoryController extends Controller
@@ -17,8 +18,17 @@ class CategoryController extends Controller
      */
     public function show(Request $request, $slug)
     {
+        $slug = trim((string) $slug, '/');
+
         // Find category using exact slug stored in DB
-        $categoryModel = Category::where('slug', $slug)->firstOrFail();
+        $categoryModel = Category::where('slug', $slug)->first();
+        if (!$categoryModel) {
+            $aliasPage = $this->renderAliasCategoryPage($request, $slug);
+            if ($aliasPage !== null) {
+                return $aliasPage;
+            }
+            abort(404);
+        }
         $premadeQuotes = $this->premadeQuoteMap();
         $categoryIds = $this->collectCategoryTreeIds($categoryModel);
 
@@ -69,6 +79,193 @@ class CategoryController extends Controller
             'product_mode' => $productMode,
             'all_products' => $allProducts,
         ]);
+    }
+
+    private function renderAliasCategoryPage(Request $request, string $slug): mixed
+    {
+        $normalizedSlug = Str::of($slug)->lower()->replace('/', '-')->replace('_', '-')->value();
+        $premadeQuotes = $this->premadeQuoteMap();
+
+        $loadProductsForCategoryIds = function (array $categoryIds) use ($premadeQuotes) {
+            if ($categoryIds === []) {
+                return collect();
+            }
+
+            $products = Product::query()
+                ->where(function ($query) use ($categoryIds) {
+                    $query
+                        ->whereHas('categories', function ($categoryQuery) use ($categoryIds) {
+                            $categoryQuery->whereIn('categories.id', $categoryIds);
+                        })
+                        ->orWhereIn('category_id', $categoryIds);
+                })
+                ->with(['categories', 'images', 'variants'])
+                ->withAvg('approvedReviews as average_rating', 'rating')
+                ->withCount('approvedReviews as reviews_count')
+                ->orderByDesc('is_trending')
+                ->latest('products.id')
+                ->get()
+                ->map(fn (Product $product) => $this->attachPremadeQuote($product, $premadeQuotes));
+
+            $badgeMap = app(ProductBadgeService::class)->badgesForVisibleProductsByCategory($products);
+            return $products->map(fn (Product $product) => $this->attachAutoBadges($product, $badgeMap));
+        };
+
+        $loadProductsForCategoryPatterns = function (array $slugPatterns, array $namePatterns = []) use ($loadProductsForCategoryIds) {
+            $categoryIds = Category::query()
+                ->where(function ($query) use ($slugPatterns, $namePatterns) {
+                    foreach ($slugPatterns as $pattern) {
+                        $query->orWhere('slug', 'like', $pattern);
+                    }
+                    foreach ($namePatterns as $pattern) {
+                        $query->orWhere('name', 'like', $pattern);
+                    }
+                })
+                ->pluck('id')
+                ->map(fn ($id) => (int) $id)
+                ->filter(fn ($id) => $id > 0)
+                ->unique()
+                ->values()
+                ->all();
+
+            return $loadProductsForCategoryIds($categoryIds);
+        };
+
+        $render = function (string $heading, string $category, string $subcategory, string $pageSlug, $products) {
+            return Inertia::render('CategoryPage', [
+                'heading' => $heading,
+                'category' => $category,
+                'subcategory' => $subcategory,
+                'slug' => $pageSlug,
+                'products' => $products,
+            ]);
+        };
+
+        if ($normalizedSlug === 'sale') {
+            $products = Product::query()
+                ->where(function ($query) {
+                    $query
+                        ->where('is_sale', true)
+                        ->orWhere(function ($nested) {
+                            $nested
+                                ->whereNotNull('original_price')
+                                ->whereColumn('original_price', '>', 'price');
+                        });
+                })
+                ->with(['categories', 'images', 'variants'])
+                ->withAvg('approvedReviews as average_rating', 'rating')
+                ->withCount('approvedReviews as reviews_count')
+                ->orderByDesc('is_trending')
+                ->latest('products.id')
+                ->get()
+                ->map(fn (Product $product) => $this->attachPremadeQuote($product, $premadeQuotes));
+            $badgeMap = app(ProductBadgeService::class)->badgesForVisibleProductsByCategory($products);
+            $products = $products->map(fn (Product $product) => $this->attachAutoBadges($product, $badgeMap));
+
+            return $render('Sale', 'Sale', 'Sale', 'sale', $products);
+        }
+
+        if (in_array($normalizedSlug, ['pre-made', 'premade'], true)) {
+            $products = Product::query()
+                ->where('is_premade_design', true)
+                ->with(['categories', 'images', 'variants'])
+                ->withAvg('approvedReviews as average_rating', 'rating')
+                ->withCount('approvedReviews as reviews_count')
+                ->orderByDesc('is_trending')
+                ->latest('products.id')
+                ->get()
+                ->map(fn (Product $product) => $this->attachPremadeQuote($product, $premadeQuotes));
+            $badgeMap = app(ProductBadgeService::class)->badgesForVisibleProductsByCategory($products);
+            $products = $products->map(fn (Product $product) => $this->attachAutoBadges($product, $badgeMap));
+
+            return $render('Pre Made', 'Pre Made', 'Pre Made', 'pre-made', $products);
+        }
+
+        if ($normalizedSlug === 'new-in') {
+            $products = Product::query()
+                ->with(['categories', 'images', 'variants'])
+                ->withAvg('approvedReviews as average_rating', 'rating')
+                ->withCount('approvedReviews as reviews_count')
+                ->orderByDesc('created_at')
+                ->orderByDesc('products.id')
+                ->limit(200)
+                ->get()
+                ->map(fn (Product $product) => $this->attachPremadeQuote($product, $premadeQuotes));
+            $badgeMap = app(ProductBadgeService::class)->badgesForVisibleProductsByCategory($products);
+            $products = $products->map(fn (Product $product) => $this->attachAutoBadges($product, $badgeMap));
+
+            return $render('New In', 'New In', 'New In', 'new-in', $products);
+        }
+
+        $patternMap = [
+            'kids-clothing' => [
+                'heading' => 'Kids',
+                'category' => 'Kids',
+                'subcategory' => 'Kids Clothing',
+                'slugPatterns' => ['kids/%', '%/kids%', '%/kid%'],
+                'namePatterns' => ['%kids%', '%kid%'],
+            ],
+            't-shirts' => [
+                'heading' => 'Category',
+                'category' => 'T-Shirts',
+                'subcategory' => 'T-Shirts',
+                'slugPatterns' => ['%t-shirt%', '%tshirts%', '%tee%'],
+                'namePatterns' => ['%t-shirt%', '%t shirts%', '%tee%'],
+            ],
+            'teddies' => [
+                'heading' => 'Category',
+                'category' => 'Teddies',
+                'subcategory' => 'Teddies',
+                'slugPatterns' => ['%tedd%'],
+                'namePatterns' => ['%tedd%'],
+            ],
+            'bags' => [
+                'heading' => 'Category',
+                'category' => 'Bags',
+                'subcategory' => 'Bags',
+                'slugPatterns' => ['%bag%'],
+                'namePatterns' => ['%bag%'],
+            ],
+            'activewear' => [
+                'heading' => 'Category',
+                'category' => 'Activewear',
+                'subcategory' => 'Activewear',
+                'slugPatterns' => ['%activewear%', '%sportswear%', '%sport%'],
+                'namePatterns' => ['%activewear%', '%sportswear%', '%sport%'],
+            ],
+            'trousers' => [
+                'heading' => 'Category',
+                'category' => 'Trousers',
+                'subcategory' => 'Trousers',
+                'slugPatterns' => ['%trouser%', '%pants%'],
+                'namePatterns' => ['%trouser%', '%pants%'],
+            ],
+            'joke-products' => [
+                'heading' => 'Category',
+                'category' => 'Joke Products',
+                'subcategory' => 'Joke Products',
+                'slugPatterns' => ['%joke%', '%novelty%'],
+                'namePatterns' => ['%joke%', '%novelty%'],
+            ],
+        ];
+
+        $definition = $patternMap[$normalizedSlug] ?? null;
+        if (!$definition) {
+            return null;
+        }
+
+        $products = $loadProductsForCategoryPatterns(
+            (array) ($definition['slugPatterns'] ?? []),
+            (array) ($definition['namePatterns'] ?? [])
+        );
+
+        return $render(
+            (string) ($definition['heading'] ?? 'Category'),
+            (string) ($definition['category'] ?? 'Category'),
+            (string) ($definition['subcategory'] ?? 'Category'),
+            $normalizedSlug,
+            $products
+        );
     }
 
     /**

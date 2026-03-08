@@ -12,6 +12,7 @@ class DeliveryOptionService
         private readonly DeliverySlotService $slotService,
         private readonly ShippoRateService $shippoRateService,
         private readonly UkDeliveryDateService $ukDeliveryDateService,
+        private readonly ParcelEstimatorService $parcelEstimatorService,
     )
     {
     }
@@ -22,12 +23,13 @@ class DeliveryOptionService
         ?string $country = null,
         ?string $city = null,
         ?string $street1 = null,
+        ?array $cartItems = null,
     ): array
     {
         $isMember = (bool) data_get($user, 'is_member', false);
         $now = now();
         $nextDayDate = $now->copy()->addDay();
-        $selectedServices = $this->resolveSelectedServices($postcode, $country, $city, $street1);
+        $selectedServices = $this->resolveSelectedServices($postcode, $country, $city, $street1, $cartItems ?? []);
         $hasPreferredNextDayService = !empty(data_get($selectedServices, 'NEXT_DAY.service_name'));
 
         $nextDayAllowedByWindow = (int) $now->format('H') < 22
@@ -118,10 +120,11 @@ class DeliveryOptionService
         ?string $country = null,
         ?string $city = null,
         ?string $street1 = null,
+        ?array $cartItems = null,
     ): ?string
     {
         $normalizedType = strtoupper(trim($deliveryType));
-        $optionsPayload = $this->getOptions($user, $postcode, $country, $city, $street1);
+        $optionsPayload = $this->getOptions($user, $postcode, $country, $city, $street1, $cartItems ?? []);
         $options = $optionsPayload['options'] ?? [];
 
         foreach ($options as $option) {
@@ -192,6 +195,7 @@ class DeliveryOptionService
         ?string $country,
         ?string $city,
         ?string $street1,
+        array $cartItems = [],
     ): array {
         if (!$postcode) {
             return [];
@@ -213,14 +217,7 @@ class DeliveryOptionService
             'country' => strtoupper($country ?: 'GB'),
         ];
 
-        $parcel = [
-            'length' => '30',
-            'width' => '25',
-            'height' => '5',
-            'distance_unit' => 'cm',
-            'weight' => '1.2',
-            'mass_unit' => 'kg',
-        ];
+        $parcel = $this->parcelEstimatorService->forCheckoutItems($cartItems);
 
         try {
             $rawRates = $this->shippoRateService->getRates($fromAddress, $toAddress, $parcel);

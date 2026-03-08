@@ -105,12 +105,40 @@ class CheckoutController extends Controller
             }
             $shippingMethod = (string) data_get($data, 'shipping.method', 'STANDARD');
             $deliveryType = str_starts_with($shippingMethod, 'TIMED:') ? 'TIMED' : strtoupper($shippingMethod);
-            $providedShippingCents = data_get($data, 'shipping.cost');
-            if (is_numeric($providedShippingCents)) {
-                $shipping_cents = max(0, (int) round((float) $providedShippingCents));
-            } else {
-                $shippingPrice = $this->deliveryOptionService->resolvePrice($deliveryType, auth()->user());
+            $shippingAddress = is_array(data_get($data, 'shipping.address'))
+                ? data_get($data, 'shipping.address')
+                : [];
+            $shippingPrice = null;
+            if (!empty($shippingAddress['postcode'])) {
+                $optionsPayload = $this->deliveryOptionService->getOptions(
+                    auth()->user(),
+                    (string) $shippingAddress['postcode'],
+                    (string) ($shippingAddress['country'] ?? 'GB'),
+                    (string) ($shippingAddress['city'] ?? ''),
+                    (string) ($shippingAddress['street1'] ?? ''),
+                    is_array($items) ? $items : [],
+                );
+
+                $matchedOption = collect((array) ($optionsPayload['options'] ?? []))
+                    ->first(function ($option) use ($deliveryType) {
+                        return strtoupper((string) data_get($option, 'type')) === strtoupper($deliveryType);
+                    });
+
+                if (is_array($matchedOption) && is_numeric(data_get($matchedOption, 'price'))) {
+                    $shippingPrice = max(0, (float) data_get($matchedOption, 'price'));
+                }
+            }
+
+            if ($shippingPrice !== null) {
                 $shipping_cents = (int) round($shippingPrice * 100);
+            } else {
+                $providedShippingCents = data_get($data, 'shipping.cost');
+                if (is_numeric($providedShippingCents)) {
+                    $shipping_cents = max(0, (int) round((float) $providedShippingCents));
+                } else {
+                    $shippingPrice = $this->deliveryOptionService->resolvePrice($deliveryType, auth()->user());
+                    $shipping_cents = (int) round($shippingPrice * 100);
+                }
             }
             $gift_packaging_cents = max(0, (int) round((float) data_get($data, 'shipping.gift_packaging_cost', 0)));
 
@@ -288,6 +316,7 @@ class CheckoutController extends Controller
                 data_get($data, 'delivery.country'),
                 data_get($data, 'delivery.city'),
                 data_get($data, 'delivery.line1'),
+                is_array($data['items'] ?? null) ? $data['items'] : [],
             );
             $requestedShippingRate = trim((string) data_get($data, 'options.shipping_rate', ''));
             $shippingRate = $resolvedShippingService ?: ($requestedShippingRate !== '' ? $requestedShippingRate : null);

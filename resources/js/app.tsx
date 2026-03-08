@@ -8,6 +8,7 @@ import { CartProvider } from "@/Context/CartContext";
 import { WishlistProvider } from "@/Context/WishlistContext";
 import { CheckoutProvider } from "@/Context/CheckoutContext";
 import CookieConsentManager from "@/Components/Cookies/CookieConsentManager";
+import FloatingHelpLauncher from "@/Components/Support/FloatingHelpLauncher";
 
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -56,6 +57,7 @@ createInertiaApp({
             <CheckoutProvider>
               <App {...props} />
               <CookieConsentManager />
+              <FloatingHelpLauncher />
 
               <ToastContainer
                 position="top-center"

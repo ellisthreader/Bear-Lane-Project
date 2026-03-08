@@ -16,6 +16,12 @@
         {{ $messageBody ?? '' }}
     </div>
 
+    @if(!empty($orderNumber))
+        <p style="margin:12px 0 0;color:#6b7280;font-size:13px;line-height:1.6;">
+            Order reference: <strong style="color:#1f2937;">#{{ $orderNumber }}</strong>
+        </p>
+    @endif
+
     <p style="margin:18px 0 0;color:#6b7280;font-size:14px;line-height:1.7;">
         Need help? Reply to this email and our team will assist you.
     </p>

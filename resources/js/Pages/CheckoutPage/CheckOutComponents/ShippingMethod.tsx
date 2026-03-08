@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useCheckout } from "@/Context/CheckoutContext";
+import { useCart } from "@/Context/CartContext";
 import { getCountryCode } from "@/Utils/countryCodes";
 
 type DeliveryType = "STANDARD" | "NEXT_DAY" | "TIMED";
@@ -31,6 +32,7 @@ type DeliveryDay = {
 
 export default function ShippingMethod() {
   const { address, shippingMethod, setShippingMethod, setShippingCost } = useCheckout();
+  const { cart } = useCart();
 
   const [loading, setLoading] = useState(false);
   const [hasLoadedOptions, setHasLoadedOptions] = useState(false);
@@ -103,6 +105,15 @@ export default function ShippingMethod() {
       : "Service: Carrier selected automatically";
   };
 
+  const buildCartItemsPayload = () =>
+    cart.map((item) => ({
+      slug: item.slug,
+      title: item.title,
+      size: item.size,
+      colour: item.colour,
+      quantity: item.quantity,
+    }));
+
   const fetchDeliveryOptions = async (silent = false) => {
     if (!isAddressComplete()) {
       setLoading(false);
@@ -115,15 +126,19 @@ export default function ShippingMethod() {
     setError("");
 
     try {
-      const params = new URLSearchParams({
-        postcode: address.postcode,
-        country: getCountryCode(address.country) || "GB",
-        city: address.city,
-        street1: address.addressLine1,
-      });
-
-      const response = await fetch(`/api/delivery-options?${params.toString()}`, {
-        headers: { Accept: "application/json" },
+      const response = await fetch(`/api/delivery-options`, {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          postcode: address.postcode,
+          country: getCountryCode(address.country) || "GB",
+          city: address.city,
+          street1: address.addressLine1,
+          cart_items: buildCartItemsPayload(),
+        }),
       });
 
       const text = await response.text();
@@ -204,6 +219,7 @@ export default function ShippingMethod() {
     address.city,
     address.postcode,
     address.country,
+    cart,
   ]);
 
   useEffect(() => {
@@ -258,6 +274,7 @@ export default function ShippingMethod() {
           country: getCountryCode(address.country) || "GB",
           city: address.city,
           street1: address.addressLine1,
+          cart_items: buildCartItemsPayload(),
         }),
       });
 

@@ -141,10 +141,6 @@ export default function ProductCard({
         </div>
 
         <div className={`space-y-1 bg-white ${compact ? "p-4" : "p-5"}`}>
-          <p className="text-sm uppercase tracking-wide text-gray-500 font-medium">
-            {product.brand}
-          </p>
-
           <p className={`${compact ? "text-base" : "text-lg"} font-semibold text-gray-800 leading-tight`}>
             {product.name}
           </p>

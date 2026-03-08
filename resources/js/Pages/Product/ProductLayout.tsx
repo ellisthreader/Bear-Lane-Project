@@ -213,7 +213,7 @@ type AdminColourDraft = {
   variants: AdminVariantDraft[];
 };
 
-type EditableField = "brand" | "name" | "price" | "description" | null;
+type EditableField = "name" | "price" | "description" | null;
 type AdminSaveSuccess = {
   mode: "created" | "edited";
   name: string;
@@ -326,7 +326,6 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
   }, [isAdminEditor, serverPremadeState, product.id]);
 
   const [adminName, setAdminName] = useState(product.name || "");
-  const [adminBrand] = useState(product.brand || "Brand");
   const [adminPrice, setAdminPrice] = useState(
     Number.isFinite(Number(product.price)) ? String(Number(product.price)) : ""
   );
@@ -434,7 +433,6 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
   }, [adminColours, isAdminEditor, product.colourProducts]);
 
   const effectiveName = isAdminEditor ? adminName.trim() || "Untitled Product" : product.name;
-  const effectiveBrand = isAdminEditor ? adminBrand.trim() || "Brand" : product.brand;
   const effectivePrice = isAdminEditor ? Number(adminPrice || 0) : Number(product.price ?? 0);
   const effectiveDescription = isAdminEditor
     ? adminDescription.trim() || "Start describing your product so customers understand fit, material, and purpose."
@@ -1257,7 +1255,7 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
       const maxDepthCm = Math.max(...variantMetrics.map((item) => item.depthCm));
       const payload = {
         name: adminName.trim(),
-        brand: adminBrand.trim() || "Brand",
+        brand: product.brand || "Brand",
         price: Number(adminPrice),
         description: adminDescription.trim(),
         category_id: Number(adminEditor.categoryId),
@@ -1393,7 +1391,7 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
 
     const payload = {
       name: adminName.trim(),
-      brand: adminBrand.trim() || "Brand",
+      brand: product.brand || "Brand",
       price: Number(adminPrice),
       description: adminDescription.trim(),
       category_id: Number(adminEditor.categoryId),
@@ -1750,13 +1748,6 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
             </section>
 
             <section className="min-w-0">
-              {!isAdminEditor ? (
-                <p
-                  className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8B7A57]"
-                >
-                  {effectiveBrand}
-                </p>
-              ) : null}
               {isAdminEditor && editingField === "name" ? (
                 <input
                   autoFocus

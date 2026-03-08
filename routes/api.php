@@ -48,6 +48,7 @@ Route::post('/discount/validate', [CouponController::class, 'apply']);
 Route::post('/shipping/rates', [ShippingController::class, 'rates']);
 Route::get('/shipping-rates', [ShippingRateController::class, 'index']);
 Route::get('/delivery-options', [DeliveryOptionController::class, 'index']);
+Route::post('/delivery-options', [DeliveryOptionController::class, 'index']);
 
 Route::get('/delivery-slots', [DeliverySlotController::class, 'index']);
 Route::post('/reserve-slot', [DeliverySlotController::class, 'reserve']);

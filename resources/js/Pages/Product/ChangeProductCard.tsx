@@ -119,10 +119,6 @@ export default function ChangeProductCard({
 
       {/* INFO */}
       <div className="flex flex-grow flex-col space-y-1 p-1.5 sm:p-4">
-        <p className="text-[9px] font-medium uppercase tracking-wide text-gray-500 sm:text-sm">
-          {product.brand}
-        </p>
-
         <p className="flex-grow text-[11px] font-semibold leading-tight text-gray-800 sm:text-lg">
           {product.name}
         </p>

@@ -12,7 +12,7 @@ type AuthenticatedLayoutProps = {
 export default function AuthenticatedLayout({
   children,
   containerClassName = "min-h-screen w-full flex flex-col bg-gray-50",
-  contentClassName = "flex-1 overflow-y-hidden w-full flex items-center justify-center",
+  contentClassName = "flex-1 w-full",
 }: AuthenticatedLayoutProps) {
   const page = usePage();
   const path = page.url.split("?")[0];
