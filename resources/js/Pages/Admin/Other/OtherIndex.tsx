@@ -1,6 +1,6 @@
 import React from "react";
 import { Head, Link } from "@inertiajs/react";
-import { ChevronRight, CircleDollarSign, Percent, Ruler, Settings2, SlidersHorizontal } from "lucide-react";
+import { ChevronRight, CircleDollarSign, LayoutPanelTop, Percent, Ruler, Settings2, SlidersHorizontal } from "lucide-react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import AdminTopNav from "@/Components/Admin/AdminTopNav";
 
@@ -21,6 +21,7 @@ function sectionIcon(title: string) {
   if (key.includes("site")) return <Settings2 className="h-5 w-5" />;
   if (key.includes("tax")) return <SlidersHorizontal className="h-5 w-5" />;
   if (key.includes("size")) return <Ruler className="h-5 w-5" />;
+  if (key.includes("front")) return <LayoutPanelTop className="h-5 w-5" />;
   return <Settings2 className="h-5 w-5" />;
 }
 

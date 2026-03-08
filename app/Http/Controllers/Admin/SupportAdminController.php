@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Chat;
 use App\Models\FaqRequest;
 use App\Models\HelpArticle;
+use App\Models\InstantQuote;
 use App\Services\AdminActivityLogService;
 use App\Services\AdminSummaryService;
 use Illuminate\Http\JsonResponse;
@@ -40,6 +41,48 @@ class SupportAdminController extends Controller
     {
         return Inertia::render('Admin/AdminDashboard', [
             'summary' => $this->adminSummaryService->getSummary(),
+        ]);
+    }
+
+    public function lookupQuote(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'quote_number' => ['required', 'string', 'max:40'],
+        ]);
+
+        $quoteNumber = trim((string) $validated['quote_number']);
+
+        $quote = InstantQuote::query()
+            ->where('quote_number', $quoteNumber)
+            ->latest('id')
+            ->first();
+
+        if (!$quote) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No quote found for that quote number.',
+            ], 404);
+        }
+
+        $items = $quote->items;
+        if (is_string($items) && $items !== '') {
+            $decoded = json_decode($items, true);
+            $items = is_array($decoded) ? $decoded : [];
+        } elseif (!is_array($items)) {
+            $items = [];
+        }
+
+        return response()->json([
+            'success' => true,
+            'quote' => [
+                'id' => $quote->id,
+                'quote_number' => (string) $quote->quote_number,
+                'name' => (string) $quote->name,
+                'email' => (string) $quote->email,
+                'total' => (float) ($quote->total ?? 0),
+                'items' => $items,
+                'created_at' => optional($quote->created_at)?->toIso8601String(),
+            ],
         ]);
     }
 

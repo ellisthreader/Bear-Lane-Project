@@ -45,6 +45,7 @@ use App\Http\Controllers\CookieConsentController;
 use App\Http\Controllers\SecureMediaController;
 use App\Services\AdminActivityLogService;
 use App\Services\Security\RecaptchaService;
+use App\Services\StoreSettingsService;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Storage;
@@ -143,8 +144,43 @@ Route::get('/', function () {
         ->latest()
         ->get();
 
+    $frontPage = app(StoreSettingsService::class)->getFrontPageProducts();
+    $featuredIds = collect((array) data_get($frontPage, 'featured_product_ids', []))
+        ->map(fn ($id) => (int) $id)
+        ->filter(fn ($id) => $id > 0)
+        ->unique()
+        ->values();
+    $premadeIds = collect((array) data_get($frontPage, 'premade_product_ids', []))
+        ->map(fn ($id) => (int) $id)
+        ->filter(fn ($id) => $id > 0)
+        ->unique()
+        ->values();
+
+    $baseFrontPageQuery = Product::query()
+        ->with('images')
+        ->withAvg('approvedReviews as average_rating', 'rating')
+        ->withCount('approvedReviews as reviews_count');
+
+    $featuredProducts = $featuredIds->isNotEmpty()
+        ? (clone $baseFrontPageQuery)
+            ->whereIn('id', $featuredIds->all())
+            ->get()
+            ->sortBy(fn (Product $product) => $featuredIds->search((int) $product->id))
+            ->values()
+        : $products->slice(0, 10)->values();
+
+    $preMadeProducts = $premadeIds->isNotEmpty()
+        ? (clone $baseFrontPageQuery)
+            ->whereIn('id', $premadeIds->all())
+            ->get()
+            ->sortBy(fn (Product $product) => $premadeIds->search((int) $product->id))
+            ->values()
+        : (($products->slice(10, 16)->count() >= 4) ? $products->slice(10, 16)->values() : $products->slice(0, 6)->values());
+
     return Inertia::render('Welcome/Welcome', [
         'products'    => $products,
+        'featuredProducts' => $featuredProducts,
+        'preMadeProducts' => $preMadeProducts,
         'canLogin'    => Route::has('login'),
         'canRegister' => Route::has('register'),
     ]);
@@ -490,6 +526,7 @@ Route::get('/company', fn() => Inertia::render('Company'));
 */
 Route::middleware(['auth', 'admin', 'admin.activity'])->prefix('admin')->group(function () {
     Route::get('/dashboard', [SupportAdminController::class, 'dashboard'])->name('admin.dashboard');
+    Route::get('/quotes/lookup', [SupportAdminController::class, 'lookupQuote'])->name('admin.quotes.lookup');
     Route::get('/other', [AdminOtherController::class, 'index'])->name('admin.other');
     Route::get('/other/prices', [AdminOtherController::class, 'prices'])->name('admin.other.prices');
     Route::put('/other/prices', [AdminOtherController::class, 'updatePrices'])->name('admin.other.prices.update');
@@ -503,6 +540,8 @@ Route::middleware(['auth', 'admin', 'admin.activity'])->prefix('admin')->group(f
     Route::put('/other/tax-settings', [AdminOtherController::class, 'updateTaxSettings'])->name('admin.other.tax-settings.update');
     Route::get('/other/size-guide', [AdminOtherController::class, 'sizeGuide'])->name('admin.other.size-guide');
     Route::put('/other/size-guide', [AdminOtherController::class, 'updateSizeGuide'])->name('admin.other.size-guide.update');
+    Route::get('/other/front-page', [AdminOtherController::class, 'frontPage'])->name('admin.other.front-page');
+    Route::put('/other/front-page', [AdminOtherController::class, 'updateFrontPage'])->name('admin.other.front-page.update');
     Route::get('/statistics', [AdminStatisticsController::class, 'index'])->name('admin.statistics');
     Route::get('/statistics/data', [AdminStatisticsController::class, 'data'])->name('admin.statistics.data');
     Route::get('/statistics/{metric}', [AdminStatisticsController::class, 'showMetric'])

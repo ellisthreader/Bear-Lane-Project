@@ -176,13 +176,22 @@ export default function NavMenu() {
   }, [searchResults]);
 
   useEffect(() => {
-    if (!notificationsOpen || !isAuthenticated) return;
+    if (!isAuthenticated) {
+      setNotifications([]);
+      setNotificationsLoading(false);
+      setNotificationsError(null);
+      return;
+    }
 
     let ignore = false;
-    const run = async () => {
+
+    const run = async (silent = false) => {
       try {
-        setNotificationsLoading(true);
-        setNotificationsError(null);
+        if (!silent) {
+          setNotificationsLoading(true);
+          setNotificationsError(null);
+        }
+
         const response = await fetch("/notifications/admin-notices", {
           method: "GET",
           credentials: "same-origin",
@@ -197,23 +206,39 @@ export default function NavMenu() {
         if (!ignore) {
           setNotifications(Array.isArray(payload?.notifications) ? payload.notifications : []);
         }
-      } catch (error) {
-        if (!ignore) {
+      } catch {
+        if (!ignore && !silent) {
           setNotificationsError("Unable to load notifications.");
-          setNotifications([]);
         }
       } finally {
-        if (!ignore) {
+        if (!ignore && !silent) {
           setNotificationsLoading(false);
         }
       }
     };
 
-    run();
+    void run(!notificationsOpen);
+
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") {
+        void run(true);
+      }
+    };
+
+    const intervalId = window.setInterval(() => {
+      void run(true);
+    }, 30000);
+
+    window.addEventListener("focus", onVisibility);
+    document.addEventListener("visibilitychange", onVisibility);
+
     return () => {
       ignore = true;
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", onVisibility);
+      document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [notificationsOpen, isAuthenticated]);
+  }, [isAuthenticated, notificationsOpen]);
 
   useEffect(() => {
     if (!isAdmin) {
@@ -341,13 +366,13 @@ export default function NavMenu() {
   }, [searchOpen]);
 
   useEffect(() => {
-    if (!mobileMenuOpen) return;
+    if (!mobileMenuOpen && !activeSidebar) return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = previousOverflow;
     };
-  }, [mobileMenuOpen]);
+  }, [mobileMenuOpen, activeSidebar]);
 
   useEffect(() => {
     const syncDesktopOverlayTop = () => {
@@ -563,9 +588,7 @@ export default function NavMenu() {
               >
                 <Bell className="h-5 w-5 cursor-pointer transition hover:text-[#D4AF37]" />
                 {unreadCount > 0 && (
-                  <span className="absolute -right-1.5 -top-1.5 inline-flex min-h-4 min-w-4 items-center justify-center rounded-full bg-[#D4AF37] px-1 text-[10px] font-semibold leading-none text-white">
-                    {unreadCount > 9 ? "9+" : unreadCount}
-                  </span>
+                  <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-[#DC2626] ring-2 ring-white" />
                 )}
               </button>
             )}

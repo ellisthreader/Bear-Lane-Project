@@ -11,6 +11,7 @@ class StoreSettingsService
     public const KEY_SITE_SETTINGS = 'site_settings';
     public const KEY_TAX_SETTINGS = 'tax_settings';
     public const KEY_SIZE_GUIDE = 'size_guide';
+    public const KEY_FRONT_PAGE_PRODUCTS = 'front_page_products';
 
     public function getDesignPricing(): array
     {
@@ -103,6 +104,45 @@ class StoreSettingsService
         return $this->mergeDefaults($this->defaultSizeGuide(), is_array($stored) ? $stored : []);
     }
 
+    public function getFrontPageProducts(): array
+    {
+        $stored = $this->get(self::KEY_FRONT_PAGE_PRODUCTS, []);
+
+        return $this->mergeDefaults($this->defaultFrontPageProducts(), is_array($stored) ? $stored : []);
+    }
+
+    public function saveFrontPageProducts(array $payload): array
+    {
+        $normalizeIds = static function (mixed $value): array {
+            if (!is_array($value)) {
+                return [];
+            }
+
+            return collect($value)
+                ->map(fn ($id) => (int) $id)
+                ->filter(fn (int $id) => $id > 0)
+                ->unique()
+                ->take(30)
+                ->values()
+                ->all();
+        };
+
+        $featuredIds = $normalizeIds(data_get($payload, 'featured_product_ids', []));
+        $premadeIds = array_values(array_diff(
+            $normalizeIds(data_get($payload, 'premade_product_ids', [])),
+            $featuredIds
+        ));
+
+        $normalized = [
+            'featured_product_ids' => $featuredIds,
+            'premade_product_ids' => $premadeIds,
+        ];
+
+        $this->put(self::KEY_FRONT_PAGE_PRODUCTS, $normalized);
+
+        return $this->getFrontPageProducts();
+    }
+
     public function saveSizeGuide(array $payload): array
     {
         $normalized = [];
@@ -155,6 +195,7 @@ class StoreSettingsService
             'design_pricing' => $this->getDesignPricing(),
             'tax' => $this->getTaxSettings(),
             'size_guide' => $this->getSizeGuide(),
+            'front_page_products' => $this->getFrontPageProducts(),
         ];
     }
 
@@ -301,6 +342,14 @@ class StoreSettingsService
                     ['size' => '13-14', 'chest' => '78-82', 'length' => '64-67', 'sleeve' => '60'],
                 ],
             ],
+        ];
+    }
+
+    private function defaultFrontPageProducts(): array
+    {
+        return [
+            'featured_product_ids' => [],
+            'premade_product_ids' => [],
         ];
     }
 }

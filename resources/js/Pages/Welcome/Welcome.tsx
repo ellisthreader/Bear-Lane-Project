@@ -25,6 +25,7 @@ import {
   ChevronRight,
   ShieldCheck,
   SlidersHorizontal,
+  Sparkles,
   Star,
   Truck,
 } from "lucide-react";
@@ -51,6 +52,8 @@ type PageProps = {
     user?: User;
   };
   products: Product[];
+  featuredProducts?: Product[];
+  preMadeProducts?: Product[];
 };
 
 const customerReviews = [
@@ -195,14 +198,47 @@ const fallbackSpotlightProducts: Product[] = [
   },
 ];
 
-const preMadeDesignNotes = [
-  "Built by our in-house professionals to give you a polished starting point.",
-  "Specially prepared layouts that can be customised quickly for your brand.",
-  "Production-ready compositions designed to look premium on first pass.",
-  "Expert-crafted styling so your team can launch merch faster.",
-  "Made by our pro designers for clean, balanced, high-conversion visuals.",
-  "Ready-made concepts tuned for print and embroidery friendly output.",
+const preMadeOpeners = [
+  "Studio-finished layout crafted for a premium first impression.",
+  "Design-team template tuned for clean embroidery and print output.",
+  "Conversion-focused composition built by our in-house creatives.",
+  "Professionally balanced layout designed for fast brand launches.",
+  "Refined pro template made to look polished straight away.",
+  "Production-aware design card optimised for apparel placement.",
 ];
+
+const preMadeDescriptors = [
+  "Strong hierarchy",
+  "Balanced spacing",
+  "Premium typography rhythm",
+  "Brand-ready visual flow",
+  "Clean merch composition",
+  "High-clarity focal layout",
+];
+
+const preMadeOutcomes = [
+  "ready to customise in minutes.",
+  "ideal for rapid campaign drops.",
+  "built to feel premium on first pass.",
+  "designed for smooth editing and rollout.",
+  "perfect for fast teamwear launches.",
+  "optimised for a polished final mockup.",
+];
+
+const buildPreMadeDescription = (product: Product, index: number): string => {
+  const slug = String(product.slug || "");
+  let seed = Math.abs((product.id || 0) * 97 + index * 31 + slug.length * 19);
+  for (let i = 0; i < slug.length; i += 1) {
+    seed = (seed * 33 + slug.charCodeAt(i)) % 1000003;
+  }
+
+  const opener = preMadeOpeners[seed % preMadeOpeners.length];
+  const descriptor = preMadeDescriptors[(seed + 3) % preMadeDescriptors.length];
+  const outcome = preMadeOutcomes[(seed + 7) % preMadeOutcomes.length];
+  const type = String(product.type || "apparel").toLowerCase();
+
+  return `${opener} ${descriptor} for ${type} products, ${outcome}`;
+};
 
 const sectionFallback = (
   <div className="w-full bg-white px-4 py-16">
@@ -216,18 +252,23 @@ export default function Welcome() {
   const Layout = user ? AuthenticatedLayout : GuestLayout;
   const spotlightProducts = useMemo(
     () =>
-      props.products?.length
-        ? props.products.slice(0, 10)
+      props.featuredProducts?.length
+        ? props.featuredProducts.slice(0, 10)
+        : props.products?.length
+          ? props.products.slice(0, 10)
         : fallbackSpotlightProducts.slice(0, 10),
-    [props.products]
+    [props.featuredProducts, props.products]
   );
   const preMadeProducts = useMemo(() => {
+    if (props.preMadeProducts?.length) {
+      return props.preMadeProducts.slice(0, 10);
+    }
     if (!props.products?.length) {
       return fallbackSpotlightProducts.slice(0, 6);
     }
     const secondary = props.products.slice(10, 16);
     return secondary.length >= 4 ? secondary : props.products.slice(0, 6);
-  }, [props.products]);
+  }, [props.preMadeProducts, props.products]);
   const [activeReview, setActiveReview] = useState(0);
   const productRailRef = useRef<HTMLDivElement | null>(null);
   const preMadeRailRef = useRef<HTMLDivElement | null>(null);
@@ -663,12 +704,13 @@ export default function Welcome() {
 
       <section className="bg-white pb-12">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-4">
-            <div className="h-px w-20 bg-[#E6D9BC] sm:w-28 lg:w-36" />
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9C7B2A]">
-              New pre-made designs
+          <div className="text-center">
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#B08A2E]">
+              New In
             </p>
-            <div className="h-px w-20 bg-[#E6D9BC] sm:w-28 lg:w-36" />
+            <h2 className="mt-2 text-3xl font-bold tracking-tight text-[#1F1A13] md:text-4xl">
+              Pre-Made Designs
+            </h2>
           </div>
           <p className="mx-auto mt-3 max-w-2xl text-center text-sm text-[#6A5530]">
             Professionally crafted design templates from our studio team, ready
@@ -694,7 +736,8 @@ export default function Welcome() {
               <ChevronRight className="h-4 w-4" />
             </button>
           </div>
-
+        </div>
+        <div className="mt-5 w-full px-4 sm:px-6 lg:px-8">
           <div
             ref={preMadeRailRef}
             onPointerDown={(event) => {
@@ -722,7 +765,7 @@ export default function Welcome() {
             }}
             onWheel={(event) => handleRailWheel(event, preMadeRailRef.current)}
             onDragStart={(event) => event.preventDefault()}
-            className="mt-6 flex cursor-grab select-none snap-x snap-mandatory gap-4 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden touch-pan-x active:cursor-grabbing"
+            className="flex w-full cursor-grab select-none snap-x snap-mandatory gap-4 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden touch-pan-x active:cursor-grabbing"
           >
             {preMadeProducts.map((product, index) => (
               <div
@@ -737,9 +780,15 @@ export default function Welcome() {
                 >
                   <ProductCard product={product} compact />
                 </Suspense>
-                <p className="mt-3 rounded-xl border border-[#E7D7B2] bg-[#FFF9EB] px-3 py-2 text-sm font-medium text-[#5B441A] shadow-[0_8px_18px_rgba(95,72,18,0.08)]">
-                  {preMadeDesignNotes[index % preMadeDesignNotes.length]}
-                </p>
+                <div className="mt-3 rounded-xl border border-[#E7D7B2] bg-[#FFF9EB] px-3 py-2 text-sm font-medium text-[#5B441A] shadow-[0_8px_18px_rgba(95,72,18,0.08)]">
+                  <span className="mb-1 inline-flex items-center gap-1.5 rounded-full border border-[#E4C985] bg-white/75 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#7A5C1E]">
+                    <Sparkles className="h-3 w-3" />
+                    Pre-Made Studio
+                  </span>
+                  <span className="mt-1 block rounded-lg bg-gradient-to-r from-[#FFF9EA] via-[#FFF5DF] to-[#FFF9EA] px-2.5 py-2 text-sm font-medium leading-relaxed text-[#5B441A]">
+                    {buildPreMadeDescription(product, index)}
+                  </span>
+                </div>
               </div>
             ))}
           </div>

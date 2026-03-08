@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Coupon;
+use App\Models\Product;
 use App\Services\StoreSettingsService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -47,6 +48,11 @@ class AdminOtherController extends Controller
                     'title' => 'Size Guide',
                     'description' => 'Maintain men, women, and kids measurement tables.',
                     'href' => '/admin/other/size-guide',
+                ],
+                [
+                    'title' => 'Front Page',
+                    'description' => 'Control featured products and pre-made design cards on the homepage.',
+                    'href' => '/admin/other/front-page',
                 ],
             ],
         ]);
@@ -288,6 +294,56 @@ class AdminOtherController extends Controller
         }
 
         return back()->with('success', 'Size guide updated.');
+    }
+
+    public function frontPage(): Response
+    {
+        $products = Product::query()
+            ->with('images')
+            ->orderBy('name')
+            ->limit(600)
+            ->get()
+            ->map(function (Product $product) {
+                $firstImage = $product->images->first();
+
+                return [
+                    'id' => $product->id,
+                    'name' => (string) $product->name,
+                    'slug' => (string) $product->slug,
+                    'brand' => (string) ($product->brand ?? ''),
+                    'price' => (float) ($product->price ?? 0),
+                    'image_url' => (string) ($firstImage?->url ?? '/images/no-image.png'),
+                ];
+            })
+            ->values()
+            ->all();
+
+        return Inertia::render('Admin/Other/FrontPage', [
+            'frontPage' => $this->settings->getFrontPageProducts(),
+            'products' => $products,
+        ]);
+    }
+
+    public function updateFrontPage(Request $request): JsonResponse|RedirectResponse
+    {
+        $validated = $request->validate([
+            'featured_product_ids' => ['required', 'array'],
+            'featured_product_ids.*' => ['integer', 'exists:products,id'],
+            'premade_product_ids' => ['required', 'array'],
+            'premade_product_ids.*' => ['integer', 'exists:products,id'],
+        ]);
+
+        $frontPage = $this->settings->saveFrontPageProducts($validated);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'front_page' => $frontPage,
+                'message' => 'Front page product selections updated.',
+            ]);
+        }
+
+        return back()->with('success', 'Front page product selections updated.');
     }
 
     /**

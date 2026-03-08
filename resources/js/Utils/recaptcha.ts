@@ -166,19 +166,21 @@ const executeTurnstile = async (action: string): Promise<string> => {
   overlay.style.zIndex = "9999";
 
   const panel = document.createElement("div");
-  panel.style.background = "#ffffff";
-  panel.style.borderRadius = "12px";
-  panel.style.padding = "10px";
-  panel.style.boxShadow = "0 10px 30px rgba(0,0,0,0.2)";
-  panel.style.maxWidth = "340px";
-  panel.style.width = "min(340px, calc(100vw - 24px))";
-  panel.style.border = "1px solid #e5dcc9";
+  panel.style.background = "linear-gradient(180deg, #fffefb 0%, #fff8ea 100%)";
+  panel.style.borderRadius = "16px";
+  panel.style.padding = "12px";
+  panel.style.boxShadow = "0 18px 40px rgba(68, 50, 18, 0.22)";
+  panel.style.maxWidth = "360px";
+  panel.style.width = "min(360px, calc(100vw - 24px))";
+  panel.style.border = "1px solid #e6d4ab";
 
   const heading = document.createElement("div");
-  heading.textContent = "Security check";
+  heading.textContent = "Cloudflare Security Check";
   heading.style.fontSize = "12px";
-  heading.style.fontWeight = "600";
-  heading.style.color = "#111827";
+  heading.style.fontWeight = "700";
+  heading.style.letterSpacing = "0.06em";
+  heading.style.textTransform = "uppercase";
+  heading.style.color = "#6f5319";
   heading.style.marginBottom = "8px";
 
   const container = document.createElement("div");

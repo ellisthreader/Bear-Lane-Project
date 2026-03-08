@@ -3,7 +3,29 @@ import { Link } from "@inertiajs/react";
 import { AnimatePresence, motion } from "framer-motion";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import AdminTopNav from "@/Components/Admin/AdminTopNav";
-import { Archive, ArrowLeft, ArrowUpRight, BarChart3, CircleHelp, Mail, MessageSquare, Package, Pencil, ReceiptText, Settings2, Shield, Sparkles, Star, TriangleAlert, User, Users, X } from "lucide-react";
+import {
+  Archive,
+  ArrowLeft,
+  ArrowUpRight,
+  BarChart3,
+  CircleHelp,
+  LayoutPanelTop,
+  Loader2,
+  Mail,
+  MessageSquare,
+  Package,
+  Pencil,
+  ReceiptText,
+  Search,
+  Settings2,
+  Shield,
+  Sparkles,
+  Star,
+  TriangleAlert,
+  User,
+  Users,
+  X,
+} from "lucide-react";
 import type { AdminSummary } from "@/Context/AdminSupportContext";
 
 type AdminDashboardProps = {
@@ -22,6 +44,16 @@ type DashboardCard = {
   icon: React.ReactNode;
   accentClass: string;
   disabled?: boolean;
+};
+
+type QuoteLookupResult = {
+  id: number;
+  quote_number: string;
+  name: string;
+  email: string;
+  total: number;
+  items: unknown[];
+  created_at: string | null;
 };
 
 export default function AdminDashboard({ auth, summary: incomingSummary }: AdminDashboardProps) {
@@ -77,11 +109,18 @@ export default function AdminDashboard({ auth, summary: incomingSummary }: Admin
       accentClass: "from-[#E3C88E]/30 to-transparent",
     },
     {
-      title: "other",
+      title: "Other",
       description: "Manage global store settings, tax, size guides, and discount rules.",
       href: "/admin/other",
       icon: <Settings2 className="h-6 w-6" />,
       accentClass: "from-[#C9B17E]/30 to-transparent",
+    },
+    {
+      title: "Front Page",
+      description: "Control featured and pre-made product cards shown on the homepage.",
+      href: "/admin/other/front-page",
+      icon: <LayoutPanelTop className="h-6 w-6" />,
+      accentClass: "from-[#D6C095]/30 to-transparent",
     },
   ];
 
@@ -91,6 +130,11 @@ export default function AdminDashboard({ auth, summary: incomingSummary }: Admin
   const [activityFromDate, setActivityFromDate] = useState("");
   const [activityToDate, setActivityToDate] = useState("");
   const [activityUserFilter, setActivityUserFilter] = useState("");
+  const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
+  const [quoteNumberInput, setQuoteNumberInput] = useState("");
+  const [quoteLookupLoading, setQuoteLookupLoading] = useState(false);
+  const [quoteLookupError, setQuoteLookupError] = useState<string | null>(null);
+  const [quoteLookupResult, setQuoteLookupResult] = useState<QuoteLookupResult | null>(null);
 
   const activityTypes = useMemo(
     () => Array.from(new Set(activities.map((activity) => activity.type))).sort(),
@@ -123,6 +167,72 @@ export default function AdminDashboard({ auth, summary: incomingSummary }: Admin
       return searchable.includes(normalizedUser);
     });
   }, [activities, activityTypeFilter, activityFromDate, activityToDate, activityUserFilter]);
+
+  const formatCurrency = (value: number) =>
+    new Intl.NumberFormat("en-GB", {
+      style: "currency",
+      currency: "GBP",
+      minimumFractionDigits: 2,
+    }).format(Number.isFinite(value) ? value : 0);
+
+  const normalizedQuoteItems = useMemo(() => {
+    if (!Array.isArray(quoteLookupResult?.items)) {
+      return [];
+    }
+
+    return quoteLookupResult.items.map((item, index) => {
+      const row = typeof item === "object" && item !== null ? (item as Record<string, unknown>) : {};
+      const name =
+        String(row.name || row.title || row.product_name || row.product || "").trim() || `Item ${index + 1}`;
+      const quantity = Number(row.quantity ?? row.qty ?? 1);
+      const unitPrice = Number(row.price ?? row.unit_price ?? 0);
+      const lineTotal = Number(row.total ?? quantity * unitPrice);
+
+      return {
+        key: `${name}-${index}`,
+        name,
+        quantity: Number.isFinite(quantity) ? quantity : 1,
+        unitPrice: Number.isFinite(unitPrice) ? unitPrice : 0,
+        lineTotal: Number.isFinite(lineTotal) ? lineTotal : 0,
+      };
+    });
+  }, [quoteLookupResult]);
+
+  const lookupQuote = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const quoteNumber = quoteNumberInput.trim();
+    if (!quoteNumber) {
+      setQuoteLookupError("Enter a quote number to continue.");
+      setQuoteLookupResult(null);
+      return;
+    }
+
+    setQuoteLookupLoading(true);
+    setQuoteLookupError(null);
+    setQuoteLookupResult(null);
+
+    try {
+      const response = await fetch(`/admin/quotes/lookup?quote_number=${encodeURIComponent(quoteNumber)}`, {
+        method: "GET",
+        credentials: "same-origin",
+        headers: {
+          Accept: "application/json",
+          "X-Requested-With": "XMLHttpRequest",
+        },
+      });
+
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload?.message || "Unable to find that quote.");
+      }
+
+      setQuoteLookupResult(payload?.quote || null);
+    } catch (error) {
+      setQuoteLookupError(error instanceof Error ? error.message : "Unable to find that quote.");
+    } finally {
+      setQuoteLookupLoading(false);
+    }
+  };
 
   const iconForActivity = (icon: string) => {
     switch (icon) {
@@ -198,13 +308,17 @@ export default function AdminDashboard({ auth, summary: incomingSummary }: Admin
                       Everything you need to run Bear Lane is here. Monitor performance, manage inventory, and support customers quickly.
                     </p>
                   </div>
-                  <Link
-                    href="/admin/statistics"
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsQuoteModalOpen(true);
+                      setQuoteLookupError(null);
+                    }}
                     className="inline-flex items-center gap-2 rounded-xl bg-[#C6A75E] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#B8994E]"
                   >
-                    Open Analytics
+                    View Quote
                     <ArrowUpRight className="h-4 w-4" />
-                  </Link>
+                  </button>
                 </div>
               </div>
 
@@ -425,6 +539,136 @@ export default function AdminDashboard({ auth, summary: incomingSummary }: Admin
                     ))
                   )}
                 </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        ) : null}
+
+        {isQuoteModalOpen ? (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[121] bg-black/55 p-4 sm:p-6"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Quote lookup"
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 18, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 18, scale: 0.98 }}
+              transition={{ duration: 0.2 }}
+              className="mx-auto flex h-full w-full max-w-3xl flex-col overflow-hidden rounded-3xl border border-[#E2D2AE] bg-[#FFFDF7] shadow-[0_30px_80px_rgba(20,15,10,0.35)]"
+            >
+              <header className="flex items-center justify-between gap-3 border-b border-[#E7D7B3] bg-[#FFF6DF] px-5 py-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#846B37]">Quote Manager</p>
+                  <h2 className="mt-1 text-xl font-bold text-[#2D2515]">View Quote</h2>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsQuoteModalOpen(false)}
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#D8C395] bg-white text-[#6E5726] transition hover:border-[#BE9A52]"
+                  aria-label="Close quote modal"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </header>
+
+              <div className="border-b border-[#E7D7B3] bg-white px-5 py-4">
+                <form className="flex flex-col gap-3 sm:flex-row" onSubmit={lookupQuote}>
+                  <label className="sr-only" htmlFor="quote-number-input">
+                    Quote number
+                  </label>
+                  <input
+                    id="quote-number-input"
+                    type="text"
+                    value={quoteNumberInput}
+                    onChange={(event) => setQuoteNumberInput(event.target.value)}
+                    placeholder="Enter quote number (e.g. BL-QUOTE-12345)"
+                    className="h-11 flex-1 rounded-xl border border-[#E0CFA9] bg-[#FFFDF8] px-3 text-sm text-[#2D2515] outline-none focus:border-[#C29A4F]"
+                  />
+                  <button
+                    type="submit"
+                    disabled={quoteLookupLoading}
+                    className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#C6A75E] px-4 text-sm font-semibold text-white transition hover:bg-[#B8994E] disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {quoteLookupLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                    Search
+                  </button>
+                </form>
+                {quoteLookupError ? (
+                  <p className="mt-3 rounded-xl border border-[#F2C5BD] bg-[#FFF3F0] px-3 py-2 text-sm font-semibold text-[#A63D2F]">
+                    {quoteLookupError}
+                  </p>
+                ) : null}
+              </div>
+
+              <div className="flex-1 overflow-y-auto bg-[#FFFCF4] px-5 py-4">
+                {!quoteLookupResult && !quoteLookupLoading && !quoteLookupError ? (
+                  <div className="rounded-xl border border-dashed border-[#E2D2AE] bg-white px-4 py-5 text-sm text-[#6B5A34]">
+                    Search by quote number to view customer details, total, and requested items.
+                  </div>
+                ) : null}
+
+                {quoteLookupResult ? (
+                  <div className="space-y-4">
+                    <div className="rounded-2xl border border-[#E3D2AD] bg-white p-4 shadow-[0_8px_24px_rgba(91,70,27,0.08)]">
+                      <div className="grid gap-3 text-sm sm:grid-cols-2">
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-wide text-[#846B37]">Quote Number</p>
+                          <p className="mt-1 font-semibold text-[#2D2515]">{quoteLookupResult.quote_number}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-wide text-[#846B37]">Created</p>
+                          <p className="mt-1 font-semibold text-[#2D2515]">
+                            {quoteLookupResult.created_at
+                              ? new Date(quoteLookupResult.created_at).toLocaleString("en-GB")
+                              : "Unknown"}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-wide text-[#846B37]">Customer</p>
+                          <p className="mt-1 font-semibold text-[#2D2515]">{quoteLookupResult.name || "Unknown"}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-wide text-[#846B37]">Email</p>
+                          <p className="mt-1 font-semibold text-[#2D2515]">{quoteLookupResult.email || "Unknown"}</p>
+                        </div>
+                      </div>
+                      <div className="mt-4 rounded-xl border border-[#E9DAB7] bg-[#FFF9EC] px-3 py-2.5">
+                        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#846B37]">Quote Total</p>
+                        <p className="mt-1 text-xl font-bold text-[#2D2515]">{formatCurrency(Number(quoteLookupResult.total || 0))}</p>
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-[#E3D2AD] bg-white p-4 shadow-[0_8px_24px_rgba(91,70,27,0.08)]">
+                      <div className="mb-3 flex items-center justify-between gap-3">
+                        <h3 className="text-sm font-semibold uppercase tracking-[0.12em] text-[#846B37]">Quote Items</h3>
+                        <p className="text-xs font-semibold text-[#6B5A34]">{normalizedQuoteItems.length} item(s)</p>
+                      </div>
+                      <div className="space-y-2">
+                        {normalizedQuoteItems.length === 0 ? (
+                          <p className="rounded-xl border border-dashed border-[#E2D2AE] bg-[#FFF9EB] px-3 py-4 text-sm text-[#6B5A34]">
+                            No item breakdown is available for this quote.
+                          </p>
+                        ) : (
+                          normalizedQuoteItems.map((item) => (
+                            <div key={item.key} className="rounded-xl border border-[#E9DAB7] bg-[#FFF9EC] px-3 py-2.5">
+                              <p className="text-sm font-semibold text-[#2D2515]">{item.name}</p>
+                              <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-[#6B5A34]">
+                                <span>Qty: {item.quantity}</span>
+                                <span>Unit: {formatCurrency(item.unitPrice)}</span>
+                                <span>Total: {formatCurrency(item.lineTotal)}</span>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
               </div>
             </motion.div>
           </motion.div>
