@@ -13,7 +13,7 @@
     <meta name="recaptcha-site-key" content="{{ (string) config('services.recaptcha.site_key', '') }}">
     <meta name="recaptcha-provider" content="{{ (string) config('services.recaptcha.provider', '') }}">
     <link rel="preconnect" href="https://challenges.cloudflare.com">
-    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" defer></script>
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"></script>
 
     <!-- Routes & Vite -->
     @routes

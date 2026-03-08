@@ -76,8 +76,6 @@ const loadScriptSrc = async (src: string): Promise<void> =>
 
     const script = document.createElement("script");
     script.src = src;
-    script.async = true;
-    script.defer = true;
     script.onload = () => {
       script.dataset.recaptchaLoaded = "true";
       resolve();
