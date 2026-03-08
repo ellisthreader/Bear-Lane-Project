@@ -152,16 +152,6 @@ export default function CategoryProductsGrid({ productEditMode = false, category
                 </button>
               </div>
             ) : null}
-            {isPreMade ? (
-              <span
-                className={`absolute left-2 z-10 rounded-full bg-[#C6A75E] px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] text-white ${
-                  productEditMode ? "top-9" : "top-2"
-                }`}
-              >
-                Pre-made design
-              </span>
-            ) : null}
-
             <div className="relative h-[280px] w-full overflow-hidden bg-[#E5E7EB] p-3">
               <img loading="lazy" decoding="async"
                 src={image}
@@ -175,8 +165,8 @@ export default function CategoryProductsGrid({ productEditMode = false, category
               />
               <ProductBadgeChips
                 badges={product.auto_badges}
-                compact
-                className="absolute bottom-2 left-2 z-10"
+                isPreMade={isPreMade}
+                className="absolute left-2 top-2 z-10"
               />
             </div>
 

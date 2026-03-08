@@ -128,10 +128,7 @@ class StoreSettingsService
         };
 
         $featuredIds = $normalizeIds(data_get($payload, 'featured_product_ids', []));
-        $premadeIds = array_values(array_diff(
-            $normalizeIds(data_get($payload, 'premade_product_ids', [])),
-            $featuredIds
-        ));
+        $premadeIds = $normalizeIds(data_get($payload, 'premade_product_ids', []));
         $rawQuotes = data_get($payload, 'premade_quotes', []);
         $premadeQuotes = [];
         if (is_array($rawQuotes)) {

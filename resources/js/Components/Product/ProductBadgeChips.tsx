@@ -3,11 +3,12 @@ import React from "react";
 type ProductBadgeChipsProps = {
   badges?: string[] | null;
   className?: string;
-  compact?: boolean;
+  isPreMade?: boolean;
   maxVisible?: number;
 };
 
 const BADGE_STYLE_MAP: Record<string, string> = {
+  "Bear Lane Studio": "border-[#D7B25E] bg-[#FFF4D8] text-[#7A5814]",
   "Best Seller": "border-[#D7B25E] bg-[#FFF4D8] text-[#7A5814]",
   "Highest Rated": "border-[#B6C7E9] bg-[#EEF4FF] text-[#1E3A8A]",
   "New In": "border-[#B8DDC4] bg-[#ECFDF3] text-[#166534]",
@@ -25,10 +26,13 @@ const normalizeBadges = (badges?: string[] | null): string[] => {
 export default function ProductBadgeChips({
   badges,
   className = "",
-  compact = false,
-  maxVisible = 3,
+  isPreMade = false,
+  maxVisible = 4,
 }: ProductBadgeChipsProps) {
-  const normalized = normalizeBadges(badges).slice(0, Math.max(1, maxVisible));
+  const normalized = normalizeBadges([
+    ...(isPreMade ? ["Bear Lane Studio"] : []),
+    ...normalizeBadges(badges),
+  ]).slice(0, Math.max(1, maxVisible));
   if (normalized.length === 0) return null;
 
   return (
@@ -36,9 +40,9 @@ export default function ProductBadgeChips({
       {normalized.map((badge) => (
         <span
           key={badge}
-          className={`rounded-full border px-2 py-0.5 font-bold uppercase tracking-[0.1em] shadow-sm ${
-            compact ? "text-[9px]" : "text-[10px]"
-          } ${BADGE_STYLE_MAP[badge] ?? "border-[#D7BE84] bg-[#FFF9EA] text-[#6A5528]"}`}
+          className={`rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.1em] shadow-sm ${
+            BADGE_STYLE_MAP[badge] ?? "border-[#D7BE84] bg-[#FFF9EA] text-[#6A5528]"
+          }`}
         >
           {badge}
         </span>

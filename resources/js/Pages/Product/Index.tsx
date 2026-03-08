@@ -77,15 +77,10 @@ export default function ProductsIndex({ type, products }: Props) {
                   alt={product.name}
                   className="h-44 w-full object-cover sm:h-56 lg:h-64"
                 />
-                {isPreMade ? (
-                  <span className="absolute left-2 top-2 rounded-full bg-[#C6A75E] px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] text-white">
-                    Pre-made design
-                  </span>
-                ) : null}
                 <ProductBadgeChips
                   badges={product.auto_badges}
-                  compact
-                  className={`absolute left-2 ${isPreMade ? "top-8" : "top-2"}`}
+                  isPreMade={isPreMade}
+                  className="absolute left-2 top-2"
                 />
               </div>
 

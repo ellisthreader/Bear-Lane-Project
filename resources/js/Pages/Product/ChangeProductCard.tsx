@@ -69,15 +69,10 @@ export default function ChangeProductCard({
           alt={product.name}
           className="absolute inset-0 h-full w-full object-cover"
         />
-        {isPreMade ? (
-          <span className="absolute left-2 top-2 z-10 rounded-full bg-[#C6A75E] px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.08em] text-white">
-            Pre-made design
-          </span>
-        ) : null}
         <ProductBadgeChips
           badges={autoBadges}
-          compact
-          className={`absolute left-2 z-10 ${isPreMade ? "top-8" : "top-2"}`}
+          isPreMade={isPreMade}
+          className="absolute left-2 top-2 z-10"
         />
 
         {imageList.length > 1 ? (

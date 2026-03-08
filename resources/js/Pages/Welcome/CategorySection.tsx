@@ -5,15 +5,15 @@ import { router } from "@inertiajs/react";
 
 const categories = [
   { name: "New In", image: "/images/Category/new-in.jpg" },
-  { name: "Winter", image: "/images/Category/winter.jpg" },
+  { name: "Pre made", image: "/images/Category/premade.jpeg" },
   { name: "Sale", image: "/images/Category/sale.jpeg" },
-  { name: "Shoes", image: "/images/Category/shoes.jpg" },
+  { name: "Kids Clothing", image: "/images/Category/kids.jpeg" },
   { name: "Bags", image: "/images/Category/bags.jpg" },
   { name: "Teddies", image: "/images/Category/teddies.jpg" },
   { name: "T-Shirts", image: "/images/Category/tshirts.jpeg" },
-  { name: "Jumpers", image: "/images/Category/jumpers.jpg" },
+  { name: "Activewear", image: "/images/Category/sport.jpeg" },
   { name: "Trousers", image: "/images/Category/trousers.jpg" },
-  { name: "Accessories", image: "/images/Category/accessories.jpg" },
+  { name: "Joke Products", image: "/images/Category/joke.jpeg" },
 ];
 
 export default function CategorySection() {

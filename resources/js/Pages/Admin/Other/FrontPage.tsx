@@ -264,7 +264,7 @@ export default function FrontPage({ frontPage, products }: Props) {
                       <img src={product.image_url} alt={product.name} className="h-28 w-full rounded-lg object-cover" />
                       {product.is_premade_design ? (
                         <span className="absolute left-2 top-2 rounded-full bg-[#C6A75E] px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] text-white">
-                          Pre-made design
+                          Bear Lane Studio
                         </span>
                       ) : null}
                     </div>
@@ -338,7 +338,7 @@ export default function FrontPage({ frontPage, products }: Props) {
                       <img src={product.image_url} alt={product.name} className="h-24 w-full rounded-md object-cover" />
                       {product.is_premade_design ? (
                         <span className="absolute left-1.5 top-1.5 rounded-full bg-[#C6A75E] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.08em] text-white">
-                          Pre-made design
+                          Bear Lane Studio
                         </span>
                       ) : null}
                     </div>

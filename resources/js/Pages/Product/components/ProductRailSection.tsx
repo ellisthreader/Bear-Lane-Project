@@ -91,15 +91,10 @@ export default function ProductRailSection({
                   draggable={false}
                   className="h-full w-full object-contain transition duration-300 group-hover:scale-[1.03]"
                 />
-                {item.is_premade_design ? (
-                  <span className="absolute left-3 top-3 rounded-full bg-[#C6A75E] px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] text-white">
-                    Pre-made design
-                  </span>
-                ) : null}
                 <ProductBadgeChips
                   badges={item.auto_badges}
-                  compact
-                  className={`absolute left-3 ${item.is_premade_design ? "top-10" : "top-3"}`}
+                  isPreMade={Boolean(item.is_premade_design)}
+                  className="absolute left-3 top-3"
                 />
               </div>
               <div className="space-y-1 p-3">
