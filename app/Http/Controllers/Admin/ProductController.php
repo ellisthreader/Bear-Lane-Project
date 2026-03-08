@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Services\AdminActivityLogService;
 use App\Services\OpenAiModerationService;
+use App\Services\StoreSettingsService;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Str;
@@ -17,7 +18,10 @@ use Illuminate\Validation\ValidationException;
 
 class ProductController extends Controller
 {
-    public function __construct(private readonly AdminActivityLogService $activityLogService)
+    public function __construct(
+        private readonly AdminActivityLogService $activityLogService,
+        private readonly StoreSettingsService $storeSettingsService
+    )
     {
     }
 
@@ -283,6 +287,7 @@ class ProductController extends Controller
         ]);
 
         $isFullLayoutUpdate = $request->has('colours');
+        $isPreMadeEditor = $request->boolean('is_premade');
         if ($isFullLayoutUpdate) {
             $validated = $request->validate([
                 'name' => 'required|string|max:255',
@@ -290,6 +295,7 @@ class ProductController extends Controller
                 'price' => 'required|numeric|min:0.01',
                 'description' => 'required|string',
                 'category_id' => 'required|exists:categories,id',
+                'is_premade' => 'sometimes|boolean',
                 'dimensions' => 'required|array',
                 'dimensions.length' => 'required|numeric|min:0.01',
                 'dimensions.width' => 'required|numeric|min:0.01',
@@ -299,7 +305,7 @@ class ProductController extends Controller
                 'colours.*.name' => 'required|string|max:100',
                 'colours.*.images' => 'required|array|min:1',
                 'colours.*.images.*' => 'required|string|max:2048',
-                'colours.*.image_boxes' => 'required|array',
+                'colours.*.image_boxes' => 'nullable|array',
                 'colours.*.variants' => 'required|array|min:1',
                 'colours.*.variants.*.size' => 'required|string|max:20',
                 'colours.*.variants.*.stock' => 'required|integer|min:0',
@@ -389,7 +395,7 @@ class ProductController extends Controller
             }
         }
 
-        DB::transaction(function () use ($validated, $product, $slug, $nextPrice, $baselinePrice, $isSale) {
+        DB::transaction(function () use ($validated, $product, $slug, $nextPrice, $baselinePrice, $isSale, $isPreMadeEditor) {
             $product->update([
                 'name' => trim((string) $validated['name']),
                 'brand' => trim((string) $validated['brand']),
@@ -448,6 +454,11 @@ class ProductController extends Controller
 
                 $restrictedBoxesByImagePath = [];
                 foreach ($imagePaths as $imageIndex => $path) {
+                    if ($isPreMadeEditor) {
+                        $restrictedBoxesByImagePath[$path] = null;
+                        continue;
+                    }
+
                     $boxPayload = $imageBoxes[$path] ?? null;
                     if (!$this->isValidRestrictedBoxPayload($boxPayload)) {
                         foreach ($imageEntries as $entry) {
@@ -489,10 +500,10 @@ class ProductController extends Controller
                         $box = $restrictedBoxesByImagePath[$path];
                         $variant->images()->create([
                             'path' => $path,
-                            'restricted_left' => $box['left'],
-                            'restricted_top' => $box['top'],
-                            'restricted_width' => $box['width'],
-                            'restricted_height' => $box['height'],
+                            'restricted_left' => is_array($box) ? ($box['left'] ?? null) : null,
+                            'restricted_top' => is_array($box) ? ($box['top'] ?? null) : null,
+                            'restricted_width' => is_array($box) ? ($box['width'] ?? null) : null,
+                            'restricted_height' => is_array($box) ? ($box['height'] ?? null) : null,
                         ]);
                     }
                 }
@@ -508,13 +519,17 @@ class ProductController extends Controller
                 $box = $productImageBoxByPath[$path] ?? null;
                 $product->images()->create([
                     'path' => $path,
-                    'restricted_left' => $box['left'] ?? null,
-                    'restricted_top' => $box['top'] ?? null,
-                    'restricted_width' => $box['width'] ?? null,
-                    'restricted_height' => $box['height'] ?? null,
+                    'restricted_left' => is_array($box) ? ($box['left'] ?? null) : null,
+                    'restricted_top' => is_array($box) ? ($box['top'] ?? null) : null,
+                    'restricted_width' => is_array($box) ? ($box['width'] ?? null) : null,
+                    'restricted_height' => is_array($box) ? ($box['height'] ?? null) : null,
                 ]);
             }
         });
+
+        if ($isPreMadeEditor) {
+            $this->ensureProductInFrontPagePreMade((int) $product->id);
+        }
 
         $product->refresh();
         $changes = $this->activityLogService->extractChanges(
@@ -575,6 +590,7 @@ class ProductController extends Controller
     {
         $categoryId = (int) $request->integer('category_id');
         $categorySlug = trim((string) $request->input('category_slug', ''));
+        $isPreMadeEditor = $request->boolean('premade');
 
         $category = null;
         if ($categoryId > 0) {
@@ -626,23 +642,28 @@ class ProductController extends Controller
                 'dimension_unit' => 'cm',
             ],
             'recommendedProducts' => [],
+            'isPreMadeDesign' => $isPreMadeEditor,
             'adminEditor' => [
                 'enabled' => true,
                 'categoryId' => (int) $category->id,
                 'categorySlug' => (string) $category->slug,
                 'categoryName' => (string) $category->name,
+                'premade' => $isPreMadeEditor,
             ],
         ]);
     }
 
     public function storeProductFromLayout(Request $request)
     {
+        $isPreMadeEditor = $request->boolean('is_premade');
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'brand' => 'required|string|max:255',
             'price' => 'required|numeric|min:0.01',
             'description' => 'required|string',
             'category_id' => 'required|exists:categories,id',
+            'is_premade' => 'sometimes|boolean',
             'dimensions' => 'required|array',
             'dimensions.length' => 'required|numeric|min:0.01',
             'dimensions.width' => 'required|numeric|min:0.01',
@@ -652,7 +673,7 @@ class ProductController extends Controller
             'colours.*.name' => 'required|string|max:100',
             'colours.*.images' => 'required|array|min:1',
             'colours.*.images.*' => 'required|string|max:2048',
-            'colours.*.image_boxes' => 'required|array',
+            'colours.*.image_boxes' => 'nullable|array',
             'colours.*.variants' => 'required|array|min:1',
             'colours.*.variants.*.size' => 'required|string|max:20',
             'colours.*.variants.*.stock' => 'required|integer|min:0',
@@ -687,7 +708,7 @@ class ProductController extends Controller
 
         $product = null;
 
-        DB::transaction(function () use ($validated, $slug, &$product) {
+        DB::transaction(function () use ($validated, $slug, &$product, $isPreMadeEditor) {
             $product = Product::query()->create([
                 'name' => trim((string) $validated['name']),
                 'brand' => trim((string) $validated['brand']),
@@ -741,6 +762,11 @@ class ProductController extends Controller
 
                 $restrictedBoxesByImagePath = [];
                 foreach ($imagePaths as $imageIndex => $path) {
+                    if ($isPreMadeEditor) {
+                        $restrictedBoxesByImagePath[$path] = null;
+                        continue;
+                    }
+
                     $boxPayload = $imageBoxes[$path] ?? null;
                     if (!$this->isValidRestrictedBoxPayload($boxPayload)) {
                         foreach ($imageEntries as $entry) {
@@ -782,10 +808,10 @@ class ProductController extends Controller
                         $box = $restrictedBoxesByImagePath[$path];
                         $variant->images()->create([
                             'path' => $path,
-                            'restricted_left' => $box['left'],
-                            'restricted_top' => $box['top'],
-                            'restricted_width' => $box['width'],
-                            'restricted_height' => $box['height'],
+                            'restricted_left' => is_array($box) ? ($box['left'] ?? null) : null,
+                            'restricted_top' => is_array($box) ? ($box['top'] ?? null) : null,
+                            'restricted_width' => is_array($box) ? ($box['width'] ?? null) : null,
+                            'restricted_height' => is_array($box) ? ($box['height'] ?? null) : null,
                         ]);
                     }
                 }
@@ -801,13 +827,17 @@ class ProductController extends Controller
                 $box = $productImageBoxByPath[$path] ?? null;
                 $product->images()->create([
                     'path' => $path,
-                    'restricted_left' => $box['left'] ?? null,
-                    'restricted_top' => $box['top'] ?? null,
-                    'restricted_width' => $box['width'] ?? null,
-                    'restricted_height' => $box['height'] ?? null,
+                    'restricted_left' => is_array($box) ? ($box['left'] ?? null) : null,
+                    'restricted_top' => is_array($box) ? ($box['top'] ?? null) : null,
+                    'restricted_width' => is_array($box) ? ($box['width'] ?? null) : null,
+                    'restricted_height' => is_array($box) ? ($box['height'] ?? null) : null,
                 ]);
             }
         });
+
+        if ($isPreMadeEditor && $product) {
+            $this->ensureProductInFrontPagePreMade((int) $product->id);
+        }
 
         if ($product) {
             $this->activityLogService->logFromRequest(
@@ -1114,6 +1144,33 @@ class ProductController extends Controller
         }
 
         return $attempt;
+    }
+
+    private function ensureProductInFrontPagePreMade(int $productId): void
+    {
+        if ($productId <= 0) {
+            return;
+        }
+
+        $frontPage = $this->storeSettingsService->getFrontPageProducts();
+        $featured = collect((array) data_get($frontPage, 'featured_product_ids', []))
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn ($id) => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+        $premade = collect((array) data_get($frontPage, 'premade_product_ids', []))
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn ($id) => $id > 0)
+            ->push($productId)
+            ->unique()
+            ->values()
+            ->all();
+
+        $this->storeSettingsService->saveFrontPageProducts([
+            'featured_product_ids' => $featured,
+            'premade_product_ids' => $premade,
+        ]);
     }
 
     private function buildCategoryTrail(Category $leaf): array

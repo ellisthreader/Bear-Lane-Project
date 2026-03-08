@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Head, Link, router, usePage } from "@inertiajs/react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
+import { useCart } from "@/Context/CartContext";
 import { useWishlist } from "@/Context/WishlistContext";
 import { CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, CircleHelp, Heart, Plus, Sparkles, Star, X } from "lucide-react";
 import { toast } from "react-toastify";
@@ -168,11 +169,13 @@ interface Product {
 interface Props {
   product: Product;
   recommendedProducts?: ProductListItem[];
+  isPreMadeDesign?: boolean;
   adminEditor?: {
     enabled?: boolean;
     categoryId?: number;
     categorySlug?: string;
     categoryName?: string;
+    premade?: boolean;
   };
 }
 
@@ -298,14 +301,17 @@ const renderRatingStars = (value: number, className = "h-4 w-4") => {
   });
 };
 
-export default function ProductLayout({ product, recommendedProducts = [], adminEditor }: Props) {
+export default function ProductLayout({ product, recommendedProducts = [], isPreMadeDesign = false, adminEditor }: Props) {
   const page = usePage<{ auth?: { user?: { id?: number; name?: string; email?: string; is_admin?: boolean } } }>();
   const isSignedIn = Boolean(page.props.auth?.user?.id);
   const isAdminUser = Boolean(page.props.auth?.user?.is_admin);
+  const { addToCart } = useCart();
   const authEmail = String(page.props.auth?.user?.email || "").trim();
   const authName = String(page.props.auth?.user?.name || "").trim();
   const { toggleWishlistItem, isInWishlist, openWishlist } = useWishlist();
   const isAdminEditor = Boolean(adminEditor?.enabled);
+  const isAdminPremadeEditor = Boolean(adminEditor?.premade);
+  const isPremadeProduct = Boolean(isPreMadeDesign || isAdminPremadeEditor);
 
   const [adminName, setAdminName] = useState(product.name || "");
   const [adminBrand] = useState(product.brand || "Brand");
@@ -573,6 +579,25 @@ export default function ProductLayout({ product, recommendedProducts = [], admin
     }
 
     if (selectedSizeInStock) {
+      if (isPremadeProduct) {
+        addToCart({
+          slug: product.slug,
+          title: effectiveName,
+          price: effectivePrice,
+          colour: selectedColour || currentVariant?.colour || "Default",
+          size: selectedSize,
+          image: displayImages[0] ?? effectiveProductImages?.[0] ?? "/images/no-image.png",
+          availableSizes: (currentVariant?.sizes || STANDARD_SIZES).map((size) => String(size).toUpperCase()),
+          designType: "printing",
+        });
+        toast.success("Added to cart.", {
+          position: "top-center",
+          autoClose: 2500,
+          toastId: "premade-added-to-cart",
+        });
+        return;
+      }
+
       router.get(`/design/${product.slug}`, {
         colour: selectedColour,
         size: selectedSize,
@@ -641,7 +666,9 @@ export default function ProductLayout({ product, recommendedProducts = [], admin
   };
 
   const primaryCtaLabel = selectedSizeInStock
-    ? "Start Designing"
+    ? isPremadeProduct
+      ? "Add To Cart"
+      : "Start Designing"
     : isSignedIn
       ? "Notify me when back in stock"
       : "Sign in to get notified when back in stock";
@@ -1137,7 +1164,7 @@ export default function ProductLayout({ product, recommendedProducts = [], admin
       const validImages = colour.imageUrls.map((url) => url.trim()).filter(Boolean);
       if (validImages.length === 0) {
         errors[`colour.${colour.id}.images`] = `${colourLabel}: upload at least one product image.`;
-      } else {
+      } else if (!isAdminPremadeEditor) {
         const invalidImageIndex = validImages.findIndex((url) => !isValidRestrictedBox(colour.imageBoxes[url]));
         if (invalidImageIndex >= 0) {
           errors[`colour.${colour.id}.image_boxes`] =
@@ -1219,6 +1246,7 @@ export default function ProductLayout({ product, recommendedProducts = [], admin
         price: Number(adminPrice),
         description: adminDescription.trim(),
         category_id: Number(adminEditor.categoryId),
+        is_premade: isAdminPremadeEditor,
         dimensions: {
           length: maxLengthCm,
           width: maxWidthCm,
@@ -1279,7 +1307,7 @@ export default function ProductLayout({ product, recommendedProducts = [], admin
       if (oldImageCount !== newImageCount) {
         changeItems.push(`Pictures: ${oldImageCount} -> ${newImageCount}`);
       }
-      if (oldRestrictedCount !== newRestrictedCount) {
+      if (!isAdminPremadeEditor && oldRestrictedCount !== newRestrictedCount) {
         changeItems.push(`Restricted boxes: ${oldRestrictedCount} -> ${newRestrictedCount}`);
       }
       changeItems.push(`Parcel dimensions: ${maxLengthCm} x ${maxWidthCm} x ${maxDepthCm} cm`);
@@ -1320,7 +1348,11 @@ export default function ProductLayout({ product, recommendedProducts = [], admin
           changes: changeItems.length ? changeItems : ["No visible field changes."],
         });
         if (updatedSlug !== product.slug) {
-          router.get(`/product/${encodeURIComponent(updatedSlug)}?product_mode=1`);
+          const params = new URLSearchParams({ product_mode: "1" });
+          if (isAdminPremadeEditor) {
+            params.set("premade", "1");
+          }
+          router.get(`/product/${encodeURIComponent(updatedSlug)}?${params.toString()}`);
         } else {
           router.reload({ only: ["product"] });
         }
@@ -1353,6 +1385,7 @@ export default function ProductLayout({ product, recommendedProducts = [], admin
       price: Number(adminPrice),
       description: adminDescription.trim(),
       category_id: Number(adminEditor.categoryId),
+      is_premade: isAdminPremadeEditor,
       dimensions: {
         length: maxLengthCm,
         width: maxWidthCm,
@@ -1400,10 +1433,14 @@ export default function ProductLayout({ product, recommendedProducts = [], admin
           `Base price: £${Number(adminPrice || 0).toFixed(2)}`,
           `Colours added: ${adminColours.length}`,
           `Variants added: ${adminColours.reduce((sum, colour) => sum + colour.variants.length, 0)}`,
-          `Restricted boxes saved: ${adminColours.reduce(
-            (sum, colour) => sum + Object.keys(buildAdminImageBoxesPayload(colour)).length,
-            0
-          )}`,
+          ...(!isAdminPremadeEditor
+            ? [
+                `Restricted boxes saved: ${adminColours.reduce(
+                  (sum, colour) => sum + Object.keys(buildAdminImageBoxesPayload(colour)).length,
+                  0
+                )}`,
+              ]
+            : ["Pre-made mode: restricted boxes skipped."]),
         ],
       });
     } catch (error) {
@@ -1425,6 +1462,9 @@ export default function ProductLayout({ product, recommendedProducts = [], admin
       });
       if (adminEditor.categorySlug) {
         params.set("category_slug", adminEditor.categorySlug);
+      }
+      if (isAdminPremadeEditor) {
+        params.set("premade", "1");
       }
       router.get(`/admin/products/create-layout?${params.toString()}`);
       return;
@@ -1469,7 +1509,9 @@ export default function ProductLayout({ product, recommendedProducts = [], admin
               <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#8A5F00]">Admin Only</p>
               <h2 className="mt-1 text-lg font-extrabold text-[#2A241B]">PRODUCT EDIT MODE</h2>
               <p className="mt-1 text-sm text-[#5D4A1E]">
-                First set product details, colours, sizes, quantities, dimensions, then set restricted box size for each image, then save.
+                {isAdminPremadeEditor
+                  ? "Pre-made mode: set product details, colours, sizes, quantities, and parcel dimensions, then save."
+                  : "First set product details, colours, sizes, quantities, dimensions, then set restricted box size for each image, then save."}
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
                 <button
@@ -1480,7 +1522,9 @@ export default function ProductLayout({ product, recommendedProducts = [], admin
                   }}
                   className="rounded-xl border border-[#D7BE84] bg-[#FFFCF4] px-4 py-2 text-sm font-semibold text-[#7B6530]"
                 >
-                  Edit Colours, Sizes, Quantities, Parcel & Restricted Box
+                  {isAdminPremadeEditor
+                    ? "Edit Colours, Sizes, Quantities & Parcel"
+                    : "Edit Colours, Sizes, Quantities, Parcel & Restricted Box"}
                 </button>
                 <button
                   type="button"
@@ -1496,7 +1540,7 @@ export default function ProductLayout({ product, recommendedProducts = [], admin
           {!isAdminEditor && isAdminUser ? (
             <div className="mx-4 mb-4 flex justify-end sm:mx-6 lg:mx-10">
               <Link
-                href={`/product/${encodeURIComponent(product.slug)}?product_mode=1`}
+                href={`/product/${encodeURIComponent(product.slug)}?product_mode=1${isPremadeProduct ? "&premade=1" : ""}`}
                 className="inline-flex items-center rounded-xl border border-[#D7BE84] bg-[#FFF8E8] px-4 py-2 text-sm font-semibold text-[#7B6530] transition hover:border-[#C8951E] hover:bg-[#FFF2D7]"
               >
                 Start Editing Page
@@ -1551,27 +1595,29 @@ export default function ProductLayout({ product, recommendedProducts = [], admin
                       >
                         <X className="h-4 w-4" />
                       </button>
-                      {(() => {
-                        const targetIndex = selectedAdminColourIndex >= 0 ? selectedAdminColourIndex : 0;
-                        const targetColour = adminColours[targetIndex];
-                        const imageUrl = String(img || "").trim();
-                        const hasRestrictedBox =
-                          Boolean(targetColour) && Boolean(imageUrl) && isValidRestrictedBox(targetColour.imageBoxes[imageUrl]);
-                        return (
-                          <button
-                            type="button"
-                            onClick={() => openRestrictedBoxEditor(i)}
-                            className={`absolute bottom-2 left-2 z-10 inline-flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-bold uppercase tracking-[0.08em] transition ${
-                              hasRestrictedBox
-                                ? "bg-[#16A34A]/95 text-white hover:bg-[#15803D]"
-                                : "bg-[#B45309]/95 text-white hover:bg-[#92400E]"
-                            }`}
-                          >
-                            {hasRestrictedBox ? <CheckCircle2 className="h-3.5 w-3.5" /> : null}
-                            {hasRestrictedBox ? "Restricted Box Added · Edit" : "Add Restricted Box"}
-                          </button>
-                        );
-                      })()}
+                      {!isAdminPremadeEditor
+                        ? (() => {
+                            const targetIndex = selectedAdminColourIndex >= 0 ? selectedAdminColourIndex : 0;
+                            const targetColour = adminColours[targetIndex];
+                            const imageUrl = String(img || "").trim();
+                            const hasRestrictedBox =
+                              Boolean(targetColour) && Boolean(imageUrl) && isValidRestrictedBox(targetColour.imageBoxes[imageUrl]);
+                            return (
+                              <button
+                                type="button"
+                                onClick={() => openRestrictedBoxEditor(i)}
+                                className={`absolute bottom-2 left-2 z-10 inline-flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-bold uppercase tracking-[0.08em] transition ${
+                                  hasRestrictedBox
+                                    ? "bg-[#16A34A]/95 text-white hover:bg-[#15803D]"
+                                    : "bg-[#B45309]/95 text-white hover:bg-[#92400E]"
+                                }`}
+                              >
+                                {hasRestrictedBox ? <CheckCircle2 className="h-3.5 w-3.5" /> : null}
+                                {hasRestrictedBox ? "Restricted Box Added · Edit" : "Add Restricted Box"}
+                              </button>
+                            );
+                          })()
+                        : null}
                     </div>
                   ))}
                   <button
@@ -1838,7 +1884,7 @@ export default function ProductLayout({ product, recommendedProducts = [], admin
                 ) : null}
               </div>
 
-              {!isAdminEditor ? (
+              {!isAdminEditor && !isPremadeProduct ? (
                 <div className="mt-6">
                   <p className="text-sm font-semibold uppercase tracking-[0.12em] text-[#6D5A34]">
                     Design type <span className="text-[#A12525]">*</span>
@@ -1880,20 +1926,26 @@ export default function ProductLayout({ product, recommendedProducts = [], admin
                     {notifyLoading ? "Please wait..." : primaryCtaLabel}
                   </button>
 
-                  <button
-                    type="button"
-                    onClick={handleWishlist}
-                    className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-full border border-[#D7BE84] bg-[#FFF9EA] px-6 py-3 font-semibold text-[#7B6530] transition-colors hover:bg-[#F8E9C9]"
-                  >
-                    <Heart className={`h-4 w-4 ${inWishlist ? "fill-current" : ""}`} />
-                    {inWishlist ? "Saved in Wishlist" : "Add to Wishlist"}
-                  </button>
+                  {!isPremadeProduct ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={handleWishlist}
+                        className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-full border border-[#D7BE84] bg-[#FFF9EA] px-6 py-3 font-semibold text-[#7B6530] transition-colors hover:bg-[#F8E9C9]"
+                      >
+                        <Heart className={`h-4 w-4 ${inWishlist ? "fill-current" : ""}`} />
+                        {inWishlist ? "Saved in Wishlist" : "Add to Wishlist"}
+                      </button>
 
-                  <GetQuoteButton />
+                      <GetQuoteButton />
+                    </>
+                  ) : null}
                 </>
               ) : (
                 <div className="mt-7 rounded-2xl border border-[#D7BE84] bg-[#FFF9EA] p-3 text-sm text-[#5E4A22]">
-                  Admin preview mode: complete pictures, colours, sizes, quantities, parcel size, and restricted box per image before saving.
+                  {isAdminPremadeEditor
+                    ? "Admin preview mode: complete pictures, colours, sizes, quantities, and parcel size before saving."
+                    : "Admin preview mode: complete pictures, colours, sizes, quantities, parcel size, and restricted box per image before saving."}
                 </div>
               )}
 
@@ -2108,7 +2160,11 @@ export default function ProductLayout({ product, recommendedProducts = [], admin
                     <div>
                       <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#8A6A2F]">Admin Only</p>
                       <h3 className="text-lg font-black text-[#271D0F]">
-                        {adminVariantModalTab === "help" ? "Parcel Size Help" : "Colours, Sizes, Quantities, Parcel & Restricted Box"}
+                        {adminVariantModalTab === "help"
+                          ? "Parcel Size Help"
+                          : isAdminPremadeEditor
+                            ? "Colours, Sizes, Quantities & Parcel"
+                            : "Colours, Sizes, Quantities, Parcel & Restricted Box"}
                       </h3>
                     </div>
                     <button
@@ -2126,9 +2182,9 @@ export default function ProductLayout({ product, recommendedProducts = [], admin
                   <div className={`${adminVariantModalTab === "editor" ? "" : "hidden"} border-b border-[#E9DFC8] bg-[#FFF8EA] px-5 py-3`}>
                     <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#7A5F2A]">How to fill this form</p>
                     <p className="mt-1 text-sm text-[#5E4A22]">
-                      1. Choose a colour from the dropdown or select "Add new colour". 2. Upload one or more images for that colour.
-                      3. Add size rows with quantity and parcel size. 4. Set and save restricted box for every uploaded image.
-                      5. Use Manual if needed. 6. Click Done, then Save Product.
+                      {isAdminPremadeEditor
+                        ? '1. Choose a colour from the dropdown or select "Add new colour". 2. Upload one or more images for that colour. 3. Add size rows with quantity and parcel size. 4. Use Manual if needed. 5. Click Done, then Save Product.'
+                        : '1. Choose a colour from the dropdown or select "Add new colour". 2. Upload one or more images for that colour. 3. Add size rows with quantity and parcel size. 4. Set and save restricted box for every uploaded image. 5. Use Manual if needed. 6. Click Done, then Save Product.'}
                     </p>
                     <div className="mt-2">
                       <button
@@ -2234,22 +2290,28 @@ export default function ProductLayout({ product, recommendedProducts = [], admin
                           <p className="mt-1 text-xs text-[#8C3232]">{adminErrors[`colour.${colour.id}.images`]}</p>
                         ) : null}
 
-                        <div className="mt-3 rounded-xl border border-[#E8DABF] bg-[#FFF9EC] p-3">
-                          <div className="flex flex-wrap items-center justify-between gap-2">
-                            <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#7A5F2A]">
-                              Restricted Boxes
+                        {!isAdminPremadeEditor ? (
+                          <div className="mt-3 rounded-xl border border-[#E8DABF] bg-[#FFF9EC] p-3">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#7A5F2A]">
+                                Restricted Boxes
+                              </p>
+                              <p className="text-xs font-semibold text-[#6A5428]">
+                                Saved: {savedRestrictedCount}/{cleanImages.length}
+                              </p>
+                            </div>
+                            <p className="mt-1 text-xs text-[#6A5428]">
+                              Use the “Add Restricted Box” label on each product image to add or edit boxes.
                             </p>
-                            <p className="text-xs font-semibold text-[#6A5428]">
-                              Saved: {savedRestrictedCount}/{cleanImages.length}
-                            </p>
+                            {adminErrors[`colour.${colour.id}.image_boxes`] ? (
+                              <p className="mt-2 text-xs text-[#8C3232]">{adminErrors[`colour.${colour.id}.image_boxes`]}</p>
+                            ) : null}
                           </div>
-                          <p className="mt-1 text-xs text-[#6A5428]">
-                            Use the “Add Restricted Box” label on each product image to add or edit boxes.
-                          </p>
-                          {adminErrors[`colour.${colour.id}.image_boxes`] ? (
-                            <p className="mt-2 text-xs text-[#8C3232]">{adminErrors[`colour.${colour.id}.image_boxes`]}</p>
-                          ) : null}
-                        </div>
+                        ) : (
+                          <div className="mt-3 rounded-xl border border-[#E8DABF] bg-[#FFF9EC] p-3 text-xs text-[#6A5428]">
+                            Pre-made mode enabled: restricted boxes are not required for these images.
+                          </div>
+                        )}
 
                         <div className="mt-3 rounded-lg border border-[#EFE5D2] bg-[#FFFCF7] p-2">
                           <div className="mb-2 hidden grid-cols-[1fr_1fr_1.5fr_auto] gap-2 px-1 text-[10px] font-bold uppercase tracking-[0.08em] text-[#7A6742] sm:grid">
@@ -2504,7 +2566,7 @@ export default function ProductLayout({ product, recommendedProducts = [], admin
               </div>
             ) : null}
 
-            {restrictedBoxEditor ? (
+            {!isAdminPremadeEditor && restrictedBoxEditor ? (
               <div className="fixed inset-0 z-[130] bg-black/60 p-3 sm:p-6" role="dialog" aria-modal="true">
                 <div className="mx-auto flex h-full w-full max-w-4xl flex-col overflow-hidden rounded-3xl border border-[#E8DAB8] bg-[#FFFCF6] shadow-[0_30px_70px_rgba(33,25,13,0.35)]">
                   <header className="flex items-center justify-between border-b border-[#E9DFC8] bg-gradient-to-r from-[#FFF2D7] via-[#FFF8EA] to-[#FDF2D7] px-5 py-4">

@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { Head, Link } from "@inertiajs/react";
+import { Head, Link, router } from "@inertiajs/react";
 import { Check, LayoutPanelTop, Plus, Save, Search, Sparkles, Star, Trash2 } from "lucide-react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import AdminTopNav from "@/Components/Admin/AdminTopNav";
@@ -18,18 +18,30 @@ type ProductOption = {
   image_url: string;
 };
 
+type CategoryOption = {
+  id: number;
+  name: string;
+  slug: string;
+  label: string;
+};
+
 type Props = {
   frontPage: FrontPageSettings;
   products: ProductOption[];
+  categories: CategoryOption[];
 };
 
-export default function FrontPage({ frontPage, products }: Props) {
+type FrontPageTab = "featured" | "premade";
+
+export default function FrontPage({ frontPage, products, categories }: Props) {
+  const [activeTab, setActiveTab] = useState<FrontPageTab>("featured");
   const [featuredIds, setFeaturedIds] = useState<number[]>(frontPage.featured_product_ids || []);
   const [premadeIds, setPremadeIds] = useState<number[]>(frontPage.premade_product_ids || []);
   const [query, setQuery] = useState("");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<number>(categories[0]?.id || 0);
 
   const productMap = useMemo(() => {
     const map = new Map<number, ProductOption>();
@@ -44,6 +56,11 @@ export default function FrontPage({ frontPage, products }: Props) {
   const premadeProducts = useMemo(
     () => premadeIds.map((id) => productMap.get(id)).filter(Boolean) as ProductOption[],
     [premadeIds, productMap]
+  );
+
+  const selectedCategory = useMemo(
+    () => categories.find((category) => category.id === selectedCategoryId) || null,
+    [categories, selectedCategoryId]
   );
 
   const filteredProducts = useMemo(() => {
@@ -76,6 +93,24 @@ export default function FrontPage({ frontPage, products }: Props) {
 
   const removeFromPremade = (productId: number) => {
     setPremadeIds((prev) => prev.filter((id) => id !== productId));
+  };
+
+  const openPreMadeProductCreator = () => {
+    setError(null);
+    setMessage(null);
+
+    if (!selectedCategory) {
+      setError("Select a category before creating a pre-made product.");
+      return;
+    }
+
+    const params = new URLSearchParams({
+      category_id: String(selectedCategory.id),
+      category_slug: selectedCategory.slug,
+      premade: "1",
+    });
+
+    router.get(`/admin/products/create-layout?${params.toString()}`);
   };
 
   const save = async () => {
@@ -126,6 +161,8 @@ export default function FrontPage({ frontPage, products }: Props) {
     }
   };
 
+  const activeSelectedProducts = activeTab === "featured" ? featuredProducts : premadeProducts;
+
   return (
     <AuthenticatedLayout>
       <Head title="Admin Front Page" />
@@ -139,8 +176,7 @@ export default function FrontPage({ frontPage, products }: Props) {
                 <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#8A6D2B]">Other / Front Page</p>
                 <h1 className="mt-1 text-3xl font-bold">Front Page Product Cards</h1>
                 <p className="mt-2 text-sm text-[#6B5A34]">
-                  Choose which products appear in <span className="font-semibold">Featured Products</span> and{" "}
-                  <span className="font-semibold">Pre-Made Designs</span> on the homepage.
+                  Manage homepage cards in two dedicated tabs: featured products and pre-made design products.
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -161,6 +197,28 @@ export default function FrontPage({ frontPage, products }: Props) {
                 </button>
               </div>
             </div>
+
+            <div className="mt-4 inline-flex rounded-xl border border-[#E2CF9A] bg-[#FFF9EA] p-1">
+              <button
+                type="button"
+                onClick={() => setActiveTab("featured")}
+                className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                  activeTab === "featured" ? "bg-[#C6A75E] text-white" : "text-[#6B5A34]"
+                }`}
+              >
+                Featured Products
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("premade")}
+                className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                  activeTab === "premade" ? "bg-[#C6A75E] text-white" : "text-[#6B5A34]"
+                }`}
+              >
+                Pre-Made Designs
+              </button>
+            </div>
+
             {message ? (
               <p className="mt-4 inline-flex items-center gap-2 rounded-xl border border-[#D1B46F] bg-[#FFF3D6] px-3 py-2 text-sm font-semibold text-[#6A541F]">
                 <Check className="h-4 w-4" />
@@ -174,73 +232,90 @@ export default function FrontPage({ frontPage, products }: Props) {
             ) : null}
           </div>
 
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          {activeTab === "premade" ? (
             <section className="rounded-2xl border border-[#E4D2AA] bg-white/95 p-4 shadow-[0_10px_30px_rgba(91,70,27,0.08)]">
-              <div className="mb-3 flex items-center justify-between">
-                <h2 className="inline-flex items-center gap-2 text-lg font-semibold">
-                  <Star className="h-4 w-4 text-[#8A6D2B]" />
-                  Featured Products
-                </h2>
-                <span className="text-xs font-semibold text-[#8A6D2B]">{featuredProducts.length} selected</span>
+              <div className="flex flex-wrap items-end gap-3">
+                <label className="min-w-[280px] flex-1 text-xs font-semibold uppercase tracking-[0.12em] text-[#7A5F2A]">
+                  Category for new pre-made product
+                  <select
+                    value={selectedCategoryId || ""}
+                    onChange={(event) => setSelectedCategoryId(Number(event.target.value))}
+                    className="mt-2 h-10 w-full rounded-xl border border-[#DCC99D] bg-[#FFFDF7] px-3 text-sm font-medium text-[#2D2515] outline-none focus:border-[#C9A24D]"
+                  >
+                    {categories.map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button
+                  type="button"
+                  onClick={openPreMadeProductCreator}
+                  className="inline-flex h-10 items-center gap-2 rounded-xl border border-[#D7BE84] bg-[#FFF9EA] px-4 text-sm font-semibold text-[#6B5A34] transition hover:border-[#C9A24D]"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add Product
+                </button>
               </div>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {featuredProducts.length === 0 ? (
-                  <p className="col-span-full rounded-xl border border-dashed border-[#E3D8BE] bg-[#FFFCF4] px-3 py-4 text-sm text-[#6B5A34]">
-                    No products selected yet.
-                  </p>
-                ) : (
-                  featuredProducts.map((product) => (
-                    <div key={`featured-${product.id}`} className="rounded-xl border border-[#E8DEC8] bg-[#FFFDF8] p-2">
-                      <img src={product.image_url} alt={product.name} className="h-28 w-full rounded-lg object-cover" />
-                      <p className="mt-2 truncate text-sm font-semibold">{product.name}</p>
-                      <p className="text-xs text-[#6B5A34]">£{Number(product.price).toFixed(2)}</p>
-                      <button
-                        type="button"
-                        onClick={() => removeFromFeatured(product.id)}
-                        className="mt-2 inline-flex items-center gap-1 rounded-lg border border-[#E3CF9D] bg-white px-2 py-1 text-xs font-semibold text-[#6B5A34]"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                        Remove
-                      </button>
-                    </div>
-                  ))
-                )}
-              </div>
+              <p className="mt-3 text-xs text-[#6B5A34]">
+                Pre-made products use the same product layout editor, but skip restricted-box setup and render with colours, sizes, and add-to-cart on the live product page.
+              </p>
             </section>
+          ) : null}
 
-            <section className="rounded-2xl border border-[#E4D2AA] bg-white/95 p-4 shadow-[0_10px_30px_rgba(91,70,27,0.08)]">
-              <div className="mb-3 flex items-center justify-between">
-                <h2 className="inline-flex items-center gap-2 text-lg font-semibold">
-                  <Sparkles className="h-4 w-4 text-[#8A6D2B]" />
-                  Pre-Made Designs
-                </h2>
-                <span className="text-xs font-semibold text-[#8A6D2B]">{premadeProducts.length} selected</span>
-              </div>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {premadeProducts.length === 0 ? (
-                  <p className="col-span-full rounded-xl border border-dashed border-[#E3D8BE] bg-[#FFFCF4] px-3 py-4 text-sm text-[#6B5A34]">
-                    No products selected yet.
-                  </p>
+          <section className="rounded-2xl border border-[#E4D2AA] bg-white/95 p-4 shadow-[0_10px_30px_rgba(91,70,27,0.08)]">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="inline-flex items-center gap-2 text-lg font-semibold">
+                {activeTab === "featured" ? (
+                  <>
+                    <Star className="h-4 w-4 text-[#8A6D2B]" />
+                    Featured Products
+                  </>
                 ) : (
-                  premadeProducts.map((product) => (
-                    <div key={`premade-${product.id}`} className="rounded-xl border border-[#E8DEC8] bg-[#FFFDF8] p-2">
-                      <img src={product.image_url} alt={product.name} className="h-28 w-full rounded-lg object-cover" />
-                      <p className="mt-2 truncate text-sm font-semibold">{product.name}</p>
-                      <p className="text-xs text-[#6B5A34]">£{Number(product.price).toFixed(2)}</p>
+                  <>
+                    <Sparkles className="h-4 w-4 text-[#8A6D2B]" />
+                    Pre-Made Designs
+                  </>
+                )}
+              </h2>
+              <span className="text-xs font-semibold text-[#8A6D2B]">{activeSelectedProducts.length} selected</span>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {activeSelectedProducts.length === 0 ? (
+                <p className="col-span-full rounded-xl border border-dashed border-[#E3D8BE] bg-[#FFFCF4] px-3 py-4 text-sm text-[#6B5A34]">
+                  No products selected yet.
+                </p>
+              ) : (
+                activeSelectedProducts.map((product) => (
+                  <div key={`${activeTab}-${product.id}`} className="rounded-xl border border-[#E8DEC8] bg-[#FFFDF8] p-2.5">
+                    <img src={product.image_url} alt={product.name} className="h-28 w-full rounded-lg object-cover" />
+                    <p className="mt-2 truncate text-sm font-semibold text-[#2D2515]">{product.name}</p>
+                    <p className="text-xs text-[#6B5A34]">£{Number(product.price).toFixed(2)}</p>
+                    <div className="mt-2 flex items-center gap-2">
                       <button
                         type="button"
-                        onClick={() => removeFromPremade(product.id)}
-                        className="mt-2 inline-flex items-center gap-1 rounded-lg border border-[#E3CF9D] bg-white px-2 py-1 text-xs font-semibold text-[#6B5A34]"
+                        onClick={() =>
+                          activeTab === "featured" ? removeFromFeatured(product.id) : removeFromPremade(product.id)
+                        }
+                        className="inline-flex h-8 flex-1 items-center justify-center gap-1 rounded-lg border border-[#E3CF9D] bg-white px-2 text-xs font-semibold text-[#6B5A34]"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                         Remove
                       </button>
+                      <Link
+                        href={`/product/${encodeURIComponent(product.slug)}?product_mode=1${activeTab === "premade" ? "&premade=1" : ""}`}
+                        className="inline-flex h-8 flex-1 items-center justify-center rounded-lg border border-[#D7BE84] bg-[#FFF9EA] px-2 text-xs font-semibold text-[#6B5A34]"
+                      >
+                        Edit
+                      </Link>
                     </div>
-                  ))
-                )}
-              </div>
-            </section>
-          </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </section>
 
           <section className="rounded-2xl border border-[#E4D2AA] bg-white/95 p-4 shadow-[0_10px_30px_rgba(91,70,27,0.08)]">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
@@ -264,34 +339,39 @@ export default function FrontPage({ frontPage, products }: Props) {
               {filteredProducts.map((product) => {
                 const inFeatured = featuredIds.includes(product.id);
                 const inPremade = premadeIds.includes(product.id);
+                const inActive = activeTab === "featured" ? inFeatured : inPremade;
 
                 return (
                   <div key={product.id} className="rounded-xl border border-[#E8DEC8] bg-[#FFFDF8] p-2.5">
                     <img src={product.image_url} alt={product.name} className="h-36 w-full rounded-lg object-cover" />
                     <p className="mt-2 truncate text-sm font-semibold text-[#2D2515]">{product.name}</p>
-                    <p className="text-xs text-[#6B5A34]">{product.brand || "Bear Lane"} • £{Number(product.price).toFixed(2)}</p>
-                    <div className="mt-2 flex items-center gap-2">
+                    <p className="text-xs text-[#6B5A34]">
+                      {product.brand || "Bear Lane"} • £{Number(product.price).toFixed(2)}
+                    </p>
+
+                    {activeTab === "featured" ? (
                       <button
                         type="button"
-                        onClick={() => addToFeatured(product.id)}
-                        className={`inline-flex h-8 flex-1 items-center justify-center gap-1 rounded-lg text-xs font-semibold transition ${
-                          inFeatured ? "bg-[#D8BF87] text-white" : "border border-[#D7C494] bg-white text-[#6B5A34]"
+                        onClick={() => (inFeatured ? removeFromFeatured(product.id) : addToFeatured(product.id))}
+                        className={`mt-2 inline-flex h-8 w-full items-center justify-center gap-1 rounded-lg text-xs font-semibold transition ${
+                          inActive ? "bg-[#C6A75E] text-white" : "border border-[#D7C494] bg-white text-[#6B5A34]"
                         }`}
                       >
                         <Plus className="h-3.5 w-3.5" />
-                        Featured
+                        {inFeatured ? "Added to Featured" : "Add to Featured"}
                       </button>
+                    ) : (
                       <button
                         type="button"
-                        onClick={() => addToPremade(product.id)}
-                        className={`inline-flex h-8 flex-1 items-center justify-center gap-1 rounded-lg text-xs font-semibold transition ${
-                          inPremade ? "bg-[#C6A75E] text-white" : "border border-[#D7C494] bg-white text-[#6B5A34]"
+                        onClick={() => (inPremade ? removeFromPremade(product.id) : addToPremade(product.id))}
+                        className={`mt-2 inline-flex h-8 w-full items-center justify-center gap-1 rounded-lg text-xs font-semibold transition ${
+                          inActive ? "bg-[#C6A75E] text-white" : "border border-[#D7C494] bg-white text-[#6B5A34]"
                         }`}
                       >
                         <Plus className="h-3.5 w-3.5" />
-                        Pre-Made
+                        {inPremade ? "Added to Pre-Made" : "Add to Pre-Made"}
                       </button>
-                    </div>
+                    )}
                   </div>
                 );
               })}

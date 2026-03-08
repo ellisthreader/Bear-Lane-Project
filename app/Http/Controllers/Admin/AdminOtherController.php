@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Category;
 use App\Models\Coupon;
 use App\Models\Product;
 use App\Services\StoreSettingsService;
@@ -298,6 +299,19 @@ class AdminOtherController extends Controller
 
     public function frontPage(): Response
     {
+        $categories = Category::query()
+            ->whereDoesntHave('children')
+            ->orderBy('slug')
+            ->get(['id', 'name', 'slug'])
+            ->map(fn (Category $category) => [
+                'id' => (int) $category->id,
+                'name' => (string) $category->name,
+                'slug' => (string) $category->slug,
+                'label' => (string) $category->name . ' (' . (string) $category->slug . ')',
+            ])
+            ->values()
+            ->all();
+
         $products = Product::query()
             ->with('images')
             ->orderBy('name')
@@ -321,6 +335,7 @@ class AdminOtherController extends Controller
         return Inertia::render('Admin/Other/FrontPage', [
             'frontPage' => $this->settings->getFrontPageProducts(),
             'products' => $products,
+            'categories' => $categories,
         ]);
     }
 

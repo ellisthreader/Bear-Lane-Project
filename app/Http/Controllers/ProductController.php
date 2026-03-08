@@ -9,6 +9,7 @@ use App\Models\Product;
 use App\Models\Category;
 use App\Models\Image;
 use App\Models\ProductReview;
+use App\Services\StoreSettingsService;
 use App\Services\Security\RecaptchaService;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Log;
@@ -128,6 +129,14 @@ class ProductController extends Controller
             ->all();
         $recommendedProducts = $this->buildRecommendedProducts($productModel);
         $isAdminEditor = (bool) optional($request->user())->is_admin && $request->boolean('product_mode');
+        $frontPageSettings = app(StoreSettingsService::class)->getFrontPageProducts();
+        $preMadeIds = collect((array) data_get($frontPageSettings, 'premade_product_ids', []))
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn ($id) => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+        $isPreMadeDesign = in_array((int) $productModel->id, $preMadeIds, true);
 
         $primaryCategory = null;
         if ($productModel->relationLoaded('categories') && $productModel->categories->isNotEmpty()) {
@@ -140,12 +149,14 @@ class ProductController extends Controller
 
         return Inertia::render('Product/ProductLayout', [
             'product' => $product,
+            'isPreMadeDesign' => $isPreMadeDesign,
             'recommendedProducts' => $recommendedProducts,
             'adminEditor' => $isAdminEditor ? [
                 'enabled' => true,
                 'categoryId' => $primaryCategory?->id,
                 'categorySlug' => $primaryCategory?->slug,
                 'categoryName' => $primaryCategory?->name,
+                'premade' => $request->boolean('premade') || $isPreMadeDesign,
             ] : null,
         ]);
     }
