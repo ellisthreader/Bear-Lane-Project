@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useMemo, useState } from "react";
 import { toast } from "react-toastify";
 import type { EmbroideryType, QuoteSource } from "./types";
+import { executeRecaptcha } from "@/Utils/recaptcha";
 
 type QuoteStage = "form" | "quote";
 
@@ -139,13 +140,17 @@ export function ProductQuoteProvider({ source, children }: { source: QuoteSource
     };
 
     try {
+      const recaptchaToken = await executeRecaptcha("send_quote");
       const response = await fetch("/api/send-quote", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Accept: "application/json",
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          ...payload,
+          recaptcha_token: recaptchaToken,
+        }),
       });
 
       const data = await response.json().catch(() => ({}));

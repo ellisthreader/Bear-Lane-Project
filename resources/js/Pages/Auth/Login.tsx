@@ -5,6 +5,7 @@ import { FaFacebookF } from "react-icons/fa";
 import Register from "./Register";
 import ForgotPassword from "./ForgotPassword";
 import NavMenu from "@/Components/Menu/NavMenu";
+import { executeRecaptcha } from "@/Utils/recaptcha";
 
 export default function AuthPage() {
   const isRegisterRoute = typeof window !== "undefined" && window.location.pathname === "/register";
@@ -39,24 +40,32 @@ export default function AuthPage() {
   // -----------------------
   // Handle password login
   // -----------------------
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
 
-    router.post(
-      "/login",
-      { email, password },
-      {
-        preserveScroll: true,
-        onError: (errors) => {
-          if (errors.password) setError(errors.password);
-          else if (errors.email) setError(errors.email);
-          else setError("Invalid credentials. Please try again.");
-        },
-        onFinish: () => setLoading(false),
-      }
-    );
+    try {
+      const recaptchaToken = await executeRecaptcha("login");
+
+      router.post(
+        "/login",
+        { email, password, recaptcha_token: recaptchaToken },
+        {
+          preserveScroll: true,
+          onError: (errors) => {
+            if (errors.password) setError(errors.password);
+            else if (errors.email) setError(errors.email);
+            else if ((errors as Record<string, string>).captcha) setError((errors as Record<string, string>).captcha);
+            else setError("Invalid credentials. Please try again.");
+          },
+          onFinish: () => setLoading(false),
+        }
+      );
+    } catch (captchaError) {
+      setError(captchaError instanceof Error ? captchaError.message : "Captcha verification failed. Please try again.");
+      setLoading(false);
+    }
   };
 
   // -----------------------

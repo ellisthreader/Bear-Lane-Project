@@ -282,13 +282,14 @@ public function register(Request $request, RecaptchaService $recaptchaService)
     // -----------------------
     // LOGIN
     // -----------------------
-    public function login(Request $request)
+    public function login(Request $request, RecaptchaService $recaptchaService)
     {
         $request->validate([
             'email'    => ['required', 'email'],
             'password' => ['required', 'string'],
             'redirect' => ['nullable', 'string'],
         ]);
+        $recaptchaService->verifyOrFail($request, 'login');
 
         $user = User::where('email', $request->email)->first();
 

@@ -6,11 +6,14 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Mail\Message;
+use App\Services\Security\RecaptchaService;
 
 class QuoteController extends Controller
 {
-    public function sendQuote(Request $request)
+    public function sendQuote(Request $request, RecaptchaService $recaptchaService)
     {
+        $recaptchaService->verifyOrFail($request, 'send_quote');
+
         Log::info('sendQuote called', [
             'items_count' => count((array) $request->input('items', [])),
             'has_email' => filled($request->input('email')),
