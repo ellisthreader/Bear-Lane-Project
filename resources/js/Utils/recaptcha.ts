@@ -11,6 +11,20 @@ const RECAPTCHA_PROVIDER =
   (providerCandidate === "enterprise" ? "enterprise" : "standard") as "standard" | "enterprise";
 
 let scriptLoadPromise: Promise<void> | null = null;
+let recentCspViolations: Array<{ blockedURI: string; violatedDirective: string; effectiveDirective: string }> = [];
+
+if (typeof window !== "undefined") {
+  window.addEventListener("securitypolicyviolation", (event) => {
+    recentCspViolations = [
+      ...recentCspViolations.slice(-9),
+      {
+        blockedURI: String(event.blockedURI || ""),
+        violatedDirective: String(event.violatedDirective || ""),
+        effectiveDirective: String(event.effectiveDirective || ""),
+      },
+    ];
+  });
+}
 
 type RecaptchaReady = (cb: () => void) => void;
 type RecaptchaExecute = (siteKey: string, options: { action: string }) => Promise<string>;
@@ -151,6 +165,13 @@ const loadRecaptchaScript = async (): Promise<void> => {
     }
 
     const grecaptcha = window.grecaptcha;
+    const scriptNodes = Array.from(
+      document.querySelectorAll<HTMLScriptElement>('script[src*="recaptcha"]')
+    ).map((script) => ({
+      src: script.src,
+      loaded: script.dataset.recaptchaLoaded === "true",
+    }));
+
     throw new Error(
       `CAPTCHA scripts loaded but API unavailable. provider=${RECAPTCHA_PROVIDER}, hasGrecaptcha=${Boolean(
         grecaptcha
@@ -158,7 +179,9 @@ const loadRecaptchaScript = async (): Promise<void> => {
         grecaptcha?.execute
       )}, hasEnterpriseReady=${Boolean(grecaptcha?.enterprise?.ready)}, hasEnterpriseExecute=${Boolean(
         grecaptcha?.enterprise?.execute
-      )}, failures=[${failures.join(" | ")}]`
+      )}, failures=[${failures.join(" | ")}], scripts=${JSON.stringify(scriptNodes)}, cspViolations=${JSON.stringify(
+        recentCspViolations
+      )}`
     );
   });
 
@@ -195,6 +218,13 @@ export const executeRecaptcha = async (action: string): Promise<string> => {
 
   if (!api) {
     const grecaptcha = window.grecaptcha;
+    const scriptNodes = Array.from(
+      document.querySelectorAll<HTMLScriptElement>('script[src*="recaptcha"]')
+    ).map((script) => ({
+      src: script.src,
+      loaded: script.dataset.recaptchaLoaded === "true",
+    }));
+
     throw new Error(
       `CAPTCHA failed to initialise. provider=${RECAPTCHA_PROVIDER}, siteKeyPresent=${
         RECAPTCHA_SITE_KEY.length > 0
@@ -202,7 +232,9 @@ export const executeRecaptcha = async (action: string): Promise<string> => {
         grecaptcha?.ready
       )}, hasExecute=${Boolean(grecaptcha?.execute)}, hasEnterpriseReady=${Boolean(
         grecaptcha?.enterprise?.ready
-      )}, hasEnterpriseExecute=${Boolean(grecaptcha?.enterprise?.execute)}`
+      )}, hasEnterpriseExecute=${Boolean(
+        grecaptcha?.enterprise?.execute
+      )}, scripts=${JSON.stringify(scriptNodes)}, cspViolations=${JSON.stringify(recentCspViolations)}`
     );
   }
 
@@ -220,4 +252,28 @@ export const executeRecaptcha = async (action: string): Promise<string> => {
       }
     });
   });
+};
+
+export const getRecaptchaDiagnostics = () => {
+  const grecaptcha = window.grecaptcha;
+  const scriptNodes = Array.from(
+    document.querySelectorAll<HTMLScriptElement>('script[src*="recaptcha"]')
+  ).map((script) => ({
+    src: script.src,
+    loaded: script.dataset.recaptchaLoaded === "true",
+  }));
+
+  return {
+    provider: RECAPTCHA_PROVIDER,
+    siteKeyPresent: RECAPTCHA_SITE_KEY.length > 0,
+    hasGrecaptcha: Boolean(grecaptcha),
+    hasReady: Boolean(grecaptcha?.ready),
+    hasExecute: Boolean(grecaptcha?.execute),
+    hasEnterpriseReady: Boolean(grecaptcha?.enterprise?.ready),
+    hasEnterpriseExecute: Boolean(grecaptcha?.enterprise?.execute),
+    scripts: scriptNodes,
+    cspViolations: recentCspViolations,
+    online: navigator.onLine,
+    host: window.location.host,
+  };
 };
