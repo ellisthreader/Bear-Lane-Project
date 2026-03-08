@@ -160,7 +160,7 @@ export default function GetQuoteInstantly({ embedded = false }: GetQuoteInstantl
       <div className="max-w-5xl mx-auto">
 
         {/* ===== Main Card ===== */}
-        <div className="bg-white border border-gray-100 rounded-3xl shadow-[0_15px_50px_rgba(0,0,0,0.06)] p-4 sm:p-6 md:p-8 lg:p-10">
+        <div className="bg-white border border-gray-100 rounded-3xl p-4 sm:p-6 md:p-8 lg:p-10">
 
           {/* ===== Tabs ===== */}
           <div className="flex justify-center mb-6 sm:mb-10 md:mb-12">

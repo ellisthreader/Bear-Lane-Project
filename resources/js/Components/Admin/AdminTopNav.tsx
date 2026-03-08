@@ -60,7 +60,7 @@ export default function AdminTopNav() {
 
   return (
     <div className="sticky top-0 z-20 overflow-x-hidden border-b border-[#E9DFCB] bg-white/95 backdrop-blur-md">
-      <div className="mx-auto flex min-h-[72px] w-full max-w-7xl items-center gap-3 px-3 sm:px-8">
+      <div className="mx-auto flex min-h-[72px] w-full max-w-7xl items-center gap-3 px-3 sm:px-8 lg:relative lg:justify-center">
         <button
           type="button"
           onClick={() => {
@@ -75,14 +75,14 @@ export default function AdminTopNav() {
         </button>
         <Link
           href="/"
-          className="hidden shrink-0 items-center lg:inline-flex"
+          className="hidden shrink-0 items-center lg:absolute lg:left-8 lg:inline-flex"
           aria-label="Go to home page"
         >
           <img loading="lazy" decoding="async" src="/images/BLText.png" alt="Bear Lane" className="h-10 w-auto object-contain" />
         </Link>
 
-        <div className="flex-1 overflow-x-auto">
-          <div className="flex min-w-max items-center gap-2 pr-1">
+        <div className="flex-1 overflow-x-auto lg:flex-none">
+          <div className="flex min-w-max items-center gap-2 pr-1 lg:justify-center">
             {items.map((item) => {
               const active = item.match(currentPath);
               return (
@@ -102,8 +102,6 @@ export default function AdminTopNav() {
             })}
           </div>
         </div>
-
-        <div className="hidden h-10 w-[140px] lg:block" aria-hidden="true" />
       </div>
     </div>
   );

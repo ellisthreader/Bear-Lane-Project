@@ -65,6 +65,8 @@ export default function NavMenu() {
   const searchMiddleRef = useRef<HTMLDivElement | null>(null);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const mobileSearchInputRef = useRef<HTMLInputElement | null>(null);
+  const navRef = useRef<HTMLElement | null>(null);
+  const [desktopOverlayTop, setDesktopOverlayTop] = useState(0);
 
   const categories = ["Women", "Men", "Kids", "Sale"];
   const getCsrfToken = () =>
@@ -347,6 +349,17 @@ export default function NavMenu() {
     };
   }, [mobileMenuOpen]);
 
+  useEffect(() => {
+    const syncDesktopOverlayTop = () => {
+      const navHeight = navRef.current?.offsetHeight ?? 0;
+      setDesktopOverlayTop(navHeight);
+    };
+
+    syncDesktopOverlayTop();
+    window.addEventListener("resize", syncDesktopOverlayTop);
+    return () => window.removeEventListener("resize", syncDesktopOverlayTop);
+  }, []);
+
   const unreadCount = notifications.length;
 
   const deleteNotification = async (notificationId: number) => {
@@ -408,8 +421,9 @@ export default function NavMenu() {
         onMouseLeave={() => setActiveSidebar(null)} // CLOSE ONLY when leaving entire area
       >
       <motion.nav
+        ref={navRef}
         className="
-          relative z-30 w-full border-b border-gray-200 bg-white px-3 py-3 backdrop-blur-xl dark:border-gray-700 dark:bg-gray-900
+          sticky top-0 z-50 w-full border-b border-gray-200 bg-white px-3 py-3 backdrop-blur-xl dark:border-gray-700 dark:bg-gray-900
           sm:px-4 lg:py-4 lg:pl-3 lg:pr-10
         "
       >
@@ -935,7 +949,8 @@ export default function NavMenu() {
               animate={{ opacity: 0.5 }}
               exit={{ opacity: 0 }}
               onClick={() => setActiveSidebar(null)}
-              className="absolute left-0 top-full z-20 hidden h-screen w-full cursor-pointer bg-black lg:block"
+              className="fixed left-0 z-20 hidden w-full cursor-pointer bg-black lg:block"
+              style={{ top: desktopOverlayTop, height: `calc(100vh - ${desktopOverlayTop}px)` }}
             />
 
             {/* SIDEBAR PANEL */}
@@ -946,8 +961,9 @@ export default function NavMenu() {
               exit="exit"
               transition={{ duration: 0.25 }}
               className="
-                absolute left-0 top-full z-30 hidden h-screen w-[35%] overflow-y-auto bg-white p-7 shadow-2xl dark:bg-gray-900 lg:block
+                fixed left-0 z-30 hidden w-[35%] overflow-y-auto bg-white p-7 shadow-2xl dark:bg-gray-900 lg:block
               "
+              style={{ top: desktopOverlayTop, height: `calc(100vh - ${desktopOverlayTop}px)` }}
             >
               {renderSidebar(() => setActiveSidebar(null))}
             </motion.div>

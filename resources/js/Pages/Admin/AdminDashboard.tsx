@@ -77,7 +77,7 @@ export default function AdminDashboard({ auth, summary: incomingSummary }: Admin
       accentClass: "from-[#E3C88E]/30 to-transparent",
     },
     {
-      title: "OTHER",
+      title: "other",
       description: "Manage global store settings, tax, size guides, and discount rules.",
       href: "/admin/other",
       icon: <Settings2 className="h-6 w-6" />,

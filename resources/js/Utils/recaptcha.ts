@@ -161,27 +161,25 @@ const executeTurnstile = async (action: string): Promise<string> => {
 
   const overlay = document.createElement("div");
   overlay.style.position = "fixed";
-  overlay.style.inset = "0";
+  overlay.style.left = "16px";
+  overlay.style.bottom = "16px";
   overlay.style.zIndex = "9999";
-  overlay.style.background = "rgba(17, 24, 39, 0.42)";
-  overlay.style.display = "flex";
-  overlay.style.alignItems = "center";
-  overlay.style.justifyContent = "center";
 
   const panel = document.createElement("div");
   panel.style.background = "#ffffff";
-  panel.style.borderRadius = "14px";
-  panel.style.padding = "14px";
-  panel.style.boxShadow = "0 16px 44px rgba(0,0,0,0.24)";
-  panel.style.maxWidth = "360px";
-  panel.style.width = "calc(100vw - 32px)";
+  panel.style.borderRadius = "12px";
+  panel.style.padding = "10px";
+  panel.style.boxShadow = "0 10px 30px rgba(0,0,0,0.2)";
+  panel.style.maxWidth = "340px";
+  panel.style.width = "min(340px, calc(100vw - 24px))";
+  panel.style.border = "1px solid #e5dcc9";
 
   const heading = document.createElement("div");
   heading.textContent = "Security check";
-  heading.style.fontSize = "14px";
+  heading.style.fontSize = "12px";
   heading.style.fontWeight = "600";
   heading.style.color = "#111827";
-  heading.style.marginBottom = "10px";
+  heading.style.marginBottom = "8px";
 
   const container = document.createElement("div");
 

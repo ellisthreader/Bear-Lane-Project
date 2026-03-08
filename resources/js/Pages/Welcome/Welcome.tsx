@@ -664,11 +664,11 @@ export default function Welcome() {
       <section className="bg-white pb-12">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-4">
-            <div className="h-px flex-1 bg-[#E6D9BC]" />
+            <div className="h-px w-20 bg-[#E6D9BC] sm:w-28 lg:w-36" />
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9C7B2A]">
               New pre-made designs
             </p>
-            <div className="h-px flex-1 bg-[#E6D9BC]" />
+            <div className="h-px w-20 bg-[#E6D9BC] sm:w-28 lg:w-36" />
           </div>
           <p className="mx-auto mt-3 max-w-2xl text-center text-sm text-[#6A5530]">
             Professionally crafted design templates from our studio team, ready
