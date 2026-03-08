@@ -5,9 +5,10 @@ declare global {
     sitekey: string;
     action?: string;
     cData?: string;
-    size?: "normal" | "compact" | "flexible" | "invisible";
+    size?: "normal" | "compact" | "flexible";
     theme?: "auto" | "light" | "dark";
     execution?: "render" | "execute";
+    appearance?: "always" | "execute" | "interaction-only";
     callback?: (token: string) => void;
     "error-callback"?: () => void;
     "expired-callback"?: () => void;

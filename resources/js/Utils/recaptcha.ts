@@ -197,7 +197,8 @@ const executeTurnstile = async (action: string): Promise<string> => {
         widgetId = turnstile.render(container, {
           sitekey: RECAPTCHA_SITE_KEY,
           action,
-          size: "invisible",
+          size: "normal",
+          appearance: "execute",
           execution: "execute",
           callback: (token: string) =>
             done(() => {
