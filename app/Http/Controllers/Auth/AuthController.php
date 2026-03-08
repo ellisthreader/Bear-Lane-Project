@@ -336,8 +336,10 @@ public function register(Request $request, RecaptchaService $recaptchaService)
     // -----------------------
     // FORGOT PASSWORD
     // -----------------------
-    public function forgotPassword(Request $request)
+    public function forgotPassword(Request $request, RecaptchaService $recaptchaService)
     {
+        $recaptchaService->verifyOrFail($request, 'forgot_password');
+
         $request->validate(['email' => ['required', 'email']]);
 
         $user = User::where('email', $request->email)->first();
@@ -364,8 +366,10 @@ public function register(Request $request, RecaptchaService $recaptchaService)
     // -----------------------
     // RESET PASSWORD
     // -----------------------
-    public function resetPassword(Request $request)
+    public function resetPassword(Request $request, RecaptchaService $recaptchaService)
     {
+        $recaptchaService->verifyOrFail($request, 'reset_password');
+
         $request->validate([
             'token' => 'required',
             'email' => 'required|email',

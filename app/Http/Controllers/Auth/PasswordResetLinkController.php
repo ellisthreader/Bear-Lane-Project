@@ -7,14 +7,17 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Log;
+use App\Services\Security\RecaptchaService;
 
 class PasswordResetLinkController extends Controller
 {
     /**
      * Handle an incoming password reset link request.
      */
-    public function store(Request $request)
+    public function store(Request $request, RecaptchaService $recaptchaService)
     {
+        $recaptchaService->verifyOrFail($request, 'forgot_password');
+
         $request->validate([
             'email' => 'required|email',
         ]);

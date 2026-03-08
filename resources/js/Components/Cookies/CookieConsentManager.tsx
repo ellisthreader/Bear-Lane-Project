@@ -282,14 +282,6 @@ export default function CookieConsentManager() {
               >
                 Reject Non-Essential
               </button>
-              <button
-                type="button"
-                aria-label="Accept all cookies"
-                onClick={handleAcceptAll}
-                className="inline-flex h-11 flex-1 items-center justify-center rounded-xl border border-[#B89443] bg-[#F7F1E5] px-4 text-sm font-semibold text-[#5D481B] transition hover:bg-[#F2E8D3] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#B89443]"
-              >
-                Accept All
-              </button>
             </div>
           </div>
         </div>

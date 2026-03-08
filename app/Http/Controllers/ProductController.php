@@ -9,6 +9,7 @@ use App\Models\Product;
 use App\Models\Category;
 use App\Models\Image;
 use App\Models\ProductReview;
+use App\Services\Security\RecaptchaService;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Log;
 
@@ -149,8 +150,10 @@ class ProductController extends Controller
         ]);
     }
 
-    public function subscribeRestock(Request $request, string $slug): JsonResponse
+    public function subscribeRestock(Request $request, string $slug, RecaptchaService $recaptchaService): JsonResponse
     {
+        $recaptchaService->verifyOrFail($request, 'restock_notify');
+
         $validated = $request->validate([
             'colour' => ['nullable', 'string', 'max:100'],
             'size' => ['required', 'string', 'max:20'],

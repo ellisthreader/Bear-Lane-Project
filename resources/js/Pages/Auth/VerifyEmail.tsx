@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { router, usePage } from "@inertiajs/react";
 import { Transition } from "@headlessui/react";
 import NavMenu from "@/Components/Menu/NavMenu";
+import { executeRecaptcha } from "@/Utils/recaptcha";
 
 export default function VerifyEmail() {
   const { props } = usePage<{
@@ -95,27 +96,32 @@ export default function VerifyEmail() {
     return () => clearInterval(interval);
   }, [isCooldown, remainingSeconds]);
 
-  const handleResend = () => {
+  const handleResend = async () => {
     if (isCooldown) return;
+
+    let recaptchaToken = "";
+    try {
+      recaptchaToken = await executeRecaptcha("email_verification_resend");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Security verification failed. Please try again.");
+      return;
+    }
 
     router.post(
       "/email/verification-notification",
-      {},
+      { recaptcha_token: recaptchaToken },
       {
         onSuccess: () => {
           setMessage("Verification link sent successfully. Please check your inbox.");
           setIsCooldown(true);
           setRemainingSeconds(60);
         },
-        onError: (errors: any) => {
-          if (errors?.response?.status === 429) {
-            setMessage("Please wait before requesting another verification email.");
-            setIsCooldown(true);
-            const remaining = errors?.response?.data?.remaining_seconds ?? 60;
-            setRemainingSeconds(remaining);
-          } else {
-            setMessage("Something went wrong. Please try again later.");
-          }
+        onError: (errors: Record<string, string>) => {
+          setMessage(
+            errors?.captcha ||
+              errors?.message ||
+              "Something went wrong. Please try again later."
+          );
         },
       }
     );

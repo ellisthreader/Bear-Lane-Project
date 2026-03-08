@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Services\Security\RecaptchaService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
@@ -11,8 +12,10 @@ class EmailVerificationNotificationController extends Controller
     /**
      * Send a new email verification notification.
      */
-    public function store(Request $request): JsonResponse
+    public function store(Request $request, RecaptchaService $recaptchaService): JsonResponse
     {
+        $recaptchaService->verifyOrFail($request, 'email_verification_resend');
+
         $user = $request->user();
 
         // If already verified, don’t send another

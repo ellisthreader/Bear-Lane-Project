@@ -159,15 +159,36 @@ const executeTurnstile = async (action: string): Promise<string> => {
     throw new Error("CAPTCHA failed to initialise. Turnstile API unavailable.");
   }
 
+  const overlay = document.createElement("div");
+  overlay.style.position = "fixed";
+  overlay.style.inset = "0";
+  overlay.style.zIndex = "9999";
+  overlay.style.background = "rgba(17, 24, 39, 0.42)";
+  overlay.style.display = "flex";
+  overlay.style.alignItems = "center";
+  overlay.style.justifyContent = "center";
+
+  const panel = document.createElement("div");
+  panel.style.background = "#ffffff";
+  panel.style.borderRadius = "14px";
+  panel.style.padding = "14px";
+  panel.style.boxShadow = "0 16px 44px rgba(0,0,0,0.24)";
+  panel.style.maxWidth = "360px";
+  panel.style.width = "calc(100vw - 32px)";
+
+  const heading = document.createElement("div");
+  heading.textContent = "Security check";
+  heading.style.fontSize = "14px";
+  heading.style.fontWeight = "600";
+  heading.style.color = "#111827";
+  heading.style.marginBottom = "10px";
+
   const container = document.createElement("div");
-  container.style.position = "fixed";
-  container.style.left = "-9999px";
-  container.style.top = "-9999px";
-  container.style.width = "1px";
-  container.style.height = "1px";
-  container.style.opacity = "0";
-  container.setAttribute("aria-hidden", "true");
-  document.body.appendChild(container);
+
+  panel.appendChild(heading);
+  panel.appendChild(container);
+  overlay.appendChild(panel);
+  document.body.appendChild(overlay);
 
   let widgetId: string | number | null = null;
   const cleanup = () => {
@@ -178,7 +199,7 @@ const executeTurnstile = async (action: string): Promise<string> => {
         // no-op
       }
     }
-    container.remove();
+    overlay.remove();
   };
 
   return new Promise<string>((resolve, reject) => {
@@ -198,8 +219,8 @@ const executeTurnstile = async (action: string): Promise<string> => {
           sitekey: RECAPTCHA_SITE_KEY,
           action,
           size: "normal",
-          appearance: "execute",
-          execution: "execute",
+          appearance: "always",
+          execution: "render",
           callback: (token: string) =>
             done(() => {
               cleanup();
@@ -220,8 +241,6 @@ const executeTurnstile = async (action: string): Promise<string> => {
               reject(new Error("CAPTCHA expired. Please try again."));
             }),
         });
-
-        turnstile.execute(widgetId);
       } catch (error) {
         done(() => {
           cleanup();

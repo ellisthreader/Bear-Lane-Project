@@ -7,6 +7,7 @@ use App\Models\OrderItem;
 use App\Models\ProductReview;
 use App\Models\ProductReviewImage;
 use App\Services\OpenAiModerationService;
+use App\Services\Security\RecaptchaService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -19,8 +20,16 @@ class ProductReviewController extends Controller
 {
     private const POLITICAL_CONTENT_PATTERN = '/\b(?:election|elections|politics|political|government|parliament|mp\b|prime minister|president|senator|congress|campaign|conservative|labour party|democrat|republican|left wing|right wing|vote|voting|manifesto|policy debate)\b/i';
 
-    public function store(Request $request, Order $order, OrderItem $orderItem, OpenAiModerationService $moderationService): JsonResponse
+    public function store(
+        Request $request,
+        Order $order,
+        OrderItem $orderItem,
+        OpenAiModerationService $moderationService,
+        RecaptchaService $recaptchaService
+    ): JsonResponse
     {
+        $recaptchaService->verifyOrFail($request, 'review_submit');
+
         $user = $request->user();
         if (!$user || (int) $order->user_id !== (int) $user->id) {
             return response()->json([

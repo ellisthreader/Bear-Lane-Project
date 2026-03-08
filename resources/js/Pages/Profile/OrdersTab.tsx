@@ -4,6 +4,7 @@ import { Link } from "@inertiajs/react";
 import { Check, ChevronDown, ImagePlus, Loader2, Star, Truck, X } from "lucide-react";
 import OrderReturnSection, { type ReturnEnabledOrder } from "./components/OrderReturnSection";
 import { designTypeLabel, normalizeDesignType } from "@/Utils/designType";
+import { executeRecaptcha } from "@/Utils/recaptcha";
 
 interface OrderItemReviewSummary {
   id: number;
@@ -582,9 +583,11 @@ function LeaveReviewModal({
 
     setSubmitting(true);
     try {
+      const recaptchaToken = await executeRecaptcha("review_submit");
       const formData = new FormData();
       formData.append("rating", String(rating));
       formData.append("message", trimmedMessage);
+      formData.append("recaptcha_token", recaptchaToken);
       images.forEach((file) => formData.append("images[]", file));
 
       const response = await axios.post(`/orders/${order.id}/items/${item.id}/reviews`, formData, {

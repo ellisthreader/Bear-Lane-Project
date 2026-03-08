@@ -15,6 +15,7 @@ import { ProductQuoteProvider } from "./QuoteModal/ProductQuoteContext";
 import GetQuoteButton from "./QuoteModal/GetQuoteButton";
 import ProductQuoteModal from "./QuoteModal/ProductQuoteModal";
 import { DESIGN_TYPE_OPTIONS, designTypeLabel, normalizeDesignType, type DesignType } from "@/Utils/designType";
+import { executeRecaptcha } from "@/Utils/recaptcha";
 
 const STANDARD_SIZES = ["XS", "S", "M", "L", "XL"] as const;
 const COMMON_COLOUR_OPTIONS = [
@@ -589,6 +590,7 @@ export default function ProductLayout({ product, recommendedProducts = [], admin
     setNotifyLoading(true);
 
     try {
+      const recaptchaToken = await executeRecaptcha("restock_notify");
       const response = await fetch(`/product/${encodeURIComponent(product.slug)}/notify-restock`, {
         method: "POST",
         credentials: "same-origin",
@@ -601,6 +603,7 @@ export default function ProductLayout({ product, recommendedProducts = [], admin
         body: JSON.stringify({
           colour: selectedColour,
           size: selectedSize,
+          recaptcha_token: recaptchaToken,
         }),
       });
 

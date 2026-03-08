@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import axios from "axios";
+import { executeRecaptcha } from "@/Utils/recaptcha";
 
 // Important: configure axios once
 axios.defaults.headers.common["X-Requested-With"] = "XMLHttpRequest";
@@ -22,7 +23,8 @@ export default function ForgotPassword() {
       // If using Sanctum, first get CSRF cookie
       await axios.get("/sanctum/csrf-cookie");
 
-      await axios.post("/forgot-password", { email });
+      const recaptchaToken = await executeRecaptcha("forgot_password");
+      await axios.post("/forgot-password", { email, recaptcha_token: recaptchaToken });
 
       setSent(true);
     } catch (err: any) {

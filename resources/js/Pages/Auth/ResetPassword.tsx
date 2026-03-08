@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { router } from "@inertiajs/react";
 import { CheckCircleIcon, XCircleIcon } from "@heroicons/react/24/solid";
+import { executeRecaptcha } from "@/Utils/recaptcha";
 
 export default function ResetPassword() {
   const pathParts = window.location.pathname.split("/");
@@ -62,11 +63,13 @@ export default function ResetPassword() {
     }
 
     try {
+      const recaptchaToken = await executeRecaptcha("reset_password");
       await axios.post("/reset-password", {
         token,
         email,
         password,
         password_confirmation: confirmPassword,
+        recaptcha_token: recaptchaToken,
       });
 
       setStatus("Password reset successfully! Redirecting to login...");

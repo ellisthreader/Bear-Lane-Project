@@ -44,6 +44,7 @@ use App\Http\Controllers\WishlistController;
 use App\Http\Controllers\CookieConsentController;
 use App\Http\Controllers\SecureMediaController;
 use App\Services\AdminActivityLogService;
+use App\Services\Security\RecaptchaService;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Storage;
@@ -421,7 +422,8 @@ Route::get('/email/verify/{id}/{hash}', function (Request $request, string $id, 
 
 
 // Resend verification email (THIS ACTUALLY SENDS EMAIL)
-Route::post('/email/verification-notification', function (Request $request) {
+Route::post('/email/verification-notification', function (Request $request, RecaptchaService $recaptchaService) {
+    $recaptchaService->verifyOrFail($request, 'email_verification_resend');
 
     if ($request->user()->hasVerifiedEmail()) {
         return back();
