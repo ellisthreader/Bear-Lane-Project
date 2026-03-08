@@ -522,12 +522,12 @@ Route::get('/email/verification-status', function (Request $request) {
 */
 Route::get('/help', [SupportContentController::class, 'helpCentre'])->name('help');
 Route::get('/help/search', [SupportContentController::class, 'search'])->name('help.search');
-Route::get('/help/orders', fn() => Inertia::render('Help/OrdersShipping'))->name('help.orders');
-Route::get('/help/returns', fn() => Inertia::render('Help/ReturnsRefunds'))->name('help.returns');
-Route::get('/help/account', fn() => Inertia::render('Help/AccountManagement'))->name('help.account');
-Route::get('/help/payments', fn() => Inertia::render('Help/PaymentsBilling'))->name('help.payments');
-Route::get('/help/technical', fn() => Inertia::render('Help/TechnicalSupport'))->name('help.technical');
-Route::get('/help/privacy', fn() => Inertia::render('Help/PrivacySecurity'))->name('help.privacy');
+Route::get('/help/orders', fn(SupportContentController $controller) => $controller->topic('orders'))->name('help.orders');
+Route::get('/help/returns', fn(SupportContentController $controller) => $controller->topic('returns'))->name('help.returns');
+Route::get('/help/account', fn(SupportContentController $controller) => $controller->topic('account'))->name('help.account');
+Route::get('/help/payments', fn(SupportContentController $controller) => $controller->topic('payments'))->name('help.payments');
+Route::get('/help/technical', fn(SupportContentController $controller) => $controller->topic('technical'))->name('help.technical');
+Route::get('/help/privacy', fn(SupportContentController $controller) => $controller->topic('privacy'))->name('help.privacy');
 Route::get('/help/articles/{slug}', [SupportContentController::class, 'article'])->name('help.article');
 Route::get('/support', fn() => Inertia::render('Help/Support'))->name('support');
 Route::post('/support/messages', [SupportMessageController::class, 'store'])->name('support.messages.store');

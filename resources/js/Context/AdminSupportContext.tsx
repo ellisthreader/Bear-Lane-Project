@@ -7,7 +7,6 @@ import React, {
   useState,
   type ReactNode,
 } from "react";
-import { HELP_FAQS, flattenHelpArticles } from "@/Pages/Help/data/helpContent";
 
 type SupportArticle = {
   id: number;
@@ -290,41 +289,8 @@ export function AdminSupportProvider({ children }: Props) {
       const dbArticles = (payload.articles || []) as SupportArticle[];
       const dbFaqRequests = (payload.faq_requests || []) as SupportFaqRequest[];
 
-      const staticArticles: SupportArticle[] = flattenHelpArticles().map((article, index) => ({
-        id: -(1000 + index + 1),
-        title: article.title,
-        slug: article.id,
-        category: article.categoryTitle,
-        excerpt: article.excerpt,
-        body: article.content.join("\n\n"),
-        is_published: true,
-        published_at: null,
-        updated_at: null,
-        is_readonly: true,
-      }));
-
-      const staticFaqs: SupportFaqRequest[] = HELP_FAQS.map((faq, index) => ({
-        id: -(900000 + index + 1),
-        question: faq.question,
-        details: "Static FAQ currently shown on Help Centre.",
-        answer: faq.answer,
-        status: "answered",
-        is_public: true,
-        asked_by: {
-          id: null,
-          name: "Help Centre Content",
-        },
-        answered_by: {
-          id: 0,
-          name: "Help Centre Content",
-        },
-        created_at: null,
-        answered_at: null,
-        is_readonly: true,
-      }));
-
-      setArticles([...dbArticles, ...staticArticles]);
-      setFaqRequests([...dbFaqRequests, ...staticFaqs]);
+      setArticles(dbArticles);
+      setFaqRequests(dbFaqRequests);
       setChats(payload.chats || []);
       setSupportInboxMessages((payload.support_messages || []) as SupportInboxMessage[]);
       if (payload.summary) {

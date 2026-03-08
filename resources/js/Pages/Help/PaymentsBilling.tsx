@@ -1,5 +1,16 @@
 import HelpTopicPage from "./components/HelpTopicPage";
 
-export default function PaymentsBilling() {
-  return <HelpTopicPage categoryKey="payments" />;
+type Props = {
+  support_articles?: Array<{
+    id: number;
+    title: string;
+    slug: string;
+    category: string;
+    excerpt: string | null;
+    body: string;
+  }>;
+};
+
+export default function PaymentsBilling({ support_articles = [] }: Props) {
+  return <HelpTopicPage categoryKey="payments" support_articles={support_articles} />;
 }

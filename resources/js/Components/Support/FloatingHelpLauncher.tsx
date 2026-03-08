@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Link, usePage } from "@inertiajs/react";
+import { Link } from "@inertiajs/react";
 import { CircleHelp, ChevronUp, Headphones, MessageCircleQuestion } from "lucide-react";
 
 type QuickLink = {
@@ -32,9 +32,27 @@ const quickLinks: QuickLink[] = [
 
 export default function FloatingHelpLauncher() {
   const [open, setOpen] = useState(false);
+  const [path, setPath] = useState<string>(() => {
+    if (typeof window === "undefined") {
+      return "/";
+    }
+
+    return window.location.pathname;
+  });
   const shellRef = useRef<HTMLDivElement | null>(null);
-  const page = usePage();
-  const path = page.url.split("?")[0];
+
+  useEffect(() => {
+    const syncPath = () => setPath(window.location.pathname);
+
+    syncPath();
+    window.addEventListener("popstate", syncPath);
+    document.addEventListener("inertia:navigate", syncPath as EventListener);
+
+    return () => {
+      window.removeEventListener("popstate", syncPath);
+      document.removeEventListener("inertia:navigate", syncPath as EventListener);
+    };
+  }, []);
 
   const shouldHide = useMemo(
     () =>

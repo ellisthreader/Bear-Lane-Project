@@ -11,6 +11,15 @@ use Inertia\Response;
 
 class SupportContentController extends Controller
 {
+    private const ALLOWED_HELP_CATEGORIES = [
+        'orders',
+        'returns',
+        'account',
+        'payments',
+        'technical',
+        'privacy',
+    ];
+
     public function helpCentre(): Response
     {
         return Inertia::render('Help/HelpCentre', [
@@ -56,6 +65,25 @@ class SupportContentController extends Controller
         ]);
     }
 
+    public function topic(string $category): Response
+    {
+        $normalizedCategory = strtolower(trim($category));
+        abort_unless(in_array($normalizedCategory, self::ALLOWED_HELP_CATEGORIES, true), 404);
+
+        $componentByCategory = [
+            'orders' => 'Help/OrdersShipping',
+            'returns' => 'Help/ReturnsRefunds',
+            'account' => 'Help/AccountManagement',
+            'payments' => 'Help/PaymentsBilling',
+            'technical' => 'Help/TechnicalSupport',
+            'privacy' => 'Help/PrivacySecurity',
+        ];
+
+        return Inertia::render($componentByCategory[$normalizedCategory], [
+            'support_articles' => $this->publishedArticlesByCategory($normalizedCategory),
+        ]);
+    }
+
     public function article(string $slug): Response
     {
         abort_unless(Schema::hasTable('help_articles'), 404);
@@ -86,6 +114,32 @@ class SupportContentController extends Controller
 
         return HelpArticle::query()
             ->where('is_published', true)
+            ->orderByDesc('published_at')
+            ->orderByDesc('updated_at')
+            ->limit(100)
+            ->get()
+            ->map(fn (HelpArticle $article) => [
+                'id' => $article->id,
+                'title' => $article->title,
+                'slug' => $article->slug,
+                'category' => $article->category,
+                'excerpt' => $article->excerpt,
+                'body' => $article->body,
+                'published_at' => optional($article->published_at)?->toIso8601String(),
+            ])
+            ->values()
+            ->all();
+    }
+
+    private function publishedArticlesByCategory(string $category): array
+    {
+        if (!Schema::hasTable('help_articles')) {
+            return [];
+        }
+
+        return HelpArticle::query()
+            ->where('is_published', true)
+            ->where('category', $category)
             ->orderByDesc('published_at')
             ->orderByDesc('updated_at')
             ->limit(100)

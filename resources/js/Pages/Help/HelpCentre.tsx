@@ -3,7 +3,7 @@ import { ArrowRight, BadgeHelp, CreditCard, Lock, Package, RefreshCcw, Settings,
 import { useMemo, useState, type ComponentType } from "react";
 import HelpShell from "./components/HelpShell";
 import HelpSearchBar from "./components/HelpSearchBar";
-import { flattenHelpArticles, HELP_CATEGORIES } from "./data/helpContent";
+import { HELP_CATEGORIES } from "./data/helpContent";
 
 const categoryIcons: Record<string, ComponentType<{ className?: string }>> = {
   orders: Package,
@@ -32,23 +32,13 @@ export default function HelpCentre({ support_articles = [] }: HelpCentreProps) {
   const [searchQuery, setSearchQuery] = useState("");
 
   const articleIndex = useMemo(() => {
-    const staticArticles = flattenHelpArticles().map((article) => ({
-      title: article.title,
-      excerpt: article.excerpt,
-      content: article.content.join(" "),
-      categoryTitle: article.categoryTitle,
-      link: article.link,
-    }));
-
-    const dynamicArticles = support_articles.map((article) => ({
+    return support_articles.map((article) => ({
       title: article.title,
       excerpt: article.excerpt || "",
       content: article.body,
-      categoryTitle: "Support Team Article",
+      categoryTitle: article.category,
       link: `/help/articles/${article.slug}`,
     }));
-
-    return [...dynamicArticles, ...staticArticles];
   }, [support_articles]);
 
   const quickResults = useMemo(() => {

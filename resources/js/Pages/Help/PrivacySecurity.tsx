@@ -1,5 +1,16 @@
 import HelpTopicPage from "./components/HelpTopicPage";
 
-export default function PrivacySecurity() {
-  return <HelpTopicPage categoryKey="privacy" />;
+type Props = {
+  support_articles?: Array<{
+    id: number;
+    title: string;
+    slug: string;
+    category: string;
+    excerpt: string | null;
+    body: string;
+  }>;
+};
+
+export default function PrivacySecurity({ support_articles = [] }: Props) {
+  return <HelpTopicPage categoryKey="privacy" support_articles={support_articles} />;
 }

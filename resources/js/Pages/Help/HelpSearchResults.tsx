@@ -2,7 +2,6 @@ import { Link, usePage } from "@inertiajs/react";
 import { ArrowRight } from "lucide-react";
 import HelpShell from "./components/HelpShell";
 import HelpSearchBar from "./components/HelpSearchBar";
-import { flattenHelpArticles } from "./data/helpContent";
 
 export default function HelpSearchResults() {
   const { q, support_articles = [] } = usePage<{
@@ -18,16 +17,7 @@ export default function HelpSearchResults() {
   }>().props;
   const searchQuery = (q || "").trim().toLowerCase();
 
-  const staticResults = flattenHelpArticles().filter((article) => {
-    if (!searchQuery) return false;
-    return (
-      article.title.toLowerCase().includes(searchQuery) ||
-      article.excerpt.toLowerCase().includes(searchQuery) ||
-      article.content.join(" ").toLowerCase().includes(searchQuery)
-    );
-  });
-
-  const dynamicResults = support_articles
+  const results = support_articles
     .filter((article) => {
       if (!searchQuery) return false;
       return (
@@ -42,16 +32,6 @@ export default function HelpSearchResults() {
       excerpt: article.excerpt || "",
       categoryTitle: `Support Team: ${article.category}`,
     }));
-
-  const results = [
-    ...dynamicResults,
-    ...staticResults.map((article) => ({
-      link: article.link,
-      title: article.title,
-      excerpt: article.excerpt,
-      categoryTitle: article.categoryTitle,
-    })),
-  ];
 
   return (
     <HelpShell
