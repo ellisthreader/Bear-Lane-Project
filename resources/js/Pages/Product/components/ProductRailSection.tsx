@@ -100,11 +100,6 @@ export default function ProductRailSection({
               <div className="space-y-1 p-3">
                 {item.brand ? <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#8A7854]">{item.brand}</p> : null}
                 <p className="line-clamp-2 text-sm font-semibold text-[#231C12]">{item.name}</p>
-                {item.is_premade_design && String(item.premade_quote || "").trim() ? (
-                  <p className="line-clamp-2 rounded-md border border-[#E7D7B2] bg-[#FFF9EB] px-2 py-1 text-xs leading-relaxed text-[#6A5528]">
-                    {String(item.premade_quote || "").trim()}
-                  </p>
-                ) : null}
                 {typeof item.price === "number" ? <p className="text-sm font-bold text-[#17120A]">£{item.price.toFixed(2)}</p> : null}
               </div>
             </Link>

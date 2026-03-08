@@ -94,7 +94,6 @@ export default function CategoryProductsGrid({ productEditMode = false, category
         const wishlistId = String(product.id);
         const inWishlist = isInWishlist(wishlistId);
         const isPreMade = Boolean(product.is_premade_design);
-        const preMadeQuote = String(product.premade_quote || "").trim();
 
         return (
           <Link
@@ -172,12 +171,6 @@ export default function CategoryProductsGrid({ productEditMode = false, category
 
             <div className="space-y-2 p-3">
               <h3 className="line-clamp-2 text-xs font-bold text-[#2A241B]">{product.name}</h3>
-              {isPreMade && preMadeQuote ? (
-                <p className="line-clamp-2 rounded-md border border-[#E7D7B2] bg-[#FFF9EB] px-2 py-1 text-[11px] leading-relaxed text-[#6A5528]">
-                  {preMadeQuote}
-                </p>
-              ) : null}
-
               <div className="flex items-center gap-1 text-[#C8951E]">
                 {Array.from({ length: 5 }).map((_, index) => {
                   const active = index + 1 <= Math.round(rating);

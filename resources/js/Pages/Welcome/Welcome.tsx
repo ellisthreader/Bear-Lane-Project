@@ -681,7 +681,7 @@ export default function Welcome() {
                       <div className="mt-3 rounded-xl border border-[#E7D7B2] bg-[#FFF9EB] px-3 py-2 text-sm font-medium text-[#5B441A] shadow-[0_8px_18px_rgba(95,72,18,0.08)]">
                         <span className="mb-1 inline-flex items-center gap-1.5 rounded-full border border-[#E4C985] bg-white/75 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#7A5C1E]">
                           <Sparkles className="h-3 w-3" />
-                          Pre-Made Studio
+                          Bear Lane Studio
                         </span>
                         <span className="mt-1 block rounded-lg bg-gradient-to-r from-[#FFF9EA] via-[#FFF5DF] to-[#FFF9EA] px-2.5 py-2 text-sm font-medium leading-relaxed text-[#5B441A]">
                           {String(preMadeQuotes[String(product.id)] || String(product.premade_quote || "").trim()).trim()}

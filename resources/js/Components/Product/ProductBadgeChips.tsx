@@ -8,7 +8,7 @@ type ProductBadgeChipsProps = {
 };
 
 const BADGE_STYLE_MAP: Record<string, string> = {
-  "Bear Lane Studio": "border-[#D7B25E] bg-[#FFF4D8] text-[#7A5814]",
+  "Pre Made Product": "border-[#D7B25E] bg-[#FFF4D8] text-[#7A5814]",
   "Best Seller": "border-[#D7B25E] bg-[#FFF4D8] text-[#7A5814]",
   "Highest Rated": "border-[#B6C7E9] bg-[#EEF4FF] text-[#1E3A8A]",
   "New In": "border-[#B8DDC4] bg-[#ECFDF3] text-[#166534]",
@@ -30,13 +30,13 @@ export default function ProductBadgeChips({
   maxVisible = 4,
 }: ProductBadgeChipsProps) {
   const normalized = normalizeBadges([
-    ...(isPreMade ? ["Bear Lane Studio"] : []),
+    ...(isPreMade ? ["Pre Made Product"] : []),
     ...normalizeBadges(badges),
   ]).slice(0, Math.max(1, maxVisible));
   if (normalized.length === 0) return null;
 
   return (
-    <div className={`pointer-events-none flex max-w-[84%] flex-wrap gap-1 ${className}`.trim()}>
+    <div className={`pointer-events-none flex max-w-[84%] flex-col items-start gap-1 ${className}`.trim()}>
       {normalized.map((badge) => (
         <span
           key={badge}

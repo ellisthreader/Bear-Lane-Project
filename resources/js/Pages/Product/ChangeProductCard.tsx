@@ -50,7 +50,6 @@ export default function ChangeProductCard({
       ? Number(product.original_price)
       : null;
   const isPreMade = Boolean(product.is_premade_design);
-  const preMadeQuote = String(product.premade_quote || "").trim();
   const autoBadges = Array.isArray(product.auto_badges) ? product.auto_badges : [];
 
   return (
@@ -127,12 +126,6 @@ export default function ChangeProductCard({
         <p className="flex-grow text-[11px] font-semibold leading-tight text-gray-800 sm:text-lg">
           {product.name}
         </p>
-        {isPreMade && preMadeQuote ? (
-          <p className="line-clamp-2 rounded-md border border-[#E7D7B2] bg-[#FFF9EB] px-1.5 py-1 text-[10px] leading-relaxed text-[#6A5528] sm:text-xs">
-            {preMadeQuote}
-          </p>
-        ) : null}
-
         <div className="pt-0.5 sm:pt-2">
           <span className="text-xs font-bold text-gray-900 sm:text-lg">
             £{price.toFixed(2)}

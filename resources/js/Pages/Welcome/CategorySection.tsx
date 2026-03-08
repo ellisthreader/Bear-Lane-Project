@@ -5,7 +5,7 @@ import { router } from "@inertiajs/react";
 
 const categories = [
   { name: "New In", image: "/images/Category/new-in.jpg" },
-  { name: "Pre made", image: "/images/Category/premade.jpeg" },
+  { name: "Pre made", image: "/images/Category/premade.jpg" },
   { name: "Sale", image: "/images/Category/sale.jpeg" },
   { name: "Kids Clothing", image: "/images/Category/kids.jpeg" },
   { name: "Bags", image: "/images/Category/bags.jpg" },

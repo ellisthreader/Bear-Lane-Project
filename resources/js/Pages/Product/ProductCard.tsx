@@ -66,7 +66,6 @@ export default function ProductCard({
       originalPrice > 0 &&
       (Boolean(product.is_sale) || originalPrice > price)
   );
-  const preMadeQuote = String(product.premade_quote || "").trim();
   const autoBadges = Array.isArray(product.auto_badges) ? product.auto_badges : [];
 
   return (
@@ -149,12 +148,6 @@ export default function ProductCard({
           <p className={`${compact ? "text-base" : "text-lg"} font-semibold text-gray-800 leading-tight`}>
             {product.name}
           </p>
-
-          {product.is_premade_design && showPremadeQuoteInside && preMadeQuote ? (
-            <p className="line-clamp-2 rounded-lg border border-[#EAD9B2] bg-[#FFF9EA] px-2.5 py-1.5 text-xs leading-relaxed text-[#6A5320]">
-              {preMadeQuote}
-            </p>
-          ) : null}
 
           <div className="pt-2">
             <span className={`text-lg font-bold ${onSale ? "text-[#B42318]" : "text-gray-900"}`}>

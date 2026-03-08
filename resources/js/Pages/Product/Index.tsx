@@ -62,7 +62,6 @@ export default function ProductsIndex({ type, products }: Props) {
               ? Number(product.original_price)
               : null;
           const isPreMade = Boolean(product.is_premade_design);
-          const preMadeQuote = String(product.premade_quote || "").trim();
 
           return (
             <Link
@@ -88,12 +87,6 @@ export default function ProductsIndex({ type, products }: Props) {
               <div className="p-4">
                 <p className="font-bold text-gray-800">{product.brand}</p>
                 <p className="text-gray-700">{product.name}</p>
-                {isPreMade && preMadeQuote ? (
-                  <p className="mt-2 line-clamp-2 rounded-lg border border-[#E7D7B2] bg-[#FFF9EB] px-2 py-1.5 text-xs leading-relaxed text-[#6A5528]">
-                    {preMadeQuote}
-                  </p>
-                ) : null}
-
                 <p className="mt-2 font-semibold">
                   £{price.toFixed(2)}
                   {originalPrice !== null && (

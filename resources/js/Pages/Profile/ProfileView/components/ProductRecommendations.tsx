@@ -10,7 +10,6 @@ function ProductCard({ product }: { product: RecommendedProduct }) {
   const wishlistId = String(product.id);
   const inWishlist = isInWishlist(wishlistId);
   const isPreMade = Boolean(product.is_premade_design);
-  const preMadeQuote = String(product.premade_quote || "").trim();
 
   return (
     <div className="overflow-hidden rounded-xl border border-[#E8DAB8] bg-white shadow-sm transition hover:shadow-md">
@@ -45,11 +44,6 @@ function ProductCard({ product }: { product: RecommendedProduct }) {
       <div className="p-4">
         <p className="text-xs uppercase tracking-[0.2em] text-[#9B8862]">{product.brand || "Product"}</p>
         <p className="mt-1 line-clamp-2 text-sm font-semibold text-[#322A18]">{product.name}</p>
-        {isPreMade && preMadeQuote ? (
-          <p className="mt-1 line-clamp-2 rounded-md border border-[#E7D7B2] bg-[#FFF9EB] px-2 py-1 text-xs leading-relaxed text-[#6A5528]">
-            {preMadeQuote}
-          </p>
-        ) : null}
         {typeof product.price === "number" && <p className="mt-2 text-sm font-medium text-[#8A6D2B]">£{product.price.toFixed(2)}</p>}
       </div>
     </div>
