@@ -10,6 +10,7 @@ import {
   CircleDollarSign,
   ChevronRight,
   Heart,
+  ArrowLeft,
 } from "lucide-react";
 import { useCart } from "@/Context/CartContext";
 import { useWishlist } from "@/Context/WishlistContext";
@@ -56,22 +57,30 @@ export default function DesignNavbar({
     return () => query.removeListener(sync);
   }, []);
 
+  const handleMobileGoBack = () => {
+    if (typeof window === "undefined") return;
+    if (window.history.length > 1) {
+      window.history.back();
+      return;
+    }
+    window.location.href = "/";
+  };
+
   if (isMobileViewport) {
     return (
       <>
         <nav className="fixed left-0 top-0 z-50 w-full border-b border-gray-200 bg-white/95 px-2 py-2 shadow-sm backdrop-blur-md">
-          <div className="flex items-center gap-2">
-            <Link href="/" className="shrink-0" aria-label="Go to home">
-              <img
-                src="/images/BLText.png"
-                alt="Bear Lane"
-                className="h-8 w-auto object-contain"
-                loading="lazy"
-                decoding="async"
-              />
-            </Link>
+          <div className="flex items-center gap-2.5">
+            <button
+              type="button"
+              onClick={handleMobileGoBack}
+              aria-label="Go back"
+              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-[#6D6452] transition hover:bg-[#F2EAD6]"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
 
-            <div className="grid flex-1 grid-cols-4 gap-1">
+            <div className="grid flex-1 grid-cols-4 gap-2">
               <MobileNavButton
                 label="Designs"
                 ariaLabel="Open my designs"
@@ -106,7 +115,7 @@ export default function DesignNavbar({
               <button
                 type="button"
                 onClick={() => onGetPrice?.()}
-                className="inline-flex h-[58px] min-w-[92px] items-center justify-center rounded-xl border border-[#C6A75E]/60 bg-[#FAF3E2] px-2 text-sm font-semibold text-[#7A6130] transition hover:bg-[#F2E5C6]"
+                className="inline-flex h-[48px] min-w-[78px] items-center justify-center rounded-lg border border-[#C6A75E]/60 bg-[#FAF3E2] px-2 text-xs font-semibold text-[#7A6130] transition hover:bg-[#F2E5C6]"
                 aria-label="Get price"
               >
                 Get price £
@@ -241,7 +250,7 @@ function MobileNavButton({
       type="button"
       onClick={onClick}
       aria-label={ariaLabel}
-      className="inline-flex min-h-[58px] flex-col items-center justify-center rounded-xl px-1 py-1 text-center text-[10px] font-semibold text-gray-700 transition hover:bg-[#F2EAD6]"
+      className="inline-flex min-h-[52px] flex-col items-center justify-center rounded-xl px-2 py-1 text-center text-[10px] font-semibold text-gray-700 transition hover:bg-[#F2EAD6]"
     >
       {children}
       <span className="mt-1 leading-none">{label}</span>

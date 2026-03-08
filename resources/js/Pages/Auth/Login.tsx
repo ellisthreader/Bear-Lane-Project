@@ -1,16 +1,18 @@
 import React, { useEffect, useState } from "react";
 import { router } from "@inertiajs/react";
+import axios from "axios";
 import { FcGoogle } from "react-icons/fc";
 import { FaFacebookF } from "react-icons/fa";
 import Register from "./Register";
 import ForgotPassword from "./ForgotPassword";
+import OAuthVerify from "./OAuthVerify";
 import NavMenu from "@/Components/Menu/NavMenu";
 import { executeRecaptcha } from "@/Utils/recaptcha";
 
 export default function AuthPage() {
   const isRegisterRoute = typeof window !== "undefined" && window.location.pathname === "/register";
   const [email, setEmail] = useState("");
-  const [step, setStep] = useState<"email" | "password" | "register">(
+  const [step, setStep] = useState<"email" | "password" | "register" | "oauthVerify">(
     isRegisterRoute ? "register" : "email",
   );
   const [password, setPassword] = useState("");
@@ -24,7 +26,7 @@ export default function AuthPage() {
   // -----------------------
   // Handle email step
   // -----------------------
-  const handleEmailSubmit = (e: React.FormEvent) => {
+  const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     if (!email.trim()) {
@@ -32,9 +34,16 @@ export default function AuthPage() {
       return;
     }
 
-    // Move to password step without exposing account-existence checks.
-    setStep("password");
-    setLoading(false);
+    setLoading(true);
+    try {
+      const response = await axios.post("/login/method", { email: email.trim() });
+      const requiresEmailCode = Boolean(response?.data?.requires_email_code);
+      setStep(requiresEmailCode ? "oauthVerify" : "password");
+    } catch {
+      setStep("password");
+    } finally {
+      setLoading(false);
+    }
   };
 
   // -----------------------
@@ -54,6 +63,19 @@ export default function AuthPage() {
         {
           preserveScroll: true,
           onError: (errors) => {
+            const emailError = errors.email || "";
+            const oauthBlocked =
+              typeof emailError === "string" &&
+              emailError.toLowerCase().includes("linked to") &&
+              emailError.toLowerCase().includes("login");
+
+            if (oauthBlocked) {
+              setPassword("");
+              setError(null);
+              setStep("oauthVerify");
+              return;
+            }
+
             if (errors.password) setError(errors.password);
             else if (errors.email) setError(errors.email);
             else if ((errors as Record<string, string>).captcha) setError((errors as Record<string, string>).captcha);
@@ -87,13 +109,13 @@ export default function AuthPage() {
     <div className="min-h-screen flex flex-col overflow-hidden bg-white">
       <NavMenu />
 
-      <main className="flex h-screen items-stretch overflow-hidden">
+      <main className="flex min-h-screen items-stretch overflow-hidden md:h-screen">
         {/* Left Side */}
-        <div className="w-full md:w-1/2 flex flex-col justify-start items-center max-h-screen pt-16 md:pt-24">
-          <div className="flex flex-col justify-start items-center w-full max-w-md space-y-6">
+        <div className="w-full md:w-1/2 flex flex-col justify-start items-center px-4 sm:px-6 md:px-0 pt-8 md:pt-20 overflow-y-auto">
+          <div className="flex flex-col justify-start items-center w-full max-w-md space-y-5 pb-8">
             {/* Logo */}
-            <div className="flex justify-center mb-4">
-              <img loading="lazy" decoding="async" src="/images/BL-Logo.png" alt="Logo" className="w-44 h-auto" />
+            <div className="flex justify-center mb-1">
+              <img loading="lazy" decoding="async" src="/images/BL-Logo.png" alt="Logo" className="w-40 md:w-44 h-auto" />
             </div>
 
             {/* Forgot Password */}
@@ -222,6 +244,7 @@ export default function AuthPage() {
 
                 {/* Register Step */}
                 {step === "register" && <Register email={email} />}
+                {step === "oauthVerify" && <OAuthVerify email={email.trim()} />}
 
               </>
             )}

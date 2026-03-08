@@ -320,6 +320,7 @@ Route::get('/login', fn() => Inertia::render('Auth/Login'))->name('login');
 Route::get('/register', fn() => Inertia::render('Auth/Login'))->name('register');
 
 Route::post('/login', [AuthController::class, 'login']);
+Route::post('/login/method', [AuthController::class, 'loginMethod']);
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 

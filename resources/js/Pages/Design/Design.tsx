@@ -209,6 +209,7 @@ const normalizeLayerZOrder = (state: Record<string, ImageState>) => {
         ? window.matchMedia("(max-width: 1023px)").matches
         : false
     );
+    const mobileScrollLockYRef = useRef(0);
     const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
     const [pendingDesignName, setPendingDesignName] = useState("");
     const [isSavingDesign, setIsSavingDesign] = useState(false);
@@ -236,6 +237,43 @@ const normalizeLayerZOrder = (state: Record<string, ImageState>) => {
       query.addListener(syncViewport);
       return () => query.removeListener(syncViewport);
     }, []);
+
+    useEffect(() => {
+      if (typeof window === "undefined" || !isMobileViewport) return;
+
+      const { body, documentElement } = document;
+      mobileScrollLockYRef.current = window.scrollY || window.pageYOffset || 0;
+
+      const prevBodyOverflow = body.style.overflow;
+      const prevBodyPosition = body.style.position;
+      const prevBodyTop = body.style.top;
+      const prevBodyWidth = body.style.width;
+      const prevBodyTouchAction = body.style.touchAction;
+      const prevBodyOverscroll = body.style.overscrollBehavior;
+      const prevHtmlOverflow = documentElement.style.overflow;
+      const prevHtmlOverscroll = documentElement.style.overscrollBehavior;
+
+      body.style.overflow = "hidden";
+      body.style.position = "fixed";
+      body.style.top = `-${mobileScrollLockYRef.current}px`;
+      body.style.width = "100%";
+      body.style.touchAction = "none";
+      body.style.overscrollBehavior = "none";
+      documentElement.style.overflow = "hidden";
+      documentElement.style.overscrollBehavior = "none";
+
+      return () => {
+        body.style.overflow = prevBodyOverflow;
+        body.style.position = prevBodyPosition;
+        body.style.top = prevBodyTop;
+        body.style.width = prevBodyWidth;
+        body.style.touchAction = prevBodyTouchAction;
+        body.style.overscrollBehavior = prevBodyOverscroll;
+        documentElement.style.overflow = prevHtmlOverflow;
+        documentElement.style.overscrollBehavior = prevHtmlOverscroll;
+        window.scrollTo(0, mobileScrollLockYRef.current);
+      };
+    }, [isMobileViewport]);
 
     useEffect(() => {
       setSidebarStack(prev => {
@@ -3016,7 +3054,7 @@ const designPageContextValue = {
   
   return (
     <>
-      <div className="relative min-h-[100dvh] bg-gray-200 disable-selection">
+      <div className={`relative min-h-[100dvh] bg-gray-200 disable-selection ${isMobileViewport ? "h-[100dvh] overflow-hidden" : ""}`}>
       <Head title="Start Designing" />
 
       {isChangeProductModalOpen && (

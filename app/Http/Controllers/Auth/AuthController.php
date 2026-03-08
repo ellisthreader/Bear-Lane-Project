@@ -16,6 +16,7 @@ use App\Models\UserPaymentMethod;
 use App\Services\Security\RecaptchaService;
 use App\Services\Stripe\StripeWalletService;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Http\JsonResponse;
 
 class AuthController extends Controller
 {
@@ -282,7 +283,7 @@ public function register(Request $request, RecaptchaService $recaptchaService)
     // -----------------------
     // LOGIN
     // -----------------------
-    public function login(Request $request, RecaptchaService $recaptchaService)
+public function login(Request $request, RecaptchaService $recaptchaService)
     {
         $request->validate([
             'email'    => ['required', 'email'],
@@ -395,5 +396,18 @@ public function register(Request $request, RecaptchaService $recaptchaService)
         return $status === Password::PASSWORD_RESET
             ? redirect()->route('login')->with('status', 'Password reset successful.')
             : back()->withErrors(['email' => 'Invalid or expired link.']);
+    }
+    public function loginMethod(Request $request): JsonResponse
+    {
+        $request->validate([
+            'email' => ['required', 'email'],
+        ]);
+
+        $user = User::where('email', $request->email)->first();
+
+        return response()->json([
+            'requires_email_code' => (bool) ($user && $user->is_oauth),
+            'provider' => $user?->oauth_provider,
+        ]);
     }
 }

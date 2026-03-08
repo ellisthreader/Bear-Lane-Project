@@ -9,6 +9,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use App\Models\QuoteRequest;
 
 class QuoteRequestController extends Controller
@@ -88,6 +89,27 @@ class QuoteRequestController extends Controller
             'details' => $request->details,
             'images' => $imagePaths,
         ]);
+
+        try {
+            Mail::send('emails.quote-request-confirmation', [
+                'name' => (string) $quote->name,
+                'email' => (string) $quote->email,
+                'phone' => (string) ($quote->phone ?? ''),
+                'budget' => (string) ($quote->budget ?? ''),
+                'details' => (string) ($quote->details ?? ''),
+                'reference' => (string) ('BL-ARTIST-' . $quote->id),
+            ], function ($message) use ($quote) {
+                $message->to((string) $quote->email)
+                    ->subject('Your Embroidery Artist Request')
+                    ->from((string) env('MAIL_FROM_ADDRESS'), (string) env('MAIL_FROM_NAME'));
+            });
+        } catch (\Throwable $exception) {
+            Log::error('Quote request confirmation email failed', [
+                'quote_request_id' => $quote->id,
+                'email' => (string) $quote->email,
+                'error' => $exception->getMessage(),
+            ]);
+        }
 
         return response()->json([
             'message' => 'Quote request submitted successfully',

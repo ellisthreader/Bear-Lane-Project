@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { UploadCloud, Image as ImageIcon } from "lucide-react";
 import { stencilizeImage } from "../../Canvas/Utils/stencilizeImage";
 import ImagePreviewModal from "../../Components/ImagePreviewModal";
@@ -30,9 +30,45 @@ export default function StencilizeUI({
   const [loading, setLoading] = useState(false);
   const [original, setOriginal] = useState<string | null>(null);
   const [processed, setProcessed] = useState<string | null>(null);
+  const [processingProgress, setProcessingProgress] = useState(0);
+  const [isMobileViewport, setIsMobileViewport] = useState<boolean>(() =>
+    typeof window !== "undefined" ? window.matchMedia("(max-width: 1023px)").matches : false
+  );
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const objectUrlRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const query = window.matchMedia("(max-width: 1023px)");
+    const sync = () => setIsMobileViewport(query.matches);
+    sync();
+    if (typeof query.addEventListener === "function") {
+      query.addEventListener("change", sync);
+      return () => query.removeEventListener("change", sync);
+    }
+    query.addListener(sync);
+    return () => query.removeListener(sync);
+  }, []);
+
+  useEffect(() => {
+    if (!loading) return;
+    setProcessingProgress(3);
+    const interval = window.setInterval(() => {
+      setProcessingProgress((prev) => {
+        if (prev >= 92) return prev;
+        const step = prev < 40 ? 6 : prev < 70 ? 3 : 1;
+        return Math.min(92, prev + step);
+      });
+    }, 320);
+    return () => window.clearInterval(interval);
+  }, [loading]);
+
+  useEffect(() => {
+    if (!loading && processed) {
+      setProcessingProgress(100);
+    }
+  }, [loading, processed]);
 
   /* ---------------- Cleanup ---------------- */
   const cleanupObjectUrl = () => {
@@ -47,6 +83,7 @@ export default function StencilizeUI({
     setOriginal(null);
     setProcessed(null);
     setLoading(false);
+    setProcessingProgress(0);
   };
 
   const runStencilize = async (sourceUrl: string, randomize = false) => {
@@ -153,7 +190,7 @@ export default function StencilizeUI({
         <label className="w-full flex items-center gap-3 cursor-pointer bg-white hover:bg-[#FFF7E6] text-[#2F2617] py-3 px-4 rounded-lg border border-[#DCC89A] transition">
           <UploadCloud size={22} />
           <span className="font-medium">
-            {loading ? "Processing…" : "Browse your computer"}
+            {loading ? "Processing…" : isMobileViewport ? "Browse your device" : "Browse your computer"}
           </span>
           <input
             ref={fileInputRef}
@@ -195,6 +232,28 @@ export default function StencilizeUI({
               Recent Uploads
             </p>
             <div className="grid grid-cols-2 gap-4 pr-1">
+              {loading && original ? (
+                <div className="relative w-full h-32 rounded-lg overflow-hidden border border-[#3B82F6]/50 bg-gray-100">
+                  <img
+                    loading="lazy"
+                    decoding="async"
+                    src={original}
+                    alt="Processing upload"
+                    className="w-full h-full object-contain bg-gray-100"
+                    draggable={false}
+                  />
+                  <div
+                    className="absolute inset-0 bg-blue-500/45 transition-all duration-300"
+                    style={{ clipPath: `inset(0 ${Math.max(0, 100 - processingProgress)}% 0 0)` }}
+                  />
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
+                    <span className="rounded-full bg-black/40 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.05em]">
+                      Processing
+                    </span>
+                    <span className="mt-1 text-sm font-bold">{Math.round(processingProgress)}%</span>
+                  </div>
+                </div>
+              ) : null}
               {recentImages.map((uid) => {
                 const layer = imageState[uid];
                 if (!layer) return null;
@@ -220,10 +279,10 @@ export default function StencilizeUI({
       </div>
 
       {/* Modal */}
-      {original && processed && (
+      {original && (processed || loading) && (
         <ImagePreviewModal
           original={original}
-          processed={processed}
+          processed={processed ?? original}
           loading={loading}
           onClose={handleCancel}
           onConfirm={handleConfirm}

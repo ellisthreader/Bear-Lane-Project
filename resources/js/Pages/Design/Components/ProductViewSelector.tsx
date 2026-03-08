@@ -59,7 +59,7 @@ const ProductViewSelector: React.FC<ProductViewSelectorProps> = ({
           aria-label="Toggle product views"
         >
           <ImageIcon className="h-4 w-4" />
-          Views
+          Sides
           <ChevronDown className={`h-3.5 w-3.5 transition ${mobileMenuOpen ? "rotate-180" : ""}`} />
         </button>
 

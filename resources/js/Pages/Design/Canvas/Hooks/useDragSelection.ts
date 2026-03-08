@@ -30,12 +30,21 @@ interface UseDragSelectionArgs {
 
 export function useDragSelection(args: UseDragSelectionArgs) {
   const [selected, setSelected] = useState<string[]>([]);
+  const selectedRef = useRef<string[]>([]);
 
   const draggingUids = useRef<string[]>([]);
   const dragStartPointer = useRef<{ x: number; y: number } | null>(null);
   const dragStartPositions = useRef<Record<string, { x: number; y: number }>>(
     {}
   );
+
+  const setSelectedSafe = (next: string[] | ((prev: string[]) => string[])) => {
+    setSelected((prev) => {
+      const resolved = typeof next === "function" ? next(prev) : next;
+      selectedRef.current = resolved;
+      return resolved;
+    });
+  };
 
   const onPointerDown = (e: React.PointerEvent, uid: string) => {
     // Only primary button should start drag/select interactions.
@@ -48,23 +57,24 @@ export function useDragSelection(args: UseDragSelectionArgs) {
     if (!args.positions[uid]) return;
 
     const isShiftPressed = e.shiftKey;
-    const isSelected = selected.includes(uid);
+    const currentSelected = selectedRef.current;
+    const isSelected = currentSelected.includes(uid);
     let multiSelected: string[] = [uid];
 
     if (isShiftPressed) {
       multiSelected = isSelected
-        ? selected.filter(item => item !== uid)
-        : [...selected, uid];
+        ? currentSelected.filter(item => item !== uid)
+        : [...currentSelected, uid];
     } else {
-      multiSelected = isSelected ? selected : [uid];
+      multiSelected = isSelected ? currentSelected : [uid];
     }
 
     if (multiSelected.length === 0) {
-      setSelected([]);
+      setSelectedSafe([]);
       return;
     }
 
-    setSelected(multiSelected);
+    setSelectedSafe(multiSelected);
     draggingUids.current = multiSelected;
     args.onGestureStart?.();
 
@@ -180,7 +190,7 @@ export function useDragSelection(args: UseDragSelectionArgs) {
 
   return {
     selected,
-    setSelected,
+    setSelected: setSelectedSafe,
     onPointerDown,
     selectionBoxProps,
   };

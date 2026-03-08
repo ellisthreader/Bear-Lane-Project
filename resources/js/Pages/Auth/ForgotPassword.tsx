@@ -39,7 +39,7 @@ export default function ForgotPassword() {
   };
 
   return (
-    <div className="mt-">
+    <div className="mt-0 px-1 sm:px-2">
       {!sent ? (
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>

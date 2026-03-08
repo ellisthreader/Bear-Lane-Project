@@ -130,6 +130,7 @@ export default function CategoryFiltersSidebar() {
   } = useCategoryFilters();
 
   const [openSection, setOpenSection] = useState<SectionKey | null>("sort");
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
   const sliderMax = useMemo(() => Math.max(maxAvailable, 1), [maxAvailable]);
   const leftPercent = Math.min(100, Math.max(0, (minPrice / sliderMax) * 100));
@@ -144,61 +145,87 @@ export default function CategoryFiltersSidebar() {
     colour: selectedColours.length,
     size: selectedSizes.length,
   };
+  const selectedFiltersCount =
+    sectionSelectedCounts.price +
+    sectionSelectedCounts.productType +
+    sectionSelectedCounts.gender +
+    sectionSelectedCounts.rating +
+    sectionSelectedCounts.colour +
+    sectionSelectedCounts.size;
 
   return (
     <aside className="h-fit lg:sticky lg:top-4 lg:w-[280px] lg:flex-shrink-0">
-      <h2 className="mb-3 text-lg font-semibold text-[#2A241B]">Filters</h2>
-
-      <div className="mb-4">
-        <label htmlFor="search" className="mb-2 block text-sm font-medium text-[#4D463B]">
-          Search
-        </label>
-        <input
-          id="search"
-          type="text"
-          placeholder="Search products"
-          value={searchQuery}
-          onChange={(event) => setSearchQuery(event.target.value)}
-          className="w-full rounded-xl border border-[#E8DFC9] bg-white px-3 py-2 text-sm outline-none transition focus:border-[#B89443]"
-        />
-      </div>
-
-      <Section
-        id="sort"
-        title="Sort by"
-        selectedCount={sectionSelectedCounts.sort}
-        openSection={openSection}
-        onToggle={(id) => setOpenSection((prev) => (prev === id ? null : id))}
+      <button
+        type="button"
+        onClick={() => setMobileFiltersOpen((prev) => !prev)}
+        className="mb-3 flex w-full items-center justify-between rounded-xl border border-[#E8DFC9] bg-white px-3 py-2 text-left shadow-sm lg:hidden"
+        aria-expanded={mobileFiltersOpen}
       >
-        <div className="space-y-1">
-          {SORT_OPTIONS.map((option) => {
-            const active = sortBy === option.value;
-            const count = sortCounts[option.value] || 0;
-            const disabled = count === 0;
-            return (
-              <button
-                key={option.value}
-                type="button"
-                disabled={disabled}
-                onClick={() => setSortBy(option.value)}
-                className={`flex w-full items-center justify-between rounded-lg px-1.5 py-1.5 text-left text-sm transition ${
-                  disabled
-                    ? "cursor-not-allowed text-[#B7AE9C]"
-                    : "text-[#373027] hover:bg-[#FAF7EF]"
-                }`}
-              >
-                <span className="flex items-center gap-2">
-                  <Dot active={active} />
-                  {option.label}
-                </span>
-                <span className="text-xs text-[#7A705B]">({count})</span>
-              </button>
-            );
-          })}
-        </div>
-      </Section>
+        <span className="flex items-center gap-2 text-sm font-semibold text-[#2A241B]">
+          Filters
+          {selectedFiltersCount > 0 ? <CountBadge count={selectedFiltersCount} /> : null}
+        </span>
+        <ChevronDown className={`h-4 w-4 text-[#6D6452] transition ${mobileFiltersOpen ? "rotate-180" : ""}`} />
+      </button>
 
-      <Section
+      <div
+        className={`grid overflow-hidden transition-all duration-300 ease-out lg:grid-rows-[1fr] lg:overflow-visible lg:opacity-100 ${
+          mobileFiltersOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0 lg:opacity-100"
+        }`}
+      >
+        <div className="min-h-0">
+          <h2 className="mb-3 hidden text-lg font-semibold text-[#2A241B] lg:block">Filters</h2>
+
+          <div className="mb-4">
+            <label htmlFor="search" className="mb-2 block text-sm font-medium text-[#4D463B]">
+              Search
+            </label>
+            <input
+              id="search"
+              type="text"
+              placeholder="Search products"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              className="w-full rounded-xl border border-[#E8DFC9] bg-white px-3 py-2 text-sm outline-none transition focus:border-[#B89443]"
+            />
+          </div>
+
+          <Section
+            id="sort"
+            title="Sort by"
+            selectedCount={sectionSelectedCounts.sort}
+            openSection={openSection}
+            onToggle={(id) => setOpenSection((prev) => (prev === id ? null : id))}
+          >
+            <div className="space-y-1">
+              {SORT_OPTIONS.map((option) => {
+                const active = sortBy === option.value;
+                const count = sortCounts[option.value] || 0;
+                const disabled = count === 0;
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => setSortBy(option.value)}
+                    className={`flex w-full items-center justify-between rounded-lg px-1.5 py-1.5 text-left text-sm transition ${
+                      disabled
+                        ? "cursor-not-allowed text-[#B7AE9C]"
+                        : "text-[#373027] hover:bg-[#FAF7EF]"
+                    }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <Dot active={active} />
+                      {option.label}
+                    </span>
+                    <span className="text-xs text-[#7A705B]">({count})</span>
+                  </button>
+                );
+              })}
+            </div>
+          </Section>
+
+          <Section
         id="price"
         title="Price range"
         selectedCount={sectionSelectedCounts.price}
@@ -235,9 +262,9 @@ export default function CategoryFiltersSidebar() {
             <span>£{maxPrice}</span>
           </div>
         </div>
-      </Section>
+          </Section>
 
-      <Section
+          <Section
         id="productType"
         title="Product type"
         selectedCount={sectionSelectedCounts.productType}
@@ -270,9 +297,9 @@ export default function CategoryFiltersSidebar() {
             );
           })}
         </div>
-      </Section>
+          </Section>
 
-      <Section
+          <Section
         id="gender"
         title="Gender"
         selectedCount={sectionSelectedCounts.gender}
@@ -305,9 +332,9 @@ export default function CategoryFiltersSidebar() {
             );
           })}
         </div>
-      </Section>
+          </Section>
 
-      <Section
+          <Section
         id="rating"
         title="Rating"
         selectedCount={sectionSelectedCounts.rating}
@@ -340,9 +367,9 @@ export default function CategoryFiltersSidebar() {
             );
           })}
         </div>
-      </Section>
+          </Section>
 
-      <Section
+          <Section
         id="colour"
         title="Colour"
         selectedCount={sectionSelectedCounts.colour}
@@ -379,9 +406,9 @@ export default function CategoryFiltersSidebar() {
             })
           )}
         </div>
-      </Section>
+          </Section>
 
-      <Section
+          <Section
         id="size"
         title="Size"
         selectedCount={sectionSelectedCounts.size}
@@ -418,16 +445,18 @@ export default function CategoryFiltersSidebar() {
             })
           )}
         </div>
-      </Section>
+          </Section>
 
-      <div className="border-t border-[#EFE6D2] pt-4">
-        <button
-          type="button"
-          onClick={resetFilters}
-          className="text-sm text-[#6D6452] underline underline-offset-2 transition hover:text-[#2A241B]"
-        >
-          Unselect all filters
-        </button>
+          <div className="border-t border-[#EFE6D2] pt-4">
+            <button
+              type="button"
+              onClick={resetFilters}
+              className="text-sm text-[#6D6452] underline underline-offset-2 transition hover:text-[#2A241B]"
+            >
+              Unselect all filters
+            </button>
+          </div>
+        </div>
       </div>
     </aside>
   );

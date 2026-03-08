@@ -147,6 +147,7 @@ export default function MobileSelectionToolbar({
     { id: "color", label: "Colour", icon: <Palette className="h-4 w-4" />, onClick: () => setActiveTool("color"), active: activeTool === "color" },
     { id: "font", label: "Font", icon: <Type className="h-4 w-4" />, onClick: onOpenFontPanel },
     { id: "outline", label: "Outline", icon: <PaintBucket className="h-4 w-4" />, onClick: onOpenOutlinePanel },
+    { id: "flip", label: "Flip", icon: <FlipHorizontal className="h-4 w-4" />, onClick: () => setActiveTool("flip"), active: activeTool === "flip" },
     { id: "duplicate", label: "Duplicate", icon: <Copy className="h-4 w-4" />, onClick: () => onDuplicate(selectedUid) },
     { id: "resize-text", label: "Resize", icon: <MoveHorizontal className="h-4 w-4" />, onClick: () => setActiveTool("resize-text"), active: activeTool === "resize-text" },
   ];

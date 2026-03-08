@@ -831,13 +831,17 @@ export default function Canvas(props: CanvasProps) {
         onSelectImage?.(null);
         onSelectText?.(uid);
         onSwitchTab?.("text");
-        drag.setSelected([uid]);
+        if (!drag.selected.includes(uid)) {
+          drag.setSelected([uid]);
+        }
         drag.onPointerDown(e, uid);
         break;
       case "image":
         onSelectText?.(null);
         onSelectImage?.(uid);
-        drag.setSelected([uid]);
+        if (!drag.selected.includes(uid)) {
+          drag.setSelected([uid]);
+        }
         drag.onPointerDown(e, uid);
         onSwitchTab?.(layer.isClipart ? "clipart" : "upload");
         break;
@@ -1009,7 +1013,11 @@ export default function Canvas(props: CanvasProps) {
             type="button"
             className="block w-full px-4 py-2 text-left text-sm text-gray-700 transition hover:bg-gray-100"
             onClick={() => {
-              duplicateImages([contextMenu.uid]);
+              const targetUids =
+                drag.selected.includes(contextMenu.uid) && drag.selected.length > 1
+                  ? drag.selected
+                  : [contextMenu.uid];
+              duplicateImages(targetUids);
               setContextMenu(null);
             }}
           >
@@ -1019,8 +1027,12 @@ export default function Canvas(props: CanvasProps) {
             type="button"
             className="block w-full px-4 py-2 text-left text-sm text-red-600 transition hover:bg-red-50"
             onClick={() => {
+              const targetUids =
+                drag.selected.includes(contextMenu.uid) && drag.selected.length > 1
+                  ? drag.selected
+                  : [contextMenu.uid];
               if (props.onDelete) {
-                props.onDelete([contextMenu.uid]);
+                props.onDelete(targetUids);
               }
               drag.setSelected([]);
               setContextMenu(null);
