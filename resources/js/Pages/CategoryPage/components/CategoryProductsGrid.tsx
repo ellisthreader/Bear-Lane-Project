@@ -92,6 +92,8 @@ export default function CategoryProductsGrid({ productEditMode = false, category
         const onSale = originalPrice > 0 && originalPrice > price;
         const wishlistId = String(product.id);
         const inWishlist = isInWishlist(wishlistId);
+        const isPreMade = Boolean(product.is_premade_design);
+        const preMadeQuote = String(product.premade_quote || "").trim();
 
         return (
           <Link
@@ -149,6 +151,15 @@ export default function CategoryProductsGrid({ productEditMode = false, category
                 </button>
               </div>
             ) : null}
+            {isPreMade ? (
+              <span
+                className={`absolute left-2 z-10 rounded-full bg-[#C6A75E] px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] text-white ${
+                  productEditMode ? "top-9" : "top-2"
+                }`}
+              >
+                Pre-made design
+              </span>
+            ) : null}
 
             <div className="relative h-[280px] w-full overflow-hidden bg-[#E5E7EB] p-3">
               <img loading="lazy" decoding="async"
@@ -165,6 +176,11 @@ export default function CategoryProductsGrid({ productEditMode = false, category
 
             <div className="space-y-2 p-3">
               <h3 className="line-clamp-2 text-xs font-bold text-[#2A241B]">{product.name}</h3>
+              {isPreMade ? (
+                <p className="line-clamp-2 rounded-md border border-[#E7D7B2] bg-[#FFF9EB] px-2 py-1 text-[11px] leading-relaxed text-[#6A5528]">
+                  {preMadeQuote || "Pre-made design ready to customise."}
+                </p>
+              ) : null}
 
               <div className="flex items-center gap-1 text-[#C8951E]">
                 {Array.from({ length: 5 }).map((_, index) => {

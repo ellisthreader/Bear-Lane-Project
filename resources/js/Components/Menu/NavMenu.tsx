@@ -588,7 +588,7 @@ export default function NavMenu() {
               >
                 <Bell className="h-5 w-5 cursor-pointer transition hover:text-[#D4AF37]" />
                 {unreadCount > 0 && (
-                  <span className="absolute left-1/2 top-1 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#DC2626] ring-2 ring-white" />
+                  <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-[#DC2626] ring-2 ring-white" />
                 )}
               </button>
             )}

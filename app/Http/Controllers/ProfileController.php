@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Http;
 use Carbon\Carbon;
 use App\Services\UnsplashService;
 use App\Services\OpenAiModerationService;
+use App\Services\StoreSettingsService;
 use App\Models\Product;
 use App\Models\SavedDesign;
 
@@ -78,6 +79,10 @@ class ProfileController extends Controller
                 ->get();
         }
 
+        $premadeQuotesById = collect((array) data_get(app(StoreSettingsService::class)->getFrontPageProducts(), 'premade_quotes', []))
+            ->mapWithKeys(fn ($quote, $id) => [(int) $id => trim((string) $quote)])
+            ->all();
+
         return inertia('Profile/ProfileView', [
             'auth' => [
                 'user' => array_merge($user->toArray(), [
@@ -88,13 +93,15 @@ class ProfileController extends Controller
                 ]),
             ],
             'savedDesigns' => $savedDesigns,
-            'recommendedProducts' => $recommendedProducts->map(function (Product $product) {
+            'recommendedProducts' => $recommendedProducts->map(function (Product $product) use ($premadeQuotesById) {
                 return [
                     'id' => $product->id,
                     'name' => $product->name,
                     'brand' => $product->brand,
                     'price' => $product->price !== null ? (float) $product->price : null,
                     'image' => $product->images->first()?->url,
+                    'is_premade_design' => (bool) ($product->is_premade_design ?? false),
+                    'premade_quote' => (string) ($premadeQuotesById[(int) $product->id] ?? ''),
                 ];
             })->values(),
         ]);

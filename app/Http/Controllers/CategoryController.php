@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Category;
 use App\Models\Product;
+use App\Services\StoreSettingsService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -17,13 +18,15 @@ class CategoryController extends Controller
     {
         // Find category using exact slug stored in DB
         $categoryModel = Category::where('slug', $slug)->firstOrFail();
+        $premadeQuotes = $this->premadeQuoteMap();
 
         // Load products with relationships
         $products = $categoryModel->products()
             ->with(['categories', 'images', 'variants'])
             ->withAvg('approvedReviews as average_rating', 'rating')
             ->withCount('approvedReviews as reviews_count')
-            ->get();
+            ->get()
+            ->map(fn (Product $product) => $this->attachPremadeQuote($product, $premadeQuotes));
 
         $isAdmin = (bool) optional($request->user())->is_admin;
         $productMode = $isAdmin && $request->boolean('product_mode');
@@ -81,11 +84,13 @@ class CategoryController extends Controller
             $categoryModel = Category::where('slug', $fallback)->firstOrFail();
         }
 
+        $premadeQuotes = $this->premadeQuoteMap();
         $products = $categoryModel->products()
             ->with(['categories', 'images', 'variants'])
             ->withAvg('approvedReviews as average_rating', 'rating')
             ->withCount('approvedReviews as reviews_count')
-            ->get();
+            ->get()
+            ->map(fn (Product $product) => $this->attachPremadeQuote($product, $premadeQuotes));
 
         return Inertia::render('CategoryPage', [
             'heading'     => 'Kids',
@@ -96,5 +101,24 @@ class CategoryController extends Controller
             'slug'        => $categoryModel->slug,
             'products'    => $products,
         ]);
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function premadeQuoteMap(): array
+    {
+        $settings = app(StoreSettingsService::class)->getFrontPageProducts();
+
+        return collect((array) data_get($settings, 'premade_quotes', []))
+            ->mapWithKeys(fn ($quote, $id) => [(string) ((int) $id) => trim((string) $quote)])
+            ->all();
+    }
+
+    private function attachPremadeQuote(Product $product, array $quotes): Product
+    {
+        $product->setAttribute('premade_quote', (string) ($quotes[(string) ((int) $product->id)] ?? ''));
+
+        return $product;
     }
 }

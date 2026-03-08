@@ -109,6 +109,8 @@ export type RecommendedProduct = {
   brand: string | null;
   price: number | null;
   image: string | null;
+  is_premade_design?: boolean;
+  premade_quote?: string | null;
 };
 
 export type ProfilePageProps = {

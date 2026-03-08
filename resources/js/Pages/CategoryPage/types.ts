@@ -26,6 +26,8 @@ export type ProductLike = {
   images?: Array<string | { url?: string; path?: string }>;
   variants?: VariantLike[];
   categories?: ProductCategoryLike[];
+  is_premade_design?: boolean;
+  premade_quote?: string | null;
 };
 
 export type CategoryPageProps = {

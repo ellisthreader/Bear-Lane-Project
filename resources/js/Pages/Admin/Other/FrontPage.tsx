@@ -28,7 +28,10 @@ type Props = {
 type FrontPageTab = "featured" | "premade";
 
 export default function FrontPage({ frontPage, products }: Props) {
-  const [activeTab, setActiveTab] = useState<FrontPageTab>("featured");
+  const [activeTab, setActiveTab] = useState<FrontPageTab>(() => {
+    if (typeof window === "undefined") return "featured";
+    return new URLSearchParams(window.location.search).get("tab") === "premade" ? "premade" : "featured";
+  });
   const [featuredIds, setFeaturedIds] = useState<number[]>(frontPage.featured_product_ids || []);
   const [premadeIds, setPremadeIds] = useState<number[]>(frontPage.premade_product_ids || []);
   const [premadeQuotes, setPremadeQuotes] = useState<Record<string, string>>(
@@ -256,7 +259,7 @@ export default function FrontPage({ frontPage, products }: Props) {
                       <img src={product.image_url} alt={product.name} className="h-28 w-full rounded-lg object-cover" />
                       {product.is_premade_design ? (
                         <span className="absolute left-2 top-2 rounded-full bg-[#C6A75E] px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] text-white">
-                          Pre-Made
+                          Pre-made design
                         </span>
                       ) : null}
                     </div>
@@ -320,22 +323,22 @@ export default function FrontPage({ frontPage, products }: Props) {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6">
               {libraryProducts.map((product) => {
                 const isAdded = activeTab === "featured" ? featuredIds.includes(product.id) : premadeIds.includes(product.id);
 
                 return (
-                  <div key={product.id} className="rounded-xl border border-[#E8DEC8] bg-[#FFFDF8] p-2.5">
+                  <div key={product.id} className="rounded-lg border border-[#E8DEC8] bg-[#FFFDF8] p-2">
                     <div className="relative">
-                      <img src={product.image_url} alt={product.name} className="h-36 w-full rounded-lg object-cover" />
+                      <img src={product.image_url} alt={product.name} className="h-24 w-full rounded-md object-cover" />
                       {product.is_premade_design ? (
-                        <span className="absolute left-2 top-2 rounded-full bg-[#C6A75E] px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] text-white">
-                          Pre-Made
+                        <span className="absolute left-1.5 top-1.5 rounded-full bg-[#C6A75E] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.08em] text-white">
+                          Pre-made design
                         </span>
                       ) : null}
                     </div>
-                    <p className="mt-2 truncate text-sm font-semibold text-[#2D2515]">{product.name}</p>
-                    <p className="text-xs text-[#6B5A34]">
+                    <p className="mt-1.5 line-clamp-2 text-xs font-semibold leading-tight text-[#2D2515]">{product.name}</p>
+                    <p className="text-[10px] text-[#6B5A34]">
                       {product.brand || "Bear Lane"} • £{Number(product.price).toFixed(2)}
                     </p>
 
@@ -350,7 +353,7 @@ export default function FrontPage({ frontPage, products }: Props) {
                             ? removeFromPremade(product.id)
                             : addToPremade(product.id)
                       }
-                      className={`mt-2 inline-flex h-8 w-full items-center justify-center rounded-lg px-2 text-xs font-semibold transition ${
+                      className={`mt-1.5 inline-flex h-7 w-full items-center justify-center rounded-md px-2 text-[11px] font-semibold transition ${
                         isAdded ? "bg-[#C6A75E] text-white" : "border border-[#D7C494] bg-white text-[#6B5A34]"
                       }`}
                     >

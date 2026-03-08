@@ -6,6 +6,7 @@ use App\Models\Product;
 use App\Models\Category;
 use App\Models\SavedDesign;
 use App\Models\Image;
+use App\Services\StoreSettingsService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Log;
@@ -42,8 +43,12 @@ class DesignController extends Controller
         // -------------------------------
         // CATEGORY HELPERS
         // -------------------------------
-        $mapProducts = function ($products) {
-            return $products->map(function ($p) {
+        $premadeQuotesById = collect((array) data_get(app(StoreSettingsService::class)->getFrontPageProducts(), 'premade_quotes', []))
+            ->mapWithKeys(fn ($quote, $id) => [(int) $id => trim((string) $quote)])
+            ->all();
+
+        $mapProducts = function ($products) use ($premadeQuotesById) {
+            return $products->map(function ($p) use ($premadeQuotesById) {
                 $images = $p->images->isNotEmpty()
                     ? $p->images->pluck('path')->map(fn($path) => asset($path))->all()
                     : [];
@@ -55,6 +60,8 @@ class DesignController extends Controller
                     'brand'          => $p->brand,
                     'price'          => $p->price,
                     'original_price' => $p->original_price,
+                    'is_premade_design' => (bool) ($p->is_premade_design ?? false),
+                    'premade_quote' => (string) ($premadeQuotesById[(int) $p->id] ?? ''),
                     'images'         => $images,
                 ];
             })->values()->all();

@@ -19,6 +19,7 @@ interface ProductCardProps {
     original_price?: number | string | null;
     is_sale?: boolean;
     is_premade_design?: boolean;
+    premade_quote?: string | null;
     images: (string | ProductImage)[];
   };
   compact?: boolean;
@@ -58,6 +59,7 @@ export default function ProductCard({ product, compact = false }: ProductCardPro
       originalPrice > 0 &&
       (Boolean(product.is_sale) || originalPrice > price)
   );
+  const preMadeQuote = String(product.premade_quote || "").trim();
 
   return (
     <Link
@@ -139,6 +141,12 @@ export default function ProductCard({ product, compact = false }: ProductCardPro
           <p className={`${compact ? "text-base" : "text-lg"} font-semibold text-gray-800 leading-tight`}>
             {product.name}
           </p>
+
+          {product.is_premade_design ? (
+            <p className="line-clamp-2 rounded-lg border border-[#EAD9B2] bg-[#FFF9EA] px-2.5 py-1.5 text-xs leading-relaxed text-[#6A5320]">
+              {preMadeQuote || "Pre-made design ready to customise."}
+            </p>
+          ) : null}
 
           <div className="pt-2">
             <span className={`text-lg font-bold ${onSale ? "text-[#B42318]" : "text-gray-900"}`}>

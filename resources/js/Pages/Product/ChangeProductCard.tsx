@@ -17,6 +17,8 @@ interface ChangeProductCardProps {
     slug: string;
     price: number | string;
     original_price?: number | string | null;
+    is_premade_design?: boolean;
+    premade_quote?: string | null;
     images: (string | ProductImage)[];
   };
   onSelect: (product: any) => void;
@@ -45,6 +47,8 @@ export default function ChangeProductCard({
     product.original_price !== null && product.original_price !== undefined
       ? Number(product.original_price)
       : null;
+  const isPreMade = Boolean(product.is_premade_design);
+  const preMadeQuote = String(product.premade_quote || "").trim();
 
   return (
     <motion.div
@@ -62,6 +66,11 @@ export default function ChangeProductCard({
           alt={product.name}
           className="absolute inset-0 h-full w-full object-cover"
         />
+        {isPreMade ? (
+          <span className="absolute left-2 top-2 z-10 rounded-full bg-[#C6A75E] px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.08em] text-white">
+            Pre-made design
+          </span>
+        ) : null}
 
         {imageList.length > 1 ? (
           <>
@@ -115,6 +124,11 @@ export default function ChangeProductCard({
         <p className="flex-grow text-[11px] font-semibold leading-tight text-gray-800 sm:text-lg">
           {product.name}
         </p>
+        {isPreMade ? (
+          <p className="line-clamp-2 rounded-md border border-[#E7D7B2] bg-[#FFF9EB] px-1.5 py-1 text-[10px] leading-relaxed text-[#6A5528] sm:text-xs">
+            {preMadeQuote || "Pre-made design ready to customise."}
+          </p>
+        ) : null}
 
         <div className="pt-0.5 sm:pt-2">
           <span className="text-xs font-bold text-gray-900 sm:text-lg">

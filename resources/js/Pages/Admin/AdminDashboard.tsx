@@ -9,7 +9,6 @@ import {
   ArrowUpRight,
   BarChart3,
   CircleHelp,
-  LayoutPanelTop,
   Loader2,
   Mail,
   MessageSquare,
@@ -114,13 +113,6 @@ export default function AdminDashboard({ auth, summary: incomingSummary }: Admin
       href: "/admin/other",
       icon: <Settings2 className="h-6 w-6" />,
       accentClass: "from-[#C9B17E]/30 to-transparent",
-    },
-    {
-      title: "Front Page",
-      description: "Control featured and pre-made product cards shown on the homepage.",
-      href: "/admin/other/front-page",
-      icon: <LayoutPanelTop className="h-6 w-6" />,
-      accentClass: "from-[#D6C095]/30 to-transparent",
     },
   ];
 

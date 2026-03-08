@@ -8,7 +8,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { Head, usePage } from "@inertiajs/react";
+import { Head, Link, usePage } from "@inertiajs/react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import GuestLayout from "@/Layouts/GuestLayout";
 import { AnimatePresence, motion } from "framer-motion";
@@ -34,6 +34,7 @@ type User = {
   id: number;
   name: string;
   email: string;
+  is_admin?: boolean;
 };
 
 type Product = {
@@ -45,6 +46,7 @@ type Product = {
   price: number;
   original_price?: number | null;
   is_premade_design?: boolean;
+  premade_quote?: string | null;
   images: string[];
 };
 
@@ -94,109 +96,6 @@ const trustSignals = [
     title: "Free Standard Delivery",
     description: "Reliable delivery with tracking on every qualifying order.",
     icon: Truck,
-  },
-];
-
-const fallbackSpotlightProducts: Product[] = [
-  {
-    id: -1,
-    name: "Signature Embroidered Hoodie",
-    slug: "signature-embroidered-hoodie",
-    type: "Hoodie",
-    brand: "Studio",
-    price: 48,
-    original_price: null,
-    images: [],
-  },
-  {
-    id: -2,
-    name: "Teamwear Performance Polo",
-    slug: "teamwear-performance-polo",
-    type: "Polo",
-    brand: "Team",
-    price: 32,
-    original_price: null,
-    images: [],
-  },
-  {
-    id: -3,
-    name: "Studio Oversized Tee",
-    slug: "studio-oversized-tee",
-    type: "Tee",
-    brand: "Studio",
-    price: 24,
-    original_price: null,
-    images: [],
-  },
-  {
-    id: -4,
-    name: "Heritage Quarter Zip",
-    slug: "heritage-quarter-zip",
-    type: "Quarter Zip",
-    brand: "Heritage",
-    price: 54,
-    original_price: null,
-    images: [],
-  },
-  {
-    id: -5,
-    name: "Classic Crew Tee",
-    slug: "classic-crew-tee",
-    type: "Tee",
-    brand: "Studio",
-    price: 22,
-    original_price: null,
-    images: [],
-  },
-  {
-    id: -6,
-    name: "Street Heavyweight Tee",
-    slug: "street-heavyweight-tee",
-    type: "Tee",
-    brand: "Street",
-    price: 26,
-    original_price: null,
-    images: [],
-  },
-  {
-    id: -7,
-    name: "Drop Shoulder Tee",
-    slug: "drop-shoulder-tee",
-    type: "Tee",
-    brand: "Studio",
-    price: 25,
-    original_price: null,
-    images: [],
-  },
-  {
-    id: -8,
-    name: "Organic Cotton Tee",
-    slug: "organic-cotton-tee",
-    type: "Tee",
-    brand: "Eco",
-    price: 29,
-    original_price: null,
-    images: [],
-  },
-  {
-    id: -9,
-    name: "Vintage Wash Tee",
-    slug: "vintage-wash-tee",
-    type: "Tee",
-    brand: "Heritage",
-    price: 27,
-    original_price: null,
-    images: [],
-  },
-  {
-    id: -10,
-    name: "Performance Training Tee",
-    slug: "performance-training-tee",
-    type: "Tee",
-    brand: "Sport",
-    price: 23,
-    original_price: null,
-    images: [],
   },
 ];
 
@@ -252,25 +151,15 @@ export default function Welcome() {
   const { props } = usePage<PageProps>();
   const user = props.auth?.user;
   const Layout = user ? AuthenticatedLayout : GuestLayout;
+  const isAdminUser = Boolean(user?.is_admin);
   const spotlightProducts = useMemo(
-    () =>
-      props.featuredProducts?.length
-        ? props.featuredProducts.slice(0, 10)
-        : props.products?.length
-          ? props.products.slice(0, 10)
-        : fallbackSpotlightProducts.slice(0, 10),
-    [props.featuredProducts, props.products]
+    () => (Array.isArray(props.featuredProducts) ? props.featuredProducts.slice(0, 30) : []),
+    [props.featuredProducts]
   );
   const preMadeProducts = useMemo(() => {
-    if (props.preMadeProducts?.length) {
-      return props.preMadeProducts.slice(0, 10);
-    }
-    if (!props.products?.length) {
-      return fallbackSpotlightProducts.slice(0, 6);
-    }
-    const secondary = props.products.slice(10, 16);
-    return secondary.length >= 4 ? secondary : props.products.slice(0, 6);
-  }, [props.preMadeProducts, props.products]);
+    if (!Array.isArray(props.preMadeProducts)) return [];
+    return props.preMadeProducts.slice(0, 30);
+  }, [props.preMadeProducts]);
   const preMadeQuotes = useMemo(() => {
     if (!props.preMadeQuotes || typeof props.preMadeQuotes !== "object") {
       return {} as Record<string, string>;
@@ -626,6 +515,16 @@ export default function Welcome() {
             <h2 className="mt-2 text-3xl font-bold tracking-tight text-[#1F1A13] md:text-4xl">
               Featured Products
             </h2>
+            {isAdminUser ? (
+              <div className="mt-3">
+                <Link
+                  href="/admin/other/front-page?tab=featured"
+                  className="inline-flex items-center rounded-full border border-[#D7BE84] bg-[#FFF9EA] px-3 py-1 text-xs font-semibold text-[#6B5A34] hover:bg-[#FFF2D7]"
+                >
+                  Edit Featured
+                </Link>
+              </div>
+            ) : null}
           </div>
           <div className="mt-5 flex items-center justify-center gap-2 sm:justify-end">
             <button
@@ -650,70 +549,78 @@ export default function Welcome() {
         </div>
 
         <div className="mt-5 w-full px-4 sm:px-6 lg:px-8">
-          <div
-            ref={productRailRef}
-            onPointerDown={(event) => {
-              startProductRailDrag(event);
-            }}
-            onPointerMove={(event) => {
-              moveProductRailDrag(event);
-            }}
-            onPointerUp={(event) => {
-              endProductRailDrag(event);
-            }}
-            onPointerCancel={(event) => {
-              endProductRailDrag(event);
-            }}
-            onPointerLeave={(event) => {
-              if (event.pointerType === "mouse" && !productRailDraggingRef.current) {
-                event.currentTarget.style.cursor = "grab";
-              }
-            }}
-            onClickCapture={(event) => {
-              if (productRailMovedRef.current) {
-                event.preventDefault();
-                event.stopPropagation();
-              }
-            }}
-            onWheel={(event) => handleRailWheel(event, productRailRef.current)}
-            onDragStart={(event) => event.preventDefault()}
-            className="flex w-full cursor-grab select-none snap-x snap-mandatory gap-4 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden touch-pan-x active:cursor-grabbing"
-          >
-            {spotlightProducts.map((product) => (
-              <motion.div
-                key={product.id}
-                data-product-card
-                className="min-w-[76%] snap-start sm:min-w-[48%] md:min-w-[32%] lg:w-[265px] lg:min-w-[265px]"
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, amount: 0.2 }}
-                transition={{ duration: 0.35 }}
-              >
-                <Suspense
-                  fallback={
-                    <div className="h-64 animate-pulse rounded-2xl border bg-[#F7F1E4] md:h-72" />
+          {spotlightProducts.length > 0 ? (
+            <>
+              <div
+                ref={productRailRef}
+                onPointerDown={(event) => {
+                  startProductRailDrag(event);
+                }}
+                onPointerMove={(event) => {
+                  moveProductRailDrag(event);
+                }}
+                onPointerUp={(event) => {
+                  endProductRailDrag(event);
+                }}
+                onPointerCancel={(event) => {
+                  endProductRailDrag(event);
+                }}
+                onPointerLeave={(event) => {
+                  if (event.pointerType === "mouse" && !productRailDraggingRef.current) {
+                    event.currentTarget.style.cursor = "grab";
                   }
-                >
-                  <ProductCard product={product} compact />
-                </Suspense>
-              </motion.div>
-            ))}
-          </div>
-          <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
-            {spotlightProducts.map((product, index) => (
-              <button
-                key={`spotlight-dot-${product.id}`}
-                type="button"
-                onClick={() => jumpToProduct(index)}
-                className={`h-2.5 rounded-full transition-all ${
-                  index === activeProductIndex
-                    ? "w-7 bg-[#C9A24D]"
-                    : "w-2.5 bg-[#E4D4B2]"
-                }`}
-                aria-label={`Jump to featured product ${index + 1}`}
-              />
-            ))}
-          </div>
+                }}
+                onClickCapture={(event) => {
+                  if (productRailMovedRef.current) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                  }
+                }}
+                onWheel={(event) => handleRailWheel(event, productRailRef.current)}
+                onDragStart={(event) => event.preventDefault()}
+                className="flex w-full cursor-grab select-none snap-x snap-mandatory gap-4 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden touch-pan-x active:cursor-grabbing"
+              >
+                {spotlightProducts.map((product) => (
+                  <motion.div
+                    key={product.id}
+                    data-product-card
+                    className="min-w-[76%] snap-start sm:min-w-[48%] md:min-w-[32%] lg:w-[265px] lg:min-w-[265px]"
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, amount: 0.2 }}
+                    transition={{ duration: 0.35 }}
+                  >
+                    <Suspense
+                      fallback={
+                        <div className="h-64 animate-pulse rounded-2xl border bg-[#F7F1E4] md:h-72" />
+                      }
+                    >
+                      <ProductCard product={product} compact />
+                    </Suspense>
+                  </motion.div>
+                ))}
+              </div>
+              <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+                {spotlightProducts.map((product, index) => (
+                  <button
+                    key={`spotlight-dot-${product.id}`}
+                    type="button"
+                    onClick={() => jumpToProduct(index)}
+                    className={`h-2.5 rounded-full transition-all ${
+                      index === activeProductIndex
+                        ? "w-7 bg-[#C9A24D]"
+                        : "w-2.5 bg-[#E4D4B2]"
+                    }`}
+                    aria-label={`Jump to featured product ${index + 1}`}
+                  />
+                ))}
+              </div>
+            </>
+          ) : (
+            <div className="rounded-2xl border border-dashed border-[#E3D8BE] bg-[#FFFCF4] px-4 py-6 text-center text-sm text-[#6B5A34]">
+              No featured products selected yet.
+            </div>
+          )}
         </div>
       </section>
 
@@ -726,6 +633,16 @@ export default function Welcome() {
             <h2 className="mt-2 text-3xl font-bold tracking-tight text-[#1F1A13] md:text-4xl">
               Pre-Made Designs
             </h2>
+            {isAdminUser ? (
+              <div className="mt-3">
+                <Link
+                  href="/admin/other/front-page?tab=premade"
+                  className="inline-flex items-center rounded-full border border-[#D7BE84] bg-[#FFF9EA] px-3 py-1 text-xs font-semibold text-[#6B5A34] hover:bg-[#FFF2D7]"
+                >
+                  Edit Pre-Made
+                </Link>
+              </div>
+            ) : null}
           </div>
           <p className="mx-auto mt-3 max-w-2xl text-center text-sm text-[#6A5530]">
             Professionally crafted design templates from our studio team, ready
@@ -753,75 +670,83 @@ export default function Welcome() {
           </div>
         </div>
         <div className="mt-5 w-full px-4 sm:px-6 lg:px-8">
-          <div
-            ref={preMadeRailRef}
-            onPointerDown={(event) => {
-              startPreMadeRailDrag(event);
-            }}
-            onPointerMove={(event) => {
-              movePreMadeRailDrag(event);
-            }}
-            onPointerUp={(event) => {
-              endPreMadeRailDrag(event);
-            }}
-            onPointerCancel={(event) => {
-              endPreMadeRailDrag(event);
-            }}
-            onPointerLeave={(event) => {
-              if (event.pointerType === "mouse" && !preMadeRailDraggingRef.current) {
-                event.currentTarget.style.cursor = "grab";
-              }
-            }}
-            onClickCapture={(event) => {
-              if (preMadeRailMovedRef.current) {
-                event.preventDefault();
-                event.stopPropagation();
-              }
-            }}
-            onWheel={(event) => handleRailWheel(event, preMadeRailRef.current)}
-            onDragStart={(event) => event.preventDefault()}
-            className="flex w-full cursor-grab select-none snap-x snap-mandatory gap-4 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden touch-pan-x active:cursor-grabbing"
-          >
-            {preMadeProducts.map((product, index) => (
+          {preMadeProducts.length > 0 ? (
+            <>
               <div
-                key={`premade-${product.id}-${index}`}
-                data-premade-card
-                className="min-w-[76%] snap-start sm:min-w-[48%] md:min-w-[32%] lg:w-[265px] lg:min-w-[265px]"
-              >
-                <Suspense
-                  fallback={
-                    <div className="h-64 animate-pulse rounded-2xl border bg-[#F7F1E4] md:h-72" />
+                ref={preMadeRailRef}
+                onPointerDown={(event) => {
+                  startPreMadeRailDrag(event);
+                }}
+                onPointerMove={(event) => {
+                  movePreMadeRailDrag(event);
+                }}
+                onPointerUp={(event) => {
+                  endPreMadeRailDrag(event);
+                }}
+                onPointerCancel={(event) => {
+                  endPreMadeRailDrag(event);
+                }}
+                onPointerLeave={(event) => {
+                  if (event.pointerType === "mouse" && !preMadeRailDraggingRef.current) {
+                    event.currentTarget.style.cursor = "grab";
                   }
-                >
-                  <ProductCard product={product} compact />
-                </Suspense>
-                <div className="mt-3 rounded-xl border border-[#E7D7B2] bg-[#FFF9EB] px-3 py-2 text-sm font-medium text-[#5B441A] shadow-[0_8px_18px_rgba(95,72,18,0.08)]">
-                  <span className="mb-1 inline-flex items-center gap-1.5 rounded-full border border-[#E4C985] bg-white/75 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#7A5C1E]">
-                    <Sparkles className="h-3 w-3" />
-                    Pre-Made Studio
-                  </span>
-                  <span className="mt-1 block rounded-lg bg-gradient-to-r from-[#FFF9EA] via-[#FFF5DF] to-[#FFF9EA] px-2.5 py-2 text-sm font-medium leading-relaxed text-[#5B441A]">
-                    {preMadeQuotes[String(product.id)] || buildPreMadeDescription(product, index)}
-                  </span>
-                </div>
+                }}
+                onClickCapture={(event) => {
+                  if (preMadeRailMovedRef.current) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                  }
+                }}
+                onWheel={(event) => handleRailWheel(event, preMadeRailRef.current)}
+                onDragStart={(event) => event.preventDefault()}
+                className="flex w-full cursor-grab select-none snap-x snap-mandatory gap-4 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden touch-pan-x active:cursor-grabbing"
+              >
+                {preMadeProducts.map((product, index) => (
+                  <div
+                    key={`premade-${product.id}-${index}`}
+                    data-premade-card
+                    className="min-w-[76%] snap-start sm:min-w-[48%] md:min-w-[32%] lg:w-[265px] lg:min-w-[265px]"
+                  >
+                    <Suspense
+                      fallback={
+                        <div className="h-64 animate-pulse rounded-2xl border bg-[#F7F1E4] md:h-72" />
+                      }
+                    >
+                      <ProductCard product={product} compact />
+                    </Suspense>
+                    <div className="mt-3 rounded-xl border border-[#E7D7B2] bg-[#FFF9EB] px-3 py-2 text-sm font-medium text-[#5B441A] shadow-[0_8px_18px_rgba(95,72,18,0.08)]">
+                      <span className="mb-1 inline-flex items-center gap-1.5 rounded-full border border-[#E4C985] bg-white/75 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#7A5C1E]">
+                        <Sparkles className="h-3 w-3" />
+                        Pre-Made Studio
+                      </span>
+                      <span className="mt-1 block rounded-lg bg-gradient-to-r from-[#FFF9EA] via-[#FFF5DF] to-[#FFF9EA] px-2.5 py-2 text-sm font-medium leading-relaxed text-[#5B441A]">
+                        {preMadeQuotes[String(product.id)] || String(product.premade_quote || "").trim() || buildPreMadeDescription(product, index)}
+                      </span>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-          <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
-            {preMadeProducts.map((product, index) => (
-              <button
-                key={`premade-dot-${product.id}-${index}`}
-                type="button"
-                onClick={() => jumpToPreMade(index)}
-                className={`h-2.5 rounded-full transition-all ${
-                  index === activePreMadeIndex
-                    ? "w-7 bg-[#C9A24D]"
-                    : "w-2.5 bg-[#E4D4B2]"
-                }`}
-                aria-label={`Jump to pre-made design ${index + 1}`}
-              />
-            ))}
-          </div>
+              <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+                {preMadeProducts.map((product, index) => (
+                  <button
+                    key={`premade-dot-${product.id}-${index}`}
+                    type="button"
+                    onClick={() => jumpToPreMade(index)}
+                    className={`h-2.5 rounded-full transition-all ${
+                      index === activePreMadeIndex
+                        ? "w-7 bg-[#C9A24D]"
+                        : "w-2.5 bg-[#E4D4B2]"
+                    }`}
+                    aria-label={`Jump to pre-made design ${index + 1}`}
+                  />
+                ))}
+              </div>
+            </>
+          ) : (
+            <div className="rounded-2xl border border-dashed border-[#E3D8BE] bg-[#FFFCF4] px-4 py-6 text-center text-sm text-[#6B5A34]">
+              No pre-made designs selected yet.
+            </div>
+          )}
         </div>
       </section>
 

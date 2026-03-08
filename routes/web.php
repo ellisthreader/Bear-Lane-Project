@@ -155,6 +155,8 @@ Route::get('/', function () {
         ->filter(fn ($id) => $id > 0)
         ->unique()
         ->values();
+    $premadeQuotesById = collect((array) data_get($frontPage, 'premade_quotes', []))
+        ->mapWithKeys(fn ($quote, $id) => [(string) ((int) $id) => trim((string) $quote)]);
 
     $baseFrontPageQuery = Product::query()
         ->with('images')
@@ -167,7 +169,7 @@ Route::get('/', function () {
             ->get()
             ->sortBy(fn (Product $product) => $featuredIds->search((int) $product->id))
             ->values()
-        : $products->slice(0, 10)->values();
+        : collect();
 
     $preMadeProducts = $premadeIds->isNotEmpty()
         ? (clone $baseFrontPageQuery)
@@ -176,7 +178,20 @@ Route::get('/', function () {
             ->get()
             ->sortBy(fn (Product $product) => $premadeIds->search((int) $product->id))
             ->values()
-        : (($products->slice(10, 16)->count() >= 4) ? $products->slice(10, 16)->values() : $products->slice(0, 6)->values());
+        : collect();
+
+    $attachPremadeQuote = static function ($collection) use ($premadeQuotesById) {
+        return $collection
+            ->map(function (Product $product) use ($premadeQuotesById) {
+                $product->setAttribute('premade_quote', (string) ($premadeQuotesById->get((string) ((int) $product->id), '')));
+                return $product;
+            })
+            ->values();
+    };
+
+    $products = $attachPremadeQuote($products);
+    $featuredProducts = $attachPremadeQuote($featuredProducts);
+    $preMadeProducts = $attachPremadeQuote($preMadeProducts);
 
     return Inertia::render('Welcome/Welcome', [
         'products'    => $products,

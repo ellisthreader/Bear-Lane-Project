@@ -9,6 +9,7 @@ use App\Models\Product;
 use App\Models\Category;
 use App\Models\Image;
 use App\Models\ProductReview;
+use App\Services\StoreSettingsService;
 use App\Services\Security\RecaptchaService;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Log;
@@ -319,6 +320,7 @@ class ProductController extends Controller
             'price' => (float) ($product->price ?? 0),
             'image' => $image ? $image->url : '/images/no-image.png',
             'is_premade_design' => (bool) ($product->is_premade_design ?? false),
+            'premade_quote' => $this->premadeQuoteForProductId((int) $product->id),
             'average_rating' => isset($product->average_rating) ? round((float) $product->average_rating, 2) : 0,
             'reviews_count' => (int) ($product->reviews_count ?? 0),
         ];
@@ -363,6 +365,7 @@ class ProductController extends Controller
             'original_price' => $product->original_price,
             'is_trending' => $product->is_trending,
             'is_premade_design' => (bool) ($product->is_premade_design ?? false),
+            'premade_quote' => $this->premadeQuoteForProductId((int) $product->id),
             'images' => $productImages,
             'sizes' => $allSizes,
             'colour' => $allColours,
@@ -451,5 +454,22 @@ class ProductController extends Controller
                 ->values()
                 ->all(),
         ];
+    }
+
+    private function premadeQuoteForProductId(int $productId): string
+    {
+        if ($productId <= 0) {
+            return '';
+        }
+
+        static $quoteMap = null;
+        if (!is_array($quoteMap)) {
+            $frontPage = app(StoreSettingsService::class)->getFrontPageProducts();
+            $quoteMap = collect((array) data_get($frontPage, 'premade_quotes', []))
+                ->mapWithKeys(fn ($quote, $id) => [(int) $id => trim((string) $quote)])
+                ->all();
+        }
+
+        return (string) ($quoteMap[$productId] ?? '');
     }
 }

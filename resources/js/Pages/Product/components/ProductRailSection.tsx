@@ -8,6 +8,8 @@ type ProductRailItem = {
   brand?: string;
   price?: number;
   image?: string;
+  is_premade_design?: boolean;
+  premade_quote?: string | null;
 };
 
 export default function ProductRailSection({
@@ -80,17 +82,27 @@ export default function ProductRailSection({
               }}
               className="group min-w-[280px] shrink-0 snap-start overflow-hidden rounded-2xl border border-[#E7DCC6] bg-white transition hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(46,35,14,0.12)] sm:min-w-[330px] lg:min-w-[380px]"
             >
-              <div className="h-64 bg-[#E5E7EB] p-3 sm:h-72 lg:h-80">
+              <div className="relative h-64 bg-[#E5E7EB] p-3 sm:h-72 lg:h-80">
                 <img loading="lazy" decoding="async"
                   src={item.image || "/images/no-image.png"}
                   alt={item.name}
                   draggable={false}
                   className="h-full w-full object-contain transition duration-300 group-hover:scale-[1.03]"
                 />
+                {item.is_premade_design ? (
+                  <span className="absolute left-3 top-3 rounded-full bg-[#C6A75E] px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] text-white">
+                    Pre-made design
+                  </span>
+                ) : null}
               </div>
               <div className="space-y-1 p-3">
                 {item.brand ? <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#8A7854]">{item.brand}</p> : null}
                 <p className="line-clamp-2 text-sm font-semibold text-[#231C12]">{item.name}</p>
+                {item.is_premade_design ? (
+                  <p className="line-clamp-2 rounded-md border border-[#E7D7B2] bg-[#FFF9EB] px-2 py-1 text-xs leading-relaxed text-[#6A5528]">
+                    {String(item.premade_quote || "").trim() || "Pre-made design ready to customise."}
+                  </p>
+                ) : null}
                 {typeof item.price === "number" ? <p className="text-sm font-bold text-[#17120A]">£{item.price.toFixed(2)}</p> : null}
               </div>
             </Link>

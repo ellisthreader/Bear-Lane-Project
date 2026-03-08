@@ -8,6 +8,8 @@ interface Product {
   slug: string | { slug?: string; value?: string }; // handles object slugs safely
   price: number | string;
   original_price?: number | string | null;
+  is_premade_design?: boolean;
+  premade_quote?: string | null;
   images: Record<string, string[]> | string[];
 }
 
@@ -57,6 +59,8 @@ export default function ProductsIndex({ type, products }: Props) {
             product.original_price !== null && product.original_price !== undefined
               ? Number(product.original_price)
               : null;
+          const isPreMade = Boolean(product.is_premade_design);
+          const preMadeQuote = String(product.premade_quote || "").trim();
 
           return (
             <Link
@@ -65,16 +69,28 @@ export default function ProductsIndex({ type, products }: Props) {
               className="bg-white rounded-2xl shadow hover:shadow-lg transition overflow-hidden"
             >
               {/* IMAGE */}
-              <img loading="lazy" decoding="async"
-                src={firstImage}
-                alt={product.name}
-                className="h-44 w-full object-cover sm:h-56 lg:h-64"
-              />
+              <div className="relative">
+                <img loading="lazy" decoding="async"
+                  src={firstImage}
+                  alt={product.name}
+                  className="h-44 w-full object-cover sm:h-56 lg:h-64"
+                />
+                {isPreMade ? (
+                  <span className="absolute left-2 top-2 rounded-full bg-[#C6A75E] px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] text-white">
+                    Pre-made design
+                  </span>
+                ) : null}
+              </div>
 
               {/* CONTENT */}
               <div className="p-4">
                 <p className="font-bold text-gray-800">{product.brand}</p>
                 <p className="text-gray-700">{product.name}</p>
+                {isPreMade ? (
+                  <p className="mt-2 line-clamp-2 rounded-lg border border-[#E7D7B2] bg-[#FFF9EB] px-2 py-1.5 text-xs leading-relaxed text-[#6A5528]">
+                    {preMadeQuote || "Pre-made design ready to customise."}
+                  </p>
+                ) : null}
 
                 <p className="mt-2 font-semibold">
                   £{price.toFixed(2)}

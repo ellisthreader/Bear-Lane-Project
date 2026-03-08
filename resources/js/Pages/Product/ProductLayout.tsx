@@ -155,6 +155,7 @@ interface Product {
   description?: string;
   images: string[];
   is_premade_design?: boolean;
+  premade_quote?: string | null;
   image_boxes?: Record<string, RestrictedBoxRatio>;
   sizes: string[];
   colourProducts: ColourProduct[];
@@ -187,6 +188,8 @@ type ProductListItem = {
   brand?: string;
   price?: number;
   image?: string;
+  is_premade_design?: boolean;
+  premade_quote?: string | null;
 };
 
 type AdminVariantDraft = {
@@ -706,6 +709,8 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
       brand: product.brand,
       price: Number(product.price ?? 0),
       image: product.images?.[0] || "/images/no-image.png",
+      is_premade_design: Boolean(product.is_premade_design),
+      premade_quote: String(product.premade_quote || ""),
     };
 
     try {
