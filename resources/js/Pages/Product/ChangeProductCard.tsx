@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import ProductBadgeChips from "@/Components/Product/ProductBadgeChips";
 
 interface ProductImage {
   url?: string;
@@ -19,6 +20,7 @@ interface ChangeProductCardProps {
     original_price?: number | string | null;
     is_premade_design?: boolean;
     premade_quote?: string | null;
+    auto_badges?: string[] | null;
     images: (string | ProductImage)[];
   };
   onSelect: (product: any) => void;
@@ -49,6 +51,7 @@ export default function ChangeProductCard({
       : null;
   const isPreMade = Boolean(product.is_premade_design);
   const preMadeQuote = String(product.premade_quote || "").trim();
+  const autoBadges = Array.isArray(product.auto_badges) ? product.auto_badges : [];
 
   return (
     <motion.div
@@ -71,6 +74,11 @@ export default function ChangeProductCard({
             Pre-made design
           </span>
         ) : null}
+        <ProductBadgeChips
+          badges={autoBadges}
+          compact
+          className={`absolute left-2 z-10 ${isPreMade ? "top-8" : "top-2"}`}
+        />
 
         {imageList.length > 1 ? (
           <>
@@ -124,9 +132,9 @@ export default function ChangeProductCard({
         <p className="flex-grow text-[11px] font-semibold leading-tight text-gray-800 sm:text-lg">
           {product.name}
         </p>
-        {isPreMade ? (
+        {isPreMade && preMadeQuote ? (
           <p className="line-clamp-2 rounded-md border border-[#E7D7B2] bg-[#FFF9EB] px-1.5 py-1 text-[10px] leading-relaxed text-[#6A5528] sm:text-xs">
-            {preMadeQuote || "Pre-made design ready to customise."}
+            {preMadeQuote}
           </p>
         ) : null}
 

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Category;
 use App\Models\Product;
+use App\Services\ProductBadgeService;
 use App\Services\StoreSettingsService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -19,14 +20,26 @@ class CategoryController extends Controller
         // Find category using exact slug stored in DB
         $categoryModel = Category::where('slug', $slug)->firstOrFail();
         $premadeQuotes = $this->premadeQuoteMap();
+        $categoryIds = $this->collectCategoryTreeIds($categoryModel);
 
-        // Load products with relationships
-        $products = $categoryModel->products()
+        // Load products for this category + all descendants
+        $products = Product::query()
+            ->where(function ($query) use ($categoryIds) {
+                $query
+                    ->whereHas('categories', function ($categoryQuery) use ($categoryIds) {
+                        $categoryQuery->whereIn('categories.id', $categoryIds);
+                    })
+                    ->orWhereIn('category_id', $categoryIds);
+            })
             ->with(['categories', 'images', 'variants'])
             ->withAvg('approvedReviews as average_rating', 'rating')
             ->withCount('approvedReviews as reviews_count')
+            ->orderByDesc('is_trending')
+            ->latest('products.id')
             ->get()
             ->map(fn (Product $product) => $this->attachPremadeQuote($product, $premadeQuotes));
+        $badgeMap = app(ProductBadgeService::class)->badgesForCategoryScope($categoryIds);
+        $products = $products->map(fn (Product $product) => $this->attachAutoBadges($product, $badgeMap));
 
         $isAdmin = (bool) optional($request->user())->is_admin;
         $productMode = $isAdmin && $request->boolean('product_mode');
@@ -85,12 +98,25 @@ class CategoryController extends Controller
         }
 
         $premadeQuotes = $this->premadeQuoteMap();
-        $products = $categoryModel->products()
+        $categoryIds = $this->collectCategoryTreeIds($categoryModel);
+
+        $products = Product::query()
+            ->where(function ($query) use ($categoryIds) {
+                $query
+                    ->whereHas('categories', function ($categoryQuery) use ($categoryIds) {
+                        $categoryQuery->whereIn('categories.id', $categoryIds);
+                    })
+                    ->orWhereIn('category_id', $categoryIds);
+            })
             ->with(['categories', 'images', 'variants'])
             ->withAvg('approvedReviews as average_rating', 'rating')
             ->withCount('approvedReviews as reviews_count')
+            ->orderByDesc('is_trending')
+            ->latest('products.id')
             ->get()
             ->map(fn (Product $product) => $this->attachPremadeQuote($product, $premadeQuotes));
+        $badgeMap = app(ProductBadgeService::class)->badgesForCategoryScope($categoryIds);
+        $products = $products->map(fn (Product $product) => $this->attachAutoBadges($product, $badgeMap));
 
         return Inertia::render('CategoryPage', [
             'heading'     => 'Kids',
@@ -120,5 +146,49 @@ class CategoryController extends Controller
         $product->setAttribute('premade_quote', (string) ($quotes[(string) ((int) $product->id)] ?? ''));
 
         return $product;
+    }
+
+    /**
+     * @param array<int, array<int, string>> $badgeMap
+     */
+    private function attachAutoBadges(Product $product, array $badgeMap): Product
+    {
+        $product->setAttribute('auto_badges', (array) ($badgeMap[(int) $product->id] ?? []));
+
+        return $product;
+    }
+
+    /**
+     * @return array<int>
+     */
+    private function collectCategoryTreeIds(Category $root): array
+    {
+        $categories = Category::query()->get(['id', 'parent_id']);
+        $childrenByParent = [];
+
+        foreach ($categories as $category) {
+            $parentId = $category->parent_id ? (int) $category->parent_id : 0;
+            $childrenByParent[$parentId][] = (int) $category->id;
+        }
+
+        $rootId = (int) $root->id;
+        $queue = [$rootId];
+        $seen = [];
+
+        while (!empty($queue)) {
+            $current = array_shift($queue);
+            if ($current === null || isset($seen[$current])) {
+                continue;
+            }
+
+            $seen[$current] = true;
+            foreach ($childrenByParent[$current] ?? [] as $childId) {
+                if (!isset($seen[$childId])) {
+                    $queue[] = $childId;
+                }
+            }
+        }
+
+        return array_map('intval', array_keys($seen));
     }
 }

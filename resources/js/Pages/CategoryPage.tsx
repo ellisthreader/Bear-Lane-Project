@@ -9,6 +9,14 @@ import { BreadcrumbItem, CategoryPageProps } from "./CategoryPage/types";
 import { formatLabel } from "./CategoryPage/utils";
 
 const buildTitle = (heading: string | undefined, subcategory: string | undefined, pathParts: string[]) => {
+  const rootPart = (pathParts[0] || "").toLowerCase();
+  if (pathParts.length === 1) {
+    if (rootPart === "men") return "All Men's Products";
+    if (rootPart === "women") return "All Women's Products";
+    if (rootPart === "kids") return "All Kids' Products";
+    if (rootPart === "sale") return "All Sale Products";
+  }
+
   if (heading && subcategory && heading.toLowerCase() !== "navigation") {
     const root = heading.toLowerCase();
     const leaf = formatLabel(subcategory);

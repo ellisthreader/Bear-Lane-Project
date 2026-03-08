@@ -3,7 +3,8 @@ import { ChevronDown } from "lucide-react";
 import { useCategoryFilters } from "../context/CategoryFiltersContext";
 import { GenderValue, SortValue } from "../types";
 
-type SectionKey = "sort" | "price" | "gender" | "rating" | "colour" | "size";
+type SectionKey = "sort" | "price" | "productType" | "gender" | "rating" | "colour" | "size";
+type ProductModeValue = "premade" | "designable";
 
 const SORT_OPTIONS: Array<{ value: SortValue; label: string }> = [
   { value: "popular", label: "Most Popular" },
@@ -24,6 +25,11 @@ const GENDER_LABELS: Record<GenderValue, string> = {
   men: "Men",
   women: "Women",
   kids: "Kids",
+};
+
+const PRODUCT_MODE_LABELS: Record<ProductModeValue, string> = {
+  premade: "Pre made items",
+  designable: "Designable items",
 };
 
 function Dot({ active }: { active: boolean }) {
@@ -95,6 +101,7 @@ export default function CategoryFiltersSidebar() {
     setSortBy,
     searchQuery,
     setSearchQuery,
+    selectedProductModes,
     selectedColours,
     selectedSizes,
     selectedGenders,
@@ -109,6 +116,7 @@ export default function CategoryFiltersSidebar() {
     maxPrice,
     setMinPrice,
     setMaxPrice,
+    toggleProductMode,
     toggleColour,
     toggleSize,
     toggleGender,
@@ -117,6 +125,7 @@ export default function CategoryFiltersSidebar() {
     colourCounts,
     sizeCounts,
     genderCounts,
+    productModeCounts,
     resetFilters,
   } = useCategoryFilters();
 
@@ -129,6 +138,7 @@ export default function CategoryFiltersSidebar() {
   const sectionSelectedCounts: Record<SectionKey, number> = {
     sort: sortBy === "popular" ? 0 : 1,
     price: minPrice > minAvailable || maxPrice < maxAvailable ? 1 : 0,
+    productType: selectedProductModes.length,
     gender: selectedGenders.length,
     rating: minimumRating > 0 ? 1 : 0,
     colour: selectedColours.length,
@@ -224,6 +234,41 @@ export default function CategoryFiltersSidebar() {
             <span>£{minPrice}</span>
             <span>£{maxPrice}</span>
           </div>
+        </div>
+      </Section>
+
+      <Section
+        id="productType"
+        title="Product type"
+        selectedCount={sectionSelectedCounts.productType}
+        openSection={openSection}
+        onToggle={(id) => setOpenSection((prev) => (prev === id ? null : id))}
+      >
+        <div className="space-y-1">
+          {(Object.keys(PRODUCT_MODE_LABELS) as ProductModeValue[]).map((mode) => {
+            const active = selectedProductModes.includes(mode);
+            const count = productModeCounts[mode] || 0;
+            const disabled = count === 0;
+            return (
+              <button
+                key={mode}
+                type="button"
+                disabled={disabled}
+                onClick={() => toggleProductMode(mode)}
+                className={`flex w-full items-center justify-between rounded-lg px-1.5 py-1.5 text-left text-sm transition ${
+                  disabled
+                    ? "cursor-not-allowed text-[#B7AE9C]"
+                    : "text-[#373027] hover:bg-[#FAF7EF]"
+                }`}
+              >
+                <span className="flex items-center gap-2">
+                  <Dot active={active} />
+                  {PRODUCT_MODE_LABELS[mode]}
+                </span>
+                <span className="text-xs text-[#7A705B]">({count})</span>
+              </button>
+            );
+          })}
         </div>
       </Section>
 

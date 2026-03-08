@@ -1,5 +1,6 @@
 import React, { useRef, useState } from "react";
 import { Link } from "@inertiajs/react";
+import ProductBadgeChips from "@/Components/Product/ProductBadgeChips";
 
 type ProductRailItem = {
   id: number | string;
@@ -10,6 +11,7 @@ type ProductRailItem = {
   image?: string;
   is_premade_design?: boolean;
   premade_quote?: string | null;
+  auto_badges?: string[] | null;
 };
 
 export default function ProductRailSection({
@@ -94,13 +96,18 @@ export default function ProductRailSection({
                     Pre-made design
                   </span>
                 ) : null}
+                <ProductBadgeChips
+                  badges={item.auto_badges}
+                  compact
+                  className={`absolute left-3 ${item.is_premade_design ? "top-10" : "top-3"}`}
+                />
               </div>
               <div className="space-y-1 p-3">
                 {item.brand ? <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#8A7854]">{item.brand}</p> : null}
                 <p className="line-clamp-2 text-sm font-semibold text-[#231C12]">{item.name}</p>
-                {item.is_premade_design ? (
+                {item.is_premade_design && String(item.premade_quote || "").trim() ? (
                   <p className="line-clamp-2 rounded-md border border-[#E7D7B2] bg-[#FFF9EB] px-2 py-1 text-xs leading-relaxed text-[#6A5528]">
-                    {String(item.premade_quote || "").trim() || "Pre-made design ready to customise."}
+                    {String(item.premade_quote || "").trim()}
                   </p>
                 ) : null}
                 {typeof item.price === "number" ? <p className="text-sm font-bold text-[#17120A]">£{item.price.toFixed(2)}</p> : null}

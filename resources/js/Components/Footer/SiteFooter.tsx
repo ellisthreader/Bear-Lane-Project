@@ -107,7 +107,7 @@ export default function SiteFooter() {
         <div className="mx-auto grid max-w-[1400px] items-center gap-4 px-4 py-3 md:grid-cols-3 md:px-8 lg:px-12">
           <div className="flex items-center justify-start">
             <img
-              src="/images/BLText.png"
+              src="/images/BL-LogoW.png"
               alt="Bear Lane"
               loading="lazy"
               decoding="async"

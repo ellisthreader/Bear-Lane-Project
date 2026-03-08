@@ -1,5 +1,6 @@
 import React from "react";
 import { Link } from "@inertiajs/react";
+import ProductBadgeChips from "@/Components/Product/ProductBadgeChips";
 
 interface Product {
   id: number;
@@ -10,6 +11,7 @@ interface Product {
   original_price?: number | string | null;
   is_premade_design?: boolean;
   premade_quote?: string | null;
+  auto_badges?: string[] | null;
   images: Record<string, string[]> | string[];
 }
 
@@ -80,15 +82,20 @@ export default function ProductsIndex({ type, products }: Props) {
                     Pre-made design
                   </span>
                 ) : null}
+                <ProductBadgeChips
+                  badges={product.auto_badges}
+                  compact
+                  className={`absolute left-2 ${isPreMade ? "top-8" : "top-2"}`}
+                />
               </div>
 
               {/* CONTENT */}
               <div className="p-4">
                 <p className="font-bold text-gray-800">{product.brand}</p>
                 <p className="text-gray-700">{product.name}</p>
-                {isPreMade ? (
+                {isPreMade && preMadeQuote ? (
                   <p className="mt-2 line-clamp-2 rounded-lg border border-[#E7D7B2] bg-[#FFF9EB] px-2 py-1.5 text-xs leading-relaxed text-[#6A5528]">
-                    {preMadeQuote || "Pre-made design ready to customise."}
+                    {preMadeQuote}
                   </p>
                 ) : null}
 

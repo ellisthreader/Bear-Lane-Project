@@ -156,6 +156,7 @@ interface Product {
   images: string[];
   is_premade_design?: boolean;
   premade_quote?: string | null;
+  auto_badges?: string[] | null;
   image_boxes?: Record<string, RestrictedBoxRatio>;
   sizes: string[];
   colourProducts: ColourProduct[];
@@ -190,6 +191,7 @@ type ProductListItem = {
   image?: string;
   is_premade_design?: boolean;
   premade_quote?: string | null;
+  auto_badges?: string[] | null;
 };
 
 type AdminVariantDraft = {
@@ -711,6 +713,7 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
       image: product.images?.[0] || "/images/no-image.png",
       is_premade_design: Boolean(product.is_premade_design),
       premade_quote: String(product.premade_quote || ""),
+      auto_badges: Array.isArray(product.auto_badges) ? product.auto_badges : [],
     };
 
     try {

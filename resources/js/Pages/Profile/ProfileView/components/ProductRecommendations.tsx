@@ -3,6 +3,7 @@ import { Heart } from "lucide-react";
 import { useProfileViewContext } from "../ProfileViewContext";
 import type { RecommendedProduct } from "../types";
 import { useWishlist } from "@/Context/WishlistContext";
+import ProductBadgeChips from "@/Components/Product/ProductBadgeChips";
 
 function ProductCard({ product }: { product: RecommendedProduct }) {
   const { toggleWishlistItem, isInWishlist } = useWishlist();
@@ -24,6 +25,11 @@ function ProductCard({ product }: { product: RecommendedProduct }) {
             Pre-made design
           </span>
         ) : null}
+        <ProductBadgeChips
+          badges={product.auto_badges}
+          compact
+          className={`absolute left-2 ${isPreMade ? "top-8" : "top-2"}`}
+        />
         <button
           type="button"
           onClick={() =>
@@ -44,9 +50,9 @@ function ProductCard({ product }: { product: RecommendedProduct }) {
       <div className="p-4">
         <p className="text-xs uppercase tracking-[0.2em] text-[#9B8862]">{product.brand || "Product"}</p>
         <p className="mt-1 line-clamp-2 text-sm font-semibold text-[#322A18]">{product.name}</p>
-        {isPreMade ? (
+        {isPreMade && preMadeQuote ? (
           <p className="mt-1 line-clamp-2 rounded-md border border-[#E7D7B2] bg-[#FFF9EB] px-2 py-1 text-xs leading-relaxed text-[#6A5528]">
-            {preMadeQuote || "Pre-made design ready to customise."}
+            {preMadeQuote}
           </p>
         ) : null}
         {typeof product.price === "number" && <p className="mt-2 text-sm font-medium text-[#8A6D2B]">£{product.price.toFixed(2)}</p>}

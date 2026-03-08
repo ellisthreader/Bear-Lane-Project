@@ -3,12 +3,14 @@ import { GenderValue, ProductLike, SortValue } from "../types";
 import { getNumericPrice, getProductRating, inferGender } from "../utils";
 
 type RatingValue = 0 | 3 | 4;
+type ProductModeValue = "premade" | "designable";
 
 type FilterState = {
   searchQuery: string;
   minPrice: number;
   maxPrice: number;
   minimumRating: RatingValue;
+  selectedProductModes: ProductModeValue[];
   selectedGenders: GenderValue[];
   selectedColours: string[];
   selectedSizes: string[];
@@ -20,6 +22,7 @@ type CategoryFiltersContextValue = {
   setSortBy: React.Dispatch<React.SetStateAction<SortValue>>;
   searchQuery: string;
   setSearchQuery: React.Dispatch<React.SetStateAction<string>>;
+  selectedProductModes: ProductModeValue[];
   selectedColours: string[];
   selectedSizes: string[];
   selectedGenders: GenderValue[];
@@ -34,6 +37,7 @@ type CategoryFiltersContextValue = {
   maxPrice: number;
   setMinPrice: (value: number) => void;
   setMaxPrice: (value: number) => void;
+  toggleProductMode: (mode: ProductModeValue) => void;
   toggleColour: (colour: string) => void;
   toggleSize: (size: string) => void;
   toggleGender: (gender: GenderValue) => void;
@@ -42,6 +46,7 @@ type CategoryFiltersContextValue = {
   colourCounts: Record<string, number>;
   sizeCounts: Record<string, number>;
   genderCounts: Record<GenderValue, number>;
+  productModeCounts: Record<ProductModeValue, number>;
   resetFilters: () => void;
 };
 
@@ -71,6 +76,7 @@ const sortProducts = (products: ProductLike[], sortBy: SortValue) =>
 export function CategoryFiltersProvider({ products, pageSlug, children }: ProviderProps) {
   const [sortBy, setSortBy] = useState<SortValue>("popular");
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedProductModes, setSelectedProductModes] = useState<ProductModeValue[]>([]);
   const [selectedColours, setSelectedColours] = useState<string[]>([]);
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
   const [selectedGenders, setSelectedGenders] = useState<GenderValue[]>([]);
@@ -126,11 +132,12 @@ export function CategoryFiltersProvider({ products, pageSlug, children }: Provid
       minPrice,
       maxPrice,
       minimumRating,
+      selectedProductModes,
       selectedGenders,
       selectedColours,
       selectedSizes,
     }),
-    [searchQuery, minPrice, maxPrice, minimumRating, selectedGenders, selectedColours, selectedSizes]
+    [searchQuery, minPrice, maxPrice, minimumRating, selectedProductModes, selectedGenders, selectedColours, selectedSizes]
   );
 
   const matchesFilters = (product: ProductLike, state: FilterState) => {
@@ -142,6 +149,11 @@ export function CategoryFiltersProvider({ products, pageSlug, children }: Provid
 
     const rating = getProductRating(product);
     if (rating < state.minimumRating) return false;
+
+    if (state.selectedProductModes.length > 0) {
+      const mode: ProductModeValue = product.is_premade_design ? "premade" : "designable";
+      if (!state.selectedProductModes.includes(mode)) return false;
+    }
 
     if (state.selectedGenders.length > 0) {
       const gender = inferGender(product, pageSlug);
@@ -191,6 +203,14 @@ export function CategoryFiltersProvider({ products, pageSlug, children }: Provid
     });
     return counts;
   }, [genderOptions, currentState, products]);
+
+  const productModeCounts = useMemo<Record<ProductModeValue, number>>(
+    () => ({
+      premade: countByState({ ...currentState, selectedProductModes: ["premade"] }),
+      designable: countByState({ ...currentState, selectedProductModes: ["designable"] }),
+    }),
+    [currentState, products]
+  );
 
   const colourCounts = useMemo(() => {
     return colourOptions.reduce<Record<string, number>>((acc, colour) => {
@@ -257,6 +277,14 @@ export function CategoryFiltersProvider({ products, pageSlug, children }: Provid
     if (normalized.length === 0 || nextCount > 0) setSelectedGenders(normalized);
   };
 
+  const toggleProductMode = (mode: ProductModeValue) => {
+    const next = selectedProductModes.includes(mode)
+      ? selectedProductModes.filter((item) => item !== mode)
+      : [...selectedProductModes, mode];
+    const nextCount = countByState({ ...currentState, selectedProductModes: next });
+    if (next.length === 0 || nextCount > 0) setSelectedProductModes(next);
+  };
+
   const setMinPriceSafe = (value: number) => {
     const nextMin = Math.max(minAvailable, Math.min(Math.round(value), maxPrice));
     const nextState: FilterState = { ...currentState, minPrice: nextMin };
@@ -276,6 +304,7 @@ export function CategoryFiltersProvider({ products, pageSlug, children }: Provid
   const resetFilters = () => {
     setSortBy("popular");
     setSearchQuery("");
+    setSelectedProductModes([]);
     setSelectedColours([]);
     setSelectedSizes([]);
     setSelectedGenders([]);
@@ -290,6 +319,7 @@ export function CategoryFiltersProvider({ products, pageSlug, children }: Provid
     setSortBy,
     searchQuery,
     setSearchQuery,
+    selectedProductModes,
     selectedColours,
     selectedSizes,
     selectedGenders,
@@ -304,6 +334,7 @@ export function CategoryFiltersProvider({ products, pageSlug, children }: Provid
     maxPrice,
     setMinPrice: setMinPriceSafe,
     setMaxPrice: setMaxPriceSafe,
+    toggleProductMode,
     toggleColour,
     toggleSize,
     toggleGender,
@@ -312,6 +343,7 @@ export function CategoryFiltersProvider({ products, pageSlug, children }: Provid
     colourCounts,
     sizeCounts,
     genderCounts,
+    productModeCounts,
     resetFilters,
   };
 

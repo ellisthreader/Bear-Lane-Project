@@ -328,15 +328,18 @@ class AdminOtherController extends Controller
     public function updateFrontPage(Request $request): JsonResponse|RedirectResponse
     {
         $validated = $request->validate([
-            'featured_product_ids' => ['required', 'array'],
+            'featured_product_ids' => ['nullable', 'array'],
             'featured_product_ids.*' => ['integer', 'exists:products,id'],
-            'premade_product_ids' => ['required', 'array'],
+            'premade_product_ids' => ['nullable', 'array'],
             'premade_product_ids.*' => ['integer', 'exists:products,id'],
             'premade_quotes' => ['nullable', 'array'],
             'premade_quotes.*' => ['nullable', 'string', 'max:220'],
         ]);
 
-        $frontPage = $this->settings->saveFrontPageProducts($validated);
+        $frontPage = $this->settings->saveFrontPageProducts(array_merge(
+            $this->settings->getFrontPageProducts(),
+            $validated
+        ));
 
         if ($request->expectsJson()) {
             return response()->json([

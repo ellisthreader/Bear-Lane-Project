@@ -111,6 +111,7 @@ export type RecommendedProduct = {
   image: string | null;
   is_premade_design?: boolean;
   premade_quote?: string | null;
+  auto_badges?: string[] | null;
 };
 
 export type ProfilePageProps = {

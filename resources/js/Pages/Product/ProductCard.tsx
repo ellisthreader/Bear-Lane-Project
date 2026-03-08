@@ -3,6 +3,7 @@ import { Link } from "@inertiajs/react";
 import { motion } from "framer-motion";
 import { Heart } from "lucide-react";
 import { useWishlist } from "@/Context/WishlistContext";
+import ProductBadgeChips from "@/Components/Product/ProductBadgeChips";
 
 interface ProductImage {
   url?: string;
@@ -20,12 +21,18 @@ interface ProductCardProps {
     is_sale?: boolean;
     is_premade_design?: boolean;
     premade_quote?: string | null;
+    auto_badges?: string[] | null;
     images: (string | ProductImage)[];
   };
   compact?: boolean;
+  showPremadeQuoteInside?: boolean;
 }
 
-export default function ProductCard({ product, compact = false }: ProductCardProps) {
+export default function ProductCard({
+  product,
+  compact = false,
+  showPremadeQuoteInside = true,
+}: ProductCardProps) {
   const [hovered, setHovered] = useState(false);
   const { toggleWishlistItem, isInWishlist } = useWishlist();
 
@@ -60,6 +67,7 @@ export default function ProductCard({ product, compact = false }: ProductCardPro
       (Boolean(product.is_sale) || originalPrice > price)
   );
   const preMadeQuote = String(product.premade_quote || "").trim();
+  const autoBadges = Array.isArray(product.auto_badges) ? product.auto_badges : [];
 
   return (
     <Link
@@ -105,6 +113,11 @@ export default function ProductCard({ product, compact = false }: ProductCardPro
               Pre-made design
             </span>
           ) : null}
+          <ProductBadgeChips
+            badges={autoBadges}
+            compact={compact}
+            className={`absolute left-3 z-10 ${product.is_premade_design ? "top-11" : "top-3"}`}
+          />
 
           {/* MAIN IMAGE */}
           <motion.img
@@ -142,9 +155,9 @@ export default function ProductCard({ product, compact = false }: ProductCardPro
             {product.name}
           </p>
 
-          {product.is_premade_design ? (
+          {product.is_premade_design && showPremadeQuoteInside && preMadeQuote ? (
             <p className="line-clamp-2 rounded-lg border border-[#EAD9B2] bg-[#FFF9EA] px-2.5 py-1.5 text-xs leading-relaxed text-[#6A5320]">
-              {preMadeQuote || "Pre-made design ready to customise."}
+              {preMadeQuote}
             </p>
           ) : null}
 

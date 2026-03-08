@@ -31,6 +31,7 @@ interface Product {
   original_price?: number | string | null;
   is_premade_design?: boolean;
   premade_quote?: string | null;
+  auto_badges?: string[] | null;
   images?: Array<string | ProductImage>;
   image?: string;
   colourProducts?: Array<{ images?: Array<string | ProductImage> }>;

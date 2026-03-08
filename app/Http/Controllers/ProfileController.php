@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Http;
 use Carbon\Carbon;
 use App\Services\UnsplashService;
 use App\Services\OpenAiModerationService;
+use App\Services\ProductBadgeService;
 use App\Services\StoreSettingsService;
 use App\Models\Product;
 use App\Models\SavedDesign;
@@ -79,6 +80,8 @@ class ProfileController extends Controller
                 ->get();
         }
 
+        $badgeMap = app(ProductBadgeService::class)->badgesForVisibleProductsByCategory($recommendedProducts);
+
         $premadeQuotesById = collect((array) data_get(app(StoreSettingsService::class)->getFrontPageProducts(), 'premade_quotes', []))
             ->mapWithKeys(fn ($quote, $id) => [(int) $id => trim((string) $quote)])
             ->all();
@@ -93,7 +96,7 @@ class ProfileController extends Controller
                 ]),
             ],
             'savedDesigns' => $savedDesigns,
-            'recommendedProducts' => $recommendedProducts->map(function (Product $product) use ($premadeQuotesById) {
+            'recommendedProducts' => $recommendedProducts->map(function (Product $product) use ($premadeQuotesById, $badgeMap) {
                 return [
                     'id' => $product->id,
                     'name' => $product->name,
@@ -102,6 +105,7 @@ class ProfileController extends Controller
                     'image' => $product->images->first()?->url,
                     'is_premade_design' => (bool) ($product->is_premade_design ?? false),
                     'premade_quote' => (string) ($premadeQuotesById[(int) $product->id] ?? ''),
+                    'auto_badges' => (array) ($badgeMap[(int) $product->id] ?? []),
                 ];
             })->values(),
         ]);

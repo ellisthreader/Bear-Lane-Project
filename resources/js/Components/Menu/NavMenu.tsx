@@ -376,13 +376,26 @@ export default function NavMenu() {
 
   useEffect(() => {
     const syncDesktopOverlayTop = () => {
-      const navHeight = navRef.current?.offsetHeight ?? 0;
-      setDesktopOverlayTop(navHeight);
+      const navBottom = navRef.current?.getBoundingClientRect().bottom ?? 0;
+      // Slight overlap removes the tiny seam between nav and desktop sidebar.
+      setDesktopOverlayTop(Math.max(0, navBottom - 1));
     };
 
     syncDesktopOverlayTop();
+    window.addEventListener("scroll", syncDesktopOverlayTop, { passive: true });
     window.addEventListener("resize", syncDesktopOverlayTop);
-    return () => window.removeEventListener("resize", syncDesktopOverlayTop);
+
+    let resizeObserver: ResizeObserver | null = null;
+    if (navRef.current && "ResizeObserver" in window) {
+      resizeObserver = new ResizeObserver(syncDesktopOverlayTop);
+      resizeObserver.observe(navRef.current);
+    }
+
+    return () => {
+      window.removeEventListener("scroll", syncDesktopOverlayTop);
+      window.removeEventListener("resize", syncDesktopOverlayTop);
+      resizeObserver?.disconnect();
+    };
   }, []);
 
   const unreadCount = notifications.length;

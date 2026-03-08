@@ -28,6 +28,7 @@ export type ProductLike = {
   categories?: ProductCategoryLike[];
   is_premade_design?: boolean;
   premade_quote?: string | null;
+  auto_badges?: string[] | null;
 };
 
 export type CategoryPageProps = {

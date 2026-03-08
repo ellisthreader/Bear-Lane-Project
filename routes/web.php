@@ -45,6 +45,7 @@ use App\Http\Controllers\CookieConsentController;
 use App\Http\Controllers\SecureMediaController;
 use App\Services\AdminActivityLogService;
 use App\Services\Security\RecaptchaService;
+use App\Services\ProductBadgeService;
 use App\Services\StoreSettingsService;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Support\Facades\Password;
@@ -192,6 +193,23 @@ Route::get('/', function () {
     $products = $attachPremadeQuote($products);
     $featuredProducts = $attachPremadeQuote($featuredProducts);
     $preMadeProducts = $attachPremadeQuote($preMadeProducts);
+
+    $badgeMap = app(ProductBadgeService::class)->badgesForVisibleProductsByCategory(
+        $products->merge($featuredProducts)->merge($preMadeProducts)->unique('id')->values()
+    );
+
+    $attachAutoBadges = static function ($collection) use ($badgeMap) {
+        return $collection
+            ->map(function (Product $product) use ($badgeMap) {
+                $product->setAttribute('auto_badges', (array) ($badgeMap[(int) $product->id] ?? []));
+                return $product;
+            })
+            ->values();
+    };
+
+    $products = $attachAutoBadges($products);
+    $featuredProducts = $attachAutoBadges($featuredProducts);
+    $preMadeProducts = $attachAutoBadges($preMadeProducts);
 
     return Inertia::render('Welcome/Welcome', [
         'products'    => $products,

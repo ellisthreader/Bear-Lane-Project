@@ -5,6 +5,7 @@ import { useWishlist } from "@/Context/WishlistContext";
 import { useCategoryFilters } from "../context/CategoryFiltersContext";
 import { getNumericPrice, getProductImage, getProductRating, getProductReviewCount } from "../utils";
 import { useState } from "react";
+import ProductBadgeChips from "@/Components/Product/ProductBadgeChips";
 
 type Props = {
   productEditMode?: boolean;
@@ -172,13 +173,18 @@ export default function CategoryProductsGrid({ productEditMode = false, category
                 alt={product.name}
                 className="absolute inset-0 h-full w-full object-contain p-3 opacity-0 transition-all duration-500 group-hover:scale-105 group-hover:opacity-100"
               />
+              <ProductBadgeChips
+                badges={product.auto_badges}
+                compact
+                className="absolute bottom-2 left-2 z-10"
+              />
             </div>
 
             <div className="space-y-2 p-3">
               <h3 className="line-clamp-2 text-xs font-bold text-[#2A241B]">{product.name}</h3>
-              {isPreMade ? (
+              {isPreMade && preMadeQuote ? (
                 <p className="line-clamp-2 rounded-md border border-[#E7D7B2] bg-[#FFF9EB] px-2 py-1 text-[11px] leading-relaxed text-[#6A5528]">
-                  {preMadeQuote || "Pre-made design ready to customise."}
+                  {preMadeQuote}
                 </p>
               ) : null}
 

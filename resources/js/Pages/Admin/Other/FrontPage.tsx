@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { Head, Link } from "@inertiajs/react";
 import { Check, Save, Search, Sparkles, Star, Trash2 } from "lucide-react";
+import { toast } from "react-toastify";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import AdminTopNav from "@/Components/Admin/AdminTopNav";
 
@@ -152,9 +153,13 @@ export default function FrontPage({ frontPage, products }: Props) {
       setFeaturedIds(nextFeatured);
       setPremadeIds(nextPremade);
       setPremadeQuotes(nextQuotes);
-      setMessage(data?.message || "Front page product selections updated.");
+      const successMessage = data?.message || "Front page product selections updated.";
+      setMessage(successMessage);
+      toast.success(successMessage);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to save front page selections.");
+      const errorMessage = err instanceof Error ? err.message : "Unable to save front page selections.";
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setSaving(false);
     }

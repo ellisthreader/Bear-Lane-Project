@@ -47,6 +47,7 @@ type Product = {
   original_price?: number | null;
   is_premade_design?: boolean;
   premade_quote?: string | null;
+  auto_badges?: string[] | null;
   images: string[];
 };
 
@@ -98,48 +99,6 @@ const trustSignals = [
     icon: Truck,
   },
 ];
-
-const preMadeOpeners = [
-  "Studio-finished layout crafted for a premium first impression.",
-  "Design-team template tuned for clean embroidery and print output.",
-  "Conversion-focused composition built by our in-house creatives.",
-  "Professionally balanced layout designed for fast brand launches.",
-  "Refined pro template made to look polished straight away.",
-  "Production-aware design card optimised for apparel placement.",
-];
-
-const preMadeDescriptors = [
-  "Strong hierarchy",
-  "Balanced spacing",
-  "Premium typography rhythm",
-  "Brand-ready visual flow",
-  "Clean merch composition",
-  "High-clarity focal layout",
-];
-
-const preMadeOutcomes = [
-  "ready to customise in minutes.",
-  "ideal for rapid campaign drops.",
-  "built to feel premium on first pass.",
-  "designed for smooth editing and rollout.",
-  "perfect for fast teamwear launches.",
-  "optimised for a polished final mockup.",
-];
-
-const buildPreMadeDescription = (product: Product, index: number): string => {
-  const slug = String(product.slug || "");
-  let seed = Math.abs((product.id || 0) * 97 + index * 31 + slug.length * 19);
-  for (let i = 0; i < slug.length; i += 1) {
-    seed = (seed * 33 + slug.charCodeAt(i)) % 1000003;
-  }
-
-  const opener = preMadeOpeners[seed % preMadeOpeners.length];
-  const descriptor = preMadeDescriptors[(seed + 3) % preMadeDescriptors.length];
-  const outcome = preMadeOutcomes[(seed + 7) % preMadeOutcomes.length];
-  const type = String(product.type || "apparel").toLowerCase();
-
-  return `${opener} ${descriptor} for ${type} products, ${outcome}`;
-};
 
 const sectionFallback = (
   <div className="w-full bg-white px-4 py-16">
@@ -376,6 +335,7 @@ export default function Welcome() {
 
   const startProductRailDrag = (event: React.PointerEvent<HTMLDivElement>) => {
     if (event.pointerType !== "mouse") return;
+    if ((event.target as HTMLElement).closest("a")) return;
     const rail = productRailRef.current;
     if (!rail) return;
     productRailDraggingRef.current = true;
@@ -392,7 +352,7 @@ export default function Welcome() {
     const rail = productRailRef.current;
     if (!rail) return;
     const delta = event.clientX - productRailStartXRef.current;
-    if (Math.abs(delta) > 4) {
+    if (Math.abs(delta) > 8) {
       productRailMovedRef.current = true;
     }
     rail.scrollLeft = productRailStartScrollRef.current - delta;
@@ -416,6 +376,7 @@ export default function Welcome() {
 
   const startPreMadeRailDrag = (event: React.PointerEvent<HTMLDivElement>) => {
     if (event.pointerType !== "mouse") return;
+    if ((event.target as HTMLElement).closest("a")) return;
     const rail = preMadeRailRef.current;
     if (!rail) return;
     preMadeRailDraggingRef.current = true;
@@ -432,7 +393,7 @@ export default function Welcome() {
     const rail = preMadeRailRef.current;
     if (!rail) return;
     const delta = event.clientX - preMadeRailStartXRef.current;
-    if (Math.abs(delta) > 4) {
+    if (Math.abs(delta) > 8) {
       preMadeRailMovedRef.current = true;
     }
     rail.scrollLeft = preMadeRailStartScrollRef.current - delta;
@@ -574,6 +535,7 @@ export default function Welcome() {
                   if (productRailMovedRef.current) {
                     event.preventDefault();
                     event.stopPropagation();
+                    productRailMovedRef.current = false;
                   }
                 }}
                 onWheel={(event) => handleRailWheel(event, productRailRef.current)}
@@ -695,6 +657,7 @@ export default function Welcome() {
                   if (preMadeRailMovedRef.current) {
                     event.preventDefault();
                     event.stopPropagation();
+                    preMadeRailMovedRef.current = false;
                   }
                 }}
                 onWheel={(event) => handleRailWheel(event, preMadeRailRef.current)}
@@ -712,17 +675,19 @@ export default function Welcome() {
                         <div className="h-64 animate-pulse rounded-2xl border bg-[#F7F1E4] md:h-72" />
                       }
                     >
-                      <ProductCard product={product} compact />
+                      <ProductCard product={product} compact showPremadeQuoteInside={false} />
                     </Suspense>
-                    <div className="mt-3 rounded-xl border border-[#E7D7B2] bg-[#FFF9EB] px-3 py-2 text-sm font-medium text-[#5B441A] shadow-[0_8px_18px_rgba(95,72,18,0.08)]">
-                      <span className="mb-1 inline-flex items-center gap-1.5 rounded-full border border-[#E4C985] bg-white/75 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#7A5C1E]">
-                        <Sparkles className="h-3 w-3" />
-                        Pre-Made Studio
-                      </span>
-                      <span className="mt-1 block rounded-lg bg-gradient-to-r from-[#FFF9EA] via-[#FFF5DF] to-[#FFF9EA] px-2.5 py-2 text-sm font-medium leading-relaxed text-[#5B441A]">
-                        {preMadeQuotes[String(product.id)] || String(product.premade_quote || "").trim() || buildPreMadeDescription(product, index)}
-                      </span>
-                    </div>
+                    {String(preMadeQuotes[String(product.id)] || String(product.premade_quote || "").trim()).trim() ? (
+                      <div className="mt-3 rounded-xl border border-[#E7D7B2] bg-[#FFF9EB] px-3 py-2 text-sm font-medium text-[#5B441A] shadow-[0_8px_18px_rgba(95,72,18,0.08)]">
+                        <span className="mb-1 inline-flex items-center gap-1.5 rounded-full border border-[#E4C985] bg-white/75 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#7A5C1E]">
+                          <Sparkles className="h-3 w-3" />
+                          Pre-Made Studio
+                        </span>
+                        <span className="mt-1 block rounded-lg bg-gradient-to-r from-[#FFF9EA] via-[#FFF5DF] to-[#FFF9EA] px-2.5 py-2 text-sm font-medium leading-relaxed text-[#5B441A]">
+                          {String(preMadeQuotes[String(product.id)] || String(product.premade_quote || "").trim()).trim()}
+                        </span>
+                      </div>
+                    ) : null}
                   </div>
                 ))}
               </div>

@@ -6,6 +6,7 @@ use App\Models\Product;
 use App\Models\Category;
 use App\Models\SavedDesign;
 use App\Models\Image;
+use App\Services\ProductBadgeService;
 use App\Services\StoreSettingsService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -48,7 +49,9 @@ class DesignController extends Controller
             ->all();
 
         $mapProducts = function ($products) use ($premadeQuotesById) {
-            return $products->map(function ($p) use ($premadeQuotesById) {
+            $badgeMap = app(ProductBadgeService::class)->badgesForVisibleProductsByCategory($products);
+
+            return $products->map(function ($p) use ($premadeQuotesById, $badgeMap) {
                 $images = $p->images->isNotEmpty()
                     ? $p->images->pluck('path')->map(fn($path) => asset($path))->all()
                     : [];
@@ -62,6 +65,7 @@ class DesignController extends Controller
                     'original_price' => $p->original_price,
                     'is_premade_design' => (bool) ($p->is_premade_design ?? false),
                     'premade_quote' => (string) ($premadeQuotesById[(int) $p->id] ?? ''),
+                    'auto_badges' => (array) ($badgeMap[(int) $p->id] ?? []),
                     'images'         => $images,
                 ];
             })->values()->all();

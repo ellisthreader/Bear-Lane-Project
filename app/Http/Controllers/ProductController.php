@@ -9,6 +9,7 @@ use App\Models\Product;
 use App\Models\Category;
 use App\Models\Image;
 use App\Models\ProductReview;
+use App\Services\ProductBadgeService;
 use App\Services\StoreSettingsService;
 use App\Services\Security\RecaptchaService;
 use Inertia\Inertia;
@@ -25,8 +26,13 @@ class ProductController extends Controller
             ->with(['images', 'variants.images'])
             ->withAvg('approvedReviews as average_rating', 'rating')
             ->withCount('approvedReviews as reviews_count')
-            ->get()
-            ->map(fn ($product) => $this->formatProduct($product));
+            ->get();
+
+        $badgeMap = app(ProductBadgeService::class)->badgesForVisibleProductsByCategory($products);
+        $products = $products->map(fn ($product) => $this->formatProduct(
+            $product,
+            (array) ($badgeMap[(int) $product->id] ?? [])
+        ));
 
         return Inertia::render('Products/Index', [
             'type' => $type,
@@ -45,8 +51,13 @@ class ProductController extends Controller
             ->with(['images', 'variants.images'])
             ->withAvg('approvedReviews as average_rating', 'rating')
             ->withCount('approvedReviews as reviews_count')
-            ->get()
-            ->map(fn($product) => $this->formatProduct($product));
+            ->get();
+
+        $badgeMap = app(ProductBadgeService::class)->badgesForVisibleProductsByCategory($products);
+        $products = $products->map(fn ($product) => $this->formatProduct(
+            $product,
+            (array) ($badgeMap[(int) $product->id] ?? [])
+        ));
 
         return Inertia::render('Products/CategoryProducts', [
             'category' => $category,
@@ -63,8 +74,13 @@ class ProductController extends Controller
             ->with(['images', 'variants.images'])
             ->withAvg('approvedReviews as average_rating', 'rating')
             ->withCount('approvedReviews as reviews_count')
-            ->get()
-            ->map(fn ($product) => $this->formatProduct($product));
+            ->get();
+
+        $badgeMap = app(ProductBadgeService::class)->badgesForVisibleProductsByCategory($products);
+        $products = $products->map(fn ($product) => $this->formatProduct(
+            $product,
+            (array) ($badgeMap[(int) $product->id] ?? [])
+        ));
 
         return $products;
     }
@@ -94,7 +110,8 @@ class ProductController extends Controller
             ->withCount('approvedReviews as reviews_count')
             ->firstOrFail();
 
-        $product = $this->formatProduct($productModel);
+        $productBadgeMap = app(ProductBadgeService::class)->badgesForVisibleProductsByCategory(collect([$productModel]));
+        $product = $this->formatProduct($productModel, (array) ($productBadgeMap[(int) $productModel->id] ?? []));
         $productImageBoxes = $this->buildImageBoxesMap($productModel->images);
 
         // Build colourProducts for frontend
@@ -298,17 +315,27 @@ class ProductController extends Controller
             $query->where('is_trending', true);
         }
 
-        return $query
+        $recommended = $query
             ->orderByDesc('is_trending')
             ->latest('id')
             ->limit(8)
-            ->get()
-            ->map(fn (Product $item) => $this->formatProductTile($item))
+            ->get();
+
+        $badgeMap = app(ProductBadgeService::class)->badgesForVisibleProductsByCategory($recommended);
+
+        return $recommended
+            ->map(fn (Product $item) => $this->formatProductTile(
+                $item,
+                (array) ($badgeMap[(int) $item->id] ?? [])
+            ))
             ->values()
             ->all();
     }
 
-    private function formatProductTile(Product $product): array
+    /**
+     * @param array<int, string> $autoBadges
+     */
+    private function formatProductTile(Product $product, array $autoBadges = []): array
     {
         $image = $product->images->first();
 
@@ -321,6 +348,7 @@ class ProductController extends Controller
             'image' => $image ? $image->url : '/images/no-image.png',
             'is_premade_design' => (bool) ($product->is_premade_design ?? false),
             'premade_quote' => $this->premadeQuoteForProductId((int) $product->id),
+            'auto_badges' => array_values(array_unique(array_map('strval', $autoBadges))),
             'average_rating' => isset($product->average_rating) ? round((float) $product->average_rating, 2) : 0,
             'reviews_count' => (int) ($product->reviews_count ?? 0),
         ];
@@ -329,7 +357,10 @@ class ProductController extends Controller
     /**
      * Format a product for frontend
      */
-    private function formatProduct($product)
+    /**
+     * @param array<int, string> $autoBadges
+     */
+    private function formatProduct($product, array $autoBadges = [])
     {
         $product->slug = (string) $product->slug;
 
@@ -366,6 +397,7 @@ class ProductController extends Controller
             'is_trending' => $product->is_trending,
             'is_premade_design' => (bool) ($product->is_premade_design ?? false),
             'premade_quote' => $this->premadeQuoteForProductId((int) $product->id),
+            'auto_badges' => array_values(array_unique(array_map('strval', $autoBadges))),
             'images' => $productImages,
             'sizes' => $allSizes,
             'colour' => $allColours,
