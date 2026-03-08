@@ -22,6 +22,7 @@ class Product extends Model
         'description',
         'is_trending',
         'is_sale',
+        'is_premade_design',
         'category_id', // main category
         'length',
         'width',
@@ -32,6 +33,7 @@ class Product extends Model
     protected $casts = [
         'is_trending' => 'boolean',
         'is_sale' => 'boolean',
+        'is_premade_design' => 'boolean',
     ];
 
     /**

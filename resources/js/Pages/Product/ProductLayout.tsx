@@ -154,6 +154,7 @@ interface Product {
   reviews_count?: number | null;
   description?: string;
   images: string[];
+  is_premade_design?: boolean;
   image_boxes?: Record<string, RestrictedBoxRatio>;
   sizes: string[];
   colourProducts: ColourProduct[];
@@ -310,8 +311,14 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
   const authName = String(page.props.auth?.user?.name || "").trim();
   const { toggleWishlistItem, isInWishlist, openWishlist } = useWishlist();
   const isAdminEditor = Boolean(adminEditor?.enabled);
-  const isAdminPremadeEditor = Boolean(adminEditor?.premade);
-  const isPremadeProduct = Boolean(isPreMadeDesign || isAdminPremadeEditor);
+  const serverPremadeState = Boolean((product.is_premade_design ?? isPreMadeDesign) || adminEditor?.premade);
+  const [isAdminPremadeEditor, setIsAdminPremadeEditor] = useState<boolean>(() => serverPremadeState);
+  const isPremadeProduct = isAdminEditor ? isAdminPremadeEditor : serverPremadeState;
+
+  useEffect(() => {
+    if (!isAdminEditor) return;
+    setIsAdminPremadeEditor(serverPremadeState);
+  }, [isAdminEditor, serverPremadeState, product.id]);
 
   const [adminName, setAdminName] = useState(product.name || "");
   const [adminBrand] = useState(product.brand || "Brand");
@@ -1349,9 +1356,6 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
         });
         if (updatedSlug !== product.slug) {
           const params = new URLSearchParams({ product_mode: "1" });
-          if (isAdminPremadeEditor) {
-            params.set("premade", "1");
-          }
           router.get(`/product/${encodeURIComponent(updatedSlug)}?${params.toString()}`);
         } else {
           router.reload({ only: ["product"] });
@@ -1463,9 +1467,6 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
       if (adminEditor.categorySlug) {
         params.set("category_slug", adminEditor.categorySlug);
       }
-      if (isAdminPremadeEditor) {
-        params.set("premade", "1");
-      }
       router.get(`/admin/products/create-layout?${params.toString()}`);
       return;
     }
@@ -1508,6 +1509,30 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
             <div className="mx-4 mb-4 rounded-2xl border-2 border-[#C8951E] bg-[#FFF8E8] p-4 sm:mx-6 lg:mx-10">
               <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#8A5F00]">Admin Only</p>
               <h2 className="mt-1 text-lg font-extrabold text-[#2A241B]">PRODUCT EDIT MODE</h2>
+              <div className="mt-3 grid max-w-[520px] grid-cols-1 gap-2 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() => setIsAdminPremadeEditor(false)}
+                  className={`rounded-xl border px-3 py-2 text-sm font-semibold transition ${
+                    !isAdminPremadeEditor
+                      ? "border-[#A77A16] bg-[#FDE9BA] text-[#3A2A11]"
+                      : "border-[#D7BE84] bg-[#FFFCF4] text-[#7B6530]"
+                  }`}
+                >
+                  Designable Product
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsAdminPremadeEditor(true)}
+                  className={`rounded-xl border px-3 py-2 text-sm font-semibold transition ${
+                    isAdminPremadeEditor
+                      ? "border-[#A77A16] bg-[#FDE9BA] text-[#3A2A11]"
+                      : "border-[#D7BE84] bg-[#FFFCF4] text-[#7B6530]"
+                  }`}
+                >
+                  Pre-made Design
+                </button>
+              </div>
               <p className="mt-1 text-sm text-[#5D4A1E]">
                 {isAdminPremadeEditor
                   ? "Pre-made mode: set product details, colours, sizes, quantities, and parcel dimensions, then save."
@@ -1540,7 +1565,7 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
           {!isAdminEditor && isAdminUser ? (
             <div className="mx-4 mb-4 flex justify-end sm:mx-6 lg:mx-10">
               <Link
-                href={`/product/${encodeURIComponent(product.slug)}?product_mode=1${isPremadeProduct ? "&premade=1" : ""}`}
+                href={`/product/${encodeURIComponent(product.slug)}?product_mode=1`}
                 className="inline-flex items-center rounded-xl border border-[#D7BE84] bg-[#FFF8E8] px-4 py-2 text-sm font-semibold text-[#7B6530] transition hover:border-[#C8951E] hover:bg-[#FFF2D7]"
               >
                 Start Editing Page

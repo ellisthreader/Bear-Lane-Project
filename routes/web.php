@@ -171,6 +171,7 @@ Route::get('/', function () {
 
     $preMadeProducts = $premadeIds->isNotEmpty()
         ? (clone $baseFrontPageQuery)
+            ->where('is_premade_design', true)
             ->whereIn('id', $premadeIds->all())
             ->get()
             ->sortBy(fn (Product $product) => $premadeIds->search((int) $product->id))
@@ -181,6 +182,7 @@ Route::get('/', function () {
         'products'    => $products,
         'featuredProducts' => $featuredProducts,
         'preMadeProducts' => $preMadeProducts,
+        'preMadeQuotes' => (array) data_get($frontPage, 'premade_quotes', []),
         'canLogin'    => Route::has('login'),
         'canRegister' => Route::has('register'),
     ]);

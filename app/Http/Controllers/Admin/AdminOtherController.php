@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Category;
 use App\Models\Coupon;
 use App\Models\Product;
 use App\Services\StoreSettingsService;
@@ -299,19 +298,6 @@ class AdminOtherController extends Controller
 
     public function frontPage(): Response
     {
-        $categories = Category::query()
-            ->whereDoesntHave('children')
-            ->orderBy('slug')
-            ->get(['id', 'name', 'slug'])
-            ->map(fn (Category $category) => [
-                'id' => (int) $category->id,
-                'name' => (string) $category->name,
-                'slug' => (string) $category->slug,
-                'label' => (string) $category->name . ' (' . (string) $category->slug . ')',
-            ])
-            ->values()
-            ->all();
-
         $products = Product::query()
             ->with('images')
             ->orderBy('name')
@@ -327,6 +313,7 @@ class AdminOtherController extends Controller
                     'brand' => (string) ($product->brand ?? ''),
                     'price' => (float) ($product->price ?? 0),
                     'image_url' => (string) ($firstImage?->url ?? '/images/no-image.png'),
+                    'is_premade_design' => (bool) ($product->is_premade_design ?? false),
                 ];
             })
             ->values()
@@ -335,7 +322,6 @@ class AdminOtherController extends Controller
         return Inertia::render('Admin/Other/FrontPage', [
             'frontPage' => $this->settings->getFrontPageProducts(),
             'products' => $products,
-            'categories' => $categories,
         ]);
     }
 
@@ -346,6 +332,8 @@ class AdminOtherController extends Controller
             'featured_product_ids.*' => ['integer', 'exists:products,id'],
             'premade_product_ids' => ['required', 'array'],
             'premade_product_ids.*' => ['integer', 'exists:products,id'],
+            'premade_quotes' => ['nullable', 'array'],
+            'premade_quotes.*' => ['nullable', 'string', 'max:220'],
         ]);
 
         $frontPage = $this->settings->saveFrontPageProducts($validated);

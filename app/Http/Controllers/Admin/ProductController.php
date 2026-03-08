@@ -8,7 +8,6 @@ use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Services\AdminActivityLogService;
 use App\Services\OpenAiModerationService;
-use App\Services\StoreSettingsService;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Str;
@@ -18,10 +17,7 @@ use Illuminate\Validation\ValidationException;
 
 class ProductController extends Controller
 {
-    public function __construct(
-        private readonly AdminActivityLogService $activityLogService,
-        private readonly StoreSettingsService $storeSettingsService
-    )
+    public function __construct(private readonly AdminActivityLogService $activityLogService)
     {
     }
 
@@ -220,6 +216,7 @@ class ProductController extends Controller
             'brand' => 'nullable|string|max:255',
             'price' => 'required|numeric|min:0',
             'category_id' => 'nullable|exists:categories,id',
+            'is_premade' => 'sometimes|boolean',
         ]);
 
         $baseSlug = Str::slug((string) $validated['name']);
@@ -234,6 +231,7 @@ class ProductController extends Controller
             'description' => null,
             'is_trending' => false,
             'is_sale' => false,
+            'is_premade_design' => (bool) ($validated['is_premade'] ?? false),
             'category_id' => null,
         ]);
 
@@ -277,6 +275,7 @@ class ProductController extends Controller
             'price',
             'original_price',
             'description',
+            'is_premade_design',
             'category_id',
             'length',
             'width',
@@ -287,7 +286,6 @@ class ProductController extends Controller
         ]);
 
         $isFullLayoutUpdate = $request->has('colours');
-        $isPreMadeEditor = $request->boolean('is_premade');
         if ($isFullLayoutUpdate) {
             $validated = $request->validate([
                 'name' => 'required|string|max:255',
@@ -316,8 +314,12 @@ class ProductController extends Controller
                 'name' => 'required|string|max:255',
                 'brand' => 'nullable|string|max:255',
                 'price' => 'required|numeric|min:0',
+                'is_premade' => 'sometimes|boolean',
             ]);
         }
+        $isPreMadeEditor = array_key_exists('is_premade', $validated)
+            ? (bool) $validated['is_premade']
+            : (bool) ($product->is_premade_design ?? false);
 
         $baseSlug = Str::slug((string) $validated['name']);
         $slug = $this->uniqueProductSlug($baseSlug, $product->id);
@@ -334,21 +336,25 @@ class ProductController extends Controller
                 'price' => $nextPrice,
                 'original_price' => $isSale ? $baselinePrice : null,
                 'is_sale' => $isSale,
+                'is_premade_design' => array_key_exists('is_premade', $validated)
+                    ? (bool) $validated['is_premade']
+                    : (bool) ($product->is_premade_design ?? false),
                 'slug' => $slug,
             ]);
 
             $product->refresh();
             $changes = $this->activityLogService->extractChanges(
                 $before,
-                $product->only(['name', 'brand', 'price', 'original_price', 'is_sale', 'slug']),
+                $product->only(['name', 'brand', 'price', 'original_price', 'is_sale', 'is_premade_design', 'slug']),
                 [
-                    'name' => 'Name',
-                    'brand' => 'Brand',
-                    'price' => 'Price',
-                    'original_price' => 'Original price',
-                    'is_sale' => 'On sale',
-                    'slug' => 'Slug',
-                ]
+                'name' => 'Name',
+                'brand' => 'Brand',
+                'price' => 'Price',
+                'original_price' => 'Original price',
+                'is_sale' => 'On sale',
+                'is_premade_design' => 'Pre-made design',
+                'slug' => 'Slug',
+            ]
             );
 
             $this->activityLogService->logFromRequest(
@@ -403,6 +409,7 @@ class ProductController extends Controller
                 'price' => $nextPrice,
                 'original_price' => $isSale ? $baselinePrice : null,
                 'is_sale' => $isSale,
+                'is_premade_design' => $isPreMadeEditor,
                 'description' => trim((string) $validated['description']),
                 'category_id' => (int) $validated['category_id'],
                 'length' => (float) $validated['dimensions']['length'],
@@ -527,10 +534,6 @@ class ProductController extends Controller
             }
         });
 
-        if ($isPreMadeEditor) {
-            $this->ensureProductInFrontPagePreMade((int) $product->id);
-        }
-
         $product->refresh();
         $changes = $this->activityLogService->extractChanges(
             $before,
@@ -540,6 +543,7 @@ class ProductController extends Controller
                 'price',
                 'original_price',
                 'description',
+                'is_premade_design',
                 'category_id',
                 'length',
                 'width',
@@ -554,6 +558,7 @@ class ProductController extends Controller
                 'price' => 'Price',
                 'original_price' => 'Original price',
                 'description' => 'Description',
+                'is_premade_design' => 'Pre-made design',
                 'category_id' => 'Category',
                 'length' => 'Length',
                 'width' => 'Width',
@@ -590,7 +595,7 @@ class ProductController extends Controller
     {
         $categoryId = (int) $request->integer('category_id');
         $categorySlug = trim((string) $request->input('category_slug', ''));
-        $isPreMadeEditor = $request->boolean('premade');
+        $isPreMadeEditor = $request->boolean('is_premade') || $request->boolean('premade');
 
         $category = null;
         if ($categoryId > 0) {
@@ -718,6 +723,7 @@ class ProductController extends Controller
                 'description' => trim((string) $validated['description']),
                 'is_trending' => false,
                 'is_sale' => false,
+                'is_premade_design' => $isPreMadeEditor,
                 'category_id' => (int) $validated['category_id'],
                 'length' => (float) $validated['dimensions']['length'],
                 'width' => (float) $validated['dimensions']['width'],
@@ -834,10 +840,6 @@ class ProductController extends Controller
                 ]);
             }
         });
-
-        if ($isPreMadeEditor && $product) {
-            $this->ensureProductInFrontPagePreMade((int) $product->id);
-        }
 
         if ($product) {
             $this->activityLogService->logFromRequest(
@@ -1144,33 +1146,6 @@ class ProductController extends Controller
         }
 
         return $attempt;
-    }
-
-    private function ensureProductInFrontPagePreMade(int $productId): void
-    {
-        if ($productId <= 0) {
-            return;
-        }
-
-        $frontPage = $this->storeSettingsService->getFrontPageProducts();
-        $featured = collect((array) data_get($frontPage, 'featured_product_ids', []))
-            ->map(fn ($id) => (int) $id)
-            ->filter(fn ($id) => $id > 0)
-            ->unique()
-            ->values()
-            ->all();
-        $premade = collect((array) data_get($frontPage, 'premade_product_ids', []))
-            ->map(fn ($id) => (int) $id)
-            ->filter(fn ($id) => $id > 0)
-            ->push($productId)
-            ->unique()
-            ->values()
-            ->all();
-
-        $this->storeSettingsService->saveFrontPageProducts([
-            'featured_product_ids' => $featured,
-            'premade_product_ids' => $premade,
-        ]);
     }
 
     private function buildCategoryTrail(Category $leaf): array

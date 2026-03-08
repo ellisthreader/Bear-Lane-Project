@@ -9,7 +9,6 @@ use App\Models\Product;
 use App\Models\Category;
 use App\Models\Image;
 use App\Models\ProductReview;
-use App\Services\StoreSettingsService;
 use App\Services\Security\RecaptchaService;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Log;
@@ -129,14 +128,7 @@ class ProductController extends Controller
             ->all();
         $recommendedProducts = $this->buildRecommendedProducts($productModel);
         $isAdminEditor = (bool) optional($request->user())->is_admin && $request->boolean('product_mode');
-        $frontPageSettings = app(StoreSettingsService::class)->getFrontPageProducts();
-        $preMadeIds = collect((array) data_get($frontPageSettings, 'premade_product_ids', []))
-            ->map(fn ($id) => (int) $id)
-            ->filter(fn ($id) => $id > 0)
-            ->unique()
-            ->values()
-            ->all();
-        $isPreMadeDesign = in_array((int) $productModel->id, $preMadeIds, true);
+        $isPreMadeDesign = (bool) ($productModel->is_premade_design ?? false);
 
         $primaryCategory = null;
         if ($productModel->relationLoaded('categories') && $productModel->categories->isNotEmpty()) {
@@ -156,7 +148,7 @@ class ProductController extends Controller
                 'categoryId' => $primaryCategory?->id,
                 'categorySlug' => $primaryCategory?->slug,
                 'categoryName' => $primaryCategory?->name,
-                'premade' => $request->boolean('premade') || $isPreMadeDesign,
+                'premade' => $isPreMadeDesign,
             ] : null,
         ]);
     }
@@ -326,6 +318,7 @@ class ProductController extends Controller
             'brand' => (string) ($product->brand ?? ''),
             'price' => (float) ($product->price ?? 0),
             'image' => $image ? $image->url : '/images/no-image.png',
+            'is_premade_design' => (bool) ($product->is_premade_design ?? false),
             'average_rating' => isset($product->average_rating) ? round((float) $product->average_rating, 2) : 0,
             'reviews_count' => (int) ($product->reviews_count ?? 0),
         ];
@@ -369,6 +362,7 @@ class ProductController extends Controller
             'price' => $product->price,
             'original_price' => $product->original_price,
             'is_trending' => $product->is_trending,
+            'is_premade_design' => (bool) ($product->is_premade_design ?? false),
             'images' => $productImages,
             'sizes' => $allSizes,
             'colour' => $allColours,

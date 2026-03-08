@@ -18,6 +18,7 @@ interface ProductCardProps {
     price: number | string;
     original_price?: number | string | null;
     is_sale?: boolean;
+    is_premade_design?: boolean;
     images: (string | ProductImage)[];
   };
   compact?: boolean;
@@ -96,6 +97,12 @@ export default function ProductCard({ product, compact = false }: ProductCardPro
           >
             <Heart className={`h-4 w-4 ${inWishlist ? "fill-current" : ""}`} />
           </button>
+
+          {product.is_premade_design ? (
+            <span className="absolute left-3 top-3 z-10 rounded-full border border-[#D8BF7E] bg-[#FFF3D4] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.1em] text-[#7B5D1A] shadow-sm">
+              Pre-made design
+            </span>
+          ) : null}
 
           {/* MAIN IMAGE */}
           <motion.img

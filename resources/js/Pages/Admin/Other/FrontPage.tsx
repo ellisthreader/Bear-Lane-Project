@@ -1,12 +1,13 @@
 import React, { useMemo, useState } from "react";
-import { Head, Link, router } from "@inertiajs/react";
-import { Check, LayoutPanelTop, Plus, Save, Search, Sparkles, Star, Trash2 } from "lucide-react";
+import { Head, Link } from "@inertiajs/react";
+import { Check, Save, Search, Sparkles, Star, Trash2 } from "lucide-react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import AdminTopNav from "@/Components/Admin/AdminTopNav";
 
 type FrontPageSettings = {
   featured_product_ids: number[];
   premade_product_ids: number[];
+  premade_quotes?: Record<string, string>;
 };
 
 type ProductOption = {
@@ -16,32 +17,29 @@ type ProductOption = {
   brand: string;
   price: number;
   image_url: string;
-};
-
-type CategoryOption = {
-  id: number;
-  name: string;
-  slug: string;
-  label: string;
+  is_premade_design: boolean;
 };
 
 type Props = {
   frontPage: FrontPageSettings;
   products: ProductOption[];
-  categories: CategoryOption[];
 };
 
 type FrontPageTab = "featured" | "premade";
 
-export default function FrontPage({ frontPage, products, categories }: Props) {
+export default function FrontPage({ frontPage, products }: Props) {
   const [activeTab, setActiveTab] = useState<FrontPageTab>("featured");
   const [featuredIds, setFeaturedIds] = useState<number[]>(frontPage.featured_product_ids || []);
   const [premadeIds, setPremadeIds] = useState<number[]>(frontPage.premade_product_ids || []);
+  const [premadeQuotes, setPremadeQuotes] = useState<Record<string, string>>(
+    typeof frontPage.premade_quotes === "object" && frontPage.premade_quotes !== null
+      ? frontPage.premade_quotes
+      : {}
+  );
   const [query, setQuery] = useState("");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [selectedCategoryId, setSelectedCategoryId] = useState<number>(categories[0]?.id || 0);
 
   const productMap = useMemo(() => {
     const map = new Map<number, ProductOption>();
@@ -58,33 +56,29 @@ export default function FrontPage({ frontPage, products, categories }: Props) {
     [premadeIds, productMap]
   );
 
-  const selectedCategory = useMemo(
-    () => categories.find((category) => category.id === selectedCategoryId) || null,
-    [categories, selectedCategoryId]
-  );
+  const activeSelectedProducts = activeTab === "featured" ? featuredProducts : premadeProducts;
 
-  const filteredProducts = useMemo(() => {
+  const libraryProducts = useMemo(() => {
+    const list = activeTab === "premade" ? products.filter((product) => product.is_premade_design) : products;
     const normalized = query.trim().toLowerCase();
-    if (!normalized) return products;
+    if (!normalized) return list;
 
-    return products.filter((product) => {
+    return list.filter((product) => {
       const searchable = `${product.name} ${product.brand} ${product.slug}`.toLowerCase();
       return searchable.includes(normalized);
     });
-  }, [products, query]);
+  }, [activeTab, products, query]);
 
   const addToFeatured = (productId: number) => {
     setMessage(null);
     setError(null);
     setFeaturedIds((prev) => (prev.includes(productId) ? prev : [...prev, productId]));
-    setPremadeIds((prev) => prev.filter((id) => id !== productId));
   };
 
   const addToPremade = (productId: number) => {
     setMessage(null);
     setError(null);
     setPremadeIds((prev) => (prev.includes(productId) ? prev : [...prev, productId]));
-    setFeaturedIds((prev) => prev.filter((id) => id !== productId));
   };
 
   const removeFromFeatured = (productId: number) => {
@@ -92,25 +86,21 @@ export default function FrontPage({ frontPage, products, categories }: Props) {
   };
 
   const removeFromPremade = (productId: number) => {
+    const key = String(productId);
     setPremadeIds((prev) => prev.filter((id) => id !== productId));
+    setPremadeQuotes((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
   };
 
-  const openPreMadeProductCreator = () => {
-    setError(null);
-    setMessage(null);
-
-    if (!selectedCategory) {
-      setError("Select a category before creating a pre-made product.");
-      return;
-    }
-
-    const params = new URLSearchParams({
-      category_id: String(selectedCategory.id),
-      category_slug: selectedCategory.slug,
-      premade: "1",
-    });
-
-    router.get(`/admin/products/create-layout?${params.toString()}`);
+  const updatePremadeQuote = (productId: number, value: string) => {
+    const key = String(productId);
+    setPremadeQuotes((prev) => ({
+      ...prev,
+      [key]: value.slice(0, 220),
+    }));
   };
 
   const save = async () => {
@@ -132,6 +122,7 @@ export default function FrontPage({ frontPage, products, categories }: Props) {
         body: JSON.stringify({
           featured_product_ids: featuredIds,
           premade_product_ids: premadeIds,
+          premade_quotes: premadeQuotes,
         }),
       });
 
@@ -150,9 +141,14 @@ export default function FrontPage({ frontPage, products, categories }: Props) {
       const nextPremade = Array.isArray(data?.front_page?.premade_product_ids)
         ? data.front_page.premade_product_ids.map((id: unknown) => Number(id)).filter((id: number) => id > 0)
         : premadeIds;
+      const nextQuotes =
+        typeof data?.front_page?.premade_quotes === "object" && data?.front_page?.premade_quotes !== null
+          ? (data.front_page.premade_quotes as Record<string, string>)
+          : premadeQuotes;
 
       setFeaturedIds(nextFeatured);
       setPremadeIds(nextPremade);
+      setPremadeQuotes(nextQuotes);
       setMessage(data?.message || "Front page product selections updated.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to save front page selections.");
@@ -160,8 +156,6 @@ export default function FrontPage({ frontPage, products, categories }: Props) {
       setSaving(false);
     }
   };
-
-  const activeSelectedProducts = activeTab === "featured" ? featuredProducts : premadeProducts;
 
   return (
     <AuthenticatedLayout>
@@ -176,7 +170,7 @@ export default function FrontPage({ frontPage, products, categories }: Props) {
                 <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#8A6D2B]">Other / Front Page</p>
                 <h1 className="mt-1 text-3xl font-bold">Front Page Product Cards</h1>
                 <p className="mt-2 text-sm text-[#6B5A34]">
-                  Manage homepage cards in two dedicated tabs: featured products and pre-made design products.
+                  Choose what appears on homepage featured and pre-made rails, then save.
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -232,50 +226,18 @@ export default function FrontPage({ frontPage, products, categories }: Props) {
             ) : null}
           </div>
 
-          {activeTab === "premade" ? (
-            <section className="rounded-2xl border border-[#E4D2AA] bg-white/95 p-4 shadow-[0_10px_30px_rgba(91,70,27,0.08)]">
-              <div className="flex flex-wrap items-end gap-3">
-                <label className="min-w-[280px] flex-1 text-xs font-semibold uppercase tracking-[0.12em] text-[#7A5F2A]">
-                  Category for new pre-made product
-                  <select
-                    value={selectedCategoryId || ""}
-                    onChange={(event) => setSelectedCategoryId(Number(event.target.value))}
-                    className="mt-2 h-10 w-full rounded-xl border border-[#DCC99D] bg-[#FFFDF7] px-3 text-sm font-medium text-[#2D2515] outline-none focus:border-[#C9A24D]"
-                  >
-                    {categories.map((category) => (
-                      <option key={category.id} value={category.id}>
-                        {category.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <button
-                  type="button"
-                  onClick={openPreMadeProductCreator}
-                  className="inline-flex h-10 items-center gap-2 rounded-xl border border-[#D7BE84] bg-[#FFF9EA] px-4 text-sm font-semibold text-[#6B5A34] transition hover:border-[#C9A24D]"
-                >
-                  <Plus className="h-4 w-4" />
-                  Add Product
-                </button>
-              </div>
-              <p className="mt-3 text-xs text-[#6B5A34]">
-                Pre-made products use the same product layout editor, but skip restricted-box setup and render with colours, sizes, and add-to-cart on the live product page.
-              </p>
-            </section>
-          ) : null}
-
           <section className="rounded-2xl border border-[#E4D2AA] bg-white/95 p-4 shadow-[0_10px_30px_rgba(91,70,27,0.08)]">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="inline-flex items-center gap-2 text-lg font-semibold">
                 {activeTab === "featured" ? (
                   <>
                     <Star className="h-4 w-4 text-[#8A6D2B]" />
-                    Featured Products
+                    Selected Featured Products
                   </>
                 ) : (
                   <>
                     <Sparkles className="h-4 w-4 text-[#8A6D2B]" />
-                    Pre-Made Designs
+                    Selected Pre-Made Designs
                   </>
                 )}
               </h2>
@@ -290,9 +252,33 @@ export default function FrontPage({ frontPage, products, categories }: Props) {
               ) : (
                 activeSelectedProducts.map((product) => (
                   <div key={`${activeTab}-${product.id}`} className="rounded-xl border border-[#E8DEC8] bg-[#FFFDF8] p-2.5">
-                    <img src={product.image_url} alt={product.name} className="h-28 w-full rounded-lg object-cover" />
+                    <div className="relative">
+                      <img src={product.image_url} alt={product.name} className="h-28 w-full rounded-lg object-cover" />
+                      {product.is_premade_design ? (
+                        <span className="absolute left-2 top-2 rounded-full bg-[#C6A75E] px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] text-white">
+                          Pre-Made
+                        </span>
+                      ) : null}
+                    </div>
                     <p className="mt-2 truncate text-sm font-semibold text-[#2D2515]">{product.name}</p>
                     <p className="text-xs text-[#6B5A34]">£{Number(product.price).toFixed(2)}</p>
+
+                    {activeTab === "premade" ? (
+                      <div className="mt-2 rounded-lg border border-[#E7D8B4] bg-[#FFF9EB] p-2">
+                        <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#7A5C1E]">Card Quote</p>
+                        <textarea
+                          value={premadeQuotes[String(product.id)] || ""}
+                          onChange={(event) => updatePremadeQuote(product.id, event.target.value)}
+                          placeholder="Write quote shown under this pre-made card on homepage..."
+                          className="mt-1 h-20 w-full resize-none rounded-lg border border-[#DCC99D] bg-white px-2 py-1.5 text-xs text-[#2D2515] outline-none focus:border-[#C9A24D]"
+                          maxLength={220}
+                        />
+                        <p className="mt-1 text-[10px] text-[#7A6A45]">
+                          {(premadeQuotes[String(product.id)] || "").length}/220
+                        </p>
+                      </div>
+                    ) : null}
+
                     <div className="mt-2 flex items-center gap-2">
                       <button
                         type="button"
@@ -305,7 +291,7 @@ export default function FrontPage({ frontPage, products, categories }: Props) {
                         Remove
                       </button>
                       <Link
-                        href={`/product/${encodeURIComponent(product.slug)}?product_mode=1${activeTab === "premade" ? "&premade=1" : ""}`}
+                        href={`/product/${encodeURIComponent(product.slug)}?product_mode=1`}
                         className="inline-flex h-8 flex-1 items-center justify-center rounded-lg border border-[#D7BE84] bg-[#FFF9EA] px-2 text-xs font-semibold text-[#6B5A34]"
                       >
                         Edit
@@ -319,9 +305,8 @@ export default function FrontPage({ frontPage, products, categories }: Props) {
 
           <section className="rounded-2xl border border-[#E4D2AA] bg-white/95 p-4 shadow-[0_10px_30px_rgba(91,70,27,0.08)]">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-              <h2 className="inline-flex items-center gap-2 text-lg font-semibold">
-                <LayoutPanelTop className="h-5 w-5 text-[#8A6D2B]" />
-                Product Card Library
+              <h2 className="text-lg font-semibold">
+                {activeTab === "featured" ? "Product Card Library" : "Pre-Made Product Library"}
               </h2>
               <div className="relative w-full max-w-sm">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8A6D2B]" />
@@ -336,45 +321,52 @@ export default function FrontPage({ frontPage, products, categories }: Props) {
             </div>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {filteredProducts.map((product) => {
-                const inFeatured = featuredIds.includes(product.id);
-                const inPremade = premadeIds.includes(product.id);
-                const inActive = activeTab === "featured" ? inFeatured : inPremade;
+              {libraryProducts.map((product) => {
+                const isAdded = activeTab === "featured" ? featuredIds.includes(product.id) : premadeIds.includes(product.id);
 
                 return (
                   <div key={product.id} className="rounded-xl border border-[#E8DEC8] bg-[#FFFDF8] p-2.5">
-                    <img src={product.image_url} alt={product.name} className="h-36 w-full rounded-lg object-cover" />
+                    <div className="relative">
+                      <img src={product.image_url} alt={product.name} className="h-36 w-full rounded-lg object-cover" />
+                      {product.is_premade_design ? (
+                        <span className="absolute left-2 top-2 rounded-full bg-[#C6A75E] px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] text-white">
+                          Pre-Made
+                        </span>
+                      ) : null}
+                    </div>
                     <p className="mt-2 truncate text-sm font-semibold text-[#2D2515]">{product.name}</p>
                     <p className="text-xs text-[#6B5A34]">
                       {product.brand || "Bear Lane"} • £{Number(product.price).toFixed(2)}
                     </p>
 
-                    {activeTab === "featured" ? (
-                      <button
-                        type="button"
-                        onClick={() => (inFeatured ? removeFromFeatured(product.id) : addToFeatured(product.id))}
-                        className={`mt-2 inline-flex h-8 w-full items-center justify-center gap-1 rounded-lg text-xs font-semibold transition ${
-                          inActive ? "bg-[#C6A75E] text-white" : "border border-[#D7C494] bg-white text-[#6B5A34]"
-                        }`}
-                      >
-                        <Plus className="h-3.5 w-3.5" />
-                        {inFeatured ? "Added to Featured" : "Add to Featured"}
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => (inPremade ? removeFromPremade(product.id) : addToPremade(product.id))}
-                        className={`mt-2 inline-flex h-8 w-full items-center justify-center gap-1 rounded-lg text-xs font-semibold transition ${
-                          inActive ? "bg-[#C6A75E] text-white" : "border border-[#D7C494] bg-white text-[#6B5A34]"
-                        }`}
-                      >
-                        <Plus className="h-3.5 w-3.5" />
-                        {inPremade ? "Added to Pre-Made" : "Add to Pre-Made"}
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        activeTab === "featured"
+                          ? isAdded
+                            ? removeFromFeatured(product.id)
+                            : addToFeatured(product.id)
+                          : isAdded
+                            ? removeFromPremade(product.id)
+                            : addToPremade(product.id)
+                      }
+                      className={`mt-2 inline-flex h-8 w-full items-center justify-center rounded-lg px-2 text-xs font-semibold transition ${
+                        isAdded ? "bg-[#C6A75E] text-white" : "border border-[#D7C494] bg-white text-[#6B5A34]"
+                      }`}
+                    >
+                      {isAdded ? "Added" : `Add to ${activeTab === "featured" ? "Featured" : "Pre-Made"}`}
+                    </button>
                   </div>
                 );
               })}
+
+              {libraryProducts.length === 0 ? (
+                <p className="col-span-full rounded-xl border border-dashed border-[#E3D8BE] bg-[#FFFCF4] px-3 py-4 text-sm text-[#6B5A34]">
+                  {activeTab === "premade"
+                    ? "No products are marked as pre-made yet. Set products to pre-made in Product Edit Mode."
+                    : "No products found."}
+                </p>
+              ) : null}
             </div>
           </section>
         </div>

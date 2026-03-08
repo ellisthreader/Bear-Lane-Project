@@ -132,10 +132,28 @@ class StoreSettingsService
             $normalizeIds(data_get($payload, 'premade_product_ids', [])),
             $featuredIds
         ));
+        $rawQuotes = data_get($payload, 'premade_quotes', []);
+        $premadeQuotes = [];
+        if (is_array($rawQuotes)) {
+            foreach ($rawQuotes as $id => $quote) {
+                $productId = (int) $id;
+                if (!in_array($productId, $premadeIds, true)) {
+                    continue;
+                }
+
+                $text = trim((string) $quote);
+                if ($text === '') {
+                    continue;
+                }
+
+                $premadeQuotes[(string) $productId] = mb_substr($text, 0, 220);
+            }
+        }
 
         $normalized = [
             'featured_product_ids' => $featuredIds,
             'premade_product_ids' => $premadeIds,
+            'premade_quotes' => $premadeQuotes,
         ];
 
         $this->put(self::KEY_FRONT_PAGE_PRODUCTS, $normalized);
@@ -350,6 +368,7 @@ class StoreSettingsService
         return [
             'featured_product_ids' => [],
             'premade_product_ids' => [],
+            'premade_quotes' => [],
         ];
     }
 }

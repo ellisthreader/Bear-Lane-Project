@@ -44,6 +44,7 @@ type Product = {
   brand: string;
   price: number;
   original_price?: number | null;
+  is_premade_design?: boolean;
   images: string[];
 };
 
@@ -54,6 +55,7 @@ type PageProps = {
   products: Product[];
   featuredProducts?: Product[];
   preMadeProducts?: Product[];
+  preMadeQuotes?: Record<string, string>;
 };
 
 const customerReviews = [
@@ -269,6 +271,19 @@ export default function Welcome() {
     const secondary = props.products.slice(10, 16);
     return secondary.length >= 4 ? secondary : props.products.slice(0, 6);
   }, [props.preMadeProducts, props.products]);
+  const preMadeQuotes = useMemo(() => {
+    if (!props.preMadeQuotes || typeof props.preMadeQuotes !== "object") {
+      return {} as Record<string, string>;
+    }
+
+    return Object.entries(props.preMadeQuotes).reduce<Record<string, string>>((acc, [key, value]) => {
+      const normalizedId = String(Number(key));
+      const quote = String(value || "").trim();
+      if (!normalizedId || normalizedId === "NaN" || !quote) return acc;
+      acc[normalizedId] = quote;
+      return acc;
+    }, {});
+  }, [props.preMadeQuotes]);
   const [activeReview, setActiveReview] = useState(0);
   const productRailRef = useRef<HTMLDivElement | null>(null);
   const preMadeRailRef = useRef<HTMLDivElement | null>(null);
@@ -786,7 +801,7 @@ export default function Welcome() {
                     Pre-Made Studio
                   </span>
                   <span className="mt-1 block rounded-lg bg-gradient-to-r from-[#FFF9EA] via-[#FFF5DF] to-[#FFF9EA] px-2.5 py-2 text-sm font-medium leading-relaxed text-[#5B441A]">
-                    {buildPreMadeDescription(product, index)}
+                    {preMadeQuotes[String(product.id)] || buildPreMadeDescription(product, index)}
                   </span>
                 </div>
               </div>
