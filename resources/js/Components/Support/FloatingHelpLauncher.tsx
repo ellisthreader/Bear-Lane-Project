@@ -40,9 +40,6 @@ export default function FloatingHelpLauncher() {
     return window.location.pathname;
   });
   const shellRef = useRef<HTMLDivElement | null>(null);
-  const buttonRef = useRef<HTMLButtonElement | null>(null);
-  const baseBodyPadding = useRef<{ right: number; bottom: number } | null>(null);
-  const inlineBodyPadding = useRef<{ right: string; bottom: string } | null>(null);
 
   useEffect(() => {
     const syncPath = () => setPath(window.location.pathname);
@@ -90,64 +87,15 @@ export default function FloatingHelpLauncher() {
     };
   }, []);
 
-  useEffect(() => {
-    if (shouldHide) {
-      return;
-    }
-
-    const body = document.body;
-
-    if (!inlineBodyPadding.current) {
-      inlineBodyPadding.current = {
-        right: body.style.paddingRight,
-        bottom: body.style.paddingBottom,
-      };
-    }
-
-    if (!baseBodyPadding.current) {
-      const computed = window.getComputedStyle(body);
-      baseBodyPadding.current = {
-        right: parseFloat(computed.paddingRight) || 0,
-        bottom: parseFloat(computed.paddingBottom) || 0,
-      };
-    }
-
-    const updatePadding = () => {
-      const button = buttonRef.current;
-      const base = baseBodyPadding.current;
-
-      if (!button || !base) return;
-
-      const rect = button.getBoundingClientRect();
-      const extraRight = Math.max(0, Math.ceil(window.innerWidth - rect.left));
-      const extraBottom = Math.max(0, Math.ceil(window.innerHeight - rect.top));
-
-      body.style.paddingRight = `${base.right + extraRight}px`;
-      body.style.paddingBottom = `${base.bottom + extraBottom}px`;
-    };
-
-    updatePadding();
-    window.addEventListener("resize", updatePadding);
-
-    return () => {
-      window.removeEventListener("resize", updatePadding);
-
-      if (inlineBodyPadding.current) {
-        body.style.paddingRight = inlineBodyPadding.current.right;
-        body.style.paddingBottom = inlineBodyPadding.current.bottom;
-      }
-    };
-  }, [shouldHide]);
-
   if (shouldHide) {
     return null;
   }
 
   return (
     <div ref={shellRef} className="pointer-events-none fixed bottom-4 right-4 z-[190] sm:bottom-6 sm:right-6">
-      <div className="pointer-events-auto flex flex-col items-end gap-3">
+      <div className="pointer-events-auto relative">
         <div
-          className={`w-[min(84vw,330px)] origin-bottom-right overflow-hidden rounded-2xl border border-[#E6D3A5] bg-white/95 backdrop-blur-md transition-all duration-300 ${
+          className={`absolute bottom-full right-0 mb-3 w-[min(84vw,330px)] origin-bottom-right overflow-hidden rounded-2xl border border-[#E6D3A5] bg-white/95 backdrop-blur-md transition-all duration-300 ${
             open
               ? "translate-y-0 scale-100 opacity-100 shadow-[0_24px_70px_rgba(62,44,9,0.22)]"
               : "pointer-events-none translate-y-2 scale-95 opacity-0"
@@ -184,7 +132,6 @@ export default function FloatingHelpLauncher() {
           onClick={() => setOpen((prev) => !prev)}
           aria-expanded={open}
           aria-label={open ? "Close support menu" : "Open support menu"}
-          ref={buttonRef}
           className={`group relative inline-flex items-center justify-center rounded-full border border-[#D5B46F] bg-gradient-to-br from-[#E2C074] via-[#D8B15A] to-[#B88D38] text-white shadow-[0_14px_30px_rgba(98,70,21,0.38)] transition ${
             open ? "h-12 w-12 sm:h-14 sm:w-14" : "h-12 w-12 sm:h-14 sm:w-14"
           }`}
