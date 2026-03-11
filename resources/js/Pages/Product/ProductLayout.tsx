@@ -700,31 +700,6 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
     }
   };
 
-  const pointerClickGuardRef = useRef<null | string>(null);
-  const handlePointerUp = (handler: () => void) => (event: React.PointerEvent<HTMLButtonElement>) => {
-    pointerClickGuardRef.current = event.pointerType;
-    if (event.pointerType === "touch") {
-      event.preventDefault();
-      event.stopPropagation();
-      handler();
-    }
-  };
-
-  const handleClick = (handler: () => void) => (event: React.MouseEvent<HTMLButtonElement>) => {
-    if (pointerClickGuardRef.current === "touch") {
-      pointerClickGuardRef.current = null;
-      event.preventDefault();
-      event.stopPropagation();
-      return;
-    }
-    handler();
-  };
-
-  const pressHandlers = (handler: () => void) => ({
-    onPointerUp: handlePointerUp(handler),
-    onClick: handleClick(handler),
-  });
-
   const handleWishlist = () => {
     toggleWishlistItem({
       id: wishlistId,
@@ -1809,7 +1784,7 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
               )}
             </section>
 
-            <section className="min-w-0">
+            <section className="min-w-0 hit-test-fix">
               {isAdminEditor && editingField === "name" ? (
                 <input
                   autoFocus
@@ -1939,10 +1914,10 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
                       <button
                         key={size}
                         type="button"
-                        {...pressHandlers(() => {
+                        onClick={() => {
                           setSelectedSize(size);
                           setShowSizeError(false);
-                        })}
+                        }}
                         className={`relative touch-manipulation rounded-xl border px-2 py-3 text-sm font-semibold transition ${
                           isSelected
                             ? inStock
@@ -1982,7 +1957,7 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
                       <button
                         key={option.value}
                         type="button"
-                        {...pressHandlers(() => setSelectedDesignType(option.value))}
+                        onClick={() => setSelectedDesignType(option.value)}
                         className={`touch-manipulation rounded-xl border px-3 py-2 text-left transition ${
                           isSelected
                             ? "border-[#B4872A] bg-[#FFF4DC] text-[#2D2415]"
@@ -2005,7 +1980,7 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
                 <div className="relative z-20 pointer-events-auto hit-test-fix">
                   <button
                     type="button"
-                    {...pressHandlers(handlePrimaryAction)}
+                    onClick={handlePrimaryAction}
                     disabled={notifyLoading}
                     className="mt-7 w-full touch-manipulation rounded-full bg-[#1F1A12] px-6 py-3.5 text-sm font-semibold uppercase tracking-[0.12em] text-white transition hover:bg-[#372D1C] disabled:cursor-not-allowed disabled:opacity-65"
                   >
@@ -2016,7 +1991,7 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
                     <>
                       <button
                         type="button"
-                        {...pressHandlers(handleWishlist)}
+                        onClick={handleWishlist}
                         className="mt-3 inline-flex w-full touch-manipulation items-center justify-center gap-2 rounded-full border border-[#D7BE84] bg-[#FFF9EA] px-6 py-3 font-semibold text-[#7B6530] transition-colors hover:bg-[#F8E9C9]"
                       >
                         <Heart className={`h-4 w-4 ${inWishlist ? "fill-current" : ""}`} />

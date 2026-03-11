@@ -207,7 +207,7 @@ export default function Register({ email: initialEmail = "" }: RegisterProps) {
         <button
           type="button"
           onClick={handleGoogleLogin}
-          className="flex items-center justify-center gap-2 w-full py-3 rounded-2xl border border-[#C6A75E] hover:shadow-md transition-all duration-200 text-gray-900 font-semibold text-lg"
+          className="flex items-center justify-center gap-2 w-full py-3 rounded-2xl border border-[#C6A75E] hover:shadow-md transition-all duration-200 text-gray-900 font-semibold text-lg touch-manipulation"
         >
           <FcGoogle size={20} /> Sign up with Google
         </button>
@@ -215,7 +215,7 @@ export default function Register({ email: initialEmail = "" }: RegisterProps) {
         <button
           type="button"
           onClick={handleFacebookLogin}
-          className="flex items-center justify-center gap-2 w-full py-3 rounded-2xl border border-[#C6A75E] hover:shadow-md transition-all duration-200 text-gray-900 font-semibold text-lg"
+          className="flex items-center justify-center gap-2 w-full py-3 rounded-2xl border border-[#C6A75E] hover:shadow-md transition-all duration-200 text-gray-900 font-semibold text-lg touch-manipulation"
         >
           <FaFacebook size={20} /> Sign up with Facebook
         </button>
@@ -321,7 +321,7 @@ export default function Register({ email: initialEmail = "" }: RegisterProps) {
       <button
         type="submit"
         disabled={signupLoading || hasSubmitted}
-        className="w-full py-4 bg-[#C6A75E] hover:bg-[#b89148] text-white font-semibold rounded-2xl text-lg transition-all duration-300"
+        className="w-full py-4 bg-[#C6A75E] hover:bg-[#b89148] text-white font-semibold rounded-2xl text-lg transition-all duration-300 touch-manipulation"
       >
         {signupLoading ? "Signing up..." : "Sign Up"}
       </button>
