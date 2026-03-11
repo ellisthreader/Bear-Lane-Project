@@ -4,20 +4,12 @@ import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Plus, Minus, Trash2, ChevronDown } from "lucide-react";
 import { useCart } from "@/Context/CartContext";
-import { useWishlist } from "@/Context/WishlistContext";
 import { router } from "@inertiajs/react";
 import DesignPreview from "@/Pages/Design/Components/DesignPreview";
 
 // ✅ Import CartItem + AddToCartPayload types from your CartContext
-import type { AddToCartPayload, CartItem } from "@/Context/CartContext";
+import type { CartItem } from "@/Context/CartContext";
 
-type SuggestedProduct = {
-  id: number;
-  title: string;
-  price: number;
-  image: string;
-  slug: string;
-};
 
 // ======= Custom Dropdown Component (Flannels-style) =======
 const SizeDropdown = ({
@@ -93,7 +85,6 @@ const CartSidebar = () => {
     updateSize,
     totalPrice,
     openCart,
-    addToCart,
   }: {
     cart: CartItem[];
     showCart: boolean;
@@ -115,15 +106,11 @@ const CartSidebar = () => {
     ) => void;
     totalPrice: number;
     openCart: () => void;
-    addToCart: (item: AddToCartPayload) => void;
   } = useCart();
-  const { toggleWishlistItem, isInWishlist } = useWishlist();
 
-  const [page, setPage] = useState(0);
   const [isMobileViewport, setIsMobileViewport] = useState<boolean>(() =>
     typeof window !== "undefined" ? window.matchMedia("(max-width: 767px)").matches : false
   );
-  const itemsPerPage = 4;
 
   useEffect(() => {
     document.body.style.overflow = showCart ? "hidden" : "";
@@ -169,20 +156,7 @@ const CartSidebar = () => {
     setTimeout(() => router.get("/checkout"), 100);
   };
 
-  // ===== Suggested Products =====
-  const suggestedProducts: SuggestedProduct[] = [
-    { id: 1, title: "Cloudmonster - Black", price: 160, image: "/images/Trending/cloudtecB1.png", slug: "cloudmonster-black" },
-    { id: 2, title: "Cloudmonster - White", price: 160, image: "/images/Trending/cloudtecW1.png", slug: "cloudmonster-white" },
-    { id: 3, title: "Another Shoe", price: 120, image: "/images/Trending/shoe2.png", slug: "shoe2" },
-    { id: 4, title: "Cool Sneakers", price: 140, image: "/images/Trending/shoe3.png", slug: "shoe3" },
-    { id: 5, title: "Running Shoe", price: 130, image: "/images/Trending/shoe4.png", slug: "shoe4" },
-  ];
-
-  const totalPages = Math.ceil(suggestedProducts.length / itemsPerPage);
-  const visibleProducts = suggestedProducts.slice(
-    page * itemsPerPage,
-    page * itemsPerPage + itemsPerPage
-  );
+  // Suggested products removed; show only actual cart contents.
 
   return (
     <AnimatePresence>
@@ -332,98 +306,7 @@ const CartSidebar = () => {
                 ))
               )}
 
-              {/* SUGGESTED PRODUCTS */}
-              {!isMobileViewport && suggestedProducts.length > 0 && (
-                <div className="mt-6">
-                  <h3 className="text-lg font-semibold mb-3 tracking-tight">You may also like</h3>
-
-                  <div className="relative overflow-hidden">
-                    <AnimatePresence mode="wait">
-                      <motion.div
-                        key={page}
-                        initial={{ x: 100, opacity: 0 }}
-                        animate={{ x: 0, opacity: 1 }}
-                        exit={{ x: -100, opacity: 0 }}
-                        transition={{ duration: 0.4 }}
-                        className="flex gap-4 w-max"
-                        style={{ touchAction: "pan-y" }}
-                      >
-                        {visibleProducts.map((product: SuggestedProduct) => (
-                          <div
-                            key={product.id}
-                            className="p-3 border border-gray-200 rounded-xl bg-white flex flex-col items-center text-center w-36 flex-shrink-0"
-                          >
-                            <img loading="lazy" decoding="async"
-                              src={product.image}
-                              alt={product.title}
-                              className="w-20 h-20 object-cover rounded-lg mb-2 border border-gray-200"
-                            />
-
-                            <p className="font-medium text-sm line-clamp-2">
-                              {product.title}
-                            </p>
-
-                            <p className="text-sm text-gray-500">
-                              £{product.price}
-                            </p>
-
-                            <button
-                              onClick={() =>
-                                addToCart({
-                                  id: product.id,
-                                  title: product.title,
-                                  brand: "On",
-                                  price: product.price,
-                                  image: product.image,
-                                  colour: "Default",
-                                  size: "Default",
-                                  availableSizes: ["Default"],
-                                  slug: product.slug,
-                                  quantity: 1,
-                                })
-                              }
-                              className="mt-2 px-3 py-1 bg-[#C6A75E] text-white rounded-lg text-sm hover:bg-[#B8994E] transition"
-                            >
-                              Add
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                toggleWishlistItem({
-                                  id: product.id,
-                                  name: product.title,
-                                  brand: "On",
-                                  price: product.price,
-                                  image: product.image,
-                                  slug: product.slug,
-                                })
-                              }
-                              className="mt-1 px-3 py-1 rounded-lg text-xs border border-[#D9C18B] text-[#7B6530] hover:bg-[#FFF8E8] transition"
-                            >
-                              {isInWishlist(String(product.id)) ? "Wishlisted" : "Wishlist"}
-                            </button>
-                          </div>
-                        ))}
-                      </motion.div>
-                    </AnimatePresence>
-
-                    {/* Pagination dots */}
-                    <div className="flex justify-center mt-4 gap-2">
-                      {Array.from({ length: totalPages }).map((_, idx) => (
-                        <button
-                          key={idx}
-                          onClick={() => setPage(idx)}
-                          className={`w-3 h-3 rounded-full transition ${
-                            page === idx
-                              ? "bg-[#C6A75E]"
-                              : "bg-gray-300 hover:bg-[#C6A75E]/70"
-                          }`}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
+              {/* Suggested products removed until real catalog data is wired in. */}
             </div>
 
             {/* FOOTER TOTAL */}

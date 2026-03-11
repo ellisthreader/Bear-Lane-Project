@@ -96,11 +96,75 @@ export default function CategoryProductsGrid({ productEditMode = false, category
         const isPreMade = Boolean(product.is_premade_design);
 
         return (
-          <Link
+          <div
             key={product.id}
-            href={`/product/${encodeURIComponent(product.slug)}`}
             className="group relative min-w-0 overflow-hidden rounded-xl border border-transparent bg-white shadow-none transition-all duration-300 hover:-translate-y-1 hover:border-[#D1D5DB] hover:shadow-lg"
           >
+            <Link
+              href={`/product/${encodeURIComponent(product.slug)}`}
+              className="block"
+            >
+              <div className="relative h-[280px] w-full overflow-hidden bg-[#E5E7EB] p-3">
+                <img
+                  loading="lazy"
+                  decoding="async"
+                  src={image}
+                  alt={product.name}
+                  className="h-full w-full object-contain transition-all duration-500 group-hover:scale-105 group-hover:opacity-0"
+                />
+                <img
+                  loading="lazy"
+                  decoding="async"
+                  src={hoverImage}
+                  alt={product.name}
+                  className="absolute inset-0 h-full w-full object-contain p-3 opacity-0 transition-all duration-500 group-hover:scale-105 group-hover:opacity-100"
+                />
+                <ProductBadgeChips
+                  badges={product.auto_badges}
+                  isPreMade={isPreMade}
+                  className="absolute left-2 top-2 z-10"
+                />
+              </div>
+
+              <div className="space-y-2 p-3">
+                <h3 className="line-clamp-2 text-xs font-bold text-[#2A241B]">
+                  {product.name}
+                </h3>
+                <div className="flex items-center gap-1 text-[#C8951E]">
+                  {Array.from({ length: 5 }).map((_, index) => {
+                    const active = index + 1 <= Math.round(rating);
+                    return (
+                      <Star
+                        key={`${product.id}-star-${index}`}
+                        className={`h-3 w-3 ${active ? "fill-current" : "text-[#E1D6BE]"}`}
+                      />
+                    );
+                  })}
+                  <span className="ml-1 text-[11px] font-medium text-[#796949]">
+                    {rating.toFixed(1)}
+                  </span>
+                  <span className="text-[11px] text-[#9A8B6A]">
+                    ({reviewCount.toLocaleString()})
+                  </span>
+                </div>
+
+                <div className="flex items-baseline gap-2">
+                  <p
+                    className={`text-sm font-semibold ${
+                      onSale ? "text-[#B42318]" : "text-[#1E1A14]"
+                    }`}
+                  >
+                    £{price.toFixed(2)}
+                  </p>
+                  {onSale ? (
+                    <p className="text-xs text-[#9B8B6A] line-through">
+                      £{originalPrice.toFixed(2)}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+            </Link>
+
             <button
               type="button"
               onClick={(event) => {
@@ -118,82 +182,46 @@ export default function CategoryProductsGrid({ productEditMode = false, category
               }}
               className="absolute right-2 top-2 z-10 rounded-full border border-[#D1D5DB] bg-white/95 p-1.5 text-[#6B7280] shadow-sm transition hover:bg-white"
               aria-label={
-                inWishlist ? "Remove from wishlist and open wishlist" : "Add to wishlist and open wishlist"
+                inWishlist
+                  ? "Remove from wishlist and open wishlist"
+                  : "Add to wishlist and open wishlist"
               }
             >
-              <Heart className={`h-4 w-4 ${inWishlist ? "fill-current text-[#EF4444]" : ""}`} />
+              <Heart
+                className={`h-4 w-4 ${inWishlist ? "fill-current text-[#EF4444]" : ""}`}
+              />
             </button>
 
-            <div className="relative h-[280px] w-full overflow-hidden bg-[#E5E7EB] p-3">
-              <img loading="lazy" decoding="async"
-                src={image}
-                alt={product.name}
-                className="h-full w-full object-contain transition-all duration-500 group-hover:scale-105 group-hover:opacity-0"
-              />
-              <img loading="lazy" decoding="async"
-                src={hoverImage}
-                alt={product.name}
-                className="absolute inset-0 h-full w-full object-contain p-3 opacity-0 transition-all duration-500 group-hover:scale-105 group-hover:opacity-100"
-              />
-              <ProductBadgeChips
-                badges={product.auto_badges}
-                isPreMade={isPreMade}
-                className="absolute left-2 top-2 z-10"
-              />
-            </div>
-
-            <div className="space-y-2 p-3">
-              <h3 className="line-clamp-2 text-xs font-bold text-[#2A241B]">{product.name}</h3>
-              <div className="flex items-center gap-1 text-[#C8951E]">
-                {Array.from({ length: 5 }).map((_, index) => {
-                  const active = index + 1 <= Math.round(rating);
-                  return (
-                    <Star
-                      key={`${product.id}-star-${index}`}
-                      className={`h-3 w-3 ${active ? "fill-current" : "text-[#E1D6BE]"}`}
-                    />
-                  );
-                })}
-                <span className="ml-1 text-[11px] font-medium text-[#796949]">{rating.toFixed(1)}</span>
-                <span className="text-[11px] text-[#9A8B6A]">({reviewCount.toLocaleString()})</span>
-              </div>
-
-              <div className="flex items-baseline gap-2">
-                <p className={`text-sm font-semibold ${onSale ? "text-[#B42318]" : "text-[#1E1A14]"}`}>£{price.toFixed(2)}</p>
-                {onSale ? <p className="text-xs text-[#9B8B6A] line-through">£{originalPrice.toFixed(2)}</p> : null}
-              </div>
-
-              {productEditMode ? (
-                <div className="pt-2">
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        router.get(`/product/${encodeURIComponent(product.slug)}?product_mode=1`);
-                      }}
-                      className="flex-1 rounded-md border border-[#D7BE84] bg-white px-2 py-1.5 text-[10px] font-bold uppercase tracking-[0.08em] text-[#6A541F]"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        handleDeleteCard(Number(product.id));
-                      }}
-                      disabled={deletingProductId === Number(product.id)}
-                      className="flex-1 rounded-md border border-[#E3B9B9] bg-white px-2 py-1.5 text-[10px] font-bold uppercase tracking-[0.08em] text-[#8C3232]"
-                    >
-                      {deletingProductId === Number(product.id) ? "Deleting..." : "Delete"}
-                    </button>
-                  </div>
+            {productEditMode ? (
+              <div className="px-3 pb-3">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      router.get(`/product/${encodeURIComponent(product.slug)}?product_mode=1`);
+                    }}
+                    className="flex-1 rounded-md border border-[#D7BE84] bg-white px-2 py-1.5 text-[10px] font-bold uppercase tracking-[0.08em] text-[#6A541F]"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      handleDeleteCard(Number(product.id));
+                    }}
+                    disabled={deletingProductId === Number(product.id)}
+                    className="flex-1 rounded-md border border-[#E3B9B9] bg-white px-2 py-1.5 text-[10px] font-bold uppercase tracking-[0.08em] text-[#8C3232]"
+                  >
+                    {deletingProductId === Number(product.id) ? "Deleting..." : "Delete"}
+                  </button>
                 </div>
-              ) : null}
-            </div>
-          </Link>
+              </div>
+            ) : null}
+          </div>
         );
       })}
     </div>

@@ -285,7 +285,7 @@ export default function NavMenu() {
       }
     };
 
-    const closeOnOutsideClick = (event: MouseEvent) => {
+    const closeOnOutsideClick = (event: Event) => {
       const target = event.target as Node;
       const inPanel = Boolean(searchPanelRef.current?.contains(target));
       const inControl = Boolean(searchControlRef.current?.contains(target));
@@ -296,10 +296,12 @@ export default function NavMenu() {
     };
 
     document.addEventListener("keydown", closeOnEscape);
-    document.addEventListener("mousedown", closeOnOutsideClick);
+    document.addEventListener("pointerdown", closeOnOutsideClick);
+    document.addEventListener("touchstart", closeOnOutsideClick, { passive: true });
     return () => {
       document.removeEventListener("keydown", closeOnEscape);
-      document.removeEventListener("mousedown", closeOnOutsideClick);
+      document.removeEventListener("pointerdown", closeOnOutsideClick);
+      document.removeEventListener("touchstart", closeOnOutsideClick);
     };
   }, [searchOpen]);
 
@@ -461,11 +463,12 @@ export default function NavMenu() {
       <motion.nav
         ref={navRef}
         className="
-          sticky top-0 z-50 w-full border-b border-gray-200 bg-white px-3 py-3 backdrop-blur-xl dark:border-gray-700 dark:bg-gray-900
-          sm:px-4 lg:py-4 lg:pl-3 lg:pr-10
+          sticky top-0 z-50 w-full border-b border-gray-200 bg-white px-2 py-2 backdrop-blur-xl dark:border-gray-700 dark:bg-gray-900
+          sm:px-4 sm:py-3 lg:py-4 lg:pl-3 lg:pr-10
         "
+        style={{ paddingTop: "env(safe-area-inset-top)" }}
       >
-        <div className="flex items-center gap-2">
+        <div className="flex min-h-[52px] flex-nowrap items-center gap-1.5 sm:gap-2">
           <button
             type="button"
             onClick={() => {
@@ -474,13 +477,13 @@ export default function NavMenu() {
               setNotificationsOpen(false);
               setActiveSidebar((prev) => prev ?? categories[0]);
             }}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#E8D8B3] bg-[#FFF9EC] text-[#7D5E1A] transition hover:border-[#D4AF37] hover:text-[#D4AF37] lg:hidden"
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#E8D8B3] bg-[#FFF9EC] text-[#7D5E1A] transition hover:border-[#D4AF37] hover:text-[#D4AF37] sm:h-10 sm:w-10 lg:hidden"
             aria-label="Open menu"
           >
             <Menu className="h-5 w-5" />
           </button>
 
-          <div className="flex min-w-0 items-center gap-1">
+          <div className="flex min-w-0 flex-nowrap items-center gap-1">
             <Link
               href="/"
               onClick={() => {
@@ -491,7 +494,7 @@ export default function NavMenu() {
             >
               <div
                 className={`
-                  relative h-[44px] w-[170px] transition-all duration-300 sm:h-[50px] sm:w-[220px]
+                  relative h-[40px] w-[112px] shrink-0 transition-all duration-300 sm:h-[46px] sm:w-[170px] md:w-[190px] lg:h-[50px] lg:w-[220px]
                   ${logoGlow ? "logo-neon-glow" : ""}
                 `}
               >
@@ -557,7 +560,7 @@ export default function NavMenu() {
             </motion.div>
           </div>
 
-          <div className="ml-auto flex items-center gap-1 sm:gap-2 lg:gap-6">
+          <div className="ml-auto flex shrink-0 flex-nowrap items-center gap-0.5 sm:gap-2 lg:gap-6">
             <div ref={searchControlRef} className="flex items-center">
               <button
                 type="button"
@@ -575,7 +578,7 @@ export default function NavMenu() {
                     return next;
                   });
                 }}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full transition hover:bg-[#F6ECD5]"
+                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition hover:bg-[#F6ECD5] sm:h-10 sm:w-10"
                 aria-label="Search products"
               >
                 <Search className="h-5 w-5 cursor-pointer transition hover:text-[#D4AF37]" />
@@ -584,19 +587,19 @@ export default function NavMenu() {
             <button
               type="button"
               onClick={toggleWishlist}
-              className="hidden h-10 w-10 items-center justify-center rounded-full transition hover:bg-[#F6ECD5] sm:inline-flex"
+              className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-full transition hover:bg-[#F6ECD5] sm:inline-flex"
               aria-label="Open wishlist"
             >
               <Heart className="h-5 w-5 cursor-pointer transition hover:text-[#D4AF37]" />
             </button>
-            <Link href="/profile" className="inline-flex h-10 w-10 items-center justify-center rounded-full transition hover:bg-[#F6ECD5]">
+            <Link href="/profile" className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition hover:bg-[#F6ECD5] sm:h-10 sm:w-10">
               <User className="h-5 w-5 cursor-pointer transition hover:text-[#D4AF37]" />
             </Link>
             {isAuthenticated && (
               <button
                 type="button"
                 onClick={() => setNotificationsOpen((prev) => !prev)}
-                className="relative inline-flex h-10 w-10 items-center justify-center rounded-full transition hover:bg-[#F6ECD5]"
+                className="relative inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition hover:bg-[#F6ECD5] sm:h-10 sm:w-10"
                 aria-label="Open notifications"
               >
                 <Bell className="h-5 w-5 cursor-pointer transition hover:text-[#D4AF37]" />
@@ -608,7 +611,7 @@ export default function NavMenu() {
             <button
               type="button"
               onClick={openCart}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-full transition hover:bg-[#F6ECD5]"
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition hover:bg-[#F6ECD5] sm:h-10 sm:w-10"
               aria-label="Open cart"
             >
               <ShoppingCart className="h-5 w-5" />

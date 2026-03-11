@@ -106,12 +106,12 @@ export default function AuthPage() {
   }, []);
 
   return (
-    <div className="min-h-screen flex flex-col overflow-hidden bg-white">
+    <div className="min-h-screen flex flex-col bg-white">
       <NavMenu />
 
-      <main className="flex min-h-screen items-stretch overflow-hidden md:h-screen">
+      <main className="flex min-h-screen items-stretch md:h-screen md:overflow-hidden">
         {/* Left Side */}
-        <div className="w-full md:w-1/2 flex flex-col justify-start items-center px-4 sm:px-6 md:px-0 pt-8 md:pt-20 overflow-y-auto">
+        <div className="w-full md:w-1/2 flex flex-col justify-start items-center px-4 sm:px-6 md:px-0 pt-8 md:pt-20 md:overflow-y-auto">
           <div className="flex flex-col justify-start items-center w-full max-w-md space-y-5 pb-8">
             {/* Logo */}
             <div className="flex justify-center mb-1">

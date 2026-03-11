@@ -25,7 +25,7 @@ export default function CategorySection() {
       .replace(/^-+|-+$/g, "");
 
   return (
-    <div className="pt-16 pb-8 bg-white w-full">
+    <div id="shop-by-category" className="pt-16 pb-8 bg-white w-full">
       <div className="grid grid-cols-2 gap-3 px-4 md:hidden">
         {categories.map((category) => (
           <button

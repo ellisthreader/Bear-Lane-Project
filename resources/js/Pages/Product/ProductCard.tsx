@@ -69,17 +69,18 @@ export default function ProductCard({
   const autoBadges = Array.isArray(product.auto_badges) ? product.auto_badges : [];
 
   return (
-    <Link
-      href={href}
-      draggable={false}
-      onDragStart={(event) => event.preventDefault()}
+    <motion.div
+      className="relative overflow-hidden rounded-2xl border bg-white shadow-md transition-all duration-300 hover:shadow-xl"
+      whileHover={{ scale: 1.02 }}
+      transition={{ duration: 0.25 }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
     >
-      <motion.div
-        className="bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 border overflow-hidden"
-        whileHover={{ scale: 1.02 }}
-        transition={{ duration: 0.25 }}
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
+      <Link
+        href={href}
+        draggable={false}
+        onDragStart={(event) => event.preventDefault()}
+        className="block"
       >
         {/* IMAGE WRAPPER */}
         <div
@@ -87,26 +88,6 @@ export default function ProductCard({
             compact ? "h-64 md:h-72" : "h-96"
           }`}
         >
-          <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              toggleWishlistItem({
-                id: wishlistId,
-                name: product.name,
-                brand: product.brand,
-                price: product.price,
-                image: firstImage,
-                slug,
-              });
-            }}
-            className="absolute right-3 top-3 z-10 rounded-full border border-[#E3D3AC] bg-white/95 p-2 text-[#8A6D2B] shadow-sm transition hover:bg-[#FFF8E8]"
-            aria-label={inWishlist ? "Remove from wishlist" : "Add to wishlist"}
-          >
-            <Heart className={`h-4 w-4 ${inWishlist ? "fill-current" : ""}`} />
-          </button>
-
           <ProductBadgeChips
             badges={autoBadges}
             isPreMade={Boolean(product.is_premade_design)}
@@ -121,7 +102,7 @@ export default function ProductCard({
             loading="lazy"
             decoding="async"
             draggable={false}
-            className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
+            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-300 ${
               hovered ? "opacity-0" : "opacity-100"
             } pointer-events-none select-none`}
           />
@@ -134,30 +115,56 @@ export default function ProductCard({
             loading="lazy"
             decoding="async"
             draggable={false}
-            className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
+            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-300 ${
               hovered ? "opacity-100" : "opacity-0"
             } pointer-events-none select-none`}
           />
         </div>
 
         <div className={`space-y-1 bg-white ${compact ? "p-4" : "p-5"}`}>
-          <p className={`${compact ? "text-base" : "text-lg"} font-semibold text-gray-800 leading-tight`}>
+          <p
+            className={`${
+              compact ? "text-base" : "text-lg"
+            } font-semibold text-gray-800 leading-tight`}
+          >
             {product.name}
           </p>
 
           <div className="pt-2">
-            <span className={`text-lg font-bold ${onSale ? "text-[#B42318]" : "text-gray-900"}`}>
+            <span
+              className={`text-lg font-bold ${onSale ? "text-[#B42318]" : "text-gray-900"}`}
+            >
               £{price.toFixed(2)}
             </span>
 
             {onSale && originalPrice !== null && (
-              <span className="text-gray-400 line-through ml-2 text-sm">
+              <span className="ml-2 text-sm text-gray-400 line-through">
                 £{originalPrice.toFixed(2)}
               </span>
             )}
           </div>
         </div>
-      </motion.div>
-    </Link>
+      </Link>
+
+      <button
+        type="button"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          toggleWishlistItem({
+            id: wishlistId,
+            name: product.name,
+            brand: product.brand,
+            price: product.price,
+            image: firstImage,
+            slug,
+          });
+        }}
+        className="absolute right-3 top-3 z-20 rounded-full border border-[#E3D3AC] bg-white/95 p-2 text-[#8A6D2B] shadow-sm transition hover:bg-[#FFF8E8]"
+        aria-label={inWishlist ? "Remove from wishlist" : "Add to wishlist"}
+      >
+        <Heart className={`h-4 w-4 ${inWishlist ? "fill-current" : ""}`} />
+      </button>
+    </motion.div>
   );
 }

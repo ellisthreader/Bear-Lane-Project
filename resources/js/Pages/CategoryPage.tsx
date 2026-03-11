@@ -13,23 +13,21 @@ const buildTitle = (heading: string | undefined, subcategory: string | undefined
   if (pathParts.length === 1) {
     if (rootPart === "men") return "All Men's Products";
     if (rootPart === "women") return "All Women's Products";
-    if (rootPart === "kids") return "All Kids' Products";
+    if (rootPart === "kids") return "All Kids Clothing";
     if (rootPart === "sale") return "All Sale Products";
+    if (rootPart) return `All ${formatLabel(rootPart)}`;
   }
 
-  if (heading && subcategory && heading.toLowerCase() !== "navigation") {
-    const root = heading.toLowerCase();
-    const leaf = formatLabel(subcategory);
-    if (root === "men") return `Men's ${leaf}`;
-    if (root === "women") return `Women's ${leaf}`;
-    return `${formatLabel(heading)} ${leaf}`;
+  if (subcategory) {
+    return `All ${formatLabel(subcategory)}`;
   }
 
-  const root = formatLabel(pathParts[0] || "");
   const leaf = formatLabel(pathParts[pathParts.length - 1] || "Category");
-  if (root.toLowerCase() === "men") return `Men's ${leaf}`;
-  if (root.toLowerCase() === "women") return `Women's ${leaf}`;
-  return `${root} ${leaf}`.trim();
+  if (heading && heading.toLowerCase() !== "navigation") {
+    return `All ${leaf}`;
+  }
+
+  return `All ${leaf}`;
 };
 
 export default function CategoryPage({ heading, subcategory, slug, products, category_id }: CategoryPageProps) {

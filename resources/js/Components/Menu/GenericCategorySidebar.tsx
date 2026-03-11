@@ -56,9 +56,15 @@ export default function GenericCategorySidebar({ rootKey, title, closeSidebar }:
     };
   }, []);
 
+  useEffect(() => {
+    setPath([]);
+  }, [rootKey]);
+
   const rootNode = useMemo(() => menu?.[rootKey]?.tree ?? null, [menu, rootKey]);
+  const getChildren = (node?: MenuNode | null) =>
+    Array.isArray(node?.children) ? node!.children : [];
   const currentNode = path.length > 0 ? path[path.length - 1] : null;
-  const options = currentNode ? currentNode.children : rootNode?.children ?? [];
+  const options = currentNode ? getChildren(currentNode) : getChildren(rootNode);
 
   const goBack = () => {
     setPath((prev) => prev.slice(0, -1));
@@ -70,7 +76,8 @@ export default function GenericCategorySidebar({ rootKey, title, closeSidebar }:
   };
 
   const handleSelect = (node: MenuNode) => {
-    if (node.children.length > 0) {
+    const children = Array.isArray(node.children) ? node.children : [];
+    if (children.length > 0) {
       setPath((prev) => [...prev, node]);
       return;
     }

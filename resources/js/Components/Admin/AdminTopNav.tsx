@@ -59,8 +59,8 @@ export default function AdminTopNav() {
   const currentPath = page.url.split("?")[0];
 
   return (
-    <div className="sticky top-0 z-20 overflow-x-hidden border-b border-[#E9DFCB] bg-white/95 backdrop-blur-md">
-      <div className="mx-auto flex min-h-[72px] w-full max-w-7xl items-center gap-3 px-3 sm:px-8 lg:relative lg:justify-center">
+    <div className="sticky top-0 z-20 overflow-x-hidden border-b border-[#E9DFCB] bg-white/95 backdrop-blur-md" style={{ paddingTop: "env(safe-area-inset-top)" }}>
+      <div className="mx-auto flex min-h-[72px] w-full max-w-7xl flex-nowrap items-center gap-3 px-3 sm:px-8 lg:relative lg:justify-center">
         <button
           type="button"
           onClick={() => {
@@ -82,7 +82,7 @@ export default function AdminTopNav() {
         </Link>
 
         <div className="flex-1 overflow-x-auto lg:flex-none">
-          <div className="flex min-w-max items-center gap-2 pr-1 lg:justify-center">
+          <div className="flex min-w-max flex-nowrap items-center gap-2 pr-1 lg:justify-center">
             {items.map((item) => {
               const active = item.match(currentPath);
               return (

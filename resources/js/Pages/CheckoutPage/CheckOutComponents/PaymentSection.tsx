@@ -7,7 +7,6 @@ import { getCountryCode } from "@/Utils/countryCodes";
 import { useCheckoutPayment } from "../context/CheckoutPaymentContext";
 import type { BillingAddress, PaymentType } from "../types";
 import { showCheckoutError } from "../checkoutToasts";
-import useAnalyticsConsent from "@/Utils/useAnalyticsConsent";
 import useGoogleMapsScript from "@/Utils/useGoogleMapsScript";
 type SavedBillingAddress = BillingAddress & { id: string };
 type BillingModalField = "firstName" | "lastName" | "country" | "line1" | "city" | "postcode";
@@ -97,11 +96,10 @@ export default function PaymentSection() {
   const [pendingWalletSelection, setPendingWalletSelection] = React.useState<number | "new" | null>(null);
   const [walletSelectionMode, setWalletSelectionMode] = React.useState<"saved" | "new" | null>(null);
   const sectionRootRef = React.useRef<HTMLDivElement | null>(null);
-  const hasAnalyticsConsent = useAnalyticsConsent();
   const googleMapsApiKey = (import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined)?.trim() || "";
-  const canUseGoogleAddressLookup = hasAnalyticsConsent && googleMapsApiKey.length > 0;
+  const canUseGoogleAddressLookup = googleMapsApiKey.length > 0;
 
-  const { isLoaded: isGoogleLoaded } = useGoogleMapsScript({
+  const { isLoaded: isGoogleLoaded, loadError: googleLoadError } = useGoogleMapsScript({
     enabled: canUseGoogleAddressLookup,
     apiKey: googleMapsApiKey,
     libraries: GOOGLE_MAPS_LIBRARIES,
@@ -819,7 +817,7 @@ export default function PaymentSection() {
                 <p className={modalErrorClass}>{modalFieldErrors.country || "\u00A0"}</p>
               </div>
 
-              {!billingManualEntry && isGoogleLoaded ? (
+              {!billingManualEntry && canUseGoogleAddressLookup && isGoogleLoaded && !googleLoadError ? (
                 <div className="md:col-span-2">
                   <label className="mb-1.5 block text-sm font-medium text-gray-700">Add your postcode or address *</label>
                   <Autocomplete onLoad={setBillingAutocomplete} onPlaceChanged={handleBillingAddressPick}>
@@ -838,6 +836,11 @@ export default function PaymentSection() {
                   >
                     Enter address manually
                   </button>
+                </div>
+              ) : null}
+              {!billingManualEntry && canUseGoogleAddressLookup && googleLoadError ? (
+                <div className="md:col-span-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                  Address lookup is temporarily unavailable. Please enter the billing address manually.
                 </div>
               ) : null}
 

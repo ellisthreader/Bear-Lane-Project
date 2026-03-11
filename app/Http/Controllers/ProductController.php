@@ -90,8 +90,6 @@ class ProductController extends Controller
      */
     public function show(Request $request, $slug)
     {
-        Log::info("🔎 Product requested", ['slug' => $slug]);
-
         $productModel = Product::where('slug', $slug)
             ->with([
                 'images',
@@ -104,7 +102,7 @@ class ProductController extends Controller
                         'images',
                     ])
                     ->latest('created_at')
-                    ->limit(50),
+                    ->limit(12),
             ])
             ->withAvg('approvedReviews as average_rating', 'rating')
             ->withCount('approvedReviews as reviews_count')
@@ -154,8 +152,6 @@ class ProductController extends Controller
         } elseif ($productModel->relationLoaded('category') && $productModel->category) {
             $primaryCategory = $productModel->category;
         }
-
-        Log::info("=== colourProducts built ===", ['colourProducts' => $product->colourProducts]);
 
         return Inertia::render('Product/ProductLayout', [
             'product' => $product,
@@ -378,14 +374,6 @@ class ProductController extends Controller
             return $variant;
         });
 
-        Log::info("=== Product formatted ===", [
-            'id' => $product->id,
-            'name' => $product->name,
-            'colours' => $allColours,
-            'sizes' => $allSizes,
-            'images' => $productImages
-        ]);
-
         return (object)[
             'id' => $product->id,
             'brand' => $product->brand,
@@ -405,7 +393,6 @@ class ProductController extends Controller
             'rating' => isset($product->average_rating) ? round((float) $product->average_rating, 2) : 0,
             'review_count' => (int) ($product->reviews_count ?? 0),
             'reviews_count' => (int) ($product->reviews_count ?? 0),
-            'variants' => $product->variants,
             'colourProducts' => [], // will be filled in `show`
             'reviews' => [],
         ];
@@ -483,6 +470,7 @@ class ProductController extends Controller
             'images' => $review->images
                 ->map(fn ($image) => $image->image_url)
                 ->filter(fn ($url) => is_string($url) && trim($url) !== '')
+                ->take(3)
                 ->values()
                 ->all(),
         ];

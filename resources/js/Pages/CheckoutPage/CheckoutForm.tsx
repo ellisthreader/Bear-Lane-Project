@@ -80,7 +80,7 @@ const CheckoutForm = ({ initialEmail = "" }: CheckoutFormProps) => {
   const isAuthenticated = Boolean(authUser);
   const stripe = useStripe();
   const elements = useElements();
-  const { cart } = useCart();
+  const { cart, clearCart } = useCart();
   const {
     email,
     setEmail,
@@ -753,6 +753,7 @@ const CheckoutForm = ({ initialEmail = "" }: CheckoutFormProps) => {
         localStorage.removeItem(PENDING_REDIRECT_ORDER_KEY);
         localStorage.removeItem(CHECKOUT_REDIRECT_RECOVERY_KEY);
         sessionStorage.removeItem(CHECKOUT_GUEST_EMAIL_KEY);
+        clearCart();
         showCheckoutSuccess("Payment successful! Order saved.");
         router.visit(`/order-confirmed/${orderData.order_number}`);
       } catch (err: any) {
@@ -905,6 +906,7 @@ const CheckoutForm = ({ initialEmail = "" }: CheckoutFormProps) => {
 
         if (!orderData.success) throw new Error(orderData.error || "Failed to save order.");
         localStorage.removeItem(CHECKOUT_REDIRECT_RECOVERY_KEY);
+        clearCart();
         showCheckoutSuccess("Payment successful! Order saved.");
         router.visit(`/order-confirmed/${orderData.order_number}`);
         return;
@@ -980,6 +982,7 @@ const CheckoutForm = ({ initialEmail = "" }: CheckoutFormProps) => {
 
         if (!orderData.success) throw new Error(orderData.error || "Failed to save order.");
         localStorage.removeItem(CHECKOUT_REDIRECT_RECOVERY_KEY);
+        clearCart();
         showCheckoutSuccess("Payment successful! Order saved.");
         router.visit(`/order-confirmed/${orderData.order_number}`);
         return;
@@ -1046,6 +1049,7 @@ const CheckoutForm = ({ initialEmail = "" }: CheckoutFormProps) => {
 
         if (!orderData.success) throw new Error(orderData.error || "Failed to save order.");
         localStorage.removeItem(CHECKOUT_REDIRECT_RECOVERY_KEY);
+        clearCart();
         showCheckoutSuccess("Payment successful! Order saved.");
         router.visit(`/order-confirmed/${orderData.order_number}`);
         return;

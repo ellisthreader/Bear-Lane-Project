@@ -432,6 +432,15 @@ function OrdersWorkspace() {
   const [adminCoords, setAdminCoords] = useState<AdminCoords | null>(null);
   const [dropoffOpen, setDropoffOpen] = useState(false);
   const [activeAdminSection, setActiveAdminSection] = useState<"orders" | "returns">("orders");
+  const [viewportWidth, setViewportWidth] = useState<number>(() =>
+    typeof window === "undefined" ? 1280 : window.innerWidth
+  );
+
+  useEffect(() => {
+    const onResize = () => setViewportWidth(window.innerWidth);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
 
   useEffect(() => {
     setDispatchTracking(selectedOrder?.shippo_tracking_number || "");
@@ -649,6 +658,10 @@ function OrdersWorkspace() {
   );
   const safeReviewIndex = reviewingEntries.length > 0 ? Math.min(reviewDesignIndex, reviewingEntries.length - 1) : 0;
   const reviewingEntry = reviewingEntries[safeReviewIndex] || null;
+  const reviewPreviewWidth = useMemo(() => {
+    const reserved = viewportWidth < 640 ? 150 : 220;
+    return Math.max(220, Math.min(650, viewportWidth - reserved));
+  }, [viewportWidth]);
 
   const applyStatus = async (status: string, trackingNumber?: string) => {
     try {
@@ -1797,8 +1810,8 @@ function OrdersWorkspace() {
       ) : null}
 
       {activeAdminSection === "orders" && reviewingItem ? (
-        <div className="fixed inset-0 z-[132] flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-4xl rounded-2xl border border-[#E8DAB8] bg-white p-4 shadow-xl">
+        <div className="fixed inset-0 z-[132] flex items-center justify-center bg-black/50 p-2 sm:p-4">
+          <div className="flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-[#E8DAB8] bg-white p-3 shadow-xl sm:p-4">
             <div className="mb-3 flex items-start justify-between gap-3">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#8A6D2B]">Review Design</p>
@@ -1815,7 +1828,7 @@ function OrdersWorkspace() {
               </button>
             </div>
 
-            <div className="flex items-center justify-center gap-2">
+            <div className="flex min-h-0 flex-1 items-center justify-center gap-2">
               <button
                 type="button"
                 disabled={reviewingEntries.length <= 1}
@@ -1825,14 +1838,18 @@ function OrdersWorkspace() {
                 <ChevronLeft className="h-4 w-4" />
               </button>
 
-              <div className="flex min-h-[420px] flex-1 items-center justify-center rounded-lg border border-[#E7DCC2] bg-[#FFFDF8] p-2">
+              <div className="flex h-[min(62vh,520px)] min-h-0 flex-1 items-center justify-center overflow-hidden rounded-lg border border-[#E7DCC2] bg-[#FFFDF8] p-2 sm:h-[min(68vh,620px)]">
                 {reviewingEntry ? (
-                  <DesignPreview snapshot={reviewingEntry.snapshot} width={650} alt={`${reviewingItem.product_name}-${reviewingEntry.viewKey}`} />
+                  <DesignPreview
+                    snapshot={reviewingEntry.snapshot}
+                    width={reviewPreviewWidth}
+                    alt={`${reviewingItem.product_name}-${reviewingEntry.viewKey}`}
+                  />
                 ) : (
                   <img loading="lazy" decoding="async"
                     src={reviewingItem.image_url || "/images/placeholder.jpg"}
                     alt={reviewingItem.product_name}
-                    className="max-h-[420px] w-auto rounded-lg object-contain"
+                    className="max-h-full w-auto rounded-lg object-contain"
                   />
                 )}
               </div>

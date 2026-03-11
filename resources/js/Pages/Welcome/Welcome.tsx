@@ -467,7 +467,7 @@ export default function Welcome() {
         </Suspense>
       </DeferredRender>
 
-      <section className="bg-white py-16">
+      <section id="featured-products" className="bg-white py-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#B08A2E]">

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import NavMenu from "@/Components/Menu/NavMenu";
 import { Folder, LogOut, Package, User } from "lucide-react";
 import EditProfileModal from "./ProfileView/components/EditProfileModal";
@@ -10,6 +10,16 @@ import type { ActiveTab } from "./ProfileView/types";
 function ProfileViewBody() {
   const { user, activeTab, setActiveTab, handleLogout } = useProfileViewContext();
 
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    // Ensure stale modal/sidebar scroll locks never trap profile on mobile.
+    document.body.style.overflow = "";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, []);
+
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
@@ -19,14 +29,14 @@ function ProfileViewBody() {
   }
 
   return (
-    <div className="h-[100dvh] overflow-hidden bg-gradient-to-b from-[#FFFDF8] via-[#FFFCF5] to-[#FDF6E7] lg:min-h-screen lg:h-auto lg:overflow-visible">
+    <div className="min-h-[100dvh] overflow-x-hidden bg-gradient-to-b from-[#FFFDF8] via-[#FFFCF5] to-[#FDF6E7]">
       <NavMenu />
 
-      <main className="mx-auto flex h-[calc(100dvh-4.5rem)] w-full max-w-7xl gap-4 overflow-hidden px-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] pt-3 md:px-10 lg:h-auto lg:gap-6 lg:overflow-visible lg:pb-16 lg:pt-8">
+      <main className="mx-auto flex min-h-[calc(100dvh-4.5rem)] w-full max-w-7xl gap-4 px-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] pt-3 md:px-10 lg:min-h-0 lg:gap-6 lg:pb-16 lg:pt-8">
         <div className="hidden lg:block">
           <ProfileSidebar />
         </div>
-        <section className="min-h-0 flex-1 overflow-y-auto">
+        <section className="min-h-0 flex-1 overflow-visible">
           <ProfileContent />
         </section>
       </main>

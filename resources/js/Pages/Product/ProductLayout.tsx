@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
 import { Head, Link, router, usePage } from "@inertiajs/react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { useCart } from "@/Context/CartContext";
@@ -8,15 +8,16 @@ import { useWishlist } from "@/Context/WishlistContext";
 import { CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, CircleHelp, Heart, Plus, Sparkles, Star, X } from "lucide-react";
 import { toast } from "react-toastify";
 import SizeGuideButton from "./SizeGuide/SizeGuideButton";
-import SizeGuideModal from "./SizeGuide/SizeGuideModal";
 import { SizeGuideProvider } from "./SizeGuide/SizeGuideContext";
 import { inferSizeGuideGender } from "./SizeGuide/inferSizeGuideGender";
-import ProductRailSection from "./components/ProductRailSection";
 import { ProductQuoteProvider } from "./QuoteModal/ProductQuoteContext";
 import GetQuoteButton from "./QuoteModal/GetQuoteButton";
-import ProductQuoteModal from "./QuoteModal/ProductQuoteModal";
 import { DESIGN_TYPE_OPTIONS, designTypeLabel, normalizeDesignType, type DesignType } from "@/Utils/designType";
 import { executeRecaptcha } from "@/Utils/recaptcha";
+
+const ProductRailSection = lazy(() => import("./components/ProductRailSection"));
+const SizeGuideModal = lazy(() => import("./SizeGuide/SizeGuideModal"));
+const ProductQuoteModal = lazy(() => import("./QuoteModal/ProductQuoteModal"));
 
 const STANDARD_SIZES = ["XS", "S", "M", "L", "XL"] as const;
 const COMMON_COLOUR_OPTIONS = [
@@ -332,6 +333,7 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
   const [adminDescription, setAdminDescription] = useState(product.description || "");
   const [adminSaving, setAdminSaving] = useState(false);
   const [adminSaveSuccess, setAdminSaveSuccess] = useState<AdminSaveSuccess | null>(null);
+  const [showDeferredSections, setShowDeferredSections] = useState(false);
   const [adminErrors, setAdminErrors] = useState<AdminEditorErrorMap>({});
   const [editingField, setEditingField] = useState<EditableField>(null);
   const [isVariantModalOpen, setIsVariantModalOpen] = useState(false);
@@ -403,6 +405,31 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
   const [restrictedBoxDragState, setRestrictedBoxDragState] = useState<RestrictedBoxDragState | null>(null);
   const [restrictedBoxEditor, setRestrictedBoxEditor] = useState<RestrictedBoxEditorState | null>(null);
   const restrictedBoxCanvasRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  useEffect(() => {
+    let cancelled = false;
+    const markReady = () => {
+      if (!cancelled) setShowDeferredSections(true);
+    };
+
+    if (typeof window !== "undefined" && "requestIdleCallback" in window) {
+      const requestIdle = (
+        window as unknown as { requestIdleCallback: (cb: () => void, opts?: { timeout: number }) => number }
+      ).requestIdleCallback;
+      const cancelIdle = (window as unknown as { cancelIdleCallback?: (id: number) => void }).cancelIdleCallback;
+      const idleId = requestIdle(markReady, { timeout: 1200 });
+      return () => {
+        cancelled = true;
+        if (cancelIdle) cancelIdle(idleId);
+      };
+    }
+
+    const timer = window.setTimeout(markReady, 250);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, []);
 
   const adminPreviewColourProducts = useMemo<ColourProduct[]>(() => {
     if (!isAdminEditor) return product.colourProducts || [];
@@ -2110,17 +2137,21 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
 
           {!isAdminEditor ? (
             <>
-              <ProductRailSection
-                title="Recommended For You"
-                products={recommendedProducts}
-                emptyText="No recommendations available yet."
-              />
+              {showDeferredSections ? (
+                <Suspense fallback={null}>
+                  <ProductRailSection
+                    title="Recommended For You"
+                    products={recommendedProducts}
+                    emptyText="No recommendations available yet."
+                  />
 
-              <ProductRailSection
-                title="Recently Viewed"
-                products={recentlyViewedProducts}
-                emptyText="No recently viewed products yet."
-              />
+                  <ProductRailSection
+                    title="Recently Viewed"
+                    products={recentlyViewedProducts}
+                    emptyText="No recently viewed products yet."
+                  />
+                </Suspense>
+              ) : null}
             </>
           ) : null}
           </div>
@@ -2821,8 +2852,10 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
           </div>
         ) : null}
 
-          <SizeGuideModal />
-          <ProductQuoteModal />
+          <Suspense fallback={null}>
+            <SizeGuideModal />
+            <ProductQuoteModal />
+          </Suspense>
         </ProductQuoteProvider>
       </SizeGuideProvider>
     </AuthenticatedLayout>
