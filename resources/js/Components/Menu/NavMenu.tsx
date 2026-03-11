@@ -67,6 +67,7 @@ export default function NavMenu() {
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const mobileSearchInputRef = useRef<HTMLInputElement | null>(null);
   const navRef = useRef<HTMLElement | null>(null);
+  const mobilePointerRef = useRef<null | string>(null);
   const [desktopOverlayTop, setDesktopOverlayTop] = useState(0);
 
   const categories = ["Women", "Men", "Kids", "Sale"];
@@ -88,6 +89,30 @@ export default function NavMenu() {
   const toggleMobileCategory = (cat: string) => {
     setMobileCategoryOpen((prev) => (prev === cat ? null : cat));
   };
+
+  const handleMobilePointerUp = (handler: () => void) => (event: React.PointerEvent<HTMLButtonElement>) => {
+    mobilePointerRef.current = event.pointerType;
+    if (event.pointerType === "touch") {
+      event.preventDefault();
+      event.stopPropagation();
+      handler();
+    }
+  };
+
+  const handleMobileClick = (handler: () => void) => (event: React.MouseEvent<HTMLButtonElement>) => {
+    if (mobilePointerRef.current === "touch") {
+      mobilePointerRef.current = null;
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+    handler();
+  };
+
+  const mobilePressHandlers = (handler: () => void) => ({
+    onPointerUp: handleMobilePointerUp(handler),
+    onClick: handleMobileClick(handler),
+  });
 
   const renderSidebar = (closeSidebar: () => void) => {
     switch (activeSidebar?.toLowerCase()) {
@@ -914,97 +939,99 @@ export default function NavMenu() {
               transition={{ duration: 0.25 }}
               className="fixed inset-y-0 left-0 z-[60] w-[88%] max-w-[360px] overflow-y-auto border-r border-[#E8D8B3] bg-white p-4 shadow-2xl lg:hidden"
             >
-              <div className="flex items-center justify-between">
-                <div className="h-[42px] w-[150px]">
-                  <img
-                    src="/images/BLText.png"
-                    alt="Bear Lane"
-                    loading="lazy"
-                    decoding="async"
-                    className="h-full w-full object-contain"
-                  />
+              <div className="hit-test-fix">
+                <div className="flex items-center justify-between">
+                  <div className="h-[42px] w-[150px]">
+                    <img
+                      src="/images/BLText.png"
+                      alt="Bear Lane"
+                      loading="lazy"
+                      decoding="async"
+                      className="h-full w-full object-contain"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={closeMobileMenu}
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#E8D8B3] bg-[#FFF9EC] text-[#7D5E1A]"
+                    aria-label="Close menu"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={closeMobileMenu}
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#E8D8B3] bg-[#FFF9EC] text-[#7D5E1A]"
-                  aria-label="Close menu"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
 
-              <div className="mt-4 grid grid-cols-3 gap-2">
-                <Link
-                  href="/profile"
-                  onClick={closeMobileMenu}
-                  className="rounded-xl border border-[#E7D7B3] bg-[#FFFCF4] px-3 py-2 text-center text-xs font-semibold text-[#5F4820]"
-                >
-                  Profile
-                </Link>
-                <button
-                  type="button"
-                  onClick={() => {
-                    toggleWishlist();
-                    closeMobileMenu();
-                  }}
-                  className="rounded-xl border border-[#E7D7B3] bg-[#FFFCF4] px-3 py-2 text-center text-xs font-semibold text-[#5F4820]"
-                >
-                  Wishlist
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    openCart();
-                    closeMobileMenu();
-                  }}
-                  className="rounded-xl border border-[#E7D7B3] bg-[#FFFCF4] px-3 py-2 text-center text-xs font-semibold text-[#5F4820]"
-                >
-                  Cart
-                </button>
-              </div>
+                <div className="mt-4 grid grid-cols-3 gap-2">
+                  <Link
+                    href="/profile"
+                    onClick={closeMobileMenu}
+                    className="rounded-xl border border-[#E7D7B3] bg-[#FFFCF4] px-3 py-2 text-center text-xs font-semibold text-[#5F4820]"
+                  >
+                    Profile
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      toggleWishlist();
+                      closeMobileMenu();
+                    }}
+                    className="rounded-xl border border-[#E7D7B3] bg-[#FFFCF4] px-3 py-2 text-center text-xs font-semibold text-[#5F4820]"
+                  >
+                    Wishlist
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      openCart();
+                      closeMobileMenu();
+                    }}
+                    className="rounded-xl border border-[#E7D7B3] bg-[#FFFCF4] px-3 py-2 text-center text-xs font-semibold text-[#5F4820]"
+                  >
+                    Cart
+                  </button>
+                </div>
 
-              {isAdmin && (
-                <Link
-                  href="/admin/dashboard"
-                  onClick={closeMobileMenu}
-                  className="mt-3 inline-flex items-center gap-2 rounded-full border border-[#E0C98A] bg-[#FFF6DF] px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-[#7D5E1A]"
-                >
-                  <Shield className="h-3.5 w-3.5" />
-                  Admin dashboard
-                </Link>
-              )}
+                {isAdmin && (
+                  <Link
+                    href="/admin/dashboard"
+                    onClick={closeMobileMenu}
+                    className="mt-3 inline-flex items-center gap-2 rounded-full border border-[#E0C98A] bg-[#FFF6DF] px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-[#7D5E1A]"
+                  >
+                    <Shield className="h-3.5 w-3.5" />
+                    Admin dashboard
+                  </Link>
+                )}
 
-              <div className="mt-6 rounded-2xl border border-[#EADFC6] bg-[#FFFDF8] p-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8A6D2B]">
-                  Shop Categories
-                </p>
-                <div className="mt-3 space-y-2">
-                  {categories.map((cat) => {
-                    const isOpen = mobileCategoryOpen === cat;
-                    return (
-                      <div
-                        key={`mobile-category-${cat}`}
-                        className={`rounded-2xl border ${
-                          isOpen ? "border-[#E2C98F] bg-white" : "border-[#EFE2C4] bg-white"
-                        }`}
-                      >
-                        <button
-                          type="button"
-                          onClick={() => toggleMobileCategory(cat)}
-                          className="flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left text-base font-semibold text-[#2B2417] transition hover:bg-[#FFF6DF]"
+                <div className="mt-6 rounded-2xl border border-[#EADFC6] bg-[#FFFDF8] p-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8A6D2B]">
+                    Shop Categories
+                  </p>
+                  <div className="mt-3 space-y-2">
+                    {categories.map((cat) => {
+                      const isOpen = mobileCategoryOpen === cat;
+                      return (
+                        <div
+                          key={`mobile-category-${cat}`}
+                          className={`rounded-2xl border ${
+                            isOpen ? "border-[#E2C98F] bg-white" : "border-[#EFE2C4] bg-white"
+                          }`}
                         >
-                          <span>{cat}</span>
-                          <ChevronRight
-                            className={`h-5 w-5 text-[#8A6D2B] transition-transform ${
-                              isOpen ? "rotate-90" : ""
-                            }`}
-                          />
-                        </button>
-                        {isOpen ? <div className="px-3 pb-4 pt-1">{renderMobileSidebar(cat)}</div> : null}
-                      </div>
-                    );
-                  })}
+                          <button
+                            type="button"
+                            {...mobilePressHandlers(() => toggleMobileCategory(cat))}
+                            className="flex w-full touch-manipulation items-center justify-between rounded-2xl px-4 py-3 text-left text-base font-semibold text-[#2B2417] transition hover:bg-[#FFF6DF]"
+                          >
+                            <span>{cat}</span>
+                            <ChevronRight
+                              className={`h-5 w-5 text-[#8A6D2B] transition-transform ${
+                                isOpen ? "rotate-90" : ""
+                              }`}
+                            />
+                          </button>
+                          {isOpen ? <div className="px-3 pb-4 pt-1">{renderMobileSidebar(cat)}</div> : null}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             </motion.aside>

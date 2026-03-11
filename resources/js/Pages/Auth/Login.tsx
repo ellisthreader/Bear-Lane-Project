@@ -111,11 +111,11 @@ export default function AuthPage() {
 
       <main className="flex min-h-screen items-stretch md:h-screen md:overflow-hidden">
         {/* Left Side */}
-        <div className="relative z-[60] w-full md:w-1/2 flex flex-col justify-start items-center px-4 sm:px-6 md:px-0 pt-8 md:pt-20 md:overflow-y-auto pointer-events-auto hit-test-fix">
-          <div className="flex flex-col justify-start items-center w-full max-w-md space-y-5 pb-8 pointer-events-auto">
+        <div className="relative z-0 w-full md:w-1/2 flex flex-col justify-start items-center px-4 sm:px-6 md:px-0 pt-6 md:pt-20 md:overflow-y-auto pointer-events-auto hit-test-fix">
+          <div className="flex flex-col justify-start items-center w-full max-w-sm sm:max-w-md space-y-5 pb-8 pointer-events-auto">
             {/* Logo */}
             <div className="flex justify-center mb-1">
-              <img loading="lazy" decoding="async" src="/images/BL-Logo.png" alt="Logo" className="w-40 md:w-44 h-auto" />
+              <img loading="lazy" decoding="async" src="/images/BL-Logo.png" alt="Logo" className="w-32 sm:w-36 md:w-44 h-auto" />
             </div>
 
             {/* Forgot Password */}
@@ -142,56 +142,59 @@ export default function AuthPage() {
 
                 {/* Email Step */}
                 {step === "email" && (
-                  <div className="w-full space-y-6 animate-fadeIn">
-                    <h2 className="text-4xl font-bold text-gray-900 text-center">Hi There!</h2>
-                    <p className="text-gray-700 text-center mt-2 text-lg">
+                  <div className="w-full space-y-5 animate-fadeIn">
+                    <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 text-center">Hi There!</h2>
+                    <p className="text-gray-700 text-center mt-2 text-base sm:text-lg">
                       Enter your email to sign in or join.
                     </p>
-                    <form onSubmit={handleEmailSubmit} className="space-y-6">
+                    <form onSubmit={handleEmailSubmit} className="space-y-4">
                       <input
                         type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="you@example.com"
                         required
-                        className="w-full rounded-2xl border border-gray-200 px-6 py-6 text-gray-900 text-xl focus:outline-none focus:ring-2 focus:ring-[#C6A75E] transition-all duration-200"
+                        className="w-full rounded-2xl border border-gray-200 px-4 py-4 text-gray-900 text-base sm:text-lg focus:outline-none focus:ring-2 focus:ring-[#C6A75E] transition-all duration-200"
                       />
                       {error && <p className="text-red-500 text-sm">{error}</p>}
                       <button
                         type="submit"
                         disabled={loading}
-                        className="w-full py-5 text-white font-semibold text-xl rounded-2xl shadow-md hover:shadow-lg transition-all duration-300"
+                        className="w-full py-4 text-white font-semibold text-base sm:text-lg rounded-2xl shadow-md hover:shadow-lg transition-all duration-300 touch-manipulation"
                         style={{ background: gold, opacity: loading ? 0.8 : 1, cursor: loading ? "not-allowed" : "pointer" }}
                       >
                         {loading ? "Checking..." : "Continue"}
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => setStep("register")}
-                        className="w-full py-4 text-[#6B5A34] font-semibold text-base rounded-2xl border border-[#D9CBA8] hover:bg-[#FFF9EB] transition-all duration-200"
-                      >
-                        Create a new account
-                      </button>
+                      <p className="text-center text-sm text-[#6B5A34]">
+                        New here?{" "}
+                        <button
+                          type="button"
+                          onClick={() => setStep("register")}
+                          className="font-semibold text-blue-600 underline underline-offset-2"
+                        >
+                          Create a new account
+                        </button>
+                      </p>
                     </form>
 
-                    <div className="flex items-center my-6">
+                    <div className="flex items-center my-4">
                       <hr className="flex-1 border-gray-300" />
                       <span className="mx-2 text-gray-400 font-medium">OR</span>
                       <hr className="flex-1 border-gray-300" />
                     </div>
 
-                    <div className="flex justify-center gap-6">
+                    <div className="flex justify-center gap-4">
                       <button
                         type="button"
                         onClick={handleGoogleLogin}
-                        className="w-16 h-16 flex items-center justify-center rounded-lg shadow hover:shadow-md transition-all duration-200 border border-gray-200 bg-white"
+                        className="w-14 h-14 flex items-center justify-center rounded-lg shadow hover:shadow-md transition-all duration-200 border border-gray-200 bg-white"
                       >
                         <FcGoogle size={32} />
                       </button>
                       <button
                         type="button"
                         onClick={handleFacebookLogin}
-                        className="w-16 h-16 flex items-center justify-center rounded-lg shadow hover:shadow-md transition-all duration-200 border border-gray-200 bg-white text-blue-600"
+                        className="w-14 h-14 flex items-center justify-center rounded-lg shadow hover:shadow-md transition-all duration-200 border border-gray-200 bg-white text-blue-600"
                       >
                         <FaFacebookF size={28} />
                       </button>
@@ -201,34 +204,37 @@ export default function AuthPage() {
 
                 {/* Password Step */}
                 {step === "password" && (
-                  <div className="w-full space-y-6 animate-fadeIn">
-                    <h2 className="text-4xl font-bold text-gray-900 text-center">Welcome Back!</h2>
-                    <p className="text-gray-700 text-center mt-2 text-lg">Enter your password to sign in.</p>
-                    <form onSubmit={handleLogin} className="space-y-6">
+                  <div className="w-full space-y-5 animate-fadeIn">
+                    <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 text-center">Welcome Back!</h2>
+                    <p className="text-gray-700 text-center mt-2 text-base sm:text-lg">Enter your password to sign in.</p>
+                    <form onSubmit={handleLogin} className="space-y-4">
                       <input
                         type="password"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder="Enter your password"
                         required
-                        className="w-full rounded-2xl border border-gray-200 px-6 py-6 text-gray-900 text-xl focus:outline-none focus:ring-2 focus:ring-[#C6A75E] transition-all duration-200"
+                        className="w-full rounded-2xl border border-gray-200 px-4 py-4 text-gray-900 text-base sm:text-lg focus:outline-none focus:ring-2 focus:ring-[#C6A75E] transition-all duration-200"
                       />
                       {error && <p className="text-red-500 text-sm">{error}</p>}
                       <button
                         type="submit"
                         disabled={loading}
-                        className="w-full py-5 text-white font-semibold text-xl rounded-2xl shadow-md hover:shadow-lg transition-all duration-300"
+                        className="w-full py-4 text-white font-semibold text-base sm:text-lg rounded-2xl shadow-md hover:shadow-lg transition-all duration-300 touch-manipulation"
                         style={{ background: gold, opacity: loading ? 0.8 : 1, cursor: loading ? "not-allowed" : "pointer" }}
                       >
                         {loading ? "Logging in..." : "Login"}
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => setStep("register")}
-                        className="w-full py-4 text-[#6B5A34] font-semibold text-base rounded-2xl border border-[#D9CBA8] hover:bg-[#FFF9EB] transition-all duration-200"
-                      >
-                        Don&apos;t have an account? Register
-                      </button>
+                      <p className="text-center text-sm text-[#6B5A34]">
+                        Don&apos;t have an account?{" "}
+                        <button
+                          type="button"
+                          onClick={() => setStep("register")}
+                          className="font-semibold text-blue-600 underline underline-offset-2"
+                        >
+                          Register
+                        </button>
+                      </p>
                     </form>
                     <div className="text-center mt-4 text-gray-500">
                       <button

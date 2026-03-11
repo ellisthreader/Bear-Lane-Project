@@ -42,6 +42,14 @@ export default function StartProject() {
             <p className="mt-3 text-sm text-[#6A5530]">
               Browse categories and choose the perfect base item for your design.
             </p>
+            <button
+              type="button"
+              onClick={() => scrollTo("featured-products")}
+              className="mt-4 inline-flex items-center gap-2 rounded-full border border-[#D7BE84] bg-[#FFF9EA] px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-[#7B6530] transition hover:bg-[#F8E9C9] touch-manipulation"
+            >
+              Pick your product
+              <ArrowRight className="h-4 w-4" />
+            </button>
           </div>
 
           <div className="group relative overflow-hidden rounded-2xl border border-[#E8DDBF] bg-white/90 p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-[0_16px_36px_rgba(93,70,20,0.16)]">

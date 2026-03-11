@@ -2002,7 +2002,7 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
               ) : null}
 
               {!isAdminEditor ? (
-                <>
+                <div className="relative z-20 pointer-events-auto hit-test-fix">
                   <button
                     type="button"
                     {...pressHandlers(handlePrimaryAction)}
@@ -2026,7 +2026,7 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
                       <GetQuoteButton />
                     </>
                   ) : null}
-                </>
+                </div>
               ) : (
                 <div className="mt-7 rounded-2xl border border-[#D7BE84] bg-[#FFF9EA] p-3 text-sm text-[#5E4A22]">
                   {isAdminPremadeEditor
