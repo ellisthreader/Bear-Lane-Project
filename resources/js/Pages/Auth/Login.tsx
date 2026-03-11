@@ -111,7 +111,7 @@ export default function AuthPage() {
 
       <main className="flex min-h-screen items-stretch md:h-screen md:overflow-hidden">
         {/* Left Side */}
-        <div className="relative z-[60] w-full md:w-1/2 flex flex-col justify-start items-center px-4 sm:px-6 md:px-0 pt-8 md:pt-20 md:overflow-y-auto pointer-events-auto">
+        <div className="relative z-[60] w-full md:w-1/2 flex flex-col justify-start items-center px-4 sm:px-6 md:px-0 pt-8 md:pt-20 md:overflow-y-auto pointer-events-auto hit-test-fix">
           <div className="flex flex-col justify-start items-center w-full max-w-md space-y-5 pb-8 pointer-events-auto">
             {/* Logo */}
             <div className="flex justify-center mb-1">

@@ -117,9 +117,6 @@ export default function IdeaToIconicSection() {
               type="button"
               onClick={() => {
                 setActivePage("startProject");
-                requestAnimationFrame(() => {
-                  window.scrollTo({ top: 0, behavior: "smooth" });
-                });
               }}
               className="px-8 py-4 rounded-2xl bg-[#C9A24D] text-white font-semibold shadow-lg hover:opacity-90 transition"
             >

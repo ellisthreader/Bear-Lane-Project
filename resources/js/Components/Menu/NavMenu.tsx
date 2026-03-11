@@ -53,6 +53,7 @@ export default function NavMenu() {
   const [pendingChatNotifications, setPendingChatNotifications] = useState(0);
   const [searchOpen, setSearchOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mobileCategoryOpen, setMobileCategoryOpen] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
@@ -81,6 +82,11 @@ export default function NavMenu() {
   const closeMobileMenu = () => {
     setMobileMenuOpen(false);
     setActiveSidebar(null);
+    setMobileCategoryOpen(null);
+  };
+
+  const toggleMobileCategory = (cat: string) => {
+    setMobileCategoryOpen((prev) => (prev === cat ? null : cat));
   };
 
   const renderSidebar = (closeSidebar: () => void) => {
@@ -92,7 +98,22 @@ export default function NavMenu() {
       case "kids":
         return <KidsSidebar closeSidebar={closeSidebar} />;
       case "sale":
-        return <SaleSidebar closeSidebar={closeSidebar} />;
+        return <SaleSidebar />;
+      default:
+        return null;
+    }
+  };
+
+  const renderMobileSidebar = (category: string) => {
+    switch (category.toLowerCase()) {
+      case "women":
+        return <WomenSidebar closeSidebar={closeMobileMenu} variant="accordion" showHeading={false} />;
+      case "men":
+        return <MenSidebar closeSidebar={closeMobileMenu} variant="accordion" showHeading={false} />;
+      case "kids":
+        return <KidsSidebar closeSidebar={closeMobileMenu} variant="accordion" showHeading={false} />;
+      case "sale":
+        return <SaleSidebar variant="mobile" />;
       default:
         return null;
     }
@@ -475,7 +496,7 @@ export default function NavMenu() {
               setMobileMenuOpen(true);
               setSearchOpen(false);
               setNotificationsOpen(false);
-              setActiveSidebar((prev) => prev ?? categories[0]);
+              setActiveSidebar(null);
             }}
             className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#E8D8B3] bg-[#FFF9EC] text-[#7D5E1A] transition hover:border-[#D4AF37] hover:text-[#D4AF37] sm:h-10 sm:w-10 lg:hidden"
             aria-label="Open menu"
@@ -958,30 +979,33 @@ export default function NavMenu() {
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8A6D2B]">
                   Shop Categories
                 </p>
-                <div className="mt-2 space-y-1">
+                <div className="mt-3 space-y-2">
                   {categories.map((cat) => {
-                    const isActive = activeSidebar === cat;
+                    const isOpen = mobileCategoryOpen === cat;
                     return (
-                      <button
+                      <div
                         key={`mobile-category-${cat}`}
-                        type="button"
-                        onClick={() => setActiveSidebar(cat)}
-                        className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm font-semibold transition ${
-                          isActive
-                            ? "bg-[#F8ECCF] text-[#5F4820]"
-                            : "text-[#3B2E1B] hover:bg-[#FFF6DF]"
+                        className={`rounded-2xl border ${
+                          isOpen ? "border-[#E2C98F] bg-white" : "border-[#EFE2C4] bg-white"
                         }`}
                       >
-                        <span>{cat}</span>
-                        <ChevronRight className="h-4 w-4" />
-                      </button>
+                        <button
+                          type="button"
+                          onClick={() => toggleMobileCategory(cat)}
+                          className="flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left text-base font-semibold text-[#2B2417] transition hover:bg-[#FFF6DF]"
+                        >
+                          <span>{cat}</span>
+                          <ChevronRight
+                            className={`h-5 w-5 text-[#8A6D2B] transition-transform ${
+                              isOpen ? "rotate-90" : ""
+                            }`}
+                          />
+                        </button>
+                        {isOpen ? <div className="px-3 pb-4 pt-1">{renderMobileSidebar(cat)}</div> : null}
+                      </div>
                     );
                   })}
                 </div>
-              </div>
-
-              <div className="mt-3 rounded-2xl border border-[#EADFC6] bg-white p-4">
-                {renderSidebar(closeMobileMenu)}
               </div>
             </motion.aside>
           </>

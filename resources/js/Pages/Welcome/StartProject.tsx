@@ -42,14 +42,6 @@ export default function StartProject() {
             <p className="mt-3 text-sm text-[#6A5530]">
               Browse categories and choose the perfect base item for your design.
             </p>
-            <button
-              type="button"
-              onClick={() => scrollTo("shop-by-category")}
-              className="mt-4 inline-flex items-center gap-2 rounded-full border border-[#D7BE84] bg-[#FFF9EA] px-4 py-2 text-xs font-semibold text-[#7B6530] transition hover:bg-[#F8E9C9]"
-            >
-              Browse categories
-              <ArrowRight className="h-3.5 w-3.5" />
-            </button>
           </div>
 
           <div className="group relative overflow-hidden rounded-2xl border border-[#E8DDBF] bg-white/90 p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-[0_16px_36px_rgba(93,70,20,0.16)]">
@@ -67,14 +59,6 @@ export default function StartProject() {
             <p className="mt-3 text-sm text-[#6A5530]">
               Upload artwork, add text, or create something fresh in our designer.
             </p>
-            <button
-              type="button"
-              onClick={() => scrollTo("featured-products")}
-              className="mt-4 inline-flex items-center gap-2 rounded-full bg-[#1F1A12] px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-white transition hover:bg-[#372D1C]"
-            >
-              Choose a product
-              <ArrowRight className="h-3.5 w-3.5" />
-            </button>
           </div>
 
           <div className="group relative overflow-hidden rounded-2xl border border-[#E8DDBF] bg-white/90 p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-[0_16px_36px_rgba(93,70,20,0.16)]">
@@ -92,14 +76,6 @@ export default function StartProject() {
             <p className="mt-3 text-sm text-[#6A5530]">
               Review favourites, add to cart, and track delivery with confidence.
             </p>
-            <button
-              type="button"
-              onClick={() => scrollTo("featured-products")}
-              className="mt-4 inline-flex items-center gap-2 rounded-full border border-[#D7BE84] bg-[#FFF9EA] px-4 py-2 text-xs font-semibold text-[#7B6530] transition hover:bg-[#F8E9C9]"
-            >
-              View featured picks
-              <ArrowRight className="h-3.5 w-3.5" />
-            </button>
           </div>
         </div>
       </div>
