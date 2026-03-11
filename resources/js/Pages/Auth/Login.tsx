@@ -111,8 +111,8 @@ export default function AuthPage() {
 
       <main className="flex min-h-screen items-stretch md:h-screen md:overflow-hidden">
         {/* Left Side */}
-        <div className="w-full md:w-1/2 flex flex-col justify-start items-center px-4 sm:px-6 md:px-0 pt-8 md:pt-20 md:overflow-y-auto">
-          <div className="flex flex-col justify-start items-center w-full max-w-md space-y-5 pb-8">
+        <div className="relative z-[60] w-full md:w-1/2 flex flex-col justify-start items-center px-4 sm:px-6 md:px-0 pt-8 md:pt-20 md:overflow-y-auto pointer-events-auto">
+          <div className="flex flex-col justify-start items-center w-full max-w-md space-y-5 pb-8 pointer-events-auto">
             {/* Logo */}
             <div className="flex justify-center mb-1">
               <img loading="lazy" decoding="async" src="/images/BL-Logo.png" alt="Logo" className="w-40 md:w-44 h-auto" />

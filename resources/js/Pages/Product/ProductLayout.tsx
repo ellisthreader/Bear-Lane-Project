@@ -1625,7 +1625,7 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
           </nav>
 
           <div className="grid grid-cols-1 gap-6 px-4 md:px-6 lg:grid-cols-[minmax(0,1.6fr)_420px] lg:gap-10 lg:px-10">
-            <section className="min-w-0">
+            <section className="relative z-10 min-w-0">
               {isAdminEditor ? (
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
                   {displayImages.map((img, i) => (

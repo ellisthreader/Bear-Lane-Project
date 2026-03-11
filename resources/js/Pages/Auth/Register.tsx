@@ -201,7 +201,7 @@ export default function Register({ email: initialEmail = "" }: RegisterProps) {
   return (
     <form
       onSubmit={handleSignup}
-      className="space-y-4 w-full max-w-2xl mx-auto px-1 sm:px-2 md:px-0"
+      className="relative z-[60] pointer-events-auto space-y-4 w-full max-w-2xl mx-auto px-1 sm:px-2 md:px-0"
     >
       <div className="flex flex-col gap-3">
         <button

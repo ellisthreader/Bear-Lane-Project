@@ -95,7 +95,13 @@ export default function GenericCategorySidebar({ rootKey, title, closeSidebar }:
       {path.length > 0 ? (
         <>
           <button
+            type="button"
             onClick={goBack}
+            onPointerUp={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              goBack();
+            }}
             className="mb-4 flex items-center gap-2 hover:opacity-70 transition w-fit"
             aria-label="Go back"
           >
@@ -116,7 +122,17 @@ export default function GenericCategorySidebar({ rootKey, title, closeSidebar }:
             <p className={textClass}>No categories yet.</p>
           ) : (
             options.map((node) => (
-              <button key={node.id} onClick={() => handleSelect(node)} className={textClass}>
+              <button
+                key={node.id}
+                type="button"
+                onClick={() => handleSelect(node)}
+                onPointerUp={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  handleSelect(node);
+                }}
+                className={textClass}
+              >
                 {node.name}
               </button>
             ))

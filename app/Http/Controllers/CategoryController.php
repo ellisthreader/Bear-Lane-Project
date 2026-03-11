@@ -20,14 +20,14 @@ class CategoryController extends Controller
     {
         $slug = trim((string) $slug, '/');
 
-        // Find category using exact slug stored in DB
-        $categoryModel = Category::where('slug', $slug)->first();
+        // Find category using exact slug or resolved path segments.
+        $categoryModel = $this->resolveCategoryBySlugPath($slug);
         if (!$categoryModel) {
             $aliasPage = $this->renderAliasCategoryPage($request, $slug);
             if ($aliasPage !== null) {
                 return $aliasPage;
             }
-            abort(404);
+            return $this->renderEmptyCategoryPage($slug);
         }
         $premadeQuotes = $this->premadeQuoteMap();
         $categoryIds = $this->collectCategoryTreeIds($categoryModel);
@@ -266,6 +266,57 @@ class CategoryController extends Controller
             $normalizedSlug,
             $products
         );
+    }
+
+    private function resolveCategoryBySlugPath(string $slug): ?Category
+    {
+        $slug = trim($slug, '/');
+        if ($slug === '') {
+            return null;
+        }
+
+        $direct = Category::where('slug', $slug)->first();
+        if ($direct) {
+            return $direct;
+        }
+
+        $segments = array_values(array_filter(explode('/', $slug)));
+        if (count($segments) === 0) {
+            return null;
+        }
+
+        $leafSlug = $segments[count($segments) - 1];
+        $candidates = Category::where('slug', $leafSlug)->get();
+        if ($candidates->isEmpty()) {
+            return null;
+        }
+
+        if (count($segments) === 1) {
+            return $candidates->first();
+        }
+
+        foreach ($candidates as $candidate) {
+            $trail = $this->buildCategoryTrail($candidate);
+            $trailSlugs = array_map(fn (Category $category) => (string) $category->slug, $trail);
+            if ($trailSlugs === $segments) {
+                return $candidate;
+            }
+        }
+
+        return $candidates->first();
+    }
+
+    private function renderEmptyCategoryPage(string $slug)
+    {
+        $label = ucwords(str_replace(['-', '_', '/'], ' ', $slug));
+
+        return Inertia::render('CategoryPage', [
+            'heading' => $label,
+            'category' => $label,
+            'subcategory' => $label,
+            'slug' => $slug,
+            'products' => [],
+        ]);
     }
 
     /**

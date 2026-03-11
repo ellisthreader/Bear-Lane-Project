@@ -652,6 +652,15 @@ export default function NavMenu() {
         </div>
       </div>
 
+      {searchOpen && (
+        <button
+          type="button"
+          onClick={() => setSearchOpen(false)}
+          aria-label="Close search overlay"
+          className="fixed inset-0 z-30 bg-transparent lg:hidden"
+        />
+      )}
+
       <AnimatePresence>
         {searchOpen && (
           <motion.div

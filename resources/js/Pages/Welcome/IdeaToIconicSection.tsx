@@ -102,7 +102,7 @@ export default function IdeaToIconicSection() {
     <section className="w-full bg-white py-14 md:py-24">
       <div className="mx-auto grid max-w-7xl grid-cols-1 items-center gap-12 px-6 md:grid-cols-2 md:gap-16">
         {/* LEFT SIDE */}
-        <div className="text-center md:text-left">
+        <div className="relative z-10 text-center md:text-left">
           <h2 className="text-4xl font-bold leading-tight text-gray-900 md:text-5xl">
             From concept to something unforgettable
           </h2>
@@ -115,14 +115,33 @@ export default function IdeaToIconicSection() {
           <div className="mt-10 flex flex-wrap justify-center gap-4 md:justify-start">
             <button
               type="button"
-              onClick={() => setActivePage("startProject")}
+              onClick={() => {
+                setActivePage("startProject");
+                requestAnimationFrame(() => {
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                });
+              }}
               className="px-8 py-4 rounded-2xl bg-[#C9A24D] text-white font-semibold shadow-lg hover:opacity-90 transition"
             >
               Start your project
             </button>
             <button
               type="button"
-              onClick={() => setActivePage("getQuote")}
+              onClick={() => {
+                if (typeof window !== "undefined") {
+                  const url = "/?quote_tab=instant#get-quote-instantly";
+                  window.history.replaceState({}, "", url);
+                }
+                setActivePage("getQuote");
+                requestAnimationFrame(() => {
+                  const target = document.getElementById("get-quote-instantly");
+                  if (target) {
+                    target.scrollIntoView({ behavior: "smooth", block: "start" });
+                  } else {
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }
+                });
+              }}
               className="px-8 py-4 rounded-2xl border-2 border-[#C9A24D] text-[#C9A24D] font-semibold hover:bg-[#C9A24D] hover:text-white transition"
             >
               Get instant quote

@@ -14,11 +14,8 @@ export default function StartProject() {
   };
 
   return (
-    <div className="relative overflow-hidden rounded-3xl border border-[#E8DDBF] bg-gradient-to-br from-[#FFFCF6] via-[#FFFAF0] to-[#F8F1E2] p-6 shadow-[0_18px_50px_rgba(97,74,24,0.12)] sm:p-8 lg:p-10">
-      <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-[#E9D1A0]/30 blur-3xl" />
-      <div className="absolute -bottom-20 left-16 h-56 w-56 rounded-full bg-[#DDB770]/20 blur-3xl" />
-
-      <div className="relative z-10">
+    <div className="rounded-3xl border border-[#E8DDBF] bg-white p-6 sm:p-8 lg:p-10">
+      <div>
         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#B08A2E]">
           Start Your Project
         </p>
@@ -72,10 +69,10 @@ export default function StartProject() {
             </p>
             <button
               type="button"
-              onClick={() => router.get("/design")}
+              onClick={() => scrollTo("featured-products")}
               className="mt-4 inline-flex items-center gap-2 rounded-full bg-[#1F1A12] px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-white transition hover:bg-[#372D1C]"
             >
-              Open designer
+              Choose a product
               <ArrowRight className="h-3.5 w-3.5" />
             </button>
           </div>
