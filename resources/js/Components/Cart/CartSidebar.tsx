@@ -6,6 +6,7 @@ import { X, Plus, Minus, Trash2, ChevronDown } from "lucide-react";
 import { useCart } from "@/Context/CartContext";
 import { router } from "@inertiajs/react";
 import DesignPreview from "@/Pages/Design/Components/DesignPreview";
+import { widthPercentClass } from "@/Utils/percentClasses";
 
 // ✅ Import CartItem + AddToCartPayload types from your CartContext
 import type { CartItem } from "@/Context/CartContext";
@@ -136,6 +137,7 @@ const CartSidebar = () => {
 
   const freeShippingGoal = 50;
   const progress = Math.min(totalPrice / freeShippingGoal, 1) * 100;
+  const progressWidthClass = widthPercentClass(progress);
 
   // ===== Handlers =====
   const handleIncrease = (item: CartItem) => {
@@ -195,8 +197,7 @@ const CartSidebar = () => {
             <div className="border-b border-[#C6A75E]/20 bg-[#FAFAF7] p-3 sm:p-4">
               <div className="w-full h-2.5 bg-[#EFE9DA] rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-gradient-to-r from-[#C6A75E] to-[#B8994E] transition-all duration-300"
-                  style={{ width: `${progress}%` }}
+                  className={`h-full bg-gradient-to-r from-[#C6A75E] to-[#B8994E] transition-all duration-300 ${progressWidthClass}`}
                 />
               </div>
 

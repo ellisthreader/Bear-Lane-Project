@@ -3,8 +3,6 @@ import { FcGoogle } from "react-icons/fc";
 import { FaFacebook } from "react-icons/fa";
 
 export default function SocialLogin() {
-  const gold = "#C6A75E";
-
   const handleGoogleLogin = () => {
     window.location.href = "/auth/google";
   };
@@ -27,8 +25,7 @@ export default function SocialLogin() {
       <button
         type="button"
         onClick={handleFacebookLogin}
-        className="flex items-center justify-center gap-3 w-full py-4 rounded-2xl border border-gray-200 hover:shadow-md transition-all duration-200 text-gray-900 font-semibold text-lg"
-        style={{ borderColor: gold }}
+        className="flex items-center justify-center gap-3 w-full py-4 rounded-2xl border border-[#C6A75E] hover:shadow-md transition-all duration-200 text-gray-900 font-semibold text-lg"
       >
         <FaFacebook size={24} />
         Sign up with Facebook

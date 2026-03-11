@@ -156,7 +156,7 @@ export default function DeliveryInfo({
   const getInputClass = (field: CheckoutFieldKey) =>
     `${inputClass} ${
       isInvalid(field)
-        ? "checkout-field-error checkout-field-shake border-red-400 ring-2 ring-red-200 focus:border-red-400 focus:ring-red-200"
+        ? "animate-checkout-shake border-red-400 ring-2 ring-red-200 focus:border-red-400 focus:ring-red-200"
         : ""
     }`;
   const lookupInvalid =
@@ -201,7 +201,7 @@ export default function DeliveryInfo({
               onFieldValueChange?.("phone", value);
             }}
             forceError={isInvalid("phone")}
-            className={isInvalid("phone") ? "checkout-field-shake" : undefined}
+            className={isInvalid("phone") ? "animate-checkout-shake" : undefined}
           />
           {fieldErrors.phone && <p className="mt-1.5 text-sm text-red-600">{fieldErrors.phone}</p>}
         </div>
@@ -226,7 +226,7 @@ export default function DeliveryInfo({
               <input
                 className={`${inputClass} ${
                   lookupFieldError
-                    ? "checkout-field-error checkout-field-shake border-red-400 ring-2 ring-red-200 focus:border-red-400 focus:ring-red-200"
+                    ? "animate-checkout-shake border-red-400 ring-2 ring-red-200 focus:border-red-400 focus:ring-red-200"
                     : ""
                 }`}
                 value={lookupValue}

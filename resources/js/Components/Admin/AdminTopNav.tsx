@@ -59,7 +59,7 @@ export default function AdminTopNav() {
   const currentPath = page.url.split("?")[0];
 
   return (
-    <div className="sticky top-0 z-20 overflow-x-hidden border-b border-[#E9DFCB] bg-white/95 backdrop-blur-md" style={{ paddingTop: "env(safe-area-inset-top)" }}>
+    <div className="sticky top-0 z-20 overflow-x-hidden border-b border-[#E9DFCB] bg-white/95 pt-[env(safe-area-inset-top)] backdrop-blur-md">
       <div className="mx-auto flex min-h-[72px] w-full max-w-7xl flex-nowrap items-center gap-3 px-3 sm:px-8 lg:relative lg:justify-center">
         <button
           type="button"

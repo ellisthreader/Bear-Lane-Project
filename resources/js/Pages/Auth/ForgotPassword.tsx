@@ -65,21 +65,15 @@ export default function ForgotPassword() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-5 text-white font-semibold text-lg rounded-2xl shadow-md hover:shadow-lg transition-all duration-300"
-            style={{
-              background: gold,
-              opacity: loading ? 0.8 : 1,
-              cursor: loading ? "not-allowed" : "pointer",
-            }}
+            className="w-full rounded-2xl bg-[#C6A75E] py-5 text-lg font-semibold text-white shadow-md transition-all duration-300 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-80"
           >
             {loading ? "Sending..." : "Send Reset Link"}
           </button>
         </form>
       ) : (
-        <div className="mt-6 flex flex-col items-center justify-center space-y-6 animate-fade-in scale-up">
+        <div className="mt-6 flex flex-col items-center justify-center space-y-6 animate-fade-scale origin-center">
           <div
-            className="w-20 h-20 flex items-center justify-center rounded-full"
-            style={{ backgroundColor: "rgba(198,167,94,0.2)" }}
+            className="flex h-20 w-20 items-center justify-center rounded-full bg-[#C6A75E]/20"
           >
             <svg
               className="w-12 h-12 text-[#C6A75E]"
@@ -105,27 +99,12 @@ export default function ForgotPassword() {
 
           <button
             onClick={() => setSent(false)}
-            className="mt-4 px-8 py-3 bg-[#C6A75E] text-white font-semibold rounded-2xl shadow-md hover:shadow-lg transition-all duration-300"
+            className="mt-4 rounded-2xl bg-[#C6A75E] px-8 py-3 font-semibold text-white shadow-md transition-all duration-300 hover:shadow-lg"
           >
             Send Another
           </button>
         </div>
       )}
-
-      <style>
-        {`
-          @keyframes fadeIn {
-            0% { opacity: 0; transform: scale(0.95); }
-            100% { opacity: 1; transform: scale(1); }
-          }
-          .animate-fade-in {
-            animation: fadeIn 0.5s ease-out forwards;
-          }
-          .scale-up {
-            transform-origin: center;
-          }
-        `}
-      </style>
     </div>
   );
 }

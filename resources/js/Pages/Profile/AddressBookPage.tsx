@@ -316,7 +316,7 @@ export default function AddressBookPage() {
   const getInputClass = (field: string) =>
     `rounded-lg border px-3 py-2 focus:outline-none focus:ring-2 ${
       fieldErrors[field]
-        ? "checkout-field-error checkout-field-shake border-red-400 ring-red-200 focus:ring-red-200"
+        ? "animate-checkout-shake border-red-400 ring-red-200 focus:ring-red-200"
         : "border-[#E1D5B8] focus:ring-[#C6A75E]"
     }`;
 

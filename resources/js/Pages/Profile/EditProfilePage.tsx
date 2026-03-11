@@ -194,12 +194,7 @@ export default function EditProfilePage() {
                   type="button"
                   onClick={handleGenerateRandom}
                   disabled={generating || secondsLeft > 0}
-                  className="px-6 py-3 rounded-xl text-white font-medium transition text-center"
-                  style={{
-                    background: gold,
-                    opacity: generating || secondsLeft > 0 ? 0.85 : 1,
-                    minWidth: "220px",
-                  }}
+                  className="min-w-[220px] rounded-xl bg-[#C6A75E] px-6 py-3 text-center font-medium text-white transition disabled:opacity-85"
                 >
                   {generating
                     ? "Generating..."
@@ -291,11 +286,7 @@ export default function EditProfilePage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="flex-1 py-3 rounded-xl text-white transition"
-                style={{
-                  background: gold,
-                  opacity: loading ? 0.85 : 1,
-                }}
+                className="flex-1 rounded-xl bg-[#C6A75E] py-3 text-white transition disabled:opacity-85"
               >
                 {loading ? "Saving..." : "Save"}
               </button>

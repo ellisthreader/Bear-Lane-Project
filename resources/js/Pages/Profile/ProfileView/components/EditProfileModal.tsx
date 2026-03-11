@@ -22,7 +22,7 @@ export default function EditProfileModal() {
   const getInputClass = (field: string) =>
     `w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring-2 ${
       fieldErrors[field]
-        ? "checkout-field-error checkout-field-shake border-red-400 ring-red-200 focus:ring-red-200"
+        ? "animate-checkout-shake border-red-400 ring-red-200 focus:ring-red-200"
         : "border-[#E1D4B5] focus:ring-[#C6A75E]"
     }`;
 
@@ -62,7 +62,7 @@ export default function EditProfileModal() {
               onChange={setEditPhone}
               forceError={Boolean(fieldErrors.phone)}
               variant="modal"
-              className={fieldErrors.phone ? "w-full checkout-field-shake" : "w-full"}
+              className={fieldErrors.phone ? "w-full animate-checkout-shake" : "w-full"}
             />
             {fieldErrors.phone && <p className="mt-1 text-sm text-red-600">{fieldErrors.phone}</p>}
           </div>

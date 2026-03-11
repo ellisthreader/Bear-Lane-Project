@@ -95,7 +95,7 @@ export default function AddPaymentMethodModal({
   const getFieldClass = (field: string) =>
     `w-full rounded-lg border px-3 py-2 focus-within:outline-none focus-within:ring-2 ${
       fieldErrors[field]
-        ? "checkout-field-error checkout-field-shake border-red-400 ring-red-200 focus-within:ring-red-200"
+        ? "animate-checkout-shake border-red-400 ring-red-200 focus-within:ring-red-200"
         : "border-[#E1D4B5] focus-within:ring-[#C6A75E]"
     }`;
 

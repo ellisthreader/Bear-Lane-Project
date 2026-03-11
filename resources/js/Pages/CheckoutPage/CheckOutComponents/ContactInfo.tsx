@@ -28,7 +28,7 @@ export default function ContactInfo({
         type="email"
         className={`w-full rounded-xl border bg-white px-4 py-3 text-gray-900 focus:outline-none ${
           emailInvalid
-            ? "checkout-field-error checkout-field-shake border-red-400 ring-2 ring-red-200"
+            ? "animate-checkout-shake border-red-400 ring-2 ring-red-200 focus:ring-red-200"
             : "border-gray-300 focus:border-[#C6A75E] focus:ring-2 focus:ring-[#C6A75E]/25"
         }`}
         placeholder="you@example.com"

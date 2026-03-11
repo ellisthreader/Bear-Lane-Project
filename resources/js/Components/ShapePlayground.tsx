@@ -23,6 +23,14 @@ type Shape = {
 };
 
 const colors = ["#EF4444", "#F59E0B", "#10B981", "#3B82F6", "#8B5CF6", "#F43F5E"];
+const colorClasses: Record<string, string> = {
+  "#EF4444": "bg-red-500",
+  "#F59E0B": "bg-amber-500",
+  "#10B981": "bg-emerald-500",
+  "#3B82F6": "bg-blue-500",
+  "#8B5CF6": "bg-violet-500",
+  "#F43F5E": "bg-rose-500",
+};
 
 export default function ShapePlayground() {
   const [shapes, setShapes] = useState<Shape[]>([]);
@@ -235,8 +243,7 @@ export default function ShapePlayground() {
                 key={color}
                 whileHover={{ scale: 1.15 }}
                 whileTap={{ scale: 0.9 }}
-                style={{ backgroundColor: color }}
-                className={`w-8 h-8 rounded-full border-2 transition-all ${
+                className={`h-8 w-8 rounded-full border-2 transition-all ${colorClasses[color] || "bg-gray-300"} ${
                   selectedColor === color ? "ring-2 ring-blue-500" : "border-gray-300"
                 }`}
                 onClick={() => setSelectedColor(color)}

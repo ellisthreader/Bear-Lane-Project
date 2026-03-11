@@ -74,8 +74,7 @@ export default function CodingTerminal() {
   return (
     <div
       ref={containerRef}
-      className="bg-black font-mono p-6 rounded-lg w-full max-w-3xl shadow-lg relative"
-      style={{ minHeight: "500px" }}
+      className="relative min-h-[500px] w-full max-w-3xl rounded-lg bg-black p-6 font-mono shadow-lg"
     >
       {/* Terminal top bar */}
       <div className="absolute top-0 left-0 w-full h-6 bg-gray-800 rounded-t-lg flex items-center px-3 text-sm text-gray-200">

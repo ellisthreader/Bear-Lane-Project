@@ -12,16 +12,8 @@ import FloatingHelpLauncher from "@/Components/Support/FloatingHelpLauncher";
 
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import "../css/google-autocomplete.css";
-import "../css/checkout-toast.css";
 
 if (typeof window !== "undefined") {
-  const ua = window.navigator.userAgent || "";
-  const isSafari = /Safari/i.test(ua) && !/Chrome|Chromium|Edg|OPR|CriOS|FxiOS|Android/i.test(ua);
-  if (isSafari) {
-    document.documentElement.classList.add("safari-hit-test-fix");
-  }
-
   window.addEventListener("unhandledrejection", (event) => {
     const reason = event.reason;
     const message =

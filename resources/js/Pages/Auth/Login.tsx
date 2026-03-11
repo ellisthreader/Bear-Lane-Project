@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { router } from "@inertiajs/react";
 import axios from "axios";
 import { FcGoogle } from "react-icons/fc";
@@ -20,8 +20,9 @@ export default function AuthPage() {
   const [error, setError] = useState<string | null>(null);
   const [verificationNotice, setVerificationNotice] = useState<string | null>(null);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
-
-  const gold = "#C6A75E";
+  const emailFormRef = useRef<HTMLFormElement | null>(null);
+  const passwordFormRef = useRef<HTMLFormElement | null>(null);
+  const pointerClickGuardRef = useRef<null | string>(null);
 
   // -----------------------
   // Handle email step
@@ -96,6 +97,30 @@ export default function AuthPage() {
   const handleGoogleLogin = () => (window.location.href = "/auth/google");
   const handleFacebookLogin = () => (window.location.href = "/auth/facebook");
 
+  const handlePointerUp = (handler: () => void) => (event: React.PointerEvent<HTMLButtonElement>) => {
+    pointerClickGuardRef.current = event.pointerType;
+    if (event.pointerType === "touch") {
+      event.preventDefault();
+      event.stopPropagation();
+      handler();
+    }
+  };
+
+  const handleClick = (handler: () => void) => (event: React.MouseEvent<HTMLButtonElement>) => {
+    if (pointerClickGuardRef.current === "touch") {
+      pointerClickGuardRef.current = null;
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+    handler();
+  };
+
+  const pressHandlers = (handler: () => void) => ({
+    onPointerUp: handlePointerUp(handler),
+    onClick: handleClick(handler),
+  });
+
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
@@ -147,7 +172,7 @@ export default function AuthPage() {
                     <p className="text-gray-700 text-center mt-2 text-base sm:text-lg">
                       Enter your email to sign in or join.
                     </p>
-                    <form onSubmit={handleEmailSubmit} className="space-y-4">
+                    <form ref={emailFormRef} onSubmit={handleEmailSubmit} className="space-y-4">
                       <input
                         type="email"
                         value={email}
@@ -158,10 +183,10 @@ export default function AuthPage() {
                       />
                       {error && <p className="text-red-500 text-sm">{error}</p>}
                       <button
-                        type="submit"
+                        type="button"
                         disabled={loading}
-                        className="w-full py-4 text-white font-semibold text-base sm:text-lg rounded-2xl shadow-md hover:shadow-lg transition-all duration-300 touch-manipulation"
-                        style={{ background: gold, opacity: loading ? 0.8 : 1, cursor: loading ? "not-allowed" : "pointer" }}
+                        {...pressHandlers(() => emailFormRef.current?.requestSubmit())}
+                        className="w-full rounded-2xl bg-[#C6A75E] py-4 text-base font-semibold text-white shadow-md transition-all duration-300 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-80 sm:text-lg touch-manipulation"
                       >
                         {loading ? "Checking..." : "Continue"}
                       </button>
@@ -169,7 +194,7 @@ export default function AuthPage() {
                         New here?{" "}
                         <button
                           type="button"
-                          onClick={() => setStep("register")}
+                          {...pressHandlers(() => setStep("register"))}
                           className="font-semibold text-blue-600 underline underline-offset-2"
                         >
                           Create a new account
@@ -186,14 +211,14 @@ export default function AuthPage() {
                     <div className="flex justify-center gap-4">
                       <button
                         type="button"
-                        onClick={handleGoogleLogin}
+                        {...pressHandlers(handleGoogleLogin)}
                         className="w-14 h-14 flex items-center justify-center rounded-lg shadow hover:shadow-md transition-all duration-200 border border-gray-200 bg-white"
                       >
                         <FcGoogle size={32} />
                       </button>
                       <button
                         type="button"
-                        onClick={handleFacebookLogin}
+                        {...pressHandlers(handleFacebookLogin)}
                         className="w-14 h-14 flex items-center justify-center rounded-lg shadow hover:shadow-md transition-all duration-200 border border-gray-200 bg-white text-blue-600"
                       >
                         <FaFacebookF size={28} />
@@ -207,7 +232,7 @@ export default function AuthPage() {
                   <div className="w-full space-y-5 animate-fadeIn">
                     <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 text-center">Welcome Back!</h2>
                     <p className="text-gray-700 text-center mt-2 text-base sm:text-lg">Enter your password to sign in.</p>
-                    <form onSubmit={handleLogin} className="space-y-4">
+                    <form ref={passwordFormRef} onSubmit={handleLogin} className="space-y-4">
                       <input
                         type="password"
                         value={password}
@@ -218,10 +243,10 @@ export default function AuthPage() {
                       />
                       {error && <p className="text-red-500 text-sm">{error}</p>}
                       <button
-                        type="submit"
+                        type="button"
                         disabled={loading}
-                        className="w-full py-4 text-white font-semibold text-base sm:text-lg rounded-2xl shadow-md hover:shadow-lg transition-all duration-300 touch-manipulation"
-                        style={{ background: gold, opacity: loading ? 0.8 : 1, cursor: loading ? "not-allowed" : "pointer" }}
+                        {...pressHandlers(() => passwordFormRef.current?.requestSubmit())}
+                        className="w-full rounded-2xl bg-[#C6A75E] py-4 text-base font-semibold text-white shadow-md transition-all duration-300 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-80 sm:text-lg touch-manipulation"
                       >
                         {loading ? "Logging in..." : "Login"}
                       </button>
@@ -229,7 +254,7 @@ export default function AuthPage() {
                         Don&apos;t have an account?{" "}
                         <button
                           type="button"
-                          onClick={() => setStep("register")}
+                          {...pressHandlers(() => setStep("register"))}
                           className="font-semibold text-blue-600 underline underline-offset-2"
                         >
                           Register

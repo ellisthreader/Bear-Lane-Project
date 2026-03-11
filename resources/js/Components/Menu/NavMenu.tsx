@@ -66,9 +66,7 @@ export default function NavMenu() {
   const searchMiddleRef = useRef<HTMLDivElement | null>(null);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const mobileSearchInputRef = useRef<HTMLInputElement | null>(null);
-  const navRef = useRef<HTMLElement | null>(null);
   const mobilePointerRef = useRef<null | string>(null);
-  const [desktopOverlayTop, setDesktopOverlayTop] = useState(0);
 
   const categories = ["Women", "Men", "Kids", "Sale"];
   const getCsrfToken = () =>
@@ -422,30 +420,6 @@ export default function NavMenu() {
     };
   }, [mobileMenuOpen, activeSidebar]);
 
-  useEffect(() => {
-    const syncDesktopOverlayTop = () => {
-      const navBottom = navRef.current?.getBoundingClientRect().bottom ?? 0;
-      // Slight overlap removes the tiny seam between nav and desktop sidebar.
-      setDesktopOverlayTop(Math.max(0, navBottom - 1));
-    };
-
-    syncDesktopOverlayTop();
-    window.addEventListener("scroll", syncDesktopOverlayTop, { passive: true });
-    window.addEventListener("resize", syncDesktopOverlayTop);
-
-    let resizeObserver: ResizeObserver | null = null;
-    if (navRef.current && "ResizeObserver" in window) {
-      resizeObserver = new ResizeObserver(syncDesktopOverlayTop);
-      resizeObserver.observe(navRef.current);
-    }
-
-    return () => {
-      window.removeEventListener("scroll", syncDesktopOverlayTop);
-      window.removeEventListener("resize", syncDesktopOverlayTop);
-      resizeObserver?.disconnect();
-    };
-  }, []);
-
   const unreadCount = notifications.length;
 
   const deleteNotification = async (notificationId: number) => {
@@ -507,12 +481,11 @@ export default function NavMenu() {
         onMouseLeave={() => setActiveSidebar(null)} // CLOSE ONLY when leaving entire area
       >
       <motion.nav
-        ref={navRef}
         className="
-          sticky top-0 z-50 w-full border-b border-gray-200 bg-white px-2 py-2 backdrop-blur-xl dark:border-gray-700 dark:bg-gray-900
+          sticky top-0 z-50 w-full border-b border-gray-200 bg-white px-2 py-2 backdrop-blur-xl dark:border-gray-700 dark:bg-gray-900 hit-test-fix
           sm:px-4 sm:py-3 lg:py-4 lg:pl-3 lg:pr-10
+          pt-[env(safe-area-inset-top)]
         "
-        style={{ paddingTop: "env(safe-area-inset-top)" }}
       >
         <div className="flex min-h-[52px] flex-nowrap items-center gap-1.5 sm:gap-2">
           <button
@@ -523,7 +496,7 @@ export default function NavMenu() {
               setNotificationsOpen(false);
               setActiveSidebar(null);
             }}
-            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#E8D8B3] bg-[#FFF9EC] text-[#7D5E1A] transition hover:border-[#D4AF37] hover:text-[#D4AF37] sm:h-10 sm:w-10 lg:hidden"
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#E8D8B3] bg-[#FFF9EC] text-[#7D5E1A] transition hover:border-[#D4AF37] hover:text-[#D4AF37] sm:h-10 sm:w-10 lg:hidden touch-manipulation"
             aria-label="Open menu"
           >
             <Menu className="h-5 w-5" />
@@ -541,7 +514,7 @@ export default function NavMenu() {
               <div
                 className={`
                   relative h-[40px] w-[112px] shrink-0 transition-all duration-300 sm:h-[46px] sm:w-[170px] md:w-[190px] lg:h-[50px] lg:w-[220px]
-                  ${logoGlow ? "logo-neon-glow" : ""}
+                  ${logoGlow ? "drop-shadow-[0_0_6px_#D4AF37] drop-shadow-[0_0_14px_rgba(212,175,55,0.1)] drop-shadow-[0_0_24px_rgba(212,175,55,0.1)]" : ""}
                 `}
               >
                 <img
@@ -556,14 +529,9 @@ export default function NavMenu() {
             </Link>
 
             <div
-              className="
-                hidden items-center gap-12 text-[17px] uppercase tracking-wide text-black transition-opacity duration-200 dark:text-gray-200 lg:flex
-              "
-              style={{
-                opacity: searchOpen ? 0 : 1,
-                visibility: searchOpen ? "hidden" : "visible",
-                pointerEvents: searchOpen ? "none" : "auto",
-              }}
+              className={`hidden items-center gap-12 text-[17px] uppercase tracking-wide text-black transition-opacity duration-200 dark:text-gray-200 lg:flex ${
+                searchOpen ? "pointer-events-none invisible opacity-0" : "pointer-events-auto visible opacity-100"
+              }`}
             >
               {categories.map((cat) => (
                 <div
@@ -624,7 +592,7 @@ export default function NavMenu() {
                     return next;
                   });
                 }}
-                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition hover:bg-[#F6ECD5] sm:h-10 sm:w-10"
+                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition hover:bg-[#F6ECD5] sm:h-10 sm:w-10 touch-manipulation"
                 aria-label="Search products"
               >
                 <Search className="h-5 w-5 cursor-pointer transition hover:text-[#D4AF37]" />
@@ -638,14 +606,14 @@ export default function NavMenu() {
             >
               <Heart className="h-5 w-5 cursor-pointer transition hover:text-[#D4AF37]" />
             </button>
-            <Link href="/profile" className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition hover:bg-[#F6ECD5] sm:h-10 sm:w-10">
+            <Link href="/profile" className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition hover:bg-[#F6ECD5] sm:h-10 sm:w-10 touch-manipulation">
               <User className="h-5 w-5 cursor-pointer transition hover:text-[#D4AF37]" />
             </Link>
             {isAuthenticated && (
               <button
                 type="button"
                 onClick={() => setNotificationsOpen((prev) => !prev)}
-                className="relative inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition hover:bg-[#F6ECD5] sm:h-10 sm:w-10"
+                className="relative inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition hover:bg-[#F6ECD5] sm:h-10 sm:w-10 touch-manipulation"
                 aria-label="Open notifications"
               >
                 <Bell className="h-5 w-5 cursor-pointer transition hover:text-[#D4AF37]" />
@@ -657,7 +625,7 @@ export default function NavMenu() {
             <button
               type="button"
               onClick={openCart}
-              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition hover:bg-[#F6ECD5] sm:h-10 sm:w-10"
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition hover:bg-[#F6ECD5] sm:h-10 sm:w-10 touch-manipulation"
               aria-label="Open cart"
             >
               <ShoppingCart className="h-5 w-5" />
@@ -679,7 +647,7 @@ export default function NavMenu() {
         </div>
       </motion.nav>
 
-      <div className="border-b border-[#EFE3C8] bg-white px-3 pb-3 lg:hidden">
+      <div className="border-b border-[#EFE3C8] bg-white px-3 pb-3 lg:hidden hit-test-fix">
         <div className="relative">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8A6D2B]" />
           <input
@@ -1048,8 +1016,7 @@ export default function NavMenu() {
               animate={{ opacity: 0.5 }}
               exit={{ opacity: 0 }}
               onClick={() => setActiveSidebar(null)}
-              className="fixed left-0 z-20 hidden w-full cursor-pointer bg-black lg:block"
-              style={{ top: desktopOverlayTop, height: `calc(100vh - ${desktopOverlayTop}px)` }}
+              className="fixed left-0 z-20 hidden w-full cursor-pointer bg-black lg:block lg:top-[calc(4.5rem+env(safe-area-inset-top))] lg:h-[calc(100vh-4.5rem-env(safe-area-inset-top))]"
             />
 
             {/* SIDEBAR PANEL */}
@@ -1060,9 +1027,8 @@ export default function NavMenu() {
               exit="exit"
               transition={{ duration: 0.25 }}
               className="
-                fixed left-0 z-30 hidden w-[35%] overflow-y-auto bg-white p-7 shadow-2xl dark:bg-gray-900 lg:block
+                fixed left-0 z-30 hidden w-[35%] overflow-y-auto bg-white p-7 shadow-2xl dark:bg-gray-900 lg:top-[calc(4.5rem+env(safe-area-inset-top))] lg:block lg:h-[calc(100vh-4.5rem-env(safe-area-inset-top))]
               "
-              style={{ top: desktopOverlayTop, height: `calc(100vh - ${desktopOverlayTop}px)` }}
             >
               {renderSidebar(() => setActiveSidebar(null))}
             </motion.div>

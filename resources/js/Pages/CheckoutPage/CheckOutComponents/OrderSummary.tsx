@@ -233,7 +233,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
             placeholder="Enter code"
             className={`w-full rounded-lg border px-3 py-2 text-sm text-gray-900 transition-all duration-500 focus:outline-none ${
               isPromoInvalid
-                ? "checkout-field-error checkout-field-shake border-red-400 ring-2 ring-red-200 focus:border-red-400"
+                ? "animate-checkout-shake border-red-400 ring-2 ring-red-200 focus:border-red-400 focus:ring-red-200"
                 : promoJustApplied
                 ? "border-emerald-400 bg-emerald-50 text-emerald-900 shadow-[0_0_0_3px_rgba(16,185,129,0.15)] scale-[1.01] focus:border-emerald-500"
                 : "border-gray-300 focus:border-[#C6A75E]"

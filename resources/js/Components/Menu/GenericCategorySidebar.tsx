@@ -144,6 +144,13 @@ export default function GenericCategorySidebar({
     "w-full rounded-lg px-3 py-2.5 text-left text-sm font-semibold text-[#4B3C21] transition-colors hover:bg-[#FFF6DF]";
   const accordionToggleClass =
     "mr-2 inline-flex h-8 w-8 items-center justify-center rounded-full text-[#8A6D2B] transition hover:bg-[#FFF6DF]";
+  const getDepthPaddingClass = (depth: number) => {
+    if (depth <= 0) return "";
+    if (depth === 1) return "pl-6";
+    if (depth === 2) return "pl-9";
+    if (depth === 3) return "pl-12";
+    return "pl-14";
+  };
 
   const renderAccordionNodes = (nodes: MenuNode[], depth = 0) => {
     if (nodes.length === 0) return null;
@@ -161,11 +168,10 @@ export default function GenericCategorySidebar({
                   <button
                     type="button"
                     {...pressHandlers(() => openCategory(node.slug))}
-                    className={`${labelClass} flex-1 touch-manipulation`}
-                    style={depth > 0 ? { paddingLeft: 12 + depth * 12 } : undefined}
-                  >
-                    {node.name}
-                  </button>
+                  className={`${labelClass} ${getDepthPaddingClass(depth)} flex-1 touch-manipulation`}
+                >
+                  {node.name}
+                </button>
                   <button
                     type="button"
                     {...pressHandlers(() => toggleExpanded(node.id))}
@@ -183,8 +189,7 @@ export default function GenericCategorySidebar({
                 <button
                   type="button"
                   {...pressHandlers(() => handleAccordionSelect(node))}
-                  className={`${labelClass} touch-manipulation`}
-                  style={depth > 0 ? { paddingLeft: 12 + depth * 12 } : undefined}
+                  className={`${labelClass} ${getDepthPaddingClass(depth)} touch-manipulation`}
                 >
                   {node.name}
                 </button>

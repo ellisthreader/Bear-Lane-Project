@@ -29,14 +29,14 @@ function ProfileViewBody() {
   }
 
   return (
-    <div className="min-h-[100dvh] overflow-x-hidden bg-gradient-to-b from-[#FFFDF8] via-[#FFFCF5] to-[#FDF6E7]">
+    <div className="min-h-[100dvh] overflow-x-hidden bg-gradient-to-b from-[#FFFDF8] via-[#FFFCF5] to-[#FDF6E7] hit-test-fix">
       <NavMenu />
 
-      <main className="mx-auto flex min-h-[calc(100dvh-4.5rem)] w-full max-w-7xl gap-4 px-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] pt-3 md:px-10 lg:min-h-0 lg:gap-6 lg:pb-16 lg:pt-8">
+      <main className="mx-auto flex min-h-[calc(100dvh-4.5rem)] w-full max-w-7xl gap-4 px-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] pt-3 md:px-10 lg:min-h-0 lg:gap-6 lg:pb-16 lg:pt-8 hit-test-fix">
         <div className="hidden lg:block">
           <ProfileSidebar />
         </div>
-        <section className="min-h-0 flex-1 overflow-visible">
+        <section className="min-h-0 flex-1 overflow-visible hit-test-fix">
           <ProfileContent />
         </section>
       </main>
@@ -62,7 +62,7 @@ function MobileProfileBottomBar({
   onLogout: () => void;
 }) {
   return (
-    <div className="fixed inset-x-0 bottom-0 z-[90] border-t border-gray-200 bg-white/95 px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-8px_26px_rgba(20,20,20,0.12)] backdrop-blur lg:hidden">
+    <div className="fixed inset-x-0 bottom-0 z-[90] border-t border-gray-200 bg-white/95 px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-8px_26px_rgba(20,20,20,0.12)] backdrop-blur lg:hidden hit-test-fix">
       <div className="grid grid-cols-4 gap-2">
         <MobileTabButton
           label="Profile"
@@ -108,7 +108,7 @@ function MobileTabButton({
     <button
       type="button"
       onClick={onClick}
-      className={`inline-flex flex-col items-center justify-center gap-1 rounded-xl px-2 py-2 text-xs font-medium transition ${
+      className={`inline-flex flex-col items-center justify-center gap-1 rounded-xl px-2 py-2 text-xs font-medium transition touch-manipulation ${
         active
           ? "bg-[#C6A75E]/15 text-[#8A6D2B]"
           : "bg-white text-gray-700 hover:bg-[#C6A75E]/10"
