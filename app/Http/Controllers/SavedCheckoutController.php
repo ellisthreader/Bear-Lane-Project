@@ -6,6 +6,7 @@ use App\Models\UserAddress;
 use App\Models\UserPaymentMethod;
 use App\Models\User;
 use App\Models\Order;
+use App\Services\Stripe\StripeConfiguration;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
@@ -13,7 +14,6 @@ use Inertia\Inertia;
 use Inertia\Response;
 use Stripe\PaymentMethod;
 use Stripe\SetupIntent;
-use Stripe\Stripe;
 use Stripe\Customer;
 
 class SavedCheckoutController extends Controller
@@ -203,7 +203,7 @@ class SavedCheckoutController extends Controller
         $user = $request->user();
 
         try {
-            Stripe::setApiKey((string) env('STRIPE_SECRET'));
+            StripeConfiguration::configure();
             $customerId = $this->ensureStripeCustomer($user);
             if (!$customerId) {
                 return response()->json([
@@ -241,7 +241,7 @@ class SavedCheckoutController extends Controller
         $user = $request->user();
 
         try {
-            Stripe::setApiKey((string) env('STRIPE_SECRET'));
+            StripeConfiguration::configure();
 
             $customerId = $this->ensureStripeCustomer($user);
             if (!$customerId) {
@@ -311,7 +311,7 @@ class SavedCheckoutController extends Controller
         $method = UserPaymentMethod::where('user_id', $user->id)->where('is_active', true)->findOrFail($paymentMethodId);
         $wasDefault = $method->is_default;
 
-        Stripe::setApiKey((string) env('STRIPE_SECRET'));
+        StripeConfiguration::configure();
 
         try {
             PaymentMethod::retrieve($method->stripe_payment_method_id)->detach();

@@ -46,6 +46,8 @@ return [
     // ---------------------------
     'stripe' => [
         'secret' => env('STRIPE_SECRET'),
+        'publishable' => env('VITE_STRIPE_KEY'),
+        'mode' => env('STRIPE_MODE', 'live'),
     ],
 
     // ---------------------------

@@ -5,8 +5,10 @@ import { loadStripe } from "@stripe/stripe-js";
 import { FaPaypal } from "react-icons/fa6";
 import AddPaymentMethodModal from "./AddPaymentMethodModal";
 import { useProfileViewContext } from "../ProfileViewContext";
+import { getStripeMode, getStripePublishableKey } from "@/Utils/stripeMode";
 
-const stripeKey = (import.meta.env.VITE_STRIPE_KEY as string | undefined)?.trim() || "";
+const stripeMode = getStripeMode();
+const stripeKey = getStripePublishableKey();
 const stripePromise = stripeKey
   ? loadStripe(stripeKey, {
       advancedFraudSignals: false,
@@ -122,7 +124,7 @@ export default function PaymentMethodsSection() {
         </Elements>
       ) : (
         <p className="mt-4 text-sm text-red-600">
-          Card management is unavailable. Missing `VITE_STRIPE_KEY`.
+          Card management is unavailable. Check `VITE_STRIPE_KEY` and `VITE_STRIPE_MODE` (current mode: {stripeMode}).
         </p>
       )}
     </section>

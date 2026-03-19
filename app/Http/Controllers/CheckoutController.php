@@ -26,6 +26,7 @@ use App\Services\DeliverySlotService;
 use App\Services\DeliveryOptionService;
 use App\Services\ShippoLabelService;
 use App\Services\AdminNotificationService;
+use App\Services\Stripe\StripeConfiguration;
 use App\Services\Stripe\StripeWalletService;
 use App\Services\StoreSettingsService;
 use App\Mail\OrderConfirmedMail;
@@ -191,7 +192,7 @@ class CheckoutController extends Controller
                 default => ['card'],
             };
 
-            Stripe::setApiKey(env('STRIPE_SECRET'));
+            StripeConfiguration::configure();
 
             $paymentIntentPayload = [
                 'amount' => $total_cents,
@@ -580,7 +581,7 @@ class CheckoutController extends Controller
 
         if (!empty($order->payment_intent_id)) {
             try {
-                Stripe::setApiKey(env('STRIPE_SECRET'));
+                StripeConfiguration::configure();
                 $paymentIntent = PaymentIntent::retrieve($order->payment_intent_id);
                 $metadataType = strtoupper((string) data_get($paymentIntent, 'metadata.payment_type', ''));
                 if (!empty($metadataType)) {

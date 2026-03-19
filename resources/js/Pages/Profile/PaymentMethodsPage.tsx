@@ -7,6 +7,7 @@ import { FaPaypal } from "react-icons/fa6";
 import NavMenu from "@/Components/Menu/NavMenu";
 import AddPaymentMethodModal from "./ProfileView/components/AddPaymentMethodModal";
 import { showCheckoutError, showCheckoutSuccess } from "../CheckoutPage/checkoutToasts";
+import { getStripeMode, getStripePublishableKey } from "@/Utils/stripeMode";
 
 type SavedPaymentMethod = {
   id: number;
@@ -20,7 +21,8 @@ type SavedPaymentMethod = {
   is_active: boolean;
 };
 
-const stripeKey = (import.meta.env.VITE_STRIPE_KEY as string | undefined)?.trim() || "";
+const stripeMode = getStripeMode();
+const stripeKey = getStripePublishableKey();
 const stripePromise = stripeKey
   ? loadStripe(stripeKey, {
       advancedFraudSignals: false,
@@ -347,7 +349,7 @@ export default function PaymentMethodsPage() {
       ) : (
         <div className="mx-auto mb-8 w-full max-w-7xl px-4 md:px-10">
           <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            Stripe is not configured. Set `VITE_STRIPE_KEY` in Railway Variables.
+            Stripe is not configured for {stripeMode} mode. Check `VITE_STRIPE_KEY` and `VITE_STRIPE_MODE` in Railway Variables.
           </p>
         </div>
       )}

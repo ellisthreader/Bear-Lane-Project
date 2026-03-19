@@ -6,8 +6,10 @@ import { FcGoogle } from "react-icons/fc";
 import { FaFacebookF } from "react-icons/fa";
 import CheckoutForm from "./CheckoutForm";
 import { CheckoutProvider } from "@/Context/CheckoutContext";
+import { getStripeMode, getStripePublishableKey } from "@/Utils/stripeMode";
 
-const stripeKey = (import.meta.env.VITE_STRIPE_KEY as string | undefined)?.trim() || "";
+const stripeMode = getStripeMode();
+const stripeKey = getStripePublishableKey();
 const stripePromise = stripeKey
   ? loadStripe(stripeKey, {
       // Reduces blocked telemetry requests (for ad blockers/privacy extensions).
@@ -230,7 +232,7 @@ export default function CheckoutPage() {
 
               {!stripePromise && (
                 <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                  Payments are temporarily unavailable. Missing Stripe publishable key (`VITE_STRIPE_KEY`).
+                  Payments are temporarily unavailable. Check `VITE_STRIPE_KEY` and `VITE_STRIPE_MODE` (current mode: {stripeMode}).
                 </div>
               )}
 

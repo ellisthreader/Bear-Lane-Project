@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Chat;
 use App\Models\Message;
 use App\Models\ReturnRequest;
+use App\Services\Stripe\StripeConfiguration;
 use App\Services\AdminNotificationService;
 use App\Services\AdminActivityLogService;
 use App\Services\ShippoLabelService;
@@ -351,17 +352,12 @@ class AdminOrderReturnsController extends Controller
             throw new \RuntimeException('This order has no Stripe payment intent, so refund cannot be issued automatically.');
         }
 
-        $stripeSecret = trim((string) env('STRIPE_SECRET', ''));
-        if ($stripeSecret === '') {
-            throw new \RuntimeException('Stripe secret key is missing in server configuration.');
-        }
-
         $amountPence = (int) round($refundAmount * 100);
         if ($amountPence < 1) {
             throw new \RuntimeException('Refund amount must be greater than £0.00.');
         }
 
-        Stripe::setApiKey($stripeSecret);
+        StripeConfiguration::configure();
 
         $paymentIntent = PaymentIntent::retrieve([
             'id' => $paymentIntentId,

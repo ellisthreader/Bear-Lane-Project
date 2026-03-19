@@ -8,7 +8,6 @@ use Illuminate\Support\Facades\Schema;
 use Stripe\Customer;
 use Stripe\PaymentIntent;
 use Stripe\PaymentMethod;
-use Stripe\Stripe;
 
 class StripeWalletService
 {
@@ -18,7 +17,7 @@ class StripeWalletService
             return null;
         }
 
-        Stripe::setApiKey((string) env('STRIPE_SECRET'));
+        StripeConfiguration::configure();
 
         if (!empty($user->stripe_customer_id)) {
             return (string) $user->stripe_customer_id;
@@ -52,7 +51,7 @@ class StripeWalletService
             return null;
         }
 
-        Stripe::setApiKey((string) env('STRIPE_SECRET'));
+        StripeConfiguration::configure();
         $intent = PaymentIntent::retrieve($paymentIntentId);
         $rawPaymentMethod = data_get($intent, 'payment_method');
         $paymentMethodId = is_string($rawPaymentMethod) ? $rawPaymentMethod : data_get($rawPaymentMethod, 'id');
@@ -99,7 +98,7 @@ class StripeWalletService
 
     public function detachPaymentMethod(UserPaymentMethod $method): void
     {
-        Stripe::setApiKey((string) env('STRIPE_SECRET'));
+        StripeConfiguration::configure();
         PaymentMethod::retrieve($method->stripe_payment_method_id)->detach();
     }
 

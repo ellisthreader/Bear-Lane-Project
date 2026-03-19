@@ -51,6 +51,39 @@ The project emphasises usability, responsiveness and clean UI structure.
 
 ---
 
+## 🔐 Data Safety For Push/Deploy
+
+`git push` does not include live database rows or runtime uploaded files.  
+Use the included safety scripts before pushing/deploying:
+
+1. Create a live backup:
+```bash
+./scripts/ops/backup-live-data.sh
+```
+2. Run safety checks manually:
+```bash
+./scripts/ops/pre-push-safety-check.sh
+```
+3. Install a local pre-push hook once (recommended):
+```bash
+./scripts/ops/install-pre-push-hook.sh
+```
+4. Restore on target host when needed:
+```bash
+./scripts/ops/restore-live-data.sh backups/<timestamp>
+```
+
+Notes:
+- Backups are written to `./backups/<timestamp>/` and excluded from git.
+- Runtime uploads are archived from `storage/app/public`.
+- DB backup supports `sqlite`, `mysql/mariadb`, and `pgsql`.
+- To intentionally allow tracked image deletions during push checks:
+```bash
+ALLOW_IMAGE_DELETIONS=1 ./scripts/ops/pre-push-safety-check.sh
+```
+
+---
+
 ## 📌 Author
 
 Ellis Threader  
