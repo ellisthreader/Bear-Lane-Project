@@ -107,11 +107,17 @@ export default function ShippingMethod() {
 
   const buildCartItemsPayload = () =>
     cart.map((item) => ({
+      id: item.productId,
       slug: item.slug,
       title: item.title,
       size: item.size,
       colour: item.colour,
       quantity: item.quantity,
+      weight_kg: item.weightKg,
+      length_cm: item.lengthCm,
+      width_cm: item.widthCm,
+      height_cm: item.heightCm,
+      dimension_unit: item.dimensionUnit,
     }));
 
   const fetchDeliveryOptions = async (silent = false) => {

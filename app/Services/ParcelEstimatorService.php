@@ -49,7 +49,7 @@ class ParcelEstimatorService
         $maxLengthCm = 0.0;
         $maxWidthCm = 0.0;
         $totalHeightCm = 0.0;
-        $foundAnyProduct = false;
+        $foundAnyItemMetrics = false;
 
         foreach ($items as $item) {
             if (!is_array($item)) {
@@ -58,23 +58,22 @@ class ParcelEstimatorService
 
             $quantity = max(1, (int) ($item['quantity'] ?? 1));
             $product = $this->resolveProduct($item);
+            $weightPerUnit = $this->resolveWeightPerUnitKg($product, $item);
+            [$lengthCm, $widthCm, $heightCm] = $this->resolveItemDimensionsCm($product, $item);
 
-            if (!$product) {
+            $hasMeaningfulMetrics = $weightPerUnit > 0 && $lengthCm > 0 && $widthCm > 0 && $heightCm > 0;
+            if (!$hasMeaningfulMetrics) {
                 continue;
             }
 
-            $foundAnyProduct = true;
-
-            $weightPerUnit = $this->resolveWeightPerUnitKg($product, $item);
+            $foundAnyItemMetrics = true;
             $totalWeightKg += $weightPerUnit * $quantity;
-
-            [$lengthCm, $widthCm, $heightCm] = $this->resolveProductDimensionsCm($product);
             $maxLengthCm = max($maxLengthCm, $lengthCm);
             $maxWidthCm = max($maxWidthCm, $widthCm);
             $totalHeightCm += $heightCm * $quantity;
         }
 
-        if (!$foundAnyProduct) {
+        if (!$foundAnyItemMetrics) {
             return self::DEFAULT_PARCEL;
         }
 
@@ -118,11 +117,15 @@ class ParcelEstimatorService
         return null;
     }
 
-    private function resolveWeightPerUnitKg(Product $product, array $item): float
+    private function resolveWeightPerUnitKg(?Product $product, array $item): float
     {
-        $directWeight = $item['weight_kg'] ?? $item['weight'] ?? null;
+        $directWeight = $item['weight_kg'] ?? $item['weightKg'] ?? $item['weight'] ?? null;
         if (is_numeric($directWeight) && (float) $directWeight > 0) {
             return (float) $directWeight;
+        }
+
+        if (!$product) {
+            return 1.2;
         }
 
         $size = mb_strtoupper(trim((string) ($item['size'] ?? '')));
@@ -150,6 +153,40 @@ class ParcelEstimatorService
         }
 
         return 1.2;
+    }
+
+    private function resolveItemDimensionsCm(?Product $product, array $item): array
+    {
+        $itemLength = $item['length_cm'] ?? $item['lengthCm'] ?? $item['length'] ?? null;
+        $itemWidth = $item['width_cm'] ?? $item['widthCm'] ?? $item['width'] ?? null;
+        $itemHeight = $item['height_cm'] ?? $item['heightCm'] ?? $item['height'] ?? null;
+        $itemUnit = strtolower(trim((string) ($item['dimension_unit'] ?? $item['dimensionUnit'] ?? 'cm')));
+
+        if (is_numeric($itemLength) && is_numeric($itemWidth) && is_numeric($itemHeight)) {
+            $length = (float) $itemLength;
+            $width = (float) $itemWidth;
+            $height = (float) $itemHeight;
+
+            if ($itemUnit === 'in') {
+                $length *= 2.54;
+                $width *= 2.54;
+                $height *= 2.54;
+            }
+
+            if ($length > 0 && $width > 0 && $height > 0) {
+                return [$length, $width, $height];
+            }
+        }
+
+        if ($product) {
+            return $this->resolveProductDimensionsCm($product);
+        }
+
+        return [
+            (float) self::DEFAULT_PARCEL['length'],
+            (float) self::DEFAULT_PARCEL['width'],
+            (float) self::DEFAULT_PARCEL['height'],
+        ];
     }
 
     private function resolveProductDimensionsCm(Product $product): array

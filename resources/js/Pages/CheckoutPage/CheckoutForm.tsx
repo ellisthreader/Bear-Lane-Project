@@ -570,6 +570,7 @@ const CheckoutForm = ({ initialEmail = "" }: CheckoutFormProps) => {
   const buildOrderPayload = () => ({
     email,
     items: cart.map((i) => ({
+      id: i.productId,
       slug: i.slug,
       title: i.title,
       size: i.size,
@@ -578,6 +579,11 @@ const CheckoutForm = ({ initialEmail = "" }: CheckoutFormProps) => {
       unit_price: i.price,
       quantity: i.quantity,
       line_total: Number((i.price * i.quantity).toFixed(2)),
+      weight_kg: i.weightKg,
+      length_cm: i.lengthCm,
+      width_cm: i.widthCm,
+      height_cm: i.heightCm,
+      dimension_unit: i.dimensionUnit,
       image: i.image,
       design_type: i.designType,
       preview_snapshot: i.previewSnapshot,

@@ -7,12 +7,18 @@ import { normalizeDesignType, type DesignType } from "@/Utils/designType";
 type PricePreviewByView = Partial<Record<"front" | "back" | "leftSleeve" | "rightSleeve", PricePreviewSnapshot>>;
 
 export type CartItem = {
+  productId?: number;
   slug: string;
   title: string;
   price: number;
   quantity: number;
   colour: string;
   size: string;
+  weightKg?: number;
+  lengthCm?: number;
+  widthCm?: number;
+  heightCm?: number;
+  dimensionUnit?: "cm" | "in";
   designType: DesignType;
   image?: string;
   availableSizes: string[]; // sizes user can choose
@@ -21,11 +27,17 @@ export type CartItem = {
 };
 
 export type AddToCartPayload = {
+  productId?: number;
   slug: string;
   title: string;
   price: number | string;
   colour: string;
   size: string;
+  weightKg?: number;
+  lengthCm?: number;
+  widthCm?: number;
+  heightCm?: number;
+  dimensionUnit?: "cm" | "in";
   designType?: DesignType | string | null;
   image?: string;
   availableSizes?: string[];
@@ -85,8 +97,14 @@ const sanitizeCart = (value: unknown): CartItem[] => {
 
       return {
         ...(entry as CartItem),
+        productId: Number.isFinite(Number(entry.productId)) ? Number(entry.productId) : undefined,
         price: normalizePrice(entry.price as number | string),
         quantity: nextQuantity,
+        weightKg: Number.isFinite(Number(entry.weightKg)) ? Number(entry.weightKg) : undefined,
+        lengthCm: Number.isFinite(Number(entry.lengthCm)) ? Number(entry.lengthCm) : undefined,
+        widthCm: Number.isFinite(Number(entry.widthCm)) ? Number(entry.widthCm) : undefined,
+        heightCm: Number.isFinite(Number(entry.heightCm)) ? Number(entry.heightCm) : undefined,
+        dimensionUnit: String(entry.dimensionUnit || "").toLowerCase() === "in" ? "in" : "cm",
         designType: normalizeDesignType(entry.designType),
         availableSizes: nextAvailableSizes.length ? nextAvailableSizes : [String(entry.size)],
       };

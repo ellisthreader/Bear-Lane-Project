@@ -83,6 +83,11 @@ const PARCEL_TIER_IMAGES: Record<ParcelSizeTier, string> = {
   medium: "/images/Admin/parcels/Medium.png",
   large: "/images/Admin/parcels/Large.png",
 };
+const PARCEL_COURIER_LOGOS: Record<ParcelCourierKey, string> = {
+  evri: "/images/Admin/couriers/evri.svg",
+  royal_mail: "/images/Admin/couriers/royal-mail.svg",
+  dpd: "/images/Admin/couriers/dpd.svg",
+};
 
 const PARCEL_COURIER_ORDER: ParcelCourierKey[] = ["evri", "royal_mail", "dpd"];
 const PARCEL_TIER_ORDER: ParcelSizeTier[] = ["very_small", "small", "medium", "large"];
@@ -242,6 +247,7 @@ interface ColourProduct {
   images: string[];
   image_boxes?: Record<string, RestrictedBoxRatio>;
   size_stock?: Record<string, number>;
+  size_shipping?: Record<string, { weight_kg?: number | null }>;
 }
 
 interface BreadcrumbItem {
@@ -750,11 +756,20 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
     if (selectedSizeInStock) {
       if (isPremadeProduct) {
         addToCart({
+          productId: Number.isFinite(Number(product.id)) ? Number(product.id) : undefined,
           slug: product.slug,
           title: effectiveName,
           price: effectivePrice,
           colour: selectedColour || currentVariant?.colour || "Default",
           size: selectedSize,
+          weightKg:
+            Number(currentVariant?.size_shipping?.[selectedSize]?.weight_kg)
+            || Number(currentVariant?.size_shipping?.[selectedSize.toUpperCase()]?.weight_kg)
+            || undefined,
+          lengthCm: Number(product.length) > 0 ? Number(product.length) : undefined,
+          widthCm: Number(product.width) > 0 ? Number(product.width) : undefined,
+          heightCm: Number(product.height) > 0 ? Number(product.height) : undefined,
+          dimensionUnit: product.dimension_unit || "cm",
           image: displayImages[0] ?? effectiveProductImages?.[0] ?? "/images/no-image.png",
           availableSizes: (currentVariant?.sizes || STANDARD_SIZES).map((size) => String(size).toUpperCase()),
           designType: "printing",
@@ -2545,6 +2560,23 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
                                     className="rounded-lg border border-[#DCC99D] px-2 py-2 text-sm"
                                   />
                                   <div className="space-y-2">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      {PARCEL_COURIER_ORDER.map((courier) => (
+                                        <span
+                                          key={courier}
+                                          className="inline-flex items-center gap-1 rounded-full border border-[#E8DABF] bg-[#FFFAEE] px-2 py-1 text-[10px] font-semibold text-[#6A5428]"
+                                        >
+                                          <img
+                                            loading="lazy"
+                                            decoding="async"
+                                            src={PARCEL_COURIER_LOGOS[courier]}
+                                            alt={`${PARCEL_COURIER_LABELS[courier]} logo`}
+                                            className="h-3.5 w-3.5 rounded-sm object-contain"
+                                          />
+                                          {PARCEL_COURIER_LABELS[courier]}
+                                        </span>
+                                      ))}
+                                    </div>
                                     <select
                                       value={variant.parcelSize}
                                       onChange={(event) =>
@@ -2710,7 +2742,16 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
                   <div className={`${adminVariantModalTab === "help" ? "grid flex-1 gap-3 overflow-y-auto p-5 md:grid-cols-1" : "hidden"}`}>
                     {PARCEL_COURIER_ORDER.map((courier) => (
                       <section key={courier} className="rounded-2xl border border-[#E6D8BD] bg-[#FFFEFA] p-4">
-                        <p className="text-xs font-bold uppercase tracking-[0.08em] text-[#7A5F2A]">{PARCEL_COURIER_LABELS[courier]}</p>
+                        <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.08em] text-[#7A5F2A]">
+                          <img
+                            loading="lazy"
+                            decoding="async"
+                            src={PARCEL_COURIER_LOGOS[courier]}
+                            alt={`${PARCEL_COURIER_LABELS[courier]} logo`}
+                            className="h-4 w-4 rounded-sm object-contain"
+                          />
+                          {PARCEL_COURIER_LABELS[courier]}
+                        </p>
                         <div className="mt-3 grid gap-3 md:grid-cols-2">
                           {PARCEL_TIER_ORDER.map((tier) => {
                             const key = `${courier}_${tier}` as ParcelPresetKey;

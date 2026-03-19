@@ -130,6 +130,15 @@ class ProductController extends Controller
                     'size_stock' => $group
                         ->mapWithKeys(fn ($variant) => [(string) $variant->size => (int) ($variant->stock ?? 0)])
                         ->all(),
+                    'size_shipping' => $group
+                        ->mapWithKeys(function ($variant) {
+                            return [
+                                (string) $variant->size => [
+                                    'weight_kg' => is_numeric($variant->weight) ? (float) $variant->weight : null,
+                                ],
+                            ];
+                        })
+                        ->all(),
                     'images' => $images,
                     'image_boxes' => count($variantImageBoxes) > 0 ? $variantImageBoxes : $productImageBoxes,
                 ];
@@ -393,6 +402,10 @@ class ProductController extends Controller
             'rating' => isset($product->average_rating) ? round((float) $product->average_rating, 2) : 0,
             'review_count' => (int) ($product->reviews_count ?? 0),
             'reviews_count' => (int) ($product->reviews_count ?? 0),
+            'length' => is_numeric($product->length) ? (float) $product->length : null,
+            'width' => is_numeric($product->width) ? (float) $product->width : null,
+            'height' => is_numeric($product->height) ? (float) $product->height : null,
+            'dimension_unit' => (string) ($product->dimension_unit ?? 'cm'),
             'colourProducts' => [], // will be filled in `show`
             'reviews' => [],
         ];
