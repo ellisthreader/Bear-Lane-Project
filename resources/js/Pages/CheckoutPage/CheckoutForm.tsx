@@ -579,6 +579,7 @@ const CheckoutForm = ({ initialEmail = "" }: CheckoutFormProps) => {
       unit_price: i.price,
       quantity: i.quantity,
       line_total: Number((i.price * i.quantity).toFixed(2)),
+      preferred_courier: i.preferredCourier,
       weight_kg: i.weightKg,
       length_cm: i.lengthCm,
       width_cm: i.widthCm,

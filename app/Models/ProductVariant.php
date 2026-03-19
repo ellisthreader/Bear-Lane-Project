@@ -18,6 +18,11 @@ class ProductVariant extends Model
         'original_price',
         'stock',
         'weight',
+        'parcel_courier',
+        'parcel_size_tier',
+        'parcel_length_cm',
+        'parcel_width_cm',
+        'parcel_height_cm',
     ];
 
     public function product()

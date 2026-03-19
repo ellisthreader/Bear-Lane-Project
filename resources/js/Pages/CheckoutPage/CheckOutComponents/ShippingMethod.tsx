@@ -113,6 +113,7 @@ export default function ShippingMethod() {
       size: item.size,
       colour: item.colour,
       quantity: item.quantity,
+      preferred_courier: item.preferredCourier,
       weight_kg: item.weightKg,
       length_cm: item.lengthCm,
       width_cm: item.widthCm,

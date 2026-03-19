@@ -15,6 +15,7 @@ export type CartItem = {
   colour: string;
   size: string;
   weightKg?: number;
+  preferredCourier?: string;
   lengthCm?: number;
   widthCm?: number;
   heightCm?: number;
@@ -34,6 +35,7 @@ export type AddToCartPayload = {
   colour: string;
   size: string;
   weightKg?: number;
+  preferredCourier?: string;
   lengthCm?: number;
   widthCm?: number;
   heightCm?: number;
@@ -101,6 +103,7 @@ const sanitizeCart = (value: unknown): CartItem[] => {
         price: normalizePrice(entry.price as number | string),
         quantity: nextQuantity,
         weightKg: Number.isFinite(Number(entry.weightKg)) ? Number(entry.weightKg) : undefined,
+        preferredCourier: typeof entry.preferredCourier === "string" ? entry.preferredCourier : undefined,
         lengthCm: Number.isFinite(Number(entry.lengthCm)) ? Number(entry.lengthCm) : undefined,
         widthCm: Number.isFinite(Number(entry.widthCm)) ? Number(entry.widthCm) : undefined,
         heightCm: Number.isFinite(Number(entry.heightCm)) ? Number(entry.heightCm) : undefined,

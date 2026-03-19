@@ -135,6 +135,11 @@ class ProductController extends Controller
                             return [
                                 (string) $variant->size => [
                                     'weight_kg' => is_numeric($variant->weight) ? (float) $variant->weight : null,
+                                    'parcel_courier' => is_string($variant->parcel_courier) ? trim((string) $variant->parcel_courier) : null,
+                                    'parcel_size_tier' => is_string($variant->parcel_size_tier) ? trim((string) $variant->parcel_size_tier) : null,
+                                    'length_cm' => is_numeric($variant->parcel_length_cm) ? (float) $variant->parcel_length_cm : null,
+                                    'width_cm' => is_numeric($variant->parcel_width_cm) ? (float) $variant->parcel_width_cm : null,
+                                    'height_cm' => is_numeric($variant->parcel_height_cm) ? (float) $variant->parcel_height_cm : null,
                                 ],
                             ];
                         })

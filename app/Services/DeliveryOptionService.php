@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Models\Product;
+use App\Models\ProductVariant;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -218,6 +220,7 @@ class DeliveryOptionService
         ];
 
         $parcel = $this->parcelEstimatorService->forCheckoutItems($cartItems);
+        $preferredCouriers = $this->extractPreferredCouriers($cartItems);
 
         try {
             $rawRates = $this->shippoRateService->getRates($fromAddress, $toAddress, $parcel);
@@ -227,22 +230,31 @@ class DeliveryOptionService
                 $serviceName = trim($provider . ' ' . $serviceLevel);
 
                 return [
+                    'provider' => $provider,
                     'service_name' => $serviceName !== '' ? $serviceName : 'Unnamed carrier service',
                     'estimated_days' => isset($rate['estimated_days']) ? (int) $rate['estimated_days'] : null,
                     'amount' => isset($rate['amount']) ? (float) $rate['amount'] : INF,
                 ];
             }, $rawRates);
 
-            $nextDayPreferred = array_values(array_filter($normalizedRates, function (array $rate) {
+            $courierMatchedRates = empty($preferredCouriers)
+                ? $normalizedRates
+                : array_values(array_filter(
+                    $normalizedRates,
+                    fn (array $rate) => $this->matchesAnyPreferredCourier($rate, $preferredCouriers)
+                ));
+            $ratesForSelection = !empty($courierMatchedRates) ? $courierMatchedRates : $normalizedRates;
+
+            $nextDayPreferred = array_values(array_filter($ratesForSelection, function (array $rate) {
                 return isset($rate['estimated_days']) && $rate['estimated_days'] !== null && $rate['estimated_days'] <= 1;
             }));
 
-            $standardPreferred = array_values(array_filter($normalizedRates, function (array $rate) {
+            $standardPreferred = array_values(array_filter($ratesForSelection, function (array $rate) {
                 $days = $rate['estimated_days'];
                 return $days !== null && $days >= 2 && $days <= 3;
             }));
 
-            $standardFallback = array_values(array_filter($normalizedRates, function (array $rate) {
+            $standardFallback = array_values(array_filter($ratesForSelection, function (array $rate) {
                 $days = $rate['estimated_days'];
                 return $days === null || $days > 1;
             }));
@@ -256,6 +268,9 @@ class DeliveryOptionService
                 ],
                 'all_rates_count' => count($normalizedRates),
                 'all_rates' => $normalizedRates,
+                'preferred_couriers' => $preferredCouriers,
+                'courier_matched_rates_count' => count($courierMatchedRates),
+                'rates_used_for_selection_count' => count($ratesForSelection),
                 'all_available_shipping_services' => array_values(array_unique(array_map(
                     fn (array $rate) => (string) ($rate['service_name'] ?? 'Unnamed carrier service'),
                     $normalizedRates
@@ -266,15 +281,15 @@ class DeliveryOptionService
 
             $nextDaySelectedRate =
                 $this->selectPreferredNextDayRate($nextDayPreferred)
-                ?? $this->selectPreferredNextDayRate($normalizedRates)
+                ?? $this->selectPreferredNextDayRate($ratesForSelection)
                 ?? null;
 
             $standardSelectedRate =
                 $this->selectCheapestRate($standardPreferred)
                 ?? $this->selectCheapestRate($standardFallback)
-                ?? $this->selectCheapestRate($normalizedRates);
+                ?? $this->selectCheapestRate($ratesForSelection);
 
-            $timedSelectedRate = $this->selectTimedRateForEarliestDate($normalizedRates);
+            $timedSelectedRate = $this->selectTimedRateForEarliestDate($ratesForSelection);
 
             Log::info('DeliveryOptionService: Shippo selected services', [
                 'destination_postcode' => $postcode,
@@ -317,6 +332,103 @@ class DeliveryOptionService
         });
 
         return $rates[0] ?? null;
+    }
+
+    private function extractPreferredCouriers(array $cartItems): array
+    {
+        $preferred = [];
+        foreach ($cartItems as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+
+            $resolved = $this->resolvePreferredCourierFromItem($item);
+            if ($resolved === null) {
+                continue;
+            }
+            $preferred[] = $resolved;
+        }
+
+        return array_values(array_unique($preferred));
+    }
+
+    private function resolvePreferredCourierFromItem(array $item): ?string
+    {
+        $direct = $this->normalizePreferredCourier((string) ($item['preferred_courier'] ?? ''));
+        if ($direct !== null) {
+            return $direct;
+        }
+
+        $productId = null;
+        if (!empty($item['id']) && is_numeric($item['id'])) {
+            $productId = (int) $item['id'];
+        }
+
+        if (!$productId) {
+            $slug = trim((string) ($item['slug'] ?? $item['id'] ?? ''));
+            if ($slug !== '') {
+                $productId = (int) (Product::query()->where('slug', $slug)->value('id') ?? 0);
+            }
+        }
+
+        if (!$productId) {
+            $name = trim((string) ($item['name'] ?? $item['title'] ?? ''));
+            if ($name !== '') {
+                $productId = (int) (Product::query()->where('name', $name)->value('id') ?? 0);
+            }
+        }
+
+        if (!$productId) {
+            return null;
+        }
+
+        $size = strtoupper(trim((string) ($item['size'] ?? '')));
+        $colour = strtolower(trim((string) ($item['colour'] ?? $item['color'] ?? '')));
+
+        $variantCourier = ProductVariant::query()
+            ->where('product_id', $productId)
+            ->when($size !== '', fn ($query) => $query->whereRaw('UPPER(size) = ?', [$size]))
+            ->when($colour !== '', fn ($query) => $query->whereRaw('LOWER(colour) = ?', [$colour]))
+            ->value('parcel_courier');
+
+        if (!$variantCourier) {
+            $variantCourier = ProductVariant::query()
+                ->where('product_id', $productId)
+                ->whereNotNull('parcel_courier')
+                ->value('parcel_courier');
+        }
+
+        return $this->normalizePreferredCourier((string) ($variantCourier ?? ''));
+    }
+
+    private function normalizePreferredCourier(string $value): ?string
+    {
+        $raw = strtolower(trim($value));
+        if ($raw === 'evri') return 'evri';
+        if ($raw === 'dpd') return 'dpd';
+        if ($raw === 'royal_mail' || $raw === 'royal mail') return 'royal mail';
+        return null;
+    }
+
+    private function matchesAnyPreferredCourier(array $rate, array $preferredCouriers): bool
+    {
+        if (empty($preferredCouriers)) {
+            return true;
+        }
+
+        $provider = strtolower(trim((string) ($rate['provider'] ?? '')));
+        $service = strtolower(trim((string) ($rate['service_name'] ?? '')));
+
+        foreach ($preferredCouriers as $courier) {
+            if ($courier === '') {
+                continue;
+            }
+            if (str_contains($provider, $courier) || str_contains($service, $courier)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function selectPreferredNextDayRate(array $rates): ?array

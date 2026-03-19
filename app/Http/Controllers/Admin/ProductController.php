@@ -308,6 +308,11 @@ class ProductController extends Controller
                 'colours.*.variants.*.size' => 'required|string|max:20',
                 'colours.*.variants.*.stock' => 'required|integer|min:0',
                 'colours.*.variants.*.weight' => 'required|numeric|min:0.01',
+                'colours.*.variants.*.parcel_courier' => 'nullable|string|in:evri,royal_mail,dpd,manual',
+                'colours.*.variants.*.parcel_size_tier' => 'nullable|string|in:very_small,small,medium,large,manual',
+                'colours.*.variants.*.parcel_length_cm' => 'nullable|numeric|min:0.01',
+                'colours.*.variants.*.parcel_width_cm' => 'nullable|numeric|min:0.01',
+                'colours.*.variants.*.parcel_height_cm' => 'nullable|numeric|min:0.01',
             ]);
         } else {
             $validated = $request->validate([
@@ -501,6 +506,15 @@ class ProductController extends Controller
                         'original_price' => null,
                         'stock' => (int) $variantData['stock'],
                         'weight' => (float) $variantData['weight'],
+                        'parcel_courier' => isset($variantData['parcel_courier']) && trim((string) $variantData['parcel_courier']) !== ''
+                            ? trim((string) $variantData['parcel_courier'])
+                            : null,
+                        'parcel_size_tier' => isset($variantData['parcel_size_tier']) && trim((string) $variantData['parcel_size_tier']) !== ''
+                            ? trim((string) $variantData['parcel_size_tier'])
+                            : null,
+                        'parcel_length_cm' => isset($variantData['parcel_length_cm']) ? (float) $variantData['parcel_length_cm'] : null,
+                        'parcel_width_cm' => isset($variantData['parcel_width_cm']) ? (float) $variantData['parcel_width_cm'] : null,
+                        'parcel_height_cm' => isset($variantData['parcel_height_cm']) ? (float) $variantData['parcel_height_cm'] : null,
                     ]);
 
                     foreach ($imagePaths as $path) {
@@ -683,6 +697,11 @@ class ProductController extends Controller
             'colours.*.variants.*.size' => 'required|string|max:20',
             'colours.*.variants.*.stock' => 'required|integer|min:0',
             'colours.*.variants.*.weight' => 'required|numeric|min:0.01',
+            'colours.*.variants.*.parcel_courier' => 'nullable|string|in:evri,royal_mail,dpd,manual',
+            'colours.*.variants.*.parcel_size_tier' => 'nullable|string|in:very_small,small,medium,large,manual',
+            'colours.*.variants.*.parcel_length_cm' => 'nullable|numeric|min:0.01',
+            'colours.*.variants.*.parcel_width_cm' => 'nullable|numeric|min:0.01',
+            'colours.*.variants.*.parcel_height_cm' => 'nullable|numeric|min:0.01',
         ]);
 
         $colourNames = collect($validated['colours'])
@@ -808,6 +827,15 @@ class ProductController extends Controller
                         'original_price' => null,
                         'stock' => (int) $variantData['stock'],
                         'weight' => (float) $variantData['weight'],
+                        'parcel_courier' => isset($variantData['parcel_courier']) && trim((string) $variantData['parcel_courier']) !== ''
+                            ? trim((string) $variantData['parcel_courier'])
+                            : null,
+                        'parcel_size_tier' => isset($variantData['parcel_size_tier']) && trim((string) $variantData['parcel_size_tier']) !== ''
+                            ? trim((string) $variantData['parcel_size_tier'])
+                            : null,
+                        'parcel_length_cm' => isset($variantData['parcel_length_cm']) ? (float) $variantData['parcel_length_cm'] : null,
+                        'parcel_width_cm' => isset($variantData['parcel_width_cm']) ? (float) $variantData['parcel_width_cm'] : null,
+                        'parcel_height_cm' => isset($variantData['parcel_height_cm']) ? (float) $variantData['parcel_height_cm'] : null,
                     ]);
 
                     foreach ($imagePaths as $path) {

@@ -240,6 +240,12 @@ const PARCEL_SIZE_PRESETS: Record<
   },
 };
 
+const isParcelPresetKey = (value: string): value is ParcelPresetKey =>
+  Object.prototype.hasOwnProperty.call(PARCEL_SIZE_PRESETS, value);
+
+const asPositiveNumberString = (value: unknown) =>
+  Number.isFinite(Number(value)) && Number(value) > 0 ? String(Number(value)) : "";
+
 interface ColourProduct {
   colour: string;
   slug: string;
@@ -247,7 +253,14 @@ interface ColourProduct {
   images: string[];
   image_boxes?: Record<string, RestrictedBoxRatio>;
   size_stock?: Record<string, number>;
-  size_shipping?: Record<string, { weight_kg?: number | null }>;
+  size_shipping?: Record<string, {
+    weight_kg?: number | null;
+    parcel_courier?: string | null;
+    parcel_size_tier?: string | null;
+    length_cm?: number | null;
+    width_cm?: number | null;
+    height_cm?: number | null;
+  }>;
 }
 
 interface BreadcrumbItem {
@@ -466,6 +479,7 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
   const [editingField, setEditingField] = useState<EditableField>(null);
   const [isVariantModalOpen, setIsVariantModalOpen] = useState(false);
   const [adminVariantModalTab, setAdminVariantModalTab] = useState<AdminVariantModalTab>("editor");
+  const [activeParcelHelpCourier, setActiveParcelHelpCourier] = useState<ParcelCourierKey>("evri");
   const [openAdminColourIds, setOpenAdminColourIds] = useState<string[]>([]);
   const [uploadingImage, setUploadingImage] = useState(false);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
@@ -473,16 +487,33 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
     const fromProduct = (product.colourProducts || []).map((cp, index) => {
       const sizeStock = cp.size_stock ?? {};
       const sizes = cp.sizes?.length ? cp.sizes : Object.keys(sizeStock);
-      const variants = (sizes || []).map((size, variantIndex) => ({
-        id: `variant-${index + 1}-${variantIndex + 1}`,
-        size: String(size || "").toUpperCase(),
-        stock: String(Number(sizeStock[String(size).toUpperCase()] ?? 0)),
-        parcelSize: "evri_small" as const,
-        manualWeightKg: "",
-        manualLengthCm: "",
-        manualWidthCm: "",
-        manualDepthCm: "",
-      }));
+      const variants = (sizes || []).map((size, variantIndex) => {
+        const normalizedSize = String(size || "").toUpperCase();
+        const shippingEntry =
+          cp.size_shipping?.[normalizedSize]
+          || cp.size_shipping?.[String(size || "").trim()]
+          || null;
+        const storedCourier = String(shippingEntry?.parcel_courier || "").trim().toLowerCase();
+        const storedTier = String(shippingEntry?.parcel_size_tier || "").trim().toLowerCase();
+        const presetCandidate = `${storedCourier}_${storedTier}`;
+        const parcelSize: ParcelSizeKey =
+          isParcelPresetKey(presetCandidate)
+            ? presetCandidate
+            : (storedCourier === "manual" || storedTier === "manual")
+              ? "manual"
+              : "evri_small";
+
+        return {
+          id: `variant-${index + 1}-${variantIndex + 1}`,
+          size: normalizedSize,
+          stock: String(Number(sizeStock[normalizedSize] ?? 0)),
+          parcelSize,
+          manualWeightKg: parcelSize === "manual" ? asPositiveNumberString(shippingEntry?.weight_kg) : "",
+          manualLengthCm: parcelSize === "manual" ? asPositiveNumberString(shippingEntry?.length_cm) : "",
+          manualWidthCm: parcelSize === "manual" ? asPositiveNumberString(shippingEntry?.width_cm) : "",
+          manualDepthCm: parcelSize === "manual" ? asPositiveNumberString(shippingEntry?.height_cm) : "",
+        };
+      });
 
       return {
         id: `colour-${index + 1}`,
@@ -755,6 +786,15 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
 
     if (selectedSizeInStock) {
       if (isPremadeProduct) {
+        const sizeShipping =
+          currentVariant?.size_shipping?.[selectedSize]
+          || currentVariant?.size_shipping?.[selectedSize.toUpperCase()]
+          || null;
+        const preferredCourierRaw = String(sizeShipping?.parcel_courier || "").trim().toLowerCase();
+        const preferredCourier =
+          preferredCourierRaw === "evri" || preferredCourierRaw === "royal_mail" || preferredCourierRaw === "dpd"
+            ? preferredCourierRaw
+            : undefined;
         addToCart({
           productId: Number.isFinite(Number(product.id)) ? Number(product.id) : undefined,
           slug: product.slug,
@@ -762,13 +802,17 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
           price: effectivePrice,
           colour: selectedColour || currentVariant?.colour || "Default",
           size: selectedSize,
-          weightKg:
-            Number(currentVariant?.size_shipping?.[selectedSize]?.weight_kg)
-            || Number(currentVariant?.size_shipping?.[selectedSize.toUpperCase()]?.weight_kg)
-            || undefined,
-          lengthCm: Number(product.length) > 0 ? Number(product.length) : undefined,
-          widthCm: Number(product.width) > 0 ? Number(product.width) : undefined,
-          heightCm: Number(product.height) > 0 ? Number(product.height) : undefined,
+          weightKg: Number(sizeShipping?.weight_kg) > 0 ? Number(sizeShipping?.weight_kg) : undefined,
+          preferredCourier,
+          lengthCm: Number(sizeShipping?.length_cm) > 0
+            ? Number(sizeShipping?.length_cm)
+            : (Number(product.length) > 0 ? Number(product.length) : undefined),
+          widthCm: Number(sizeShipping?.width_cm) > 0
+            ? Number(sizeShipping?.width_cm)
+            : (Number(product.width) > 0 ? Number(product.width) : undefined),
+          heightCm: Number(sizeShipping?.height_cm) > 0
+            ? Number(sizeShipping?.height_cm)
+            : (Number(product.height) > 0 ? Number(product.height) : undefined),
           dimensionUnit: product.dimension_unit || "cm",
           image: displayImages[0] ?? effectiveProductImages?.[0] ?? "/images/no-image.png",
           availableSizes: (currentVariant?.sizes || STANDARD_SIZES).map((size) => String(size).toUpperCase()),
@@ -944,6 +988,30 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
       widthCm,
       depthCm,
       manualValid,
+    };
+  };
+
+  const getVariantShippingPayload = (variant: AdminVariantDraft) => {
+    const metrics = getVariantShippingMetrics(variant);
+    if (variant.parcelSize === "manual") {
+      return {
+        weight: metrics.weightKg,
+        parcel_courier: "manual",
+        parcel_size_tier: "manual",
+        parcel_length_cm: metrics.lengthCm,
+        parcel_width_cm: metrics.widthCm,
+        parcel_height_cm: metrics.depthCm,
+      };
+    }
+
+    const preset = PARCEL_SIZE_PRESETS[variant.parcelSize];
+    return {
+      weight: metrics.weightKg,
+      parcel_courier: preset.courier,
+      parcel_size_tier: preset.tier,
+      parcel_length_cm: metrics.lengthCm,
+      parcel_width_cm: metrics.widthCm,
+      parcel_height_cm: metrics.depthCm,
     };
   };
 
@@ -1447,7 +1515,7 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
           variants: colour.variants.map((variant) => ({
             size: variant.size.trim().toUpperCase(),
             stock: Math.max(0, Math.floor(Number(variant.stock))),
-            weight: getVariantShippingMetrics(variant).weightKg,
+            ...getVariantShippingPayload(variant),
           })),
         })),
       };
@@ -1583,7 +1651,7 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
         variants: colour.variants.map((variant) => ({
           size: variant.size.trim().toUpperCase(),
           stock: Math.max(0, Math.floor(Number(variant.stock))),
-          weight: getVariantShippingMetrics(variant).weightKg,
+          ...getVariantShippingPayload(variant),
         })),
       })),
     };
@@ -2391,7 +2459,10 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
                     <div className="mt-2">
                       <button
                         type="button"
-                        onClick={() => setAdminVariantModalTab("help")}
+                        onClick={() => {
+                          setActiveParcelHelpCourier("evri");
+                          setAdminVariantModalTab("help");
+                        }}
                         className="rounded-lg border border-[#D7BE84] bg-white px-3 py-1.5 text-xs font-semibold text-[#7B6530]"
                       >
                         <span className="inline-flex items-center gap-1">
@@ -2740,43 +2811,55 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
                   </footer>
 
                   <div className={`${adminVariantModalTab === "help" ? "grid flex-1 gap-3 overflow-y-auto p-5 md:grid-cols-1" : "hidden"}`}>
-                    {PARCEL_COURIER_ORDER.map((courier) => (
-                      <section key={courier} className="rounded-2xl border border-[#E6D8BD] bg-[#FFFEFA] p-4">
-                        <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.08em] text-[#7A5F2A]">
-                          <img
-                            loading="lazy"
-                            decoding="async"
-                            src={PARCEL_COURIER_LOGOS[courier]}
-                            alt={`${PARCEL_COURIER_LABELS[courier]} logo`}
-                            className="h-4 w-4 rounded-sm object-contain"
-                          />
-                          {PARCEL_COURIER_LABELS[courier]}
-                        </p>
-                        <div className="mt-3 grid gap-3 md:grid-cols-2">
-                          {PARCEL_TIER_ORDER.map((tier) => {
-                            const key = `${courier}_${tier}` as ParcelPresetKey;
-                            const item = PARCEL_SIZE_PRESETS[key];
-                            return (
-                              <article key={key} className="rounded-2xl border border-[#E6D8BD] bg-white p-4">
-                                <img loading="lazy" decoding="async"
-                                  src={PARCEL_TIER_IMAGES[tier]}
-                                  alt={`${item.label} parcel size visual`}
-                                  className="h-24 w-44 rounded-xl object-cover"
-                                />
-                                <p className="mt-3 text-sm font-black text-[#2D220F]">{PARCEL_SIZE_TIER_LABELS[tier]}</p>
-                                <p className="mt-1 text-sm text-[#5E4A22]">Max weight: {item.maxWeightKg}kg</p>
-                                <p className="text-sm text-[#5E4A22]">
-                                  Max: {item.lengthCm} x {item.widthCm} x {item.depthCm} cm
-                                </p>
-                                <p className="text-sm font-semibold text-[#6B5325]">Est. price: {item.priceLabel}</p>
-                                <p className="mt-2 text-xs text-[#6F5A2E]">{item.description}</p>
-                              </article>
-                            );
-                          })}
-                        </div>
-                      </section>
-                    ))}
-                    <article className="rounded-2xl border border-dashed border-[#D6C39A] bg-[#FFF8E9] p-4 md:col-span-2">
+                    <section className="rounded-2xl border border-[#E6D8BD] bg-[#FFFEFA] p-4">
+                      <div className="flex flex-wrap gap-2">
+                        {PARCEL_COURIER_ORDER.map((courier) => (
+                          <button
+                            key={courier}
+                            type="button"
+                            onClick={() => setActiveParcelHelpCourier(courier)}
+                            className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-bold uppercase tracking-[0.08em] transition ${
+                              activeParcelHelpCourier === courier
+                                ? "border-[#B08933] bg-[#FFF2D3] text-[#5E4618]"
+                                : "border-[#E1D4B8] bg-white text-[#7A5F2A] hover:bg-[#FFF8EA]"
+                            }`}
+                          >
+                            <img
+                              loading="lazy"
+                              decoding="async"
+                              src={PARCEL_COURIER_LOGOS[courier]}
+                              alt={`${PARCEL_COURIER_LABELS[courier]} logo`}
+                              className="h-4 w-4 rounded-sm object-contain"
+                            />
+                            {PARCEL_COURIER_LABELS[courier]}
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="mt-4 grid gap-3 md:grid-cols-2">
+                        {PARCEL_TIER_ORDER.map((tier) => {
+                          const key = `${activeParcelHelpCourier}_${tier}` as ParcelPresetKey;
+                          const item = PARCEL_SIZE_PRESETS[key];
+                          return (
+                            <article key={key} className="rounded-2xl border border-[#E6D8BD] bg-white p-4">
+                              <img loading="lazy" decoding="async"
+                                src={PARCEL_TIER_IMAGES[tier]}
+                                alt={`${item.label} parcel size visual`}
+                                className="h-24 w-44 rounded-xl object-cover"
+                              />
+                              <p className="mt-3 text-sm font-black text-[#2D220F]">{PARCEL_SIZE_TIER_LABELS[tier]}</p>
+                              <p className="mt-1 text-sm text-[#5E4A22]">Max weight: {item.maxWeightKg}kg</p>
+                              <p className="text-sm text-[#5E4A22]">
+                                Max: {item.lengthCm} x {item.widthCm} x {item.depthCm} cm
+                              </p>
+                              <p className="text-sm font-semibold text-[#6B5325]">Est. price: {item.priceLabel}</p>
+                              <p className="mt-2 text-xs text-[#6F5A2E]">{item.description}</p>
+                            </article>
+                          );
+                        })}
+                      </div>
+                    </section>
+                    <article className="rounded-2xl border border-dashed border-[#D6C39A] bg-[#FFF8E9] p-4">
                       <p className="text-sm font-black text-[#2D220F]">Manual Option</p>
                       <p className="mt-1 text-xs text-[#6F5A2E]">
                         Select Manual in the row if none of the preset sizes fit. Enter custom weight (kg) and dimensions

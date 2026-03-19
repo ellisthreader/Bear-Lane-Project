@@ -26,6 +26,7 @@ class DeliveryOptionController extends Controller
             'cart_items.*.size' => ['nullable', 'string', 'max:40'],
             'cart_items.*.colour' => ['nullable', 'string', 'max:100'],
             'cart_items.*.quantity' => ['nullable', 'integer', 'min:1', 'max:999'],
+            'cart_items.*.preferred_courier' => ['nullable', 'string', 'in:evri,royal_mail,dpd'],
             'cart_items.*.weight_kg' => ['nullable', 'numeric', 'min:0.01', 'max:200'],
             'cart_items.*.length_cm' => ['nullable', 'numeric', 'min:0.01', 'max:500'],
             'cart_items.*.width_cm' => ['nullable', 'numeric', 'min:0.01', 'max:500'],
