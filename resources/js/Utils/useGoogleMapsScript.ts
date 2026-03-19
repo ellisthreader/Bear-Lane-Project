@@ -52,8 +52,23 @@ export default function useGoogleMapsScript({
       return;
     }
 
+    const needsPlaces = normalizedLibraries.includes("places");
+    const hasMapsWithoutPlaces = Boolean(window.google?.maps) && (!needsPlaces || !window.google?.maps?.places);
+    const existingGoogleScripts = Array.from(
+      document.querySelectorAll<HTMLScriptElement>('script[src*="maps.googleapis.com/maps/api/js"]'),
+    );
+
+    // If Maps was loaded previously without the required libraries, remove old scripts
+    // so we can reload with the correct `libraries` query parameter.
+    if (hasMapsWithoutPlaces && existingGoogleScripts.length > 0) {
+      existingGoogleScripts.forEach((scriptEl) => scriptEl.remove());
+      delete window.google;
+      setIsLoaded(false);
+    }
+
     const src = new URL("https://maps.googleapis.com/maps/api/js");
     src.searchParams.set("key", apiKey.trim());
+    src.searchParams.set("v", "weekly");
     src.searchParams.set("loading", "async");
     if (normalizedLibraries.length > 0) {
       src.searchParams.set("libraries", normalizedLibraries.join(","));
