@@ -50,7 +50,10 @@ type RestrictedBoxRatio = {
 
 type AccordionKey = "description" | "delivery" | "returns";
 type AdminEditorErrorMap = Record<string, string>;
-type ParcelSizeKey = "very_small" | "small" | "medium" | "large" | "manual";
+type ParcelSizeTier = "very_small" | "small" | "medium" | "large";
+type ParcelCourierKey = "evri" | "royal_mail" | "dpd";
+type ParcelPresetKey = `${ParcelCourierKey}_${ParcelSizeTier}`;
+type ParcelSizeKey = ParcelPresetKey | "manual";
 type AdminVariantModalTab = "editor" | "help";
 
 const RESTRICTED_BOX_DEFAULT: RestrictedBoxRatio = {
@@ -61,56 +64,175 @@ const RESTRICTED_BOX_DEFAULT: RestrictedBoxRatio = {
 };
 const RESTRICTED_BOX_MIN_SIZE = 0.05;
 
+const PARCEL_COURIER_LABELS: Record<ParcelCourierKey, string> = {
+  evri: "EVRI",
+  royal_mail: "ROYAL MAIL",
+  dpd: "DPD",
+};
+
+const PARCEL_SIZE_TIER_LABELS: Record<ParcelSizeTier, string> = {
+  very_small: "Very Small",
+  small: "Small",
+  medium: "Medium",
+  large: "Large",
+};
+
+const PARCEL_TIER_IMAGES: Record<ParcelSizeTier, string> = {
+  very_small: "/images/Admin/parcels/Verysmall.png",
+  small: "/images/Admin/parcels/Small.png",
+  medium: "/images/Admin/parcels/Medium.png",
+  large: "/images/Admin/parcels/Large.png",
+};
+
+const PARCEL_COURIER_ORDER: ParcelCourierKey[] = ["evri", "royal_mail", "dpd"];
+const PARCEL_TIER_ORDER: ParcelSizeTier[] = ["very_small", "small", "medium", "large"];
+
 const PARCEL_SIZE_PRESETS: Record<
-  Exclude<ParcelSizeKey, "manual">,
+  ParcelPresetKey,
   {
+    courier: ParcelCourierKey;
+    tier: ParcelSizeTier;
     label: string;
     maxWeightKg: number;
     lengthCm: number;
     widthCm: number;
     depthCm: number;
+    priceLabel: string;
     description: string;
   }
 > = {
-  very_small: {
-    label: "Very Small",
+  evri_very_small: {
+    courier: "evri",
+    tier: "very_small",
+    label: "EVRI • Very Small",
     maxWeightKg: 1,
     lengthCm: 35,
-    widthCm: 23,
-    depthCm: 3,
-    description: "Fits through a letterbox. Great for t-shirts, thin clothing, documents.",
+    widthCm: 25,
+    depthCm: 2.5,
+    priceLabel: "£2.62",
+    description: "Size 35 x 25 x 2.5 cm, under 1kg.",
   },
-  small: {
-    label: "Small",
+  evri_small: {
+    courier: "evri",
+    tier: "small",
+    label: "EVRI • Small",
     maxWeightKg: 2,
     lengthCm: 45,
     widthCm: 35,
     depthCm: 16,
-    description: "Good for shoes, hoodies, small boxed items.",
+    priceLabel: "£2.62 - £3.20",
+    description: "Typical small parcel, usually 1-2kg.",
   },
-  medium: {
-    label: "Medium",
+  evri_medium: {
+    courier: "evri",
+    tier: "medium",
+    label: "EVRI • Medium",
+    maxWeightKg: 5,
+    lengthCm: 60,
+    widthCm: 50,
+    depthCm: 50,
+    priceLabel: "£2.62 - £5.87",
+    description: "Up to 60 x 50 x 50 cm, 2-5kg.",
+  },
+  evri_large: {
+    courier: "evri",
+    tier: "large",
+    label: "EVRI • Large",
     maxWeightKg: 15,
+    lengthCm: 120,
+    widthCm: 63,
+    depthCm: 63,
+    priceLabel: "£5.87 - £9.01",
+    description: "Up to 120cm length / 245cm girth, 5-15kg.",
+  },
+  royal_mail_very_small: {
+    courier: "royal_mail",
+    tier: "very_small",
+    label: "ROYAL MAIL • Very Small",
+    maxWeightKg: 0.75,
+    lengthCm: 35,
+    widthCm: 25,
+    depthCm: 2.5,
+    priceLabel: "£1.55 - £3.60",
+    description: "Large Letter format, up to 750g.",
+  },
+  royal_mail_small: {
+    courier: "royal_mail",
+    tier: "small",
+    label: "ROYAL MAIL • Small",
+    maxWeightKg: 2,
+    lengthCm: 45,
+    widthCm: 35,
+    depthCm: 16,
+    priceLabel: "£3.90 - £4.99",
+    description: "Small parcel up to 2kg.",
+  },
+  royal_mail_medium: {
+    courier: "royal_mail",
+    tier: "medium",
+    label: "ROYAL MAIL • Medium",
+    maxWeightKg: 20,
     lengthCm: 61,
     widthCm: 46,
     depthCm: 46,
-    description: "Good for multiple clothing items and bulkier goods.",
+    priceLabel: "£6.29+",
+    description: "Tracked/courier parcel up to 20kg.",
   },
-  large: {
-    label: "Large",
+  royal_mail_large: {
+    courier: "royal_mail",
+    tier: "large",
+    label: "ROYAL MAIL • Large",
     maxWeightKg: 20,
-    lengthCm: 120,
-    widthCm: 60,
-    depthCm: 60,
-    description: "Good for large multi-item orders.",
+    lengthCm: 70,
+    widthCm: 50,
+    depthCm: 50,
+    priceLabel: "£7+",
+    description: "Larger courier parcels, price varies.",
   },
-};
-
-const PARCEL_HELP_IMAGES: Record<Exclude<ParcelSizeKey, "manual">, string> = {
-  very_small: "/images/Admin/parcels/Verysmall.png",
-  small: "/images/Admin/parcels/Small.png",
-  medium: "/images/Admin/parcels/Medium.png",
-  large: "/images/Admin/parcels/Large.png",
+  dpd_very_small: {
+    courier: "dpd",
+    tier: "very_small",
+    label: "DPD • Very Small",
+    maxWeightKg: 1,
+    lengthCm: 30,
+    widthCm: 30,
+    depthCm: 30,
+    priceLabel: "£4.79 - £6",
+    description: "Compact parcel under 1kg.",
+  },
+  dpd_small: {
+    courier: "dpd",
+    tier: "small",
+    label: "DPD • Small",
+    maxWeightKg: 5,
+    lengthCm: 45,
+    widthCm: 35,
+    depthCm: 35,
+    priceLabel: "£5 - £7",
+    description: "Up to 45 x 35 x 35 cm, 1-5kg.",
+  },
+  dpd_medium: {
+    courier: "dpd",
+    tier: "medium",
+    label: "DPD • Medium",
+    maxWeightKg: 20,
+    lengthCm: 70,
+    widthCm: 50,
+    depthCm: 50,
+    priceLabel: "£6 - £10",
+    description: "Up to 70 x 50 x 50 cm, 5-20kg.",
+  },
+  dpd_large: {
+    courier: "dpd",
+    tier: "large",
+    label: "DPD • Large",
+    maxWeightKg: 30,
+    lengthCm: 175,
+    widthCm: 63,
+    depthCm: 63,
+    priceLabel: "£10+",
+    description: "Up to 175cm length / 300cm girth, 20-30kg.",
+  },
 };
 
 interface ColourProduct {
@@ -349,7 +471,7 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
         id: `variant-${index + 1}-${variantIndex + 1}`,
         size: String(size || "").toUpperCase(),
         stock: String(Number(sizeStock[String(size).toUpperCase()] ?? 0)),
-        parcelSize: "small" as const,
+        parcelSize: "evri_small" as const,
         manualWeightKg: "",
         manualLengthCm: "",
         manualWidthCm: "",
@@ -368,7 +490,7 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
                 id: `variant-${index + 1}-1`,
                 size: "M",
                 stock: "0",
-                parcelSize: "small" as const,
+                parcelSize: "evri_small" as const,
                 manualWeightKg: "",
                 manualLengthCm: "",
                 manualWidthCm: "",
@@ -391,7 +513,7 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
             id: "variant-1-1",
             size: "M",
             stock: "0",
-            parcelSize: "small" as const,
+            parcelSize: "evri_small" as const,
             manualWeightKg: "",
             manualLengthCm: "",
             manualWidthCm: "",
@@ -824,7 +946,7 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
             id: `variant-${Date.now()}-1`,
             size: "M",
             stock: "0",
-            parcelSize: "small" as const,
+            parcelSize: "evri_small" as const,
             manualWeightKg: "",
             manualLengthCm: "",
             manualWidthCm: "",
@@ -864,7 +986,7 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
           id: `variant-${Date.now()}-${colour.variants.length + 1}`,
           size: "M",
           stock: "0",
-          parcelSize: "small" as const,
+          parcelSize: "evri_small" as const,
           manualWeightKg: "",
           manualLengthCm: "",
           manualWidthCm: "",
@@ -2437,18 +2559,28 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
                                       }
                                       className="w-full rounded-lg border border-[#DCC99D] px-2 py-2 text-sm"
                                     >
-                                      <option value="very_small">Very Small</option>
-                                      <option value="small">Small</option>
-                                      <option value="medium">Medium</option>
-                                      <option value="large">Large</option>
+                                      {PARCEL_COURIER_ORDER.map((courier) => (
+                                        <optgroup key={courier} label={PARCEL_COURIER_LABELS[courier]}>
+                                          {PARCEL_TIER_ORDER.map((tier) => {
+                                            const key = `${courier}_${tier}` as ParcelPresetKey;
+                                            const preset = PARCEL_SIZE_PRESETS[key];
+                                            return (
+                                              <option key={key} value={key}>
+                                                {PARCEL_SIZE_TIER_LABELS[tier]} - {preset.priceLabel}
+                                              </option>
+                                            );
+                                          })}
+                                        </optgroup>
+                                      ))}
                                       <option value="manual">Manual</option>
                                     </select>
                                     {variant.parcelSize !== "manual" ? (
                                       <p className="rounded-md bg-[#FFF4DC] px-2 py-1 text-[11px] text-[#6B5325]">
-                                        Max {PARCEL_SIZE_PRESETS[variant.parcelSize].maxWeightKg}kg ·{" "}
+                                        {PARCEL_SIZE_PRESETS[variant.parcelSize].label} · Max {PARCEL_SIZE_PRESETS[variant.parcelSize].maxWeightKg}kg ·{" "}
                                         {PARCEL_SIZE_PRESETS[variant.parcelSize].lengthCm}x
                                         {PARCEL_SIZE_PRESETS[variant.parcelSize].widthCm}x
-                                        {PARCEL_SIZE_PRESETS[variant.parcelSize].depthCm}cm
+                                        {PARCEL_SIZE_PRESETS[variant.parcelSize].depthCm}cm ·
+                                        {" "}~{PARCEL_SIZE_PRESETS[variant.parcelSize].priceLabel}
                                       </p>
                                     ) : null}
                                   </div>
@@ -2575,28 +2707,34 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
                     {adminErrors.colours ? <p className="mt-2 text-xs text-[#8C3232]">{adminErrors.colours}</p> : null}
                   </footer>
 
-                  <div className={`${adminVariantModalTab === "help" ? "grid flex-1 gap-3 overflow-y-auto p-5 md:grid-cols-2" : "hidden"}`}>
-                    {(Object.keys(PARCEL_SIZE_PRESETS) as Array<Exclude<ParcelSizeKey, "manual">>).map((key) => {
-                      const item = PARCEL_SIZE_PRESETS[key];
-                      return (
-                        <article key={key} className="rounded-2xl border border-[#E6D8BD] bg-white p-4">
-                          <img loading="lazy" decoding="async"
-                            src={PARCEL_HELP_IMAGES[key]}
-                            alt={`${item.label} parcel size visual`}
-                            className="h-24 w-44 rounded-xl object-cover"
-                          />
-                          <p className="mt-3 text-sm font-black text-[#2D220F]">
-                            {item.label}
-                            {key === "very_small" ? " (Postable / XS)" : ""}
-                          </p>
-                          <p className="mt-1 text-sm text-[#5E4A22]">Max weight: {item.maxWeightKg}kg</p>
-                          <p className="text-sm text-[#5E4A22]">
-                            Max: {item.lengthCm} x {item.widthCm} x {item.depthCm} cm
-                          </p>
-                          <p className="mt-2 text-xs text-[#6F5A2E]">{item.description}</p>
-                        </article>
-                      );
-                    })}
+                  <div className={`${adminVariantModalTab === "help" ? "grid flex-1 gap-3 overflow-y-auto p-5 md:grid-cols-1" : "hidden"}`}>
+                    {PARCEL_COURIER_ORDER.map((courier) => (
+                      <section key={courier} className="rounded-2xl border border-[#E6D8BD] bg-[#FFFEFA] p-4">
+                        <p className="text-xs font-bold uppercase tracking-[0.08em] text-[#7A5F2A]">{PARCEL_COURIER_LABELS[courier]}</p>
+                        <div className="mt-3 grid gap-3 md:grid-cols-2">
+                          {PARCEL_TIER_ORDER.map((tier) => {
+                            const key = `${courier}_${tier}` as ParcelPresetKey;
+                            const item = PARCEL_SIZE_PRESETS[key];
+                            return (
+                              <article key={key} className="rounded-2xl border border-[#E6D8BD] bg-white p-4">
+                                <img loading="lazy" decoding="async"
+                                  src={PARCEL_TIER_IMAGES[tier]}
+                                  alt={`${item.label} parcel size visual`}
+                                  className="h-24 w-44 rounded-xl object-cover"
+                                />
+                                <p className="mt-3 text-sm font-black text-[#2D220F]">{PARCEL_SIZE_TIER_LABELS[tier]}</p>
+                                <p className="mt-1 text-sm text-[#5E4A22]">Max weight: {item.maxWeightKg}kg</p>
+                                <p className="text-sm text-[#5E4A22]">
+                                  Max: {item.lengthCm} x {item.widthCm} x {item.depthCm} cm
+                                </p>
+                                <p className="text-sm font-semibold text-[#6B5325]">Est. price: {item.priceLabel}</p>
+                                <p className="mt-2 text-xs text-[#6F5A2E]">{item.description}</p>
+                              </article>
+                            );
+                          })}
+                        </div>
+                      </section>
+                    ))}
                     <article className="rounded-2xl border border-dashed border-[#D6C39A] bg-[#FFF8E9] p-4 md:col-span-2">
                       <p className="text-sm font-black text-[#2D220F]">Manual Option</p>
                       <p className="mt-1 text-xs text-[#6F5A2E]">
