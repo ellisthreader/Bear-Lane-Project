@@ -1,6 +1,5 @@
 import React from "react";
 import { CardCvcElement, CardExpiryElement, CardNumberElement } from "@stripe/react-stripe-js";
-import { Autocomplete } from "@react-google-maps/api";
 import { FaApple, FaCreditCard, FaPaypal } from "react-icons/fa";
 import { FcGoogle } from "react-icons/fc";
 import { getCountryCode } from "@/Utils/countryCodes";
@@ -95,6 +94,7 @@ export default function PaymentSection() {
   const [walletInfoModalOpen, setWalletInfoModalOpen] = React.useState(false);
   const [pendingWalletSelection, setPendingWalletSelection] = React.useState<number | "new" | null>(null);
   const [walletSelectionMode, setWalletSelectionMode] = React.useState<"saved" | "new" | null>(null);
+  const billingLookupInputRef = React.useRef<HTMLInputElement | null>(null);
   const sectionRootRef = React.useRef<HTMLDivElement | null>(null);
   const googleMapsApiKey = (import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined)?.trim() || "";
   const canUseGoogleAddressLookup = googleMapsApiKey.length > 0;
@@ -417,10 +417,11 @@ export default function PaymentSection() {
     }
   };
 
-  const handleBillingAddressPick = () => {
-    if (!billingAutocomplete) return;
+  const handleBillingAddressPick = (sourceAutocomplete?: google.maps.places.Autocomplete | null) => {
+    const activeAutocomplete = sourceAutocomplete ?? billingAutocomplete;
+    if (!activeAutocomplete) return;
 
-    const place = billingAutocomplete.getPlace();
+    const place = activeAutocomplete.getPlace();
     if (!place?.address_components) return;
 
     const components = place.address_components;
@@ -450,6 +451,21 @@ export default function PaymentSection() {
 
     setBillingLookupValue(place.formatted_address || line1);
   };
+
+  React.useEffect(() => {
+    if (billingManualEntry || !canUseGoogleAddressLookup || !isGoogleLoaded || googleLoadError) return;
+    if (!billingLookupInputRef.current || !window.google?.maps?.places) return;
+
+    const instance = new window.google.maps.places.Autocomplete(billingLookupInputRef.current, {
+      fields: ["address_components", "formatted_address"],
+    });
+    setBillingAutocomplete(instance);
+
+    const listener = instance.addListener("place_changed", () => handleBillingAddressPick(instance));
+    return () => {
+      if (listener?.remove) listener.remove();
+    };
+  }, [billingManualEntry, canUseGoogleAddressLookup, isGoogleLoaded, googleLoadError, draftBillingAddress.country, billingAddress.country]);
 
   const handlePayPalPick = () => {
     setPaymentType("PAYPAL");
@@ -820,15 +836,14 @@ export default function PaymentSection() {
               {!billingManualEntry && canUseGoogleAddressLookup && isGoogleLoaded && !googleLoadError ? (
                 <div className="md:col-span-2">
                   <label className="mb-1.5 block text-sm font-medium text-gray-700">Add your postcode or address *</label>
-                  <Autocomplete onLoad={setBillingAutocomplete} onPlaceChanged={handleBillingAddressPick}>
-                    <input
-                      type="text"
-                      placeholder="Add your postcode or address"
-                      value={billingLookupValue}
-                      onChange={(e) => setBillingLookupValue(e.target.value)}
-                      className="w-full rounded-xl border border-[#C6A75E]/35 bg-white px-4 py-3 text-gray-900 focus:border-[#C6A75E] focus:outline-none"
-                    />
-                  </Autocomplete>
+                  <input
+                    ref={billingLookupInputRef}
+                    type="text"
+                    placeholder="Add your postcode or address"
+                    value={billingLookupValue}
+                    onChange={(e) => setBillingLookupValue(e.target.value)}
+                    className="w-full rounded-xl border border-[#C6A75E]/35 bg-white px-4 py-3 text-gray-900 focus:border-[#C6A75E] focus:outline-none"
+                  />
                   <button
                     type="button"
                     onClick={() => setBillingManualEntry(true)}

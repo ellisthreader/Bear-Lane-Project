@@ -1,6 +1,5 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useCheckout } from "@/Context/CheckoutContext";
-import { Autocomplete } from "@react-google-maps/api";
 import { getCountryCode } from "@/Utils/countryCodes";
 import LuxuryPhoneInput from "@/Components/LuxuryPhoneInput";
 import type { CheckoutFieldErrors, CheckoutFieldKey } from "../types";
@@ -25,6 +24,7 @@ export default function DeliveryInfo({
   const [autocomplete, setAutocomplete] = useState<google.maps.places.Autocomplete | null>(null);
   const [manualEntry, setManualEntry] = useState(false);
   const [lookupValue, setLookupValue] = useState("");
+  const lookupInputRef = useRef<HTMLInputElement | null>(null);
 
   const { isLoaded, loadError } = useGoogleMapsScript({
     enabled: canUseGoogleAddressLookup,
@@ -92,10 +92,11 @@ export default function DeliveryInfo({
     if (iso) autocomplete.setComponentRestrictions({ country: iso });
   }, [autocomplete, country]);
 
-  const handleAddressPick = () => {
-    if (!autocomplete) return;
+  const handleAddressPick = (sourceAutocomplete?: google.maps.places.Autocomplete | null) => {
+    const activeAutocomplete = sourceAutocomplete ?? autocomplete;
+    if (!activeAutocomplete) return;
 
-    const place = autocomplete.getPlace();
+    const place = activeAutocomplete.getPlace();
     if (!place?.address_components) return;
 
     const components = place.address_components;
@@ -130,6 +131,21 @@ export default function DeliveryInfo({
     setLookupValue(place.formatted_address || line1);
     setManualEntry(true);
   };
+
+  useEffect(() => {
+    if (!canUseGoogleAddressLookup || !isLoaded || loadError || manualEntry) return;
+    if (!lookupInputRef.current || !window.google?.maps?.places) return;
+
+    const instance = new window.google.maps.places.Autocomplete(lookupInputRef.current, {
+      fields: ["address_components", "formatted_address"],
+    });
+    setAutocomplete(instance);
+
+    const listener = instance.addListener("place_changed", () => handleAddressPick(instance));
+    return () => {
+      if (listener?.remove) listener.remove();
+    };
+  }, [canUseGoogleAddressLookup, isLoaded, loadError, manualEntry, country]);
 
   const handleChange =
     (key: keyof typeof address) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -222,23 +238,22 @@ export default function DeliveryInfo({
         {!manualEntry && canUseGoogleAddressLookup && !loadError ? (
           <div>
             <label className="mb-1.5 block text-sm font-medium text-gray-700">Add your postcode or address *</label>
-            <Autocomplete onLoad={setAutocomplete} onPlaceChanged={handleAddressPick}>
-              <input
-                className={`${inputClass} ${
-                  lookupFieldError
-                    ? "animate-checkout-shake border-red-400 ring-2 ring-red-200 focus:border-red-400 focus:ring-red-200"
-                    : ""
-                }`}
-                value={lookupValue}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  setLookupValue(value);
-                  onFieldValueChange?.("addressLookup", value);
-                }}
-                placeholder="Search for an address"
-                required
-              />
-            </Autocomplete>
+            <input
+              ref={lookupInputRef}
+              className={`${inputClass} ${
+                lookupFieldError
+                  ? "animate-checkout-shake border-red-400 ring-2 ring-red-200 focus:border-red-400 focus:ring-red-200"
+                  : ""
+              }`}
+              value={lookupValue}
+              onChange={(e) => {
+                const value = e.target.value;
+                setLookupValue(value);
+                onFieldValueChange?.("addressLookup", value);
+              }}
+              placeholder="Search for an address"
+              required
+            />
             {lookupFieldError && (
               <p className="mt-1.5 text-sm text-red-600">
                 Please enter address.
