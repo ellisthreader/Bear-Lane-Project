@@ -66,7 +66,10 @@ export function computeTotalsInCents(args: {
       subtotal_discount_cents = Math.round((Number(appliedDiscount.value) || 0) * 100);
       subtotal_discount_cents = Math.min(subtotal_discount_cents, subtotal_cents); // never more than subtotal
     } else if (appliedDiscount.type === "shipping") {
-      shipping_discount_cents = shipping_cents;
+      const shippingCapCents = Math.round((Number(appliedDiscount.value) || 0) * 100);
+      shipping_discount_cents = shippingCapCents > 0
+        ? Math.min(shipping_cents, shippingCapCents)
+        : shipping_cents;
     }
   }
   const discount_cents = subtotal_discount_cents + shipping_discount_cents;

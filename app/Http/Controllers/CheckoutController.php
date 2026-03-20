@@ -158,13 +158,19 @@ class CheckoutController extends Controller
             if ($discount_code) {
                 $coupon = Coupon::whereRaw('UPPER(code) = ?', [$discount_code])->where('active', 1)->first();
                 if ($coupon) {
-                    $couponType = strtolower((string) $coupon->type);
-                    if ($couponType === 'percent') {
-                        $discount_cents = intval(round($subtotal_cents * ($coupon->value / 100)));
-                    } elseif ($couponType === 'shipping') {
-                        $discount_cents = $shipping_cents;
+                    if (in_array($discount_code, ['FREESHIP', 'FREESHIPPING'], true)) {
+                        $discount_cents = min($shipping_cents, 400); // up to £4 off shipping
                     } else {
-                        $discount_cents = intval(round($coupon->value));
+                        $couponType = strtolower((string) $coupon->type);
+                        if ($couponType === 'percent') {
+                            $discount_cents = intval(round($subtotal_cents * ($coupon->value / 100)));
+                        } elseif ($couponType === 'shipping') {
+                            $discount_cents = $coupon->value > 0
+                                ? min($shipping_cents, (int) $coupon->value)
+                                : $shipping_cents;
+                        } else {
+                            $discount_cents = intval(round($coupon->value));
+                        }
                     }
                 }
             }

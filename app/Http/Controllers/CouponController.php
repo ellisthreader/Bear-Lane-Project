@@ -44,14 +44,15 @@ class CouponController extends Controller
                 return response()->json(['valid' => false, 'message' => 'Minimum spend not met'], 400);
             }
 
-            if ($code === 'FREESHIP') {
+            if (in_array($code, ['FREESHIP', 'FREESHIPPING'], true)) {
+                $shippingCapCents = 400; // up to £4 off shipping
                 return response()->json([
                     'valid' => true,
                     'coupon_id' => $coupon->id,
-                    'code' => $coupon->code,
+                    'code' => $code,
                     'type' => 'shipping',
-                    'value' => 0,
-                    'discount_cents' => $shipping,
+                    'value' => 4,
+                    'discount_cents' => min($shipping, $shippingCapCents),
                     'new_subtotal_cents' => $subtotal,
                 ]);
             }
