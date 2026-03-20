@@ -260,7 +260,16 @@ class CheckoutController extends Controller
                 'total' => $total_cents / 100,
             ]);
         } catch (\Throwable $e) {
-            Log::error("[Checkout] PaymentIntent error", ['msg' => $e->getMessage()]);
+            $secret = (string) config('services.stripe.secret', '');
+            $secretPrefix = str_starts_with($secret, 'sk_live_')
+                ? 'sk_live_'
+                : (str_starts_with($secret, 'sk_test_') ? 'sk_test_' : ($secret === '' ? '<missing>' : '<invalid>'));
+            Log::error("[Checkout] PaymentIntent error", [
+                'msg' => $e->getMessage(),
+                'class' => get_class($e),
+                'stripe_mode' => (string) config('services.stripe.mode', '<unset>'),
+                'stripe_secret_prefix' => $secretPrefix,
+            ]);
             return response()->json(['error' => $e->getMessage()], 400);
         }
     }

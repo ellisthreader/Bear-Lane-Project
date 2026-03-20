@@ -849,12 +849,19 @@ const CheckoutForm = ({ initialEmail = "" }: CheckoutFormProps) => {
         body: JSON.stringify({
           email,
           items: cart.map((i) => ({
+            id: i.productId,
             slug: i.slug,
             name: i.title,
             size: i.size,
             colour: i.colour,
             quantity: i.quantity,
             unit_price_cents: Math.round(i.price * 100),
+            preferred_courier: i.preferredCourier,
+            weight_kg: i.weightKg,
+            length_cm: i.lengthCm,
+            width_cm: i.widthCm,
+            height_cm: i.heightCm,
+            dimension_unit: i.dimensionUnit,
             design_type: i.designType,
           })),
           discount_code: appliedDiscount?.code || null,
@@ -879,12 +886,25 @@ const CheckoutForm = ({ initialEmail = "" }: CheckoutFormProps) => {
           throw new Error("Your session expired. Please refresh the page and try again.");
         }
         const fallbackText = await paymentRes.text();
+        let parsed: any = null;
         try {
-          const parsed = JSON.parse(fallbackText);
-          throw new Error(parsed.error || parsed.message || `Payment intent request failed (${paymentRes.status}).`);
+          parsed = JSON.parse(fallbackText);
         } catch {
-          throw new Error(`Payment intent request failed (${paymentRes.status}).`);
+          parsed = null;
         }
+        const detailsFromValidation =
+          parsed && parsed.error && typeof parsed.error === "object"
+            ? Object.values(parsed.error)
+                .flat()
+                .map((value) => String(value || "").trim())
+                .filter(Boolean)
+                .join(" ")
+            : "";
+        const backendMessage =
+          (parsed && typeof parsed.error === "string" ? parsed.error : "")
+          || (parsed && typeof parsed.message === "string" ? parsed.message : "")
+          || detailsFromValidation;
+        throw new Error(backendMessage || `Payment intent request failed (${paymentRes.status}).`);
       }
 
       const paymentData = await paymentRes.json();
