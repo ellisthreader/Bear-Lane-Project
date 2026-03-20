@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\UserPaymentMethod;
 use Illuminate\Support\Facades\Schema;
 use Stripe\Customer;
+use Stripe\Exception\InvalidRequestException;
 use Stripe\PaymentIntent;
 use Stripe\PaymentMethod;
 
@@ -20,7 +21,19 @@ class StripeWalletService
         StripeConfiguration::configure();
 
         if (!empty($user->stripe_customer_id)) {
-            return (string) $user->stripe_customer_id;
+            $existingCustomerId = (string) $user->stripe_customer_id;
+            try {
+                Customer::retrieve($existingCustomerId);
+                return $existingCustomerId;
+            } catch (InvalidRequestException $e) {
+                if (!$this->isMissingCustomerException($e)) {
+                    throw $e;
+                }
+
+                // Stored customer id is stale (deleted in Stripe). Clear and recreate.
+                $user->stripe_customer_id = null;
+                $user->save();
+            }
         }
 
         $name = trim((string) ($user->name ?? ''));
@@ -31,18 +44,29 @@ class StripeWalletService
             $name = 'Customer ' . $user->id;
         }
 
-        $customer = Customer::create([
-            'email' => $user->email,
-            'name' => $name,
-            'metadata' => [
-                'user_id' => (string) $user->id,
-            ],
-        ]);
+        $customer = Customer::create($this->buildCustomerPayload($user, $name));
 
         $user->stripe_customer_id = $customer->id;
         $user->save();
 
         return (string) $customer->id;
+    }
+
+    private function buildCustomerPayload(User $user, string $name): array
+    {
+        return [
+            'email' => $user->email,
+            'name' => $name,
+            'metadata' => [
+                'user_id' => (string) $user->id,
+            ],
+        ];
+    }
+
+    private function isMissingCustomerException(InvalidRequestException $e): bool
+    {
+        $message = strtolower(trim((string) $e->getMessage()));
+        return str_contains($message, 'no such customer');
     }
 
     public function persistPaymentMethodFromIntent(User $user, string $paymentIntentId, ?string $providerHint = null, string $cardholderName = ''): ?UserPaymentMethod

@@ -15,6 +15,7 @@ use Inertia\Response;
 use Stripe\PaymentMethod;
 use Stripe\SetupIntent;
 use Stripe\Customer;
+use Stripe\Exception\InvalidRequestException;
 
 class SavedCheckoutController extends Controller
 {
@@ -393,7 +394,19 @@ class SavedCheckoutController extends Controller
         }
 
         if (!empty($user->stripe_customer_id)) {
-            return (string) $user->stripe_customer_id;
+            $existingCustomerId = (string) $user->stripe_customer_id;
+            try {
+                Customer::retrieve($existingCustomerId);
+                return $existingCustomerId;
+            } catch (InvalidRequestException $e) {
+                $message = strtolower(trim((string) $e->getMessage()));
+                if (!str_contains($message, 'no such customer')) {
+                    throw $e;
+                }
+
+                $user->stripe_customer_id = null;
+                $user->save();
+            }
         }
 
         $name = trim((string) ($user->name ?? ''));
