@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { usePage } from "@inertiajs/react";
 import { GenderValue, ProductLike, SortValue } from "../types";
 import { getNumericPrice, getProductRating, inferGender } from "../utils";
 
@@ -73,7 +74,10 @@ const sortProducts = (products: ProductLike[], sortBy: SortValue) =>
     return Number(b.popularity ?? b.id) - Number(a.popularity ?? a.id);
   });
 
+const normalizeToken = (value: string) => value.trim().toLowerCase();
+
 export function CategoryFiltersProvider({ products, pageSlug, children }: ProviderProps) {
+  const page = usePage();
   const [sortBy, setSortBy] = useState<SortValue>("popular");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedProductModes, setSelectedProductModes] = useState<ProductModeValue[]>([]);
@@ -117,6 +121,20 @@ export function CategoryFiltersProvider({ products, pageSlug, children }: Provid
     });
     return Array.from(sizes).sort((a, b) => a.localeCompare(b));
   }, [products]);
+
+  const pageQueryParams = useMemo(
+    () => new URLSearchParams((page.url.split("?")[1] ?? "").trim()),
+    [page.url]
+  );
+
+  const requestedSizesFromUrl = useMemo(() => {
+    const explicit = pageQueryParams.getAll("size");
+    const csv = pageQueryParams.get("sizes");
+    const csvItems = csv ? csv.split(",") : [];
+    return [...explicit, ...csvItems]
+      .map((value) => String(value || "").trim())
+      .filter(Boolean);
+  }, [pageQueryParams]);
 
   const genderOptions = useMemo(() => {
     const baseOrder: GenderValue[] = ["men", "women", "kids"];
@@ -163,19 +181,24 @@ export function CategoryFiltersProvider({ products, pageSlug, children }: Provid
     const productColours = new Set(
       (product.variants || [])
         .map((variant) => (variant.colour || variant.color || "").trim())
+        .map(normalizeToken)
         .filter(Boolean)
     );
     const productSizes = new Set(
       (product.variants || [])
         .map((variant) => (variant.size || "").trim())
+        .map(normalizeToken)
         .filter(Boolean)
     );
 
-    if (state.selectedColours.length > 0 && !state.selectedColours.some((colour) => productColours.has(colour))) {
+    if (
+      state.selectedColours.length > 0 &&
+      !state.selectedColours.some((colour) => productColours.has(normalizeToken(colour)))
+    ) {
       return false;
     }
 
-    if (state.selectedSizes.length > 0 && !state.selectedSizes.some((size) => productSizes.has(size))) {
+    if (state.selectedSizes.length > 0 && !state.selectedSizes.some((size) => productSizes.has(normalizeToken(size)))) {
       return false;
     }
 
@@ -312,6 +335,14 @@ export function CategoryFiltersProvider({ products, pageSlug, children }: Provid
     setMinPrice(minAvailable);
     setMaxPrice(maxAvailable);
   };
+
+  useEffect(() => {
+    if (requestedSizesFromUrl.length === 0) return;
+    const normalizedRequested = new Set(requestedSizesFromUrl.map(normalizeToken));
+    const matchedSizes = sizeOptions.filter((size) => normalizedRequested.has(normalizeToken(size)));
+    if (matchedSizes.length === 0) return;
+    setSelectedSizes(matchedSizes);
+  }, [requestedSizesFromUrl, sizeOptions]);
 
   const value: CategoryFiltersContextValue = {
     filteredProducts,

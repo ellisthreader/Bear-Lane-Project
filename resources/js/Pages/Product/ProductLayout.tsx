@@ -20,6 +20,40 @@ const SizeGuideModal = lazy(() => import("./SizeGuide/SizeGuideModal"));
 const ProductQuoteModal = lazy(() => import("./QuoteModal/ProductQuoteModal"));
 
 const STANDARD_SIZES = ["XS", "S", "M", "L", "XL"] as const;
+const ADMIN_SIZE_GROUPS = [
+  {
+    label: "ADULT",
+    options: ["XL", "L", "M", "S", "XS"],
+  },
+  {
+    label: "JUNIOR",
+    options: ["12-13 years", "13-14 years", "14-15 years"],
+  },
+  {
+    label: "KIDS",
+    options: ["7-8 years", "8-9 years", "9-10 years", "10-11 years", "11-12 years"],
+  },
+  {
+    label: "LITTLE KIDS",
+    options: ["4-5 years", "5-6 years", "6-7 years"],
+  },
+  {
+    label: "TODDLER",
+    options: ["12-18 months", "18-24 months", "2-3 years (2T-3T)", "3-4 years (3T-4T)"],
+  },
+  {
+    label: "BABIES",
+    options: [
+      "Newborn (0-1 month)",
+      "0-3 months",
+      "3-6 months",
+      "6-9 months",
+      "9-12 months",
+      "12-18 months",
+      "18-24 months",
+    ],
+  },
+] as const;
 const COMMON_COLOUR_OPTIONS = [
   "Black",
   "White",
@@ -2649,10 +2683,14 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
                                     }
                                     className="rounded-lg border border-[#DCC99D] px-2 py-2 text-sm"
                                   >
-                                    {STANDARD_SIZES.map((size) => (
-                                      <option key={size} value={size}>
-                                        {size}
-                                      </option>
+                                    {ADMIN_SIZE_GROUPS.map((group) => (
+                                      <optgroup key={group.label} label={group.label}>
+                                        {group.options.map((size) => (
+                                          <option key={`${group.label}-${size}`} value={size.toUpperCase()}>
+                                            {size}
+                                          </option>
+                                        ))}
+                                      </optgroup>
                                     ))}
                                   </select>
                                   <input

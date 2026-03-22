@@ -24,6 +24,7 @@ type Props = {
   closeSidebar: () => void;
   variant?: "drilldown" | "accordion";
   showHeading?: boolean;
+  quickLinks?: Array<{ label: string; href: string }>;
 };
 
 export default function GenericCategorySidebar({
@@ -32,6 +33,7 @@ export default function GenericCategorySidebar({
   closeSidebar,
   variant = "drilldown",
   showHeading = true,
+  quickLinks = [],
 }: Props) {
   const [menu, setMenu] = useState<MenuPayload | null>(null);
   const [loading, setLoading] = useState(true);
@@ -83,6 +85,11 @@ export default function GenericCategorySidebar({
 
   const openCategory = (slug: string) => {
     router.get(`/category/${slug}`);
+    closeSidebar();
+  };
+
+  const openHref = (href: string) => {
+    router.get(href);
     closeSidebar();
   };
 
@@ -245,6 +252,23 @@ export default function GenericCategorySidebar({
 
       {!loading && !error && variant === "drilldown" ? (
         <div className="space-y-2">
+          {path.length === 0 && quickLinks.length > 0 ? (
+            <div className="mb-3 rounded-2xl border border-[#E8DFC9] bg-[#FFF9EC] p-3">
+              <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#8A6D2B]">Shop By Age</p>
+              <div className="space-y-1">
+                {quickLinks.map((item) => (
+                  <button
+                    key={item.label}
+                    type="button"
+                    {...pressHandlers(() => openHref(item.href))}
+                    className="block w-full rounded-lg px-2 py-2 text-left text-sm font-semibold text-[#3E311C] transition hover:bg-[#FFF2D1]"
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
           {options.length === 0 ? (
             <p className={textClass}>No categories yet.</p>
           ) : (
@@ -257,7 +281,28 @@ export default function GenericCategorySidebar({
         </div>
       ) : null}
 
-      {!loading && !error && variant === "accordion" ? renderAccordionNodes(options) : null}
+      {!loading && !error && variant === "accordion" ? (
+        <div className="space-y-2">
+          {path.length === 0 && quickLinks.length > 0 ? (
+            <div className="mb-1 rounded-2xl border border-[#E8DFC9] bg-[#FFF9EC] p-3">
+              <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#8A6D2B]">Shop By Age</p>
+              <div className="space-y-1">
+                {quickLinks.map((item) => (
+                  <button
+                    key={item.label}
+                    type="button"
+                    {...pressHandlers(() => openHref(item.href))}
+                    className="block w-full rounded-lg px-2 py-2 text-left text-sm font-semibold text-[#3E311C] transition hover:bg-[#FFF2D1]"
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+          {renderAccordionNodes(options)}
+        </div>
+      ) : null}
     </div>
   );
 }
