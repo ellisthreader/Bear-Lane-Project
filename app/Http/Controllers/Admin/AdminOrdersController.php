@@ -342,7 +342,8 @@ class AdminOrdersController extends Controller
 
             $labelData = $this->shippoLabelService->purchaseLabelForOrder(
                 $order,
-                $order->shipping_rate
+                $order->shipping_rate,
+                true
             );
             $order->fill($labelData);
             $order->save();

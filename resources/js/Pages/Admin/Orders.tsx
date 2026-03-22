@@ -1388,7 +1388,7 @@ function OrdersWorkspace() {
                         <div className="rounded-xl border border-[#EADDBF] bg-[#FFFDF8] p-3">
                           <p className="text-sm font-semibold text-[#2D2515]">Create shipping label</p>
                           <p className="mt-1 text-xs text-[#6B5A34]">
-                            Use Shippo test mode to generate a label from this order's delivery address and autofill tracking.
+                            Generate a live Shippo label from this order's delivery address and autofill tracking.
                           </p>
                           <div className="mt-3 flex flex-wrap items-center gap-2">
                             <button

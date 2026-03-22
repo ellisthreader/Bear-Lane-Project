@@ -15,8 +15,12 @@ class ShippoLabelService
     {
     }
 
-    public function purchaseLabelForOrder(Order $order, ?string $preferredService = null): array
+    public function purchaseLabelForOrder(Order $order, ?string $preferredService = null, bool $requireLiveLabel = false): array
     {
+        if ($requireLiveLabel) {
+            $this->assertLiveShippoToken();
+        }
+
         $fromAddress = [
             'name' => 'Bear Lane',
             'street1' => '390 Springfield Road',
@@ -93,6 +97,10 @@ class ShippoLabelService
         }
 
         $transaction = $this->shippoRateService->createTransaction((string) $selectedRate['object_id']);
+
+        if ($requireLiveLabel && $this->isTestTransaction($transaction)) {
+            throw new \RuntimeException('Shippo is still returning test labels. Please set a live SHIPPO_API_KEY before generating admin order labels.');
+        }
 
         $status = (string) ($transaction['status'] ?? '');
         if (!in_array($status, ['SUCCESS', 'QUEUED'], true)) {
@@ -258,5 +266,22 @@ class ShippoLabelService
         });
 
         return $rates[0] ?? null;
+    }
+
+    private function assertLiveShippoToken(): void
+    {
+        $token = strtolower(trim((string) config('services.shippo.token', '')));
+        if ($token === '') {
+            throw new \RuntimeException('Shippo API key is missing. Set SHIPPO_API_KEY to your live key.');
+        }
+
+        if (str_starts_with($token, 'shippo_test_') || str_starts_with($token, 'test_')) {
+            throw new \RuntimeException('Admin shipping labels require a live Shippo key. Replace SHIPPO_API_KEY test key with a live key.');
+        }
+    }
+
+    private function isTestTransaction(array $transaction): bool
+    {
+        return (bool) ($transaction['test'] ?? false);
     }
 }

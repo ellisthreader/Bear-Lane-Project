@@ -39,7 +39,32 @@ const COMMON_COLOUR_OPTIONS = [
   "Olive",
   "Khaki",
   "Teal",
+  "Peach",
+  "Rust",
 ] as const;
+
+const COMMON_COLOUR_RGB: Record<string, { r: number; g: number; b: number }> = {
+  black: { r: 0, g: 0, b: 0 },
+  white: { r: 255, g: 255, b: 255 },
+  grey: { r: 128, g: 128, b: 128 },
+  navy: { r: 0, g: 0, b: 128 },
+  blue: { r: 0, g: 0, b: 255 },
+  red: { r: 255, g: 0, b: 0 },
+  green: { r: 0, g: 128, b: 0 },
+  yellow: { r: 255, g: 255, b: 0 },
+  orange: { r: 255, g: 165, b: 0 },
+  purple: { r: 128, g: 0, b: 128 },
+  pink: { r: 255, g: 192, b: 203 },
+  brown: { r: 165, g: 42, b: 42 },
+  beige: { r: 245, g: 245, b: 220 },
+  cream: { r: 255, g: 253, b: 208 },
+  burgundy: { r: 128, g: 0, b: 32 },
+  olive: { r: 128, g: 128, b: 0 },
+  khaki: { r: 240, g: 230, b: 140 },
+  teal: { r: 0, g: 128, b: 128 },
+  peach: { r: 255, g: 218, b: 185 },
+  rust: { r: 183, g: 65, b: 14 },
+};
 
 type RestrictedBoxRatio = {
   left: number;
@@ -955,6 +980,16 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
 
   const isCommonColourOption = (value: string) =>
     COMMON_COLOUR_OPTIONS.some((option) => option.toLowerCase() === value.trim().toLowerCase());
+
+  const getColourRgb = (value: string) => COMMON_COLOUR_RGB[value.trim().toLowerCase()];
+  const getColourRgbLabel = (value: string) => {
+    const rgb = getColourRgb(value);
+    return rgb ? `RGB(${rgb.r}, ${rgb.g}, ${rgb.b})` : null;
+  };
+  const getColourRgbCss = (value: string) => {
+    const rgb = getColourRgb(value);
+    return rgb ? `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})` : null;
+  };
 
   const getVariantShippingMetrics = (variant: AdminVariantDraft) => {
     if (variant.parcelSize !== "manual") {
@@ -2491,6 +2526,11 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
                             className="inline-flex items-center gap-2 text-left"
                           >
                             <ChevronDown className={`h-4 w-4 text-[#786748] transition-transform duration-300 ${isOpen ? "rotate-180" : ""}`} />
+                            <span
+                              aria-hidden="true"
+                              className="inline-block h-2.5 w-2.5 rounded-full border border-[#DCC99D]"
+                              style={{ backgroundColor: getColourRgbCss(previewName) ?? "transparent" }}
+                            />
                             <p className="text-xs font-bold uppercase tracking-[0.1em] text-[#6D5A34]">
                               Colour {colourIndex + 1} - {previewName}
                             </p>
@@ -2529,7 +2569,7 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
                             <option value="">Select a colour</option>
                             {COMMON_COLOUR_OPTIONS.map((option) => (
                               <option key={option} value={option}>
-                                {option}
+                                {option} {getColourRgbLabel(option) ? `- ${getColourRgbLabel(option)}` : ""}
                               </option>
                             ))}
                             <option value="__custom__">Add new colour</option>
