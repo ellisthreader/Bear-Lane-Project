@@ -701,7 +701,7 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
 
   const [selectedColour, setSelectedColour] = useState(effectiveColourProducts[0]?.colour ?? "");
   const [currentVariant, setCurrentVariant] = useState<ColourProduct | null>(effectiveColourProducts[0] ?? null);
-  const [selectedSize, setSelectedSize] = useState<string>("M");
+  const [selectedSize, setSelectedSize] = useState<string>("");
   const [selectedDesignType, setSelectedDesignType] = useState<DesignType>(() => {
     if (typeof window === "undefined") return "printing";
     const fromQuery = new URLSearchParams(window.location.search).get("designType");
@@ -747,12 +747,29 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
     }
 
     if (!variant) return;
-    const firstInStock = STANDARD_SIZES.find((size) => {
-      const stockMap = variant.size_stock ?? {};
-      if (Object.keys(stockMap).length > 0) return Number(stockMap[size] ?? 0) > 0;
-      return (variant.sizes ?? []).map((s) => s.toUpperCase()).includes(size);
+    const seenSizes = new Set<string>();
+    const variantSizes: string[] = [];
+    const pushSize = (value: unknown) => {
+      const normalized = String(value ?? "").trim();
+      if (!normalized) return;
+      const key = normalized.toUpperCase();
+      if (seenSizes.has(key)) return;
+      seenSizes.add(key);
+      variantSizes.push(normalized);
+    };
+    (variant.sizes ?? []).forEach(pushSize);
+    Object.keys(variant.size_stock ?? {}).forEach(pushSize);
+
+    const stockMap = variant.size_stock ?? {};
+    const normalizedStock: Record<string, number> = {};
+    Object.entries(stockMap).forEach(([size, stock]) => {
+      normalizedStock[String(size).trim().toUpperCase()] = Number(stock ?? 0);
     });
-    setSelectedSize(firstInStock ?? STANDARD_SIZES[0]);
+    const hasStockMap = Object.keys(normalizedStock).length > 0;
+    const firstInStock = variantSizes.find((size) =>
+      hasStockMap ? Number(normalizedStock[size.toUpperCase()] ?? 0) > 0 : true
+    );
+    setSelectedSize(firstInStock ?? variantSizes[0] ?? "");
     setShowSizeError(false);
   }, [selectedColour, effectiveColourProducts, effectiveProductImages, isAdminEditor]);
 
@@ -769,12 +786,28 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
     return normalized;
   }, [currentVariant]);
 
+  const variantSizeOptions = useMemo(() => {
+    const seen = new Set<string>();
+    const sizes: string[] = [];
+    const push = (value: unknown) => {
+      const parsed = String(value ?? "").trim();
+      if (!parsed) return;
+      const key = parsed.toUpperCase();
+      if (seen.has(key)) return;
+      seen.add(key);
+      sizes.push(parsed);
+    };
+    (currentVariant?.sizes ?? []).forEach(push);
+    Object.keys(currentVariant?.size_stock ?? {}).forEach(push);
+    return sizes;
+  }, [currentVariant?.sizes, currentVariant?.size_stock]);
+
   const availableSizeSet = useMemo(() => {
     if (Object.keys(sizeStockMap).length > 0) {
       return new Set(Object.entries(sizeStockMap).filter(([, stock]) => Number(stock) > 0).map(([size]) => size.toUpperCase()));
     }
-    return new Set((currentVariant?.sizes ?? []).map((size) => String(size).toUpperCase()));
-  }, [currentVariant?.sizes, sizeStockMap]);
+    return new Set(variantSizeOptions.map((size) => String(size).toUpperCase()));
+  }, [variantSizeOptions, sizeStockMap]);
 
   const isSizeInStock = (size: string) => availableSizeSet.has(size.toUpperCase());
   const selectedSizeInStock = isSizeInStock(selectedSize);
@@ -874,7 +907,7 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
             : (Number(product.height) > 0 ? Number(product.height) : undefined),
           dimensionUnit: product.dimension_unit || "cm",
           image: displayImages[0] ?? effectiveProductImages?.[0] ?? "/images/no-image.png",
-          availableSizes: (currentVariant?.sizes || STANDARD_SIZES).map((size) => String(size).toUpperCase()),
+          availableSizes: variantSizeOptions.length > 0 ? variantSizeOptions : STANDARD_SIZES.map((size) => String(size)),
           designType: "printing",
         });
         toast.success("Added to cart.", {
@@ -2180,7 +2213,7 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
                 </div>
 
                 <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
-                  {STANDARD_SIZES.map((size) => {
+                  {variantSizeOptions.map((size) => {
                     const inStock = isSizeInStock(size);
                     const isSelected = selectedSize === size;
 
@@ -2212,9 +2245,12 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
                     );
                   })}
                 </div>
+                {variantSizeOptions.length === 0 ? (
+                  <p className="mt-2 text-sm text-[#7C4A1D]">No sizes available for this colour yet.</p>
+                ) : null}
 
                 {showSizeError ? <p className="mt-2 text-sm font-semibold text-[#A12525]">Please select a size</p> : null}
-                {!selectedSizeInStock ? (
+                {variantSizeOptions.length > 0 && selectedSize && !selectedSizeInStock ? (
                   <p className="mt-2 text-sm text-[#7C4A1D]">Selected size is currently out of stock.</p>
                 ) : null}
               </div>

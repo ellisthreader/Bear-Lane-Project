@@ -25,6 +25,7 @@ type Props = {
   variant?: "drilldown" | "accordion";
   showHeading?: boolean;
   quickLinks?: Array<{ label: string; href: string }>;
+  hideRootCategoriesWhenQuickLinks?: boolean;
 };
 
 export default function GenericCategorySidebar({
@@ -34,6 +35,7 @@ export default function GenericCategorySidebar({
   variant = "drilldown",
   showHeading = true,
   quickLinks = [],
+  hideRootCategoriesWhenQuickLinks = false,
 }: Props) {
   const [menu, setMenu] = useState<MenuPayload | null>(null);
   const [loading, setLoading] = useState(true);
@@ -78,6 +80,7 @@ export default function GenericCategorySidebar({
     Array.isArray(node?.children) ? node!.children : [];
   const currentNode = path.length > 0 ? path[path.length - 1] : null;
   const options = currentNode ? getChildren(currentNode) : getChildren(rootNode);
+  const shouldHideRootCategories = path.length === 0 && quickLinks.length > 0 && hideRootCategoriesWhenQuickLinks;
 
   const goBack = () => {
     setPath((prev) => prev.slice(0, -1));
@@ -253,7 +256,7 @@ export default function GenericCategorySidebar({
       {!loading && !error && variant === "drilldown" ? (
         <div className="space-y-2">
           {path.length === 0 && quickLinks.length > 0 ? (
-            <div className="mb-3 rounded-2xl border border-[#E8DFC9] bg-[#FFF9EC] p-3">
+            <div className="mb-3">
               <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#8A6D2B]">Shop By Age</p>
               <div className="space-y-1">
                 {quickLinks.map((item) => (
@@ -261,7 +264,7 @@ export default function GenericCategorySidebar({
                     key={item.label}
                     type="button"
                     {...pressHandlers(() => openHref(item.href))}
-                    className="block w-full rounded-lg px-2 py-2 text-left text-sm font-semibold text-[#3E311C] transition hover:bg-[#FFF2D1]"
+                    className="block w-full rounded-lg px-2 py-2 text-left text-sm font-semibold text-[#3E311C] transition hover:bg-[#F8F4EA]"
                   >
                     {item.label}
                   </button>
@@ -269,7 +272,7 @@ export default function GenericCategorySidebar({
               </div>
             </div>
           ) : null}
-          {options.length === 0 ? (
+          {shouldHideRootCategories ? null : options.length === 0 ? (
             <p className={textClass}>No categories yet.</p>
           ) : (
             options.map((node) => (
@@ -284,7 +287,7 @@ export default function GenericCategorySidebar({
       {!loading && !error && variant === "accordion" ? (
         <div className="space-y-2">
           {path.length === 0 && quickLinks.length > 0 ? (
-            <div className="mb-1 rounded-2xl border border-[#E8DFC9] bg-[#FFF9EC] p-3">
+            <div className="mb-1">
               <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#8A6D2B]">Shop By Age</p>
               <div className="space-y-1">
                 {quickLinks.map((item) => (
@@ -292,7 +295,7 @@ export default function GenericCategorySidebar({
                     key={item.label}
                     type="button"
                     {...pressHandlers(() => openHref(item.href))}
-                    className="block w-full rounded-lg px-2 py-2 text-left text-sm font-semibold text-[#3E311C] transition hover:bg-[#FFF2D1]"
+                    className="block w-full rounded-lg px-2 py-2 text-left text-sm font-semibold text-[#3E311C] transition hover:bg-[#F8F4EA]"
                   >
                     {item.label}
                   </button>
@@ -300,7 +303,7 @@ export default function GenericCategorySidebar({
               </div>
             </div>
           ) : null}
-          {renderAccordionNodes(options)}
+          {shouldHideRootCategories ? null : renderAccordionNodes(options)}
         </div>
       ) : null}
     </div>

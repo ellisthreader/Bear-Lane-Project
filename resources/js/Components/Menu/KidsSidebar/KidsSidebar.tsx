@@ -59,6 +59,7 @@ export default function KidsSidebar({ closeSidebar, variant, showHeading }: Prop
       variant={variant}
       showHeading={showHeading}
       quickLinks={KIDS_AGE_QUICK_LINKS.map((item) => ({ label: item.label, href: item.href }))}
+      hideRootCategoriesWhenQuickLinks
     />
   );
 }
