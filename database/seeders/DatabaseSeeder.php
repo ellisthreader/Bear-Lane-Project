@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
             AdminUserSeeder::class,
             CategorySeeder::class, // Must run first
             ProductSeeder::class,  // Depends on categories
+            HomepageProductSeeder::class,
         ]);
     }
 }
