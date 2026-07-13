@@ -26,7 +26,7 @@ class HomepageProductSeeder extends Seeder
                 'is_sale' => false,
                 'is_premade_design' => false,
                 'colour' => 'White',
-                'images' => ['images/Products/WhiteTee1.png', 'images/Products/WhiteTee2.png'],
+                'images' => ['images/HomepageGenerated/signature-embroidered-tee.png'],
             ],
             [
                 'slug' => 'bear-lane-blue-studio-tee',
@@ -39,7 +39,7 @@ class HomepageProductSeeder extends Seeder
                 'is_sale' => false,
                 'is_premade_design' => false,
                 'colour' => 'Blue',
-                'images' => ['images/Products/BlueTee1.png', 'images/Products/BlueTee2.png'],
+                'images' => ['images/HomepageGenerated/blue-studio-tee.png'],
             ],
             [
                 'slug' => 'bear-lane-red-statement-tee',
@@ -52,7 +52,7 @@ class HomepageProductSeeder extends Seeder
                 'is_sale' => true,
                 'is_premade_design' => false,
                 'colour' => 'Red',
-                'images' => ['images/Products/RedTee1.png', 'images/Products/RedTee2.png'],
+                'images' => ['images/HomepageGenerated/red-statement-tee.png'],
             ],
             [
                 'slug' => 'bear-lane-black-essential-tee',
@@ -65,7 +65,7 @@ class HomepageProductSeeder extends Seeder
                 'is_sale' => false,
                 'is_premade_design' => false,
                 'colour' => 'Black',
-                'images' => ['images/Products/BlackTee1.png', 'images/Products/BlackTee2.png'],
+                'images' => ['images/HomepageGenerated/black-essential-tee.png'],
             ],
             [
                 'slug' => 'premade-wildflower-monogram',
@@ -78,7 +78,7 @@ class HomepageProductSeeder extends Seeder
                 'is_sale' => false,
                 'is_premade_design' => true,
                 'colour' => 'Natural',
-                'images' => ['images/Examples/Example1.png', 'images/Examples/Example1.webp'],
+                'images' => ['images/HomepageGenerated/wildflower-monogram.png'],
                 'quote' => 'Personalise with your initials and choice of thread colours.',
             ],
             [
@@ -92,7 +92,7 @@ class HomepageProductSeeder extends Seeder
                 'is_sale' => false,
                 'is_premade_design' => true,
                 'colour' => 'Navy',
-                'images' => ['images/Examples/Example2.png', 'images/Examples/Example2.webp'],
+                'images' => ['images/HomepageGenerated/vintage-club-emblem.png'],
                 'quote' => 'Add your club name, founding year, and preferred colours.',
             ],
             [
@@ -106,7 +106,7 @@ class HomepageProductSeeder extends Seeder
                 'is_sale' => false,
                 'is_premade_design' => true,
                 'colour' => 'Sky Blue',
-                'images' => ['images/Examples/Example3.png', 'images/Examples/Example3.webp'],
+                'images' => ['images/HomepageGenerated/little-explorer-badge.png'],
                 'quote' => 'Customise the name and badge colours for a one-of-a-kind gift.',
             ],
             [
@@ -120,7 +120,7 @@ class HomepageProductSeeder extends Seeder
                 'is_sale' => false,
                 'is_premade_design' => true,
                 'colour' => 'Sage',
-                'images' => ['images/Examples/Example4.png', 'images/Examples/Example4.webp'],
+                'images' => ['images/HomepageGenerated/botanical-script.png'],
                 'quote' => 'Choose a name or short phrase and we will prepare the final layout.',
             ],
         ];
@@ -141,8 +141,9 @@ class HomepageProductSeeder extends Seeder
                     $data
                 );
 
+                $product->images()->delete();
                 foreach ($images as $path) {
-                    Image::query()->firstOrCreate([
+                    Image::query()->create([
                         'imageable_id' => $product->id,
                         'imageable_type' => Product::class,
                         'path' => $path,
