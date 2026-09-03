@@ -84,7 +84,7 @@ class AdminSummaryService
                         }
                     })->orWhere(function ($inner) use ($inApp) {
                         if ($inApp('quote_request_submitted')) {
-                            $inner->where('source_type', 'artist_request');
+                            $inner->where('source_type', 'print_request');
                         } else {
                             $inner->whereRaw('1 = 0');
                         }

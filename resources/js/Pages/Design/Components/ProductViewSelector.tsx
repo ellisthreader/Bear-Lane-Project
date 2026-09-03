@@ -26,6 +26,9 @@ const ProductViewSelector: React.FC<ProductViewSelectorProps> = ({
   const [isMobileViewport, setIsMobileViewport] = useState<boolean>(() =>
     typeof window !== "undefined" ? window.matchMedia("(max-width: 1023px)").matches : false
   );
+  const availableViews = Object.entries(images).filter((entry): entry is [keyof typeof images, string] =>
+    Boolean(entry[1])
+  );
 
   const handleClick = (view: keyof typeof images) => {
     setSelected(view);
@@ -49,6 +52,8 @@ const ProductViewSelector: React.FC<ProductViewSelectorProps> = ({
     return () => query.removeListener(syncViewport);
   }, []);
 
+  if (availableViews.length === 0) return null;
+
   if (isMobileViewport) {
     return (
       <div data-export-ignore="true" className="fixed right-3 top-[84px] z-[72] md:hidden">
@@ -65,8 +70,8 @@ const ProductViewSelector: React.FC<ProductViewSelectorProps> = ({
 
         {mobileMenuOpen ? (
           <div className="mt-2 flex flex-col gap-2 rounded-xl border border-gray-200 bg-white/95 p-2 shadow-lg backdrop-blur">
-            {Object.entries(images).map(([key, src]) => {
-              const viewKey = key as keyof typeof images;
+            {availableViews.map(([key, src]) => {
+              const viewKey = key;
               const isSelected = selected === viewKey;
 
               return (
@@ -93,8 +98,8 @@ const ProductViewSelector: React.FC<ProductViewSelectorProps> = ({
       data-export-ignore="true"
       className="absolute bottom-4 left-1/2 z-40 flex max-w-[calc(100%-1rem)] -translate-x-1/2 items-center gap-2 overflow-x-auto rounded-xl border border-gray-200 bg-white p-2 shadow-md md:left-auto md:right-6 md:top-1/2 md:max-w-none md:translate-x-0 md:-translate-y-1/2 md:flex-col md:overflow-visible md:p-3"
     >
-      {Object.entries(images).map(([key, src]) => {
-        const viewKey = key as keyof typeof images;
+      {availableViews.map(([key, src]) => {
+        const viewKey = key;
         const isSelected = selected === viewKey;
 
         return (

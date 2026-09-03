@@ -1584,14 +1584,14 @@ const CheckoutForm = ({ initialEmail = "" }: CheckoutFormProps) => {
           <p className="mt-1">© 2026 Bear Lane. All rights reserved.</p>
           <p className="mt-2">
             By placing an order, you confirm that you have the necessary rights, permissions, or licenses to use
-            any logos, images, text, or artwork submitted to Bear Lane for embroidery. Bear Lane reserves the right
+            any logos, images, text, or artwork submitted to Bear Lane for printing. Bear Lane reserves the right
             to refuse any design that is unlawful, offensive, infringes intellectual property rights, or otherwise
             violates applicable regulations.
           </p>
           <p className="mt-1.5">
-            All products are made to order. Due to the personalised nature of embroidered items, returns or exchanges
+            All products are made to order. Due to the personalised nature of printed items, returns or exchanges
             may not be accepted unless the product is faulty or incorrect. While we take care to accurately reproduce
-            submitted designs, slight variations in colour, size, and stitching may occur due to the embroidery process.
+            submitted designs, slight variations in colour, size, and print placement may occur during production.
           </p>
           <p className="mt-1.5">
             Bear Lane is not responsible for customer-submitted design errors, including spelling, layout, or artwork

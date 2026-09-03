@@ -294,13 +294,13 @@ public function register(Request $request, RecaptchaService $recaptchaService, A
 public function login(Request $request, RecaptchaService $recaptchaService)
     {
         $request->validate([
-            'email'    => ['required', 'email'],
+            'email'    => ['required', 'string'],
             'password' => ['required', 'string'],
             'redirect' => ['nullable', 'string'],
         ]);
         $recaptchaService->verifyOrFail($request, 'login');
 
-        $user = User::where('email', $request->email)->first();
+        $user = $this->resolveLoginUser($request->input('email'));
 
         // Block OAuth users from password login
         if ($user && $user->is_oauth) {
@@ -311,7 +311,10 @@ public function login(Request $request, RecaptchaService $recaptchaService)
             ])->onlyInput('email');
         }
 
-        if (Auth::attempt($request->only('email', 'password'), $request->boolean('remember'))) {
+        if ($user && Auth::attempt(
+            ['email' => $user->email, 'password' => (string) $request->input('password')],
+            $request->boolean('remember')
+        )) {
 
             $request->session()->regenerate();
             $this->claimGuestCheckoutData(Auth::user());
@@ -325,7 +328,7 @@ public function login(Request $request, RecaptchaService $recaptchaService)
         }
 
         return back()->withErrors([
-            'email' => 'Incorrect email or password.'
+            'email' => 'Incorrect username or password.'
         ])->onlyInput('email');
     }
 
@@ -405,13 +408,30 @@ public function login(Request $request, RecaptchaService $recaptchaService)
             ? redirect()->route('login')->with('status', 'Password reset successful.')
             : back()->withErrors(['email' => 'Invalid or expired link.']);
     }
+    /**
+     * Resolve a sign-in identifier that may be either an email address or a
+     * username. Email is matched first so a username colliding with another
+     * account's email address can never shadow it.
+     */
+    private function resolveLoginUser(mixed $identifier): ?User
+    {
+        $identifier = trim((string) $identifier);
+
+        if ($identifier === '') {
+            return null;
+        }
+
+        return User::where('email', $identifier)->first()
+            ?? User::where('username', $identifier)->first();
+    }
+
     public function loginMethod(Request $request): JsonResponse
     {
         $request->validate([
-            'email' => ['required', 'email'],
+            'email' => ['required', 'string'],
         ]);
 
-        $user = User::where('email', $request->email)->first();
+        $user = $this->resolveLoginUser($request->input('email'));
 
         return response()->json([
             'requires_email_code' => (bool) ($user && $user->is_oauth),

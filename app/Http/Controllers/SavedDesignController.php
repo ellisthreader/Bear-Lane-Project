@@ -22,7 +22,7 @@ class SavedDesignController extends Controller
             'payload.currentViewKey' => ['required', 'in:front,back,leftSleeve,rightSleeve'],
             'payload.selectedColour' => ['nullable', 'string', 'max:100'],
             'payload.selectedSize' => ['nullable', 'string', 'max:100'],
-            'payload.selectedDesignType' => ['nullable', 'string', 'in:printing,embroidery'],
+            'payload.selectedDesignType' => ['nullable', 'string', 'in:printing'],
             'payload.baseViewImages' => ['nullable', 'array'],
             'payload.baseViewImages.front' => ['nullable', 'string'],
             'payload.baseViewImages.back' => ['nullable', 'string'],
@@ -39,6 +39,8 @@ class SavedDesignController extends Controller
             'payload.compositePngByView.leftSleeve' => ['nullable', 'string'],
             'payload.compositePngByView.rightSleeve' => ['nullable', 'string'],
         ]);
+
+        $validated['payload']['selectedDesignType'] = 'printing';
 
         $savedDesign = null;
 

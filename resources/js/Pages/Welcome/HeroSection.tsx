@@ -3,8 +3,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useSiteDesign } from "@/Theme/siteDesign";
 
-const images = [
+export const DEFAULT_HERO_SLIDES = [
   "/hero.webp",
   "/images/HeroSection/hero-clothing2.webp",
   "/images/HeroSection/hero-clothing3.webp",
@@ -12,7 +13,15 @@ const images = [
 ];
 
 export default function HeroSection() {
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const siteDesign = useSiteDesign();
+  const customSlides = siteDesign?.images?.hero_slides;
+  const images = customSlides && customSlides.length > 0 ? customSlides : DEFAULT_HERO_SLIDES;
+  const slideCountRef = useRef(images.length);
+  slideCountRef.current = images.length;
+
+  const [rawIndex, setCurrentIndex] = useState(0);
+  // Slides can change while previewing from the admin dashboard; keep the index in range.
+  const currentIndex = rawIndex % images.length;
   const [direction, setDirection] = useState(1);
   const [isDisabled, setIsDisabled] = useState(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -34,7 +43,7 @@ export default function HeroSection() {
   const handleNext = (auto = false) => {
     if (isDisabled && !auto) return; // prevent spam clicks
     setDirection(1);
-    setCurrentIndex((prev) => (prev + 1) % images.length);
+    setCurrentIndex((prev) => (prev + 1) % slideCountRef.current);
     if (!auto) {
       setIsDisabled(true);
       setTimeout(() => setIsDisabled(false), 800);
@@ -45,9 +54,11 @@ export default function HeroSection() {
   const handlePrev = () => {
     if (isDisabled) return;
     setDirection(-1);
-    setCurrentIndex((prev) =>
-      prev === 0 ? images.length - 1 : prev - 1
-    );
+    setCurrentIndex((prev) => {
+      const count = slideCountRef.current;
+      const current = prev % count;
+      return current === 0 ? count - 1 : current - 1;
+    });
     setIsDisabled(true);
     setTimeout(() => setIsDisabled(false), 800);
     resetAutoSlide();

@@ -14,7 +14,6 @@ type PricingTier = {
 type Props = {
   pricing: {
     printing: PricingTier;
-    embroidery: PricingTier;
   };
 };
 
@@ -106,8 +105,8 @@ export default function Prices({ pricing }: Props) {
             </div>
           </div>
 
-          <form onSubmit={handleSave} className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-            {(["printing", "embroidery"] as const).map((tier) => (
+          <form onSubmit={handleSave} className="grid grid-cols-1 gap-5">
+            {(["printing"] as const).map((tier) => (
               <div key={tier} className="rounded-2xl border border-[#E4D2AA] bg-white p-5 shadow-sm">
                 <h2 className="text-lg font-semibold capitalize">{tier}</h2>
                 <div className="mt-4 space-y-3">
@@ -128,7 +127,7 @@ export default function Prices({ pricing }: Props) {
               </div>
             ))}
 
-            <div className="lg:col-span-2 rounded-2xl border border-[#E4D2AA] bg-white p-4 shadow-sm">
+            <div className="rounded-2xl border border-[#E4D2AA] bg-white p-4 shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="text-sm text-[#6B5A34]">These values are applied in the design editor and pricing previews.</div>
                 <button

@@ -31,7 +31,7 @@ type AdminOrderItem = {
   product_name: string;
   size: string | null;
   colour: string | null;
-  design_type?: "printing" | "embroidery" | string | null;
+  design_type?: "printing" | string | null;
   parcel_size_key?: "very_small" | "small" | "medium" | "large" | null;
   parcel_size_label?: string | null;
   parcel_size_instructions?: string | null;

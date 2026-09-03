@@ -861,8 +861,7 @@ class CheckoutController extends Controller
 
     private function normalizeDesignType(mixed $value): string
     {
-        $normalized = strtolower(trim((string) $value));
-        return $normalized === 'embroidery' ? 'embroidery' : 'printing';
+        return 'printing';
     }
 
     private function buildReturnEligibility(Order $order): array

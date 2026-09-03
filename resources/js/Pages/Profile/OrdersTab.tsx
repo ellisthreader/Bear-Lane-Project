@@ -21,7 +21,7 @@ interface OrderItem {
   product_name: string;
   size?: string | null;
   colour?: string | null;
-  design_type?: "printing" | "embroidery" | string | null;
+  design_type?: "printing" | string | null;
   image_url?: string | null;
   quantity: number;
   unit_price: number;

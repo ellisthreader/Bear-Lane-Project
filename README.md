@@ -1,10 +1,10 @@
-# Advanced Embroidery Website
+# Bear Lane Print Website
 
-A modern embroidery business website designed to give customers maximum control over product customisation while maintaining a clean, straightforward and user-friendly layout.
+A modern garment-printing website designed to give customers maximum control over product customisation while maintaining a clean, straightforward and user-friendly layout.
 
 ## 🚀 Overview
 
-This project was built to simulate a real-world client website for an embroidery business. The focus was on creating an intuitive ordering experience where customers can personalise products easily without confusion.
+This project was built as a real-world garment-printing storefront. The focus is an intuitive ordering experience where customers can personalise products easily without confusion.
 
 The project emphasises usability, responsiveness and clean UI structure.
 
@@ -36,8 +36,6 @@ The project emphasises usability, responsiveness and clean UI structure.
 ## 🎥 Demo
 
 [Front Page](https://youtu.be/lqXdlYeijcA)
-
-[Embroidery Designer](https://youtu.be/U65KJfSCV0M)
 
 ---
 

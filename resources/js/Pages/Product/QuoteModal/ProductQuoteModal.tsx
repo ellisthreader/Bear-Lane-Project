@@ -1,9 +1,9 @@
 import React, { useEffect } from "react";
-import { CheckCircle2, ChevronLeft, Mail, MessageCircle, X } from "lucide-react";
+import { Badge, CheckCircle2, ChevronLeft, FileImage, ImagePlus, Layers3, Mail, MessageCircle, Type, Users, X } from "lucide-react";
 import { SIDE_OPTIONS, useProductQuote } from "./ProductQuoteContext";
-import type { EmbroideryType } from "./types";
+import type { PrintType } from "./types";
 
-const EMBROIDERY_OPTIONS: EmbroideryType[] = [
+const PRINT_OPTIONS: PrintType[] = [
   "Logo",
   "Personalised Text",
   "Image",
@@ -12,13 +12,13 @@ const EMBROIDERY_OPTIONS: EmbroideryType[] = [
   "Event / Team Branding",
 ];
 
-const EMBROIDERY_IMAGES: Record<EmbroideryType, string> = {
-  Logo: "/images/embroidery/logo.png",
-  "Personalised Text": "/images/embroidery/text.png",
-  Image: "/images/embroidery/custom.png",
-  "Image & Text": "/images/embroidery/imagetext.png",
-  "Complex Pattern": "/images/embroidery/pattern.png",
-  "Event / Team Branding": "/images/embroidery/teambranding.png",
+const PRINT_ICONS: Record<PrintType, React.ElementType> = {
+  Logo: Badge,
+  "Personalised Text": Type,
+  Image: FileImage,
+  "Image & Text": ImagePlus,
+  "Complex Pattern": Layers3,
+  "Event / Team Branding": Users,
 };
 
 export default function ProductQuoteModal() {
@@ -28,8 +28,8 @@ export default function ProductQuoteModal() {
     source,
     quantity,
     setQuantity,
-    embroideryType,
-    setEmbroideryType,
+    printType,
+    setPrintType,
     sides,
     toggleSide,
     stage,
@@ -84,10 +84,10 @@ export default function ProductQuoteModal() {
     }
   }, [isOpen, stage]);
 
-  const goToEmbroideryArtist = () => {
+  const goToPrintSpecialist = () => {
     const invoiceReference = quoteNumber ? `Q-${quoteNumber}` : "";
     const params = new URLSearchParams();
-    params.set("quote_tab", "artist");
+    params.set("quote_tab", "specialist");
     if (invoiceReference) {
       params.set("invoice_ref", invoiceReference);
     }
@@ -143,15 +143,17 @@ export default function ProductQuoteModal() {
               </section>
 
               <section className="rounded-2xl border border-[#E8DCC3] bg-white p-4 sm:p-5">
-                <h3 className="text-base font-bold text-[#2F2415]">2. Embroidery Type</h3>
+                <h3 className="text-base font-bold text-[#2F2415]">2. Print Style</h3>
                 <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
-                  {EMBROIDERY_OPTIONS.map((option) => (
+                  {PRINT_OPTIONS.map((option) => {
+                    const Icon = PRINT_ICONS[option];
+                    return (
                     <button
                       key={option}
                       type="button"
-                      onClick={() => setEmbroideryType(option)}
+                      onClick={() => setPrintType(option)}
                       className={`relative aspect-square overflow-hidden rounded-xl border text-left transition ${
-                        embroideryType === option
+                        printType === option
                           ? "border-[#B4872A] ring-2 ring-[#E5D29F]"
                           : "border-[#E7DCC6] hover:border-[#C9A24D]"
                       }`}
@@ -161,22 +163,21 @@ export default function ProductQuoteModal() {
                         alt={`${source.productName} preview`}
                         className="absolute inset-0 h-full w-full object-contain bg-[#E5E7EB] p-2"
                       />
-                      <img loading="lazy" decoding="async"
-                        src={EMBROIDERY_IMAGES[option]}
-                        alt={option}
-                        className="absolute left-1/2 top-[32%] h-[34%] w-[34%] -translate-x-1/2 -translate-y-1/2 object-contain"
-                      />
+                      <span className="absolute left-1/2 top-[32%] flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-2xl border border-white/50 bg-white/90 text-[#765918] shadow-lg">
+                        <Icon className="h-7 w-7" aria-hidden="true" />
+                      </span>
                       <span className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-black/5" />
                       <span className="absolute inset-x-2 bottom-2 rounded-md bg-black/55 px-2 py-1 text-center text-xs font-semibold text-white">
                         {option}
                       </span>
                     </button>
-                  ))}
+                    );
+                  })}
                 </div>
               </section>
 
               <section className="rounded-2xl border border-[#E8DCC3] bg-white p-4 sm:p-5">
-                <h3 className="text-base font-bold text-[#2F2415]">3. Embroidery Sides</h3>
+                <h3 className="text-base font-bold text-[#2F2415]">3. Print Areas</h3>
                 <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
                   {SIDE_OPTIONS.map((side) => {
                     const active = sides.includes(side);
@@ -223,7 +224,7 @@ export default function ProductQuoteModal() {
                   </p>
                   <p className="flex items-start gap-2 text-sm text-[#5D4D31]">
                     <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#A57B22]" />
-                    <span>Embroidery type: {embroideryType}</span>
+                    <span>Print style: {printType}</span>
                   </p>
                   <p className="flex items-start gap-2 text-sm text-[#5D4D31]">
                     <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#A57B22]" />
@@ -231,7 +232,7 @@ export default function ProductQuoteModal() {
                   </p>
                   <p className="flex items-start gap-2 text-sm text-[#5D4D31]">
                     <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#A57B22]" />
-                    <span>Embroidery sides: {sides.join(", ")}</span>
+                    <span>Print areas: {sides.join(", ")}</span>
                   </p>
                 </div>
 
@@ -264,11 +265,11 @@ export default function ProductQuoteModal() {
                 </button>
                 <button
                   type="button"
-                  onClick={goToEmbroideryArtist}
+                  onClick={goToPrintSpecialist}
                   className="inline-flex items-center justify-center gap-2 rounded-full border border-[#D7BE84] bg-[#FFF9EA] px-5 py-3 text-sm font-semibold text-[#7B6530] transition hover:bg-[#F8E9C9]"
                 >
                   <MessageCircle className="h-4 w-4" />
-                  Speak to an Embroidery Artist
+                  Speak to a Print Specialist
                 </button>
                 {!source.isLoggedIn ? (
                   <button

@@ -9,6 +9,8 @@ import { WishlistProvider } from "@/Context/WishlistContext";
 import { CheckoutProvider } from "@/Context/CheckoutContext";
 import CookieConsentManager from "@/Components/Cookies/CookieConsentManager";
 import FloatingHelpLauncher from "@/Components/Support/FloatingHelpLauncher";
+import SiteDesignProvider from "@/Theme/SiteDesignProvider";
+import { PREVIEW_QUERY_PARAM, applySiteDesignToDocument, isAdminPath, type SiteDesign } from "@/Theme/siteDesign";
 
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -48,14 +50,21 @@ createInertiaApp({
   setup: ({ el, App, props }) => {
     const root = createRoot(el as HTMLElement);
 
+    // Apply the saved Website Design before first paint so themed pages never flash the default palette.
+    const initialDesign = (props.initialPage.props as { storeSettings?: { design?: SiteDesign } }).storeSettings?.design ?? null;
+    applySiteDesignToDocument(document, isAdminPath(window.location.pathname) ? null : initialDesign);
+    const isDesignPreviewFrame =
+      window.parent !== window && new URLSearchParams(window.location.search).get(PREVIEW_QUERY_PARAM) === "1";
+
     root.render(
       <React.StrictMode>
         <CartProvider>
           <WishlistProvider>
             <CheckoutProvider>
               <App {...props} />
-              <CookieConsentManager />
-              <FloatingHelpLauncher />
+              <SiteDesignProvider initialDesign={initialDesign} />
+              {isDesignPreviewFrame ? null : <CookieConsentManager />}
+              {isDesignPreviewFrame ? null : <FloatingHelpLauncher />}
 
               <ToastContainer
                 position="top-center"

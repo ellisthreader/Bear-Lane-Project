@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import { router } from "@inertiajs/react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { router, usePage } from "@inertiajs/react";
 import { ArrowLeft, ChevronRight } from "lucide-react";
+import { AddCategoryControl, DeleteCategoryControl } from "@/Components/Menu/CategoryAdminControls";
 
 type MenuNode = {
   id: number;
@@ -17,6 +18,55 @@ type MenuPayload = Record<
     tree?: MenuNode | null;
   }
 >;
+
+let cachedMenu: MenuPayload | null = null;
+let pendingMenuRequest: Promise<MenuPayload> | null = null;
+
+const remapPath = (root: MenuNode | null, previous: MenuNode[]): MenuNode[] => {
+  if (!root) return [];
+  const next: MenuNode[] = [];
+  let current: MenuNode = root;
+  for (const node of previous) {
+    const match = (Array.isArray(current.children) ? current.children : []).find(
+      (child) => child.id === node.id,
+    );
+    if (!match) break;
+    next.push(match);
+    current = match;
+  }
+  return next;
+};
+
+const requestCategoryMenu = async (force = false): Promise<MenuPayload> => {
+  if (!force && cachedMenu) return cachedMenu;
+  if (!force && pendingMenuRequest) return pendingMenuRequest;
+
+  const request = fetch("/menu/categories", {
+    method: "GET",
+    credentials: "same-origin",
+    headers: { Accept: "application/json" },
+  }).then(async (response) => {
+    if (!response.ok) throw new Error(`Failed (${response.status})`);
+    return (await response.json()) as MenuPayload;
+  });
+
+  pendingMenuRequest = request;
+  try {
+    const payload = await request;
+    if (force || pendingMenuRequest === request) cachedMenu = payload;
+    return payload;
+  } finally {
+    if (pendingMenuRequest === request) pendingMenuRequest = null;
+  }
+};
+
+export const prefetchCategoryMenu = async (): Promise<void> => {
+  try {
+    await requestCategoryMenu();
+  } catch {
+    // The visible sidebar retains its existing retry and error handling.
+  }
+};
 
 type Props = {
   rootKey: "women" | "men" | "kids";
@@ -37,38 +87,57 @@ export default function GenericCategorySidebar({
   quickLinks = [],
   hideRootCategoriesWhenQuickLinks = false,
 }: Props) {
-  const [menu, setMenu] = useState<MenuPayload | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [menu, setMenu] = useState<MenuPayload | null>(() => cachedMenu);
+  const [loading, setLoading] = useState(() => cachedMenu === null);
   const [error, setError] = useState<string | null>(null);
   const [path, setPath] = useState<MenuNode[]>([]);
   const [expandedIds, setExpandedIds] = useState<number[]>([]);
   const pointerClickGuardRef = useRef<null | string>(null);
+  const page = usePage<{ auth?: { user?: { is_admin?: boolean } } }>();
+  const isAdmin = Boolean(page.props.auth?.user?.is_admin);
+
+  const applyMenu = useCallback((payload: MenuPayload) => {
+    setMenu(payload);
+    setPath((prev) => remapPath(payload?.[rootKey]?.tree ?? null, prev));
+  }, [rootKey]);
+
+  const refreshMenu = useCallback(async () => {
+    try {
+      setError(null);
+      applyMenu(await requestCategoryMenu(true));
+    } catch {
+      setError("Unable to load categories.");
+    }
+  }, [applyMenu]);
 
   useEffect(() => {
     let cancelled = false;
-    const run = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const response = await fetch("/menu/categories", {
-          method: "GET",
-          credentials: "same-origin",
-          headers: { Accept: "application/json" },
-        });
-        if (!response.ok) throw new Error(`Failed (${response.status})`);
-        const payload = (await response.json()) as MenuPayload;
-        if (!cancelled) setMenu(payload);
-      } catch {
+
+    if (cachedMenu) {
+      applyMenu(cachedMenu);
+      setLoading(false);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    setLoading(true);
+    setError(null);
+    void requestCategoryMenu()
+      .then((payload) => {
+        if (!cancelled) applyMenu(payload);
+      })
+      .catch(() => {
         if (!cancelled) setError("Unable to load categories.");
-      } finally {
+      })
+      .finally(() => {
         if (!cancelled) setLoading(false);
-      }
-    };
-    run();
+      });
+
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [applyMenu]);
 
   useEffect(() => {
     setPath([]);
@@ -81,6 +150,8 @@ export default function GenericCategorySidebar({
   const currentNode = path.length > 0 ? path[path.length - 1] : null;
   const options = currentNode ? getChildren(currentNode) : getChildren(rootNode);
   const shouldHideRootCategories = path.length === 0 && quickLinks.length > 0 && hideRootCategoriesWhenQuickLinks;
+  // Category that a "+" in the current view would add a child to.
+  const addParent = currentNode ?? rootNode;
 
   const goBack = () => {
     setPath((prev) => prev.slice(0, -1));
@@ -194,18 +265,33 @@ export default function GenericCategorySidebar({
                       className={`transition-transform ${isOpen ? "rotate-90" : ""}`}
                     />
                   </button>
+                  {isAdmin ? (
+                    <DeleteCategoryControl categoryId={node.id} name={node.name} onDeleted={refreshMenu} />
+                  ) : null}
                 </div>
               ) : (
-                <button
-                  type="button"
-                  {...pressHandlers(() => handleAccordionSelect(node))}
-                  className={`${labelClass} ${getDepthPaddingClass(depth)} touch-manipulation`}
-                >
-                  {node.name}
-                </button>
+                <div className="flex items-center">
+                  <button
+                    type="button"
+                    {...pressHandlers(() => handleAccordionSelect(node))}
+                    className={`${labelClass} ${getDepthPaddingClass(depth)} flex-1 touch-manipulation`}
+                  >
+                    {node.name}
+                  </button>
+                  {isAdmin ? (
+                    <DeleteCategoryControl categoryId={node.id} name={node.name} onDeleted={refreshMenu} />
+                  ) : null}
+                </div>
               )}
               {hasChildren && isOpen ? (
-                <div className="pb-2 pt-1">{renderAccordionNodes(children, depth + 1)}</div>
+                <div className="pb-2 pt-1">
+                  {renderAccordionNodes(children, depth + 1)}
+                  {isAdmin ? (
+                    <div className={getDepthPaddingClass(depth + 1)}>
+                      <AddCategoryControl parentId={node.id} parentName={node.name} onSaved={refreshMenu} />
+                    </div>
+                  ) : null}
+                </div>
               ) : null}
             </div>
           );
@@ -276,11 +362,19 @@ export default function GenericCategorySidebar({
             <p className={textClass}>No categories yet.</p>
           ) : (
             options.map((node) => (
-              <button key={node.id} type="button" {...pressHandlers(() => handleSelect(node))} className={`${textClass} touch-manipulation`}>
-                {node.name}
-              </button>
+              <div key={node.id} className="flex items-center gap-2">
+                <button type="button" {...pressHandlers(() => handleSelect(node))} className={`${textClass} flex-1 touch-manipulation`}>
+                  {node.name}
+                </button>
+                {isAdmin ? (
+                  <DeleteCategoryControl categoryId={node.id} name={node.name} onDeleted={refreshMenu} />
+                ) : null}
+              </div>
             ))
           )}
+          {isAdmin && addParent ? (
+            <AddCategoryControl parentId={addParent.id} parentName={addParent.name} onSaved={refreshMenu} />
+          ) : null}
         </div>
       ) : null}
 
@@ -304,6 +398,9 @@ export default function GenericCategorySidebar({
             </div>
           ) : null}
           {shouldHideRootCategories ? null : renderAccordionNodes(options)}
+          {isAdmin && addParent ? (
+            <AddCategoryControl parentId={addParent.id} parentName={addParent.name} onSaved={refreshMenu} />
+          ) : null}
         </div>
       ) : null}
     </div>

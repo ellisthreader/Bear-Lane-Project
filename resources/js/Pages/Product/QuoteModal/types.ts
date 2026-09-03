@@ -11,7 +11,7 @@ export type QuoteSource = {
   accountName: string;
 };
 
-export type EmbroideryType =
+export type PrintType =
   | "Logo"
   | "Personalised Text"
   | "Image"

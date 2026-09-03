@@ -64,10 +64,15 @@ use Illuminate\Validation\Rule;
 Route::get('/menu/categories', function () {
     $mainCategories = ['women', 'men', 'kids', 'sale'];
     $response = [];
-    $buildTree = function (Category $node) use (&$buildTree) {
-        $children = Category::where('parent_id', $node->id)
-            ->orderBy('name')
-            ->get();
+    $categories = Category::query()
+        ->orderBy('name')
+        ->get(['id', 'parent_id', 'name', 'slug']);
+    $childrenByParent = $categories->groupBy(
+        fn (Category $category) => (string) ($category->parent_id ?? 'root')
+    );
+
+    $buildTree = function (Category $node) use (&$buildTree, $childrenByParent) {
+        $children = $childrenByParent->get((string) $node->id, collect());
 
         return [
             'id' => $node->id,
@@ -78,7 +83,9 @@ Route::get('/menu/categories', function () {
     };
 
     foreach ($mainCategories as $main) {
-        $root = Category::where('slug', $main)->first();
+        $root = $categories->first(
+            fn (Category $category) => $category->parent_id === null && $category->slug === $main
+        );
 
         if (!$root) {
             $response[$main] = [
@@ -90,13 +97,15 @@ Route::get('/menu/categories', function () {
             continue;
         }
 
-        $levelOne = Category::where('parent_id', $root->id)->get();
+        $levelOne = $childrenByParent->get((string) $root->id, collect());
 
         $sub = [];
         foreach ($levelOne as $cat) {
             $sub[strtolower($cat->slug)] =
-                Category::where('parent_id', $cat->id)
-                    ->pluck('name')->toArray();
+                $childrenByParent->get((string) $cat->id, collect())
+                    ->pluck('name')
+                    ->values()
+                    ->toArray();
         }
 
         $response[$main] = [
@@ -120,6 +129,10 @@ Route::post('/cookie-consent', [CookieConsentController::class, 'store'])->name(
 | PUBLIC PAGES
 |--------------------------------------------------------------------------
 */
+// Public theme payload used by open storefront tabs to pick up Website Design changes.
+Route::get('/site-design', fn () => response()->json(app(StoreSettingsService::class)->getPublicWebsiteDesign()))
+    ->name('site-design');
+
 Route::get('/', function () {
     $mensTShirtSlugs = [
         'men/t-shirt',
@@ -582,6 +595,8 @@ Route::middleware(['auth', 'admin', 'admin.activity'])->prefix('admin')->group(f
     Route::put('/other/front-page', [AdminOtherController::class, 'updateFrontPage'])->name('admin.other.front-page.update');
     Route::get('/other/notifications', [AdminOtherController::class, 'notifications'])->name('admin.other.notifications');
     Route::put('/other/notifications', [AdminOtherController::class, 'updateNotifications'])->name('admin.other.notifications.update');
+    Route::get('/other/website-design', [AdminOtherController::class, 'websiteDesign'])->name('admin.other.website-design');
+    Route::post('/other/website-design', [AdminOtherController::class, 'updateWebsiteDesign'])->name('admin.other.website-design.update');
     Route::get('/statistics', [AdminStatisticsController::class, 'index'])->name('admin.statistics');
     Route::get('/statistics/data', [AdminStatisticsController::class, 'data'])->name('admin.statistics.data');
     Route::get('/statistics/{metric}', [AdminStatisticsController::class, 'showMetric'])

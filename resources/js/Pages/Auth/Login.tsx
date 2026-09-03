@@ -30,7 +30,7 @@ export default function AuthPage() {
     e.preventDefault();
     setError(null);
     if (!email.trim()) {
-      setError("Please enter your email.");
+      setError("Please enter your email or username.");
       return;
     }
 
@@ -150,14 +150,15 @@ export default function AuthPage() {
                   <div className="w-full space-y-5 animate-fadeIn">
                     <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 text-center">Hi There!</h2>
                     <p className="text-gray-700 text-center mt-2 text-sm sm:text-base md:text-lg">
-                      Enter your email to sign in or join.
+                      Enter your email or username to sign in or join.
                     </p>
                     <form ref={emailFormRef} onSubmit={handleEmailSubmit} className="space-y-4">
                       <input
-                        type="email"
+                        type="text"
+                        autoComplete="username"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        placeholder="you@example.com"
+                        placeholder="you@example.com or username"
                         required
                         className="w-full rounded-2xl border border-gray-200 px-4 py-3.5 text-gray-900 text-base sm:text-lg focus:outline-none focus:ring-2 focus:ring-[#C6A75E] transition-all duration-200"
                       />

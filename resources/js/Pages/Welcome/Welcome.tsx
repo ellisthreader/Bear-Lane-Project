@@ -8,21 +8,20 @@ import {
   useRef,
   useState,
 } from "react";
-import { Head, Link, usePage } from "@inertiajs/react";
+import { Head, usePage } from "@inertiajs/react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import GuestLayout from "@/Layouts/GuestLayout";
-import { AnimatePresence, motion } from "framer-motion";
+import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion";
 import DeferredRender from "@/Components/Performance/DeferredRender";
 
 import HeroSection from "./HeroSection";
+import RailSectionHeader from "./RailSectionHeader";
 const IdeaToIconicSection = lazy(() => import("./IdeaToIconicSection"));
 const CategorySection = lazy(() => import("./CategorySection"));
 const StackedScrollCards = lazy(() => import("./StackedScrollCards"));
 const ProductCard = lazy(() => import("../Product/ProductCard"));
 import {
   CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
   ShieldCheck,
   SlidersHorizontal,
   Sparkles,
@@ -63,22 +62,59 @@ type PageProps = {
 
 const customerReviews = [
   {
-    name: "Mia Thompson",
-    role: "Founder, Northline Fitness",
-    quote:
-      "The finish quality exceeded expectations. Every piece looked premium and arrived exactly on schedule.",
+    name: "vose-14",
+    quote: "Great seller, fast delivery, no nonsense! A*",
+    time: "4 days ago",
+    avatar: "/images/reviews/vinted/vose-14.webp",
   },
   {
-    name: "Daniel Reed",
-    role: "Operations Manager, Slate Events",
-    quote:
-      "Fast proofing, clear communication, and zero surprises. This is now our go-to partner for branded apparel.",
+    name: "locko0",
+    quote: "Fast dispatch, item as described",
+    time: "1 month ago",
   },
   {
-    name: "Aisha Khan",
-    role: "Creative Lead, Easton Studio",
-    quote:
-      "The customisation tools were simple, powerful, and precise. We launched a complete team drop in days.",
+    name: "rbw888",
+    quote: "Great hat, good price. Am really pleased, thank you 👍",
+    time: "1 month ago",
+    avatar: "/images/reviews/vinted/rbw888.webp",
+  },
+  {
+    name: "nashkins",
+    quote: "Beautiful caps, Just as described. A**** seller",
+    time: "1 month ago",
+  },
+  {
+    name: "finchs261",
+    quote: "A remarkably easy buying and selling experience that has furnished my bonce with a new adornment.",
+    time: "1 month ago",
+    avatar: "/images/reviews/vinted/finchs261.webp",
+  },
+  {
+    name: "icklegeordie",
+    quote: "Fantastic item and fabulous seller 👍🙏👍",
+    time: "1 month ago",
+    avatar: "/images/reviews/vinted/icklegeordie.webp",
+  },
+  {
+    name: "zoevictoriab",
+    quote: "Lovely item great condition thank you !",
+    time: "1 month ago",
+  },
+  {
+    name: "karlabcs",
+    quote: "great item. well packed. thank you !",
+    time: "1 month ago",
+    avatar: "/images/reviews/vinted/karlabcs.webp",
+  },
+  {
+    name: "jamhop1",
+    quote: "Item arrived quickly and as described. Thanks :)",
+    time: "2 months ago",
+  },
+  {
+    name: "lmacoct79",
+    quote: "Great seller with fast delivery and item as described. very happy. 🙂",
+    time: "2 months ago",
   },
 ];
 
@@ -99,6 +135,52 @@ const trustSignals = [
     icon: Truck,
   },
 ];
+
+type CustomerReview = {
+  name: string;
+  quote: string;
+  time: string;
+  avatar?: string;
+};
+
+function ReviewCard({ review }: { review: CustomerReview }) {
+  return (
+    <figure className="w-[300px] shrink-0 rounded-2xl border border-[#EDE4CE] bg-[#FFFDF8] p-5">
+      <figcaption className="flex items-center gap-3">
+        {review.avatar ? (
+          <img
+            src={review.avatar}
+            alt=""
+            loading="lazy"
+            className="h-8 w-8 shrink-0 rounded-full bg-[#EAF5F4] object-cover"
+            aria-hidden="true"
+          />
+        ) : (
+          <span
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#EAF5F4] text-xs font-semibold uppercase text-[#007782]"
+            aria-hidden="true"
+          >
+            {review.name.charAt(0)}
+          </span>
+        )}
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold text-[#1F1A13]">{review.name}</p>
+          <div className="mt-0.5 flex items-center gap-1.5">
+            <span className="flex gap-px text-[#C9A24D]" aria-label="5 out of 5 stars">
+              {Array.from({ length: 5 }).map((_, idx) => (
+                <Star key={idx} className="h-3 w-3 fill-current" aria-hidden="true" />
+              ))}
+            </span>
+            <span className="text-xs text-[#8A7A5A]">{review.time}</span>
+          </div>
+        </div>
+      </figcaption>
+      <blockquote className="mt-3 text-[15px] leading-relaxed text-[#3A3020]">
+        {review.quote}
+      </blockquote>
+    </figure>
+  );
+}
 
 const sectionFallback = (
   <div className="w-full bg-white px-4 py-16">
@@ -132,9 +214,19 @@ export default function Welcome() {
       return acc;
     }, {});
   }, [props.preMadeQuotes]);
-  const [activeReview, setActiveReview] = useState(0);
   const productRailRef = useRef<HTMLDivElement | null>(null);
   const preMadeRailRef = useRef<HTMLDivElement | null>(null);
+  const reviewsSectionRef = useRef<HTMLElement | null>(null);
+  const prefersReducedMotion = useReducedMotion();
+  // Reviews drift horizontally as the section passes through the viewport:
+  // top row travels left -> right, bottom row mirrors it. Bound to scroll
+  // progress, so scrolling back up rewinds the movement.
+  const { scrollYProgress: reviewsProgress } = useScroll({
+    target: reviewsSectionRef,
+    offset: ["start end", "end start"],
+  });
+  const reviewsRowOneX = useTransform(reviewsProgress, [0, 1], ["-18%", "6%"]);
+  const reviewsRowTwoX = useTransform(reviewsProgress, [0, 1], ["6%", "-18%"]);
   const [activeProductIndex, setActiveProductIndex] = useState(0);
   const [productCardStep, setProductCardStep] = useState(0);
   const [canScrollPrev, setCanScrollPrev] = useState(false);
@@ -165,13 +257,6 @@ export default function Welcome() {
   const preMadeRailPointerIdRef = useRef<number | null>(null);
   const preMadeRailStartXRef = useRef(0);
   const preMadeRailStartScrollRef = useRef(0);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setActiveReview((prev) => (prev + 1) % customerReviews.length);
-    }, 4600);
-    return () => clearInterval(interval);
-  }, []);
 
   const syncProductRailState = useCallback((rail: HTMLDivElement) => {
     const firstCard = rail.querySelector<HTMLElement>("[data-product-card]");
@@ -469,47 +554,21 @@ export default function Welcome() {
 
       <section id="featured-products" className="bg-white py-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="text-center">
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#B08A2E]">
-              New In
-            </p>
-            <h2 className="mt-2 text-3xl font-bold tracking-tight text-[#1F1A13] md:text-4xl">
-              Featured Products
-            </h2>
-            {isAdminUser ? (
-              <div className="mt-3">
-                <Link
-                  href="/admin/other/front-page?tab=featured"
-                  className="inline-flex items-center rounded-full border border-[#D7BE84] bg-[#FFF9EA] px-3 py-1 text-xs font-semibold text-[#6B5A34] hover:bg-[#FFF2D7]"
-                >
-                  Edit Featured
-                </Link>
-              </div>
-            ) : null}
-          </div>
-          <div className="mt-5 flex items-center justify-center gap-2 sm:justify-end">
-            <button
-              type="button"
-              onClick={() => scrollProductRail("prev")}
-              disabled={!canScrollPrev}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#E5D3AA] bg-[#FFF9ED] text-[#7D5E1A] transition hover:border-[#C9A24D] hover:text-[#6D520D] disabled:cursor-not-allowed disabled:opacity-45"
-              aria-label="Previous featured products"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => scrollProductRail("next")}
-              disabled={!canScrollNext}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#E5D3AA] bg-[#FFF9ED] text-[#7D5E1A] transition hover:border-[#C9A24D] hover:text-[#6D520D] disabled:cursor-not-allowed disabled:opacity-45"
-              aria-label="Next featured products"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
+          <RailSectionHeader
+            eyebrow="New In"
+            title="Featured Products"
+            editHref={isAdminUser ? "/admin/other/front-page?tab=featured" : undefined}
+            editLabel="Edit featured"
+            onPrev={() => scrollProductRail("prev")}
+            onNext={() => scrollProductRail("next")}
+            canPrev={canScrollPrev}
+            canNext={canScrollNext}
+            prevLabel="Previous featured products"
+            nextLabel="Next featured products"
+          />
         </div>
 
-        <div className="mt-5 w-full px-4 sm:px-6 lg:px-8">
+        <div className="mt-8 w-full px-4 sm:px-6 lg:px-8">
           {spotlightProducts.length > 0 ? (
             <>
               <div
@@ -554,7 +613,7 @@ export default function Welcome() {
                   >
                     <Suspense
                       fallback={
-                        <div className="h-64 animate-pulse rounded-2xl border bg-[#F7F1E4] md:h-72" />
+                        <div className="h-64 animate-pulse rounded-2xl border border-[#EDE8DE] bg-[#F4F2ED] md:h-72" />
                       }
                     >
                       <ProductCard product={product} compact />
@@ -562,16 +621,16 @@ export default function Welcome() {
                   </motion.div>
                 ))}
               </div>
-              <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+              <div className="mt-6 flex flex-wrap items-center justify-center gap-1.5">
                 {spotlightProducts.map((product, index) => (
                   <button
                     key={`spotlight-dot-${product.id}`}
                     type="button"
                     onClick={() => jumpToProduct(index)}
-                    className={`h-2.5 rounded-full transition-all ${
+                    className={`h-1.5 rounded-full transition-all ${
                       index === activeProductIndex
-                        ? "w-7 bg-[#C9A24D]"
-                        : "w-2.5 bg-[#E4D4B2]"
+                        ? "w-6 bg-[#1F1A13]"
+                        : "w-1.5 bg-[#DCD5C7] hover:bg-[#BDB5A4]"
                     }`}
                     aria-label={`Jump to featured product ${index + 1}`}
                   />
@@ -579,7 +638,7 @@ export default function Welcome() {
               </div>
             </>
           ) : (
-            <div className="rounded-2xl border border-dashed border-[#E3D8BE] bg-[#FFFCF4] px-4 py-6 text-center text-sm text-[#6B5A34]">
+            <div className="rounded-2xl border border-dashed border-[#E8E2D6] bg-[#FBFAF7] px-4 py-8 text-center text-sm text-[#8A8172]">
               No featured products selected yet.
             </div>
           )}
@@ -588,50 +647,21 @@ export default function Welcome() {
 
       <section className="bg-white pb-12">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="text-center">
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#B08A2E]">
-              New In
-            </p>
-            <h2 className="mt-2 text-3xl font-bold tracking-tight text-[#1F1A13] md:text-4xl">
-              Pre-Made Designs
-            </h2>
-            {isAdminUser ? (
-              <div className="mt-3">
-                <Link
-                  href="/admin/other/front-page?tab=premade"
-                  className="inline-flex items-center rounded-full border border-[#D7BE84] bg-[#FFF9EA] px-3 py-1 text-xs font-semibold text-[#6B5A34] hover:bg-[#FFF2D7]"
-                >
-                  Edit Pre-Made
-                </Link>
-              </div>
-            ) : null}
-          </div>
-          <p className="mx-auto mt-3 max-w-2xl text-center text-sm text-[#6A5530]">
-            Professionally crafted design templates from our studio team, ready
-            to customise in minutes.
-          </p>
-          <div className="mt-5 flex items-center justify-center gap-2 sm:justify-end">
-            <button
-              type="button"
-              onClick={() => scrollPreMadeRail("prev")}
-              disabled={!canScrollPreMadePrev}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#E5D3AA] bg-[#FFF9ED] text-[#7D5E1A] transition hover:border-[#C9A24D] hover:text-[#6D520D] disabled:cursor-not-allowed disabled:opacity-45"
-              aria-label="Previous pre-made designs"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => scrollPreMadeRail("next")}
-              disabled={!canScrollPreMadeNext}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#E5D3AA] bg-[#FFF9ED] text-[#7D5E1A] transition hover:border-[#C9A24D] hover:text-[#6D520D] disabled:cursor-not-allowed disabled:opacity-45"
-              aria-label="Next pre-made designs"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
+          <RailSectionHeader
+            eyebrow="Studio Collection"
+            title="Pre-Made Designs"
+            description="Professionally crafted design templates from our studio team, ready to customise in minutes."
+            editHref={isAdminUser ? "/admin/other/front-page?tab=premade" : undefined}
+            editLabel="Edit pre-made"
+            onPrev={() => scrollPreMadeRail("prev")}
+            onNext={() => scrollPreMadeRail("next")}
+            canPrev={canScrollPreMadePrev}
+            canNext={canScrollPreMadeNext}
+            prevLabel="Previous pre-made designs"
+            nextLabel="Next pre-made designs"
+          />
         </div>
-        <div className="mt-5 w-full px-4 sm:px-6 lg:px-8">
+        <div className="mt-8 w-full px-4 sm:px-6 lg:px-8">
           {preMadeProducts.length > 0 ? (
             <>
               <div
@@ -672,18 +702,18 @@ export default function Welcome() {
                   >
                     <Suspense
                       fallback={
-                        <div className="h-64 animate-pulse rounded-2xl border bg-[#F7F1E4] md:h-72" />
+                        <div className="h-64 animate-pulse rounded-2xl border border-[#EDE8DE] bg-[#F4F2ED] md:h-72" />
                       }
                     >
                       <ProductCard product={product} compact showPremadeQuoteInside={false} />
                     </Suspense>
                     {String(preMadeQuotes[String(product.id)] || String(product.premade_quote || "").trim()).trim() ? (
-                      <div className="mt-3 rounded-xl border border-[#E7D7B2] bg-[#FFF9EB] px-3 py-2 text-sm font-medium text-[#5B441A] shadow-[0_8px_18px_rgba(95,72,18,0.08)]">
-                        <span className="mb-1 inline-flex items-center gap-1.5 rounded-full border border-[#E4C985] bg-white/75 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#7A5C1E]">
-                          <Sparkles className="h-3 w-3" />
+                      <div className="mt-3 rounded-xl border border-[#EDE8DE] bg-[#FBFAF7] px-3.5 py-3">
+                        <span className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-[0.16em] text-[#9A8F7B]">
+                          <Sparkles className="h-3 w-3" strokeWidth={1.75} />
                           Bear Lane Studio
                         </span>
-                        <span className="mt-1 block rounded-lg bg-gradient-to-r from-[#FFF9EA] via-[#FFF5DF] to-[#FFF9EA] px-2.5 py-2 text-sm font-medium leading-relaxed text-[#5B441A]">
+                        <span className="mt-1.5 block text-sm leading-relaxed text-[#3D372C]">
                           {String(preMadeQuotes[String(product.id)] || String(product.premade_quote || "").trim()).trim()}
                         </span>
                       </div>
@@ -691,16 +721,16 @@ export default function Welcome() {
                   </div>
                 ))}
               </div>
-              <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+              <div className="mt-6 flex flex-wrap items-center justify-center gap-1.5">
                 {preMadeProducts.map((product, index) => (
                   <button
                     key={`premade-dot-${product.id}-${index}`}
                     type="button"
                     onClick={() => jumpToPreMade(index)}
-                    className={`h-2.5 rounded-full transition-all ${
+                    className={`h-1.5 rounded-full transition-all ${
                       index === activePreMadeIndex
-                        ? "w-7 bg-[#C9A24D]"
-                        : "w-2.5 bg-[#E4D4B2]"
+                        ? "w-6 bg-[#1F1A13]"
+                        : "w-1.5 bg-[#DCD5C7] hover:bg-[#BDB5A4]"
                     }`}
                     aria-label={`Jump to pre-made design ${index + 1}`}
                   />
@@ -708,73 +738,53 @@ export default function Welcome() {
               </div>
             </>
           ) : (
-            <div className="rounded-2xl border border-dashed border-[#E3D8BE] bg-[#FFFCF4] px-4 py-6 text-center text-sm text-[#6B5A34]">
+            <div className="rounded-2xl border border-dashed border-[#E8E2D6] bg-[#FBFAF7] px-4 py-8 text-center text-sm text-[#8A8172]">
               No pre-made designs selected yet.
             </div>
           )}
         </div>
       </section>
 
-      <section className="border-t border-[#E6D9BC] bg-white py-16">
+      <section id="vinted-reviews" ref={reviewsSectionRef} className="bg-white py-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="rounded-3xl border border-[#E8DDBF] bg-gradient-to-r from-[#FFFDF8] to-[#FAF4E8] p-7 shadow-[0_16px_40px_rgba(128,98,26,0.08)] sm:p-10">
-            <div className="flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
-              <div className="max-w-2xl">
-                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#B08A2E]">
-                  What Our Customers Say
-                </p>
-                <h2 className="mt-2 text-3xl font-bold text-[#1F1A13]">
-                  Trusted by brands that expect quality
-                </h2>
-                <p className="mt-3 text-[#5F4F32]">
-                  Consistent quality, reliable support, and fast delivery are
-                  why teams come back for every new campaign.
-                </p>
-              </div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-[#E5D3AA] bg-[#FFF6E1] px-4 py-2 text-sm font-semibold text-[#7D5E1A]">
-                <Star className="h-4 w-4 fill-[#C9A24D] text-[#C9A24D]" />
-                Rated 4.9/5 from verified buyers
-              </div>
+          <motion.div
+            className="flex flex-col items-center text-center"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.2 }}
+            transition={{ duration: 0.35 }}
+          >
+            <div className="flex items-center gap-2 text-[#007782]">
+              <img src="/images/vinted-logo.svg" alt="" className="h-6 w-6" aria-hidden="true" />
+              <span className="text-lg font-semibold tracking-tight">Vinted</span>
             </div>
+            <h2 className="mt-4 text-3xl font-bold tracking-tight text-[#1F1A13]">
+              5-star feedback from Vinted buyers
+            </h2>
+            <div className="mt-4 flex gap-0.5 text-[#C9A24D]" aria-label="5 out of 5 stars">
+              {Array.from({ length: 5 }).map((_, idx) => (
+                <Star key={idx} className="h-4 w-4 fill-current" aria-hidden="true" />
+              ))}
+            </div>
+          </motion.div>
 
-            <div className="mt-8 overflow-hidden rounded-2xl border border-[#EADFC6] bg-white p-6">
-              <AnimatePresence mode="wait">
-                <motion.blockquote
-                  key={customerReviews[activeReview].name}
-                  className="text-[#1D1710]"
-                  initial={{ opacity: 0, x: 40 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -40 }}
-                  transition={{ duration: 0.45 }}
-                >
-                  <div className="mb-3 flex gap-1 text-[#C9A24D]">
-                    {Array.from({ length: 5 }).map((_, idx) => (
-                      <Star key={idx} className="h-4 w-4 fill-current" />
-                    ))}
-                  </div>
-                  <p className="text-base leading-relaxed">
-                    "{customerReviews[activeReview].quote}"
-                  </p>
-                  <footer className="mt-4 border-t border-[#EFE3CC] pt-4">
-                    <p className="font-semibold">{customerReviews[activeReview].name}</p>
-                    <p className="text-xs text-[#6F5C3A]">{customerReviews[activeReview].role}</p>
-                  </footer>
-                </motion.blockquote>
-              </AnimatePresence>
-              <div className="mt-5 flex justify-center gap-2">
-                {customerReviews.map((review, index) => (
-                  <button
-                    key={review.name}
-                    type="button"
-                    onClick={() => setActiveReview(index)}
-                    className={`h-2.5 rounded-full transition-all ${
-                      index === activeReview ? "w-7 bg-[#C9A24D]" : "w-2.5 bg-[#E2D4B6]"
-                    }`}
-                    aria-label={`Show review from ${review.name}`}
-                  />
-                ))}
-              </div>
-            </div>
+          <div className="-mx-4 mt-10 space-y-4 overflow-hidden sm:-mx-6 lg:-mx-8">
+            <motion.div
+              className="flex w-max gap-4"
+              style={prefersReducedMotion ? undefined : { x: reviewsRowOneX }}
+            >
+              {customerReviews.slice(0, 5).map((review) => (
+                <ReviewCard key={review.name} review={review} />
+              ))}
+            </motion.div>
+            <motion.div
+              className="flex w-max gap-4"
+              style={prefersReducedMotion ? undefined : { x: reviewsRowTwoX }}
+            >
+              {customerReviews.slice(5).map((review) => (
+                <ReviewCard key={review.name} review={review} />
+              ))}
+            </motion.div>
           </div>
 
           <div className="mt-14">

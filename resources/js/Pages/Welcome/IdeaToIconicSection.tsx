@@ -31,19 +31,24 @@ export default function IdeaToIconicSection() {
   >("none");
 
   useEffect(() => {
-    setShowConcept(false);
-    setShowModel(false);
+    let conceptTimer: ReturnType<typeof setTimeout>;
+    let modelTimer: ReturnType<typeof setTimeout>;
 
-    const conceptTimer = setTimeout(() => setShowConcept(true), 1000);
-    const modelTimer = setTimeout(() => setShowModel(true), 2000);
+    const scheduleReveals = () => {
+      clearTimeout(conceptTimer);
+      clearTimeout(modelTimer);
+      setShowConcept(false);
+      setShowModel(false);
+      conceptTimer = setTimeout(() => setShowConcept(true), 300);
+      modelTimer = setTimeout(() => setShowModel(true), 650);
+    };
+
+    scheduleReveals();
 
     const interval = setInterval(() => {
       setIndex((prev) => (prev + 1) % imageSets.length);
-      setShowConcept(false);
-      setShowModel(false);
-      setTimeout(() => setShowConcept(true), 1000);
-      setTimeout(() => setShowModel(true), 2000);
-    }, 8000);
+      scheduleReveals();
+    }, 6000);
 
     return () => {
       clearInterval(interval);
@@ -57,7 +62,7 @@ export default function IdeaToIconicSection() {
     const params = new URLSearchParams(window.location.search);
     const quoteTab = params.get("quote_tab");
     const invoiceRef = params.get("invoice_ref");
-    if (quoteTab === "artist" || quoteTab === "instant" || invoiceRef) {
+    if (quoteTab === "specialist" || quoteTab === "artist" || quoteTab === "instant" || invoiceRef) {
       setActivePage("getQuote");
     }
   }, []);
@@ -147,40 +152,37 @@ export default function IdeaToIconicSection() {
         </div>
 
         {/* RIGHT SIDE */}
-        <div className="relative h-[500px] w-full sm:h-[560px] md:h-[520px]">
+        <div className="relative h-[640px] w-full sm:h-[700px] md:h-[660px]">
           {imageSets.map((set, i) => {
             const isActive = i === index;
 
             return (
               <div
                 key={i}
-                className={`absolute inset-0 flex flex-col gap-4 transition-opacity duration-500 ${
-                  isActive ? "opacity-100 z-10" : "opacity-0"
+                className={`pointer-events-none absolute inset-0 flex flex-col gap-5 transition-all duration-[350ms] ease-out ${
+                  isActive ? "z-10 scale-100 opacity-100" : "scale-[0.99] opacity-0"
                 }`}
               >
                 {/* FINAL IMAGE (TOP) */}
-                <div className="relative h-[68%] w-full overflow-hidden rounded-3xl shadow-xl">
+                <div className="relative h-[74%] w-full overflow-hidden">
                   <img
                     src={set.final}
                     alt="Final product"
                     loading="lazy"
                     decoding="async"
-                    className="h-full w-full object-cover"
+                    className="h-full w-full rounded-3xl object-contain"
                   />
-                  <span className="absolute left-3 top-3 rounded-full bg-white/90 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[#5B461A]">
-                    Final Image
-                  </span>
                 </div>
 
                 {/* SWITCH PREVIEW ROW */}
-                <div className="relative h-[32%] rounded-2xl border border-[#E7DCC2] bg-white p-3 shadow-sm">
-                  <div className="relative grid h-full grid-cols-[1fr_auto_1fr] items-center gap-3">
+                <div className="relative h-[26%]">
+                  <div className="relative grid h-full grid-cols-[1fr_auto_1fr] items-center gap-5">
                     {/* Design */}
                     <div
-                      className={`relative h-full overflow-hidden rounded-xl border border-[#E6DDC7] shadow-md transition-all duration-700 ease-out ${
+                      className={`relative h-full overflow-hidden rounded-2xl transition-all duration-[400ms] ease-out ${
                         showConcept && isActive
                           ? "translate-x-0 opacity-100"
-                          : "-translate-x-4 opacity-0"
+                          : "-translate-x-2 opacity-0"
                       }`}
                     >
                       <img
@@ -188,30 +190,25 @@ export default function IdeaToIconicSection() {
                         alt="Design concept"
                         loading="lazy"
                         decoding="async"
-                        className="h-full w-full object-cover"
+                        className="h-full w-full object-contain"
                       />
-                      <span className="absolute left-2 top-2 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#2F2414]">
-                        Design
-                      </span>
                     </div>
 
                     {/* Arrow */}
                     <div
-                      className={`flex items-center justify-center transition-opacity duration-500 ${
+                      className={`flex items-center justify-center transition-all duration-300 ease-out ${
                         showConcept && showModel && isActive ? "opacity-100" : "opacity-0"
                       }`}
                     >
-                      <div className="relative flex h-11 w-11 items-center justify-center rounded-full border border-[#DECFA8] bg-gradient-to-br from-[#FFF7E2] to-[#F4E2B2] shadow-[0_8px_18px_rgba(120,88,26,0.18)]">
-                        <ArrowRight size={20} className="text-[#7A5D20]" strokeWidth={2.5} />
-                      </div>
+                      <ArrowRight size={24} className="text-[#A77C22]" strokeWidth={2} />
                     </div>
 
                     {/* Real Product */}
                     <div
-                      className={`relative h-full overflow-hidden rounded-xl border border-[#E6DDC7] shadow-md transition-all duration-700 ease-out ${
+                      className={`relative h-full overflow-hidden rounded-2xl transition-all duration-[400ms] ease-out ${
                         showModel && isActive
                           ? "translate-x-0 opacity-100"
-                          : "translate-x-4 opacity-0"
+                          : "translate-x-2 opacity-0"
                       }`}
                     >
                       <img
@@ -219,11 +216,8 @@ export default function IdeaToIconicSection() {
                         alt="Real product"
                         loading="lazy"
                         decoding="async"
-                        className="h-full w-full object-cover"
+                        className="h-full w-full object-contain"
                       />
-                      <span className="absolute left-2 top-2 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#2F2414]">
-                        Real Product
-                      </span>
                     </div>
                   </div>
                 </div>

@@ -87,7 +87,7 @@ type SupportMessage = {
 
 type SupportInboxMessage = {
   id: number;
-  source_type: "support_form" | "artist_request" | string;
+  source_type: "support_form" | "print_request" | string;
   name: string;
   email: string;
   phone: string | null;

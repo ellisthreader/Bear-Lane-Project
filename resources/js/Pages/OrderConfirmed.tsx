@@ -12,7 +12,7 @@ type OrderItem = {
   product_brand?: string | null;
   product_name: string;
   image_url?: string | null;
-  design_type?: "printing" | "embroidery" | string | null;
+  design_type?: "printing" | string | null;
   quantity: number;
   unit_price: number;
   line_total: number;

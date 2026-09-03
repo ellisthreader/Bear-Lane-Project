@@ -95,15 +95,15 @@ const CartSidebar = () => {
       colour: string,
       size: string,
       quantity: number,
-      designType?: "printing" | "embroidery" | string | null
+      designType?: "printing" | string | null
     ) => void;
-    removeFromCart: (slug: string, colour: string, size: string, designType?: "printing" | "embroidery" | string | null) => void;
+    removeFromCart: (slug: string, colour: string, size: string, designType?: "printing" | string | null) => void;
     updateSize: (
       slug: string,
       colour: string,
       oldSize: string,
       newSize: string,
-      designType?: "printing" | "embroidery" | string | null
+      designType?: "printing" | string | null
     ) => void;
     totalPrice: number;
     openCart: () => void;
@@ -254,7 +254,7 @@ const CartSidebar = () => {
                         Colour: <span className="font-normal text-gray-700">{item.colour}</span>
                       </p>
                       <p className="mb-1">
-                        Design: <span className="font-normal text-gray-700">{item.designType === "embroidery" ? "Embroidery" : "Printing"}</span>
+                        Design: <span className="font-normal text-gray-700">Printing</span>
                       </p>
 
                       <p className="mb-1 text-gray-700">Size:</p>

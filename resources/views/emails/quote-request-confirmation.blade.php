@@ -1,10 +1,10 @@
 @extends('emails.layouts.base')
 
 @php
-    $emailTitle = 'Embroidery Artist Request';
+    $emailTitle = 'Print Specialist Request';
     $emailEyebrow = 'Request Received';
     $emailHeading = 'Thanks, ' . $name;
-    $emailSubheading = 'Your request to speak with an embroidery artist has been received.';
+    $emailSubheading = 'Your request to speak with a print specialist has been received.';
 @endphp
 
 @section('content')

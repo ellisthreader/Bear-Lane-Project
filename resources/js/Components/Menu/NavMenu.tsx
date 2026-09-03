@@ -4,7 +4,9 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useCart } from "@/Context/CartContext";
 import { useWishlist } from "@/Context/WishlistContext";
 import { Link, usePage } from "@inertiajs/react";
+import NavAddCategoryControl from "@/Components/Menu/NavAddCategoryControl";
 import { motion, AnimatePresence } from "framer-motion";
+import { useSiteDesign } from "@/Theme/siteDesign";
 import {
   ShoppingCart,
   Search,
@@ -23,6 +25,8 @@ import CartSidebar from "@/Components/Cart/CartSidebar";
 import WishlistSidebar from "@/Components/Wishlist/WishlistSidebar";
 
 // SIDEBAR COMPONENTS
+import { isCategoryEditorOpen } from "@/Components/Menu/CategoryAdminControls";
+import { prefetchCategoryMenu } from "@/Components/Menu/GenericCategorySidebar";
 import WomenSidebar from "@/Components/Menu/WomenSidebar/WomenSidebar";
 import MenSidebar from "@/Components/Menu/MenSidebar/MenSidebar";
 import KidsSidebar from "@/Components/Menu/KidsSidebar/KidsSidebar";
@@ -39,6 +43,8 @@ type SearchResultProduct = {
 
 export default function NavMenu() {
   const page = usePage<{ auth?: { user?: { id?: number; is_admin?: boolean } } }>();
+  const siteDesign = useSiteDesign();
+  const navLogoSrc = siteDesign?.images?.nav_logo_url || "/images/BLText.webp";
   const isAuthenticated = Boolean(page.props.auth?.user?.id);
   const isAdmin = Boolean(page.props.auth?.user?.is_admin);
   const { openCart } = useCart();
@@ -111,6 +117,30 @@ export default function NavMenu() {
     onPointerUp: handleMobilePointerUp(handler),
     onClick: handleMobileClick(handler),
   });
+
+  useEffect(() => {
+    const idleWindow = window as Window & {
+      requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
+      cancelIdleCallback?: (id: number) => void;
+    };
+    let idleId: number | null = null;
+    let timeoutId: number | null = null;
+
+    if (idleWindow.requestIdleCallback) {
+      idleId = idleWindow.requestIdleCallback(() => {
+        void prefetchCategoryMenu();
+      }, { timeout: 2000 });
+    } else {
+      timeoutId = window.setTimeout(() => {
+        void prefetchCategoryMenu();
+      }, 750);
+    }
+
+    return () => {
+      if (idleId !== null) idleWindow.cancelIdleCallback?.(idleId);
+      if (timeoutId !== null) window.clearTimeout(timeoutId);
+    };
+  }, []);
 
   const renderSidebar = (closeSidebar: () => void) => {
     switch (activeSidebar?.toLowerCase()) {
@@ -478,7 +508,11 @@ export default function NavMenu() {
     <>
       <div
         className="relative"
-        onMouseLeave={() => setActiveSidebar(null)} // CLOSE ONLY when leaving entire area
+        onMouseLeave={() => {
+          // Keep the panel open while an admin is typing a new category name.
+          if (isCategoryEditorOpen()) return;
+          setActiveSidebar(null);
+        }} // CLOSE ONLY when leaving entire area
       >
       <motion.nav
         className="
@@ -491,6 +525,7 @@ export default function NavMenu() {
           <button
             type="button"
             onClick={() => {
+              void prefetchCategoryMenu();
               setMobileMenuOpen(true);
               setSearchOpen(false);
               setNotificationsOpen(false);
@@ -518,7 +553,7 @@ export default function NavMenu() {
                 `}
               >
                 <img
-                  src="/images/BLText.png"
+                  src={navLogoSrc}
                   alt="Bear Lane"
                   loading="eager"
                   fetchPriority="high"
@@ -536,7 +571,10 @@ export default function NavMenu() {
               {categories.map((cat) => (
                 <div
                   key={cat}
-                  onMouseEnter={() => setActiveSidebar(cat)}
+                  onMouseEnter={() => {
+                    void prefetchCategoryMenu();
+                    setActiveSidebar(cat);
+                  }}
                   className="
                     relative cursor-pointer px-4 py-2 transition-all duration-300 hover:text-[#D4AF37]
                     after:absolute after:bottom-0 after:left-1/2 after:h-[2px] after:w-0 after:-translate-x-1/2 after:bg-[#D4AF37] after:transition-all after:duration-300
@@ -546,6 +584,14 @@ export default function NavMenu() {
                   {cat}
                 </div>
               ))}
+              {isAdmin && (
+                <div
+                  className="relative flex items-center"
+                  onMouseEnter={() => setActiveSidebar(null)}
+                >
+                  <NavAddCategoryControl variant="desktop" />
+                </div>
+              )}
             </div>
           </div>
 
@@ -911,7 +957,7 @@ export default function NavMenu() {
                 <div className="flex items-center justify-between">
                   <div className="h-[42px] w-[150px]">
                     <img
-                      src="/images/BLText.png"
+                      src={navLogoSrc}
                       alt="Bear Lane"
                       loading="lazy"
                       decoding="async"
@@ -973,6 +1019,7 @@ export default function NavMenu() {
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8A6D2B]">
                     Shop Categories
                   </p>
+                  {isAdmin && <NavAddCategoryControl variant="mobile" />}
                   <div className="mt-3 space-y-2">
                     {categories.map((cat) => {
                       const isOpen = mobileCategoryOpen === cat;

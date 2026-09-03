@@ -2,13 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import { UploadCloud, Image as ImageIcon } from "lucide-react";
-import { stencilizeImage } from "../../Canvas/Utils/stencilizeImage";
-import ImagePreviewModal from "../../Components/ImagePreviewModal";
 
-type StencilizeUIProps = {
+type UploadPanelProps = {
   onUpload: (url: string) => void;
   onValidateUpload?: (file: File) => Promise<{ allowed: boolean; message?: string }>;
-  enableStencilProcessing?: boolean;
 
   /** UIDs, NOT URLs */
   recentImages?: string[];
@@ -19,19 +16,17 @@ type StencilizeUIProps = {
   onSelectImage?: (uid: string) => void;
 };
 
-export default function StencilizeUI({
+export default function UploadPanel({
   onUpload,
   onValidateUpload,
-  enableStencilProcessing = true,
   recentImages = [],
   imageState,
   onSelectImage,
-}: StencilizeUIProps) {
+}: UploadPanelProps) {
   const [loading, setLoading] = useState(false);
   const [original, setOriginal] = useState<string | null>(null);
-  const [processed, setProcessed] = useState<string | null>(null);
   const [processingProgress, setProcessingProgress] = useState(0);
-  const [processingStage, setProcessingStage] = useState<"moderating" | "stencilizing">("moderating");
+  const [processingStage, setProcessingStage] = useState<"moderating" | "preparing">("moderating");
   const [isMobileViewport, setIsMobileViewport] = useState<boolean>(() =>
     typeof window !== "undefined" ? window.matchMedia("(max-width: 1023px)").matches : false
   );
@@ -74,12 +69,6 @@ export default function StencilizeUI({
     return () => window.clearInterval(interval);
   }, [loading, processingStage]);
 
-  useEffect(() => {
-    if (!loading && processed) {
-      setProcessingProgress(100);
-    }
-  }, [loading, processed]);
-
   /* ---------------- Cleanup ---------------- */
   const cleanupObjectUrl = () => {
     if (objectUrlRef.current) {
@@ -91,25 +80,9 @@ export default function StencilizeUI({
   const resetState = () => {
     cleanupObjectUrl();
     setOriginal(null);
-    setProcessed(null);
     setLoading(false);
     setProcessingProgress(0);
     setProcessingStage("moderating");
-  };
-
-  const runStencilize = async (sourceUrl: string, randomize = false) => {
-    const edgeStrength = randomize ? 1.05 + Math.random() * 0.35 : 1.15;
-    const blur = randomize ? 0.6 + Math.random() * 0.45 : 0.8;
-    const minAlpha = randomize ? 16 + Math.floor(Math.random() * 5) : 18;
-    const posterizeLevels = randomize ? (Math.random() > 0.6 ? 4 : 3) : 3;
-    return stencilizeImage(sourceUrl, {
-      threshold: 0,
-      edgeStrength,
-      blur,
-      posterizeLevels,
-      mode: "mono",
-      minAlpha,
-    });
   };
 
   const toDataUrl = (file: File): Promise<string> =>
@@ -154,55 +127,17 @@ export default function StencilizeUI({
       }
     }
 
-    if (!enableStencilProcessing) {
-      try {
-        setProcessingStage("stencilizing");
-        setProcessingProgress((prev) => Math.max(prev, 55));
-        const rawDataUrl = await toDataUrl(file);
-        onUpload(rawDataUrl);
-      } catch (err) {
-        console.error("Image read failed:", err);
-      } finally {
-        resetState();
-        if (fileInputRef.current) fileInputRef.current.value = "";
-      }
-      return;
-    }
-
     try {
-      setProcessingStage("stencilizing");
-      setProcessingProgress((prev) => Math.max(prev, 45));
-      const processedImage = await runStencilize(objectUrl, false);
-      setProcessed(processedImage);
+      setProcessingStage("preparing");
+      setProcessingProgress((prev) => Math.max(prev, 55));
+      const rawDataUrl = await toDataUrl(file);
+      setProcessingProgress(100);
+      onUpload(rawDataUrl);
     } catch (err) {
-      console.error("Stencilize failed:", err);
+      console.error("Image read failed:", err);
+    } finally {
       resetState();
-    } finally {
-      setLoading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
-    }
-  };
-
-  const handleConfirm = () => {
-    if (!processed) return;
-    onUpload(processed);
-    resetState();
-  };
-
-  const handleCancel = () => {
-    resetState();
-  };
-
-  const handleRegenerate = async () => {
-    if (!original || loading) return;
-    setLoading(true);
-    try {
-      const nextProcessed = await runStencilize(original, true);
-      setProcessed(nextProcessed);
-    } catch (err) {
-      console.error("Regenerate stencil failed:", err);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -325,17 +260,6 @@ export default function StencilizeUI({
         )}
       </div>
 
-      {/* Modal */}
-      {original && (processed || loading) && (
-        <ImagePreviewModal
-          original={original}
-          processed={processed ?? original}
-          loading={loading}
-          onClose={handleCancel}
-          onConfirm={handleConfirm}
-          onRegenerate={handleRegenerate}
-        />
-      )}
     </>
   );
 }

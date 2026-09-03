@@ -1,5 +1,5 @@
 import type { PricePreviewSnapshot } from "../Canvas/Canvas";
-import { normalizeDesignType, type DesignType } from "@/Utils/designType";
+import type { DesignType } from "@/Utils/designType";
 
 type PreviewLike = {
   preview?: PricePreviewSnapshot;
@@ -28,7 +28,6 @@ export type DesignPricingTier = {
 
 export type DesignPricingRules = {
   printing: DesignPricingTier;
-  embroidery: DesignPricingTier;
 };
 
 const DEFAULT_PRICING_RULES: DesignPricingRules = {
@@ -37,12 +36,6 @@ const DEFAULT_PRICING_RULES: DesignPricingRules = {
     clipart_price: 1.0,
     image_price: 1.5,
     per_side_price: 1.25,
-  },
-  embroidery: {
-    text_price: 1.13,
-    clipart_price: 1.5,
-    image_price: 2.25,
-    per_side_price: 1.88,
   },
 };
 
@@ -84,12 +77,11 @@ export function calculateDesignPricingFromPreviews(
 ): DesignPricingResult {
   const counts = computeCounts(previews);
   const baseUnitPrice = parsePrice(basePrice);
-  const normalizedType = normalizeDesignType(designType);
+  void designType;
   const mergedRules: DesignPricingRules = {
     printing: { ...DEFAULT_PRICING_RULES.printing, ...(rules?.printing ?? {}) },
-    embroidery: { ...DEFAULT_PRICING_RULES.embroidery, ...(rules?.embroidery ?? {}) },
   };
-  const activeRules = normalizedType === "embroidery" ? mergedRules.embroidery : mergedRules.printing;
+  const activeRules = mergedRules.printing;
   const designSurchargePerItem =
     counts.editedSides * activeRules.per_side_price +
     counts.text * activeRules.text_price +

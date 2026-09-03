@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import ProductStep from "./ProductStep";
-import EmbroideryStep from "./EmbroideryStep";
+import PrintStep from "./PrintStep";
 import ContactStep from "./ContactStep";
-import SpeakToArtist from "./SpeakToArtist";
+import SpeakToPrintSpecialist from "./SpeakToPrintSpecialist";
 
 /* ================= TYPES ================= */
 export type QuoteItem = {
@@ -97,7 +97,7 @@ type GetQuoteInstantlyProps = {
 };
 
 export default function GetQuoteInstantly({ embedded = false }: GetQuoteInstantlyProps) {
-  const [activeTab, setActiveTab] = useState<"instant" | "artist">("instant");
+  const [activeTab, setActiveTab] = useState<"instant" | "specialist">("instant");
   const [step, setStep] = useState<1 | 2 | 3>(1);
 
   const [productType, setProductType] = useState("T Shirts");
@@ -121,8 +121,8 @@ export default function GetQuoteInstantly({ embedded = false }: GetQuoteInstantl
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
     const tab = params.get("quote_tab");
-    if (tab === "artist") {
-      setActiveTab("artist");
+    if (tab === "specialist" || tab === "artist") {
+      setActiveTab("specialist");
       const target = document.getElementById("get-quote-instantly");
       if (target) {
         target.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -178,14 +178,14 @@ export default function GetQuoteInstantly({ embedded = false }: GetQuoteInstantl
               </button>
 
               <button
-                onClick={() => setActiveTab("artist")}
+                onClick={() => setActiveTab("specialist")}
                 className={`rounded-xl px-3 py-2.5 text-center text-xs font-medium leading-tight transition-all duration-300 sm:px-6 sm:py-3 sm:text-sm ${
-                  activeTab === "artist"
+                  activeTab === "specialist"
                     ? "bg-[#C6A75E] text-white shadow-md"
                     : "text-gray-600 hover:text-black"
                 }`}
               >
-                Speak to an Embroidery Artist
+                Speak to a Print Specialist
               </button>
 
             </div>
@@ -213,7 +213,7 @@ export default function GetQuoteInstantly({ embedded = false }: GetQuoteInstantl
               )}
 
               {step === 2 && (
-                <EmbroideryStep
+                <PrintStep
                   designType={designType}
                   setDesignType={setDesignType}
                   onBack={() => setStep(1)}
@@ -234,7 +234,7 @@ export default function GetQuoteInstantly({ embedded = false }: GetQuoteInstantl
             </>
           )}
 
-          {activeTab === "artist" && <SpeakToArtist initialInvoiceReference={initialInvoiceReference} />}
+          {activeTab === "specialist" && <SpeakToPrintSpecialist initialInvoiceReference={initialInvoiceReference} />}
         </div>
       </div>
     </div>

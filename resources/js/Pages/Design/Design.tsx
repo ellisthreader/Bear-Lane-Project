@@ -2648,7 +2648,6 @@ const renderActiveTab = () => {
           canvasRef={canvasRef}
           onUpload={handleUpload}
           onValidateUpload={handleValidateUploadImage}
-          enableStencilProcessing={selectedDesignType === "embroidery"}
           recentImages={uploadedImages}
           selectedImage={selectedUploadedImage}
           onSelectImage={setSelectedUploadedImageWithLog}

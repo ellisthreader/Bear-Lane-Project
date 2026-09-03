@@ -7,11 +7,11 @@ import { isValidPhoneNumber } from "react-phone-number-input";
 import LuxuryPhoneInput from "@/Components/LuxuryPhoneInput";
 import { executeRecaptcha } from "@/Utils/recaptcha";
 
-interface SpeakToArtistProps {
+interface SpeakToPrintSpecialistProps {
   initialInvoiceReference?: string;
 }
 
-export default function SpeakToArtist({ initialInvoiceReference = "" }: SpeakToArtistProps) {
+export default function SpeakToPrintSpecialist({ initialInvoiceReference = "" }: SpeakToPrintSpecialistProps) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -162,7 +162,7 @@ const handleSubmit = async () => {
   return (
     <div className="bg-white px-3 sm:px-4 md:px-0 pt-6 sm:pt-10 pb-16 sm:pb-20 max-w-4xl mx-auto">
       <h1 className="text-2xl sm:text-4xl font-extrabold text-gray-900 text-center mb-8 sm:mb-12">
-        Speak to an Embroidery Artist
+        Speak to a Print Specialist
       </h1>
 
       <AnimatePresence mode="wait">
@@ -309,7 +309,7 @@ const handleSubmit = async () => {
               Request Sent
             </h3>
             <p className="text-gray-600 text-center max-w-md">
-              Thank you. Our embroidery artist will contact you shortly.
+              Thank you. Our print specialist will contact you shortly.
             </p>
           </motion.div>
         )}

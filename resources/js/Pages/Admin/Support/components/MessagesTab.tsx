@@ -173,7 +173,7 @@ export default function MessagesTab() {
           {activeMessage ? (
             <span className="inline-flex items-center gap-1 rounded-full border border-[#E6D4AA] bg-[#FFF8E8] px-2.5 py-1 text-xs font-semibold text-[#8A6D2B]">
               <Mail className="h-3.5 w-3.5" />
-              {activeMessage.source_type === "artist_request" ? "Speak to Artist" : "Support"}
+              {activeMessage.source_type === "print_request" ? "Print Specialist" : "Support"}
             </span>
           ) : null}
         </header>
@@ -200,7 +200,7 @@ export default function MessagesTab() {
                   {activeMessage.message}
                 </div>
 
-                {activeMessage.source_type === "artist_request" ? (
+                {activeMessage.source_type === "print_request" ? (
                   <div className="mt-3 grid gap-2 text-xs text-[#5D503B] sm:grid-cols-2">
                     <div className="rounded-lg border border-[#E9DBBD] bg-[#FFF9EB] px-3 py-2">
                       <p className="font-semibold text-[#7A5B1E]">Budget</p>

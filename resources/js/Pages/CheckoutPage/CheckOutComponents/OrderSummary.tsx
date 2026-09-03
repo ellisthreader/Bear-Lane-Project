@@ -187,7 +187,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
                   <p className="text-xs text-gray-600">Qty: {item.quantity}</p>
                   <p className="text-xs text-gray-600">Size: {item.size}</p>
                   <p className="text-xs text-gray-600">Colour: {item.colour}</p>
-                  <p className="text-xs text-gray-600">Design: {item.designType === "embroidery" ? "Embroidery" : "Printing"}</p>
+                  <p className="text-xs text-gray-600">Design: Printing</p>
                 </div>
 
                 <p className="text-sm font-semibold text-gray-900">

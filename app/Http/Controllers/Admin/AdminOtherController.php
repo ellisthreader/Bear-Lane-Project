@@ -11,6 +11,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -26,7 +27,7 @@ class AdminOtherController extends Controller
             'sections' => [
                 [
                     'title' => 'Prices',
-                    'description' => 'Configure printing and embroidery pricing rules.',
+                    'description' => 'Configure printing pricing rules.',
                     'href' => '/admin/other/prices',
                 ],
                 [
@@ -59,6 +60,11 @@ class AdminOtherController extends Controller
                     'description' => 'Configure which admin alerts appear on-site and which trigger email delivery.',
                     'href' => '/admin/other/notifications',
                 ],
+                [
+                    'title' => 'Website Design',
+                    'description' => 'Change storefront colours, fonts, and imagery with a live preview.',
+                    'href' => '/admin/other/website-design',
+                ],
             ],
         ]);
     }
@@ -77,10 +83,6 @@ class AdminOtherController extends Controller
             'printing.clipart_price' => ['required', 'numeric', 'min:0'],
             'printing.image_price' => ['required', 'numeric', 'min:0'],
             'printing.per_side_price' => ['required', 'numeric', 'min:0'],
-            'embroidery.text_price' => ['required', 'numeric', 'min:0'],
-            'embroidery.clipart_price' => ['required', 'numeric', 'min:0'],
-            'embroidery.image_price' => ['required', 'numeric', 'min:0'],
-            'embroidery.per_side_price' => ['required', 'numeric', 'min:0'],
         ]);
 
         $pricing = $this->settings->saveDesignPricing($validated);
@@ -387,6 +389,121 @@ class AdminOtherController extends Controller
     /**
      * @return array<int, array<string, mixed>>
      */
+    public function websiteDesign(): Response
+    {
+        return Inertia::render('Admin/Other/WebsiteDesign', [
+            'design' => $this->settings->getWebsiteDesign(),
+            'defaults' => $this->settings->defaultWebsiteDesign(),
+            'maxHeroSlides' => StoreSettingsService::WEBSITE_DESIGN_MAX_HERO_SLIDES,
+        ]);
+    }
+
+    public function updateWebsiteDesign(Request $request): JsonResponse|RedirectResponse
+    {
+        $hexRule = ['required', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'];
+        $imageRule = ['nullable', 'file', 'mimetypes:image/jpeg,image/png,image/webp,image/svg+xml', 'max:8192'];
+        $maxSlides = StoreSettingsService::WEBSITE_DESIGN_MAX_HERO_SLIDES;
+
+        $validated = $request->validate([
+            'colors' => ['required', 'array'],
+            'colors.accent' => $hexRule,
+            'colors.text' => $hexRule,
+            'colors.surface' => $hexRule,
+            'fonts' => ['required', 'array'],
+            'fonts.heading' => ['required', 'string', Rule::in(StoreSettingsService::WEBSITE_DESIGN_FONTS)],
+            'fonts.body' => ['required', 'string', Rule::in(StoreSettingsService::WEBSITE_DESIGN_FONTS)],
+            'nav_logo' => $imageRule,
+            'nav_logo_reset' => ['nullable', 'boolean'],
+            'footer_logo' => $imageRule,
+            'footer_logo_reset' => ['nullable', 'boolean'],
+            'hero_order' => ['nullable', 'string', 'max:4000'],
+            'hero_uploads' => ['nullable', 'array', "max:{$maxSlides}"],
+            'hero_uploads.*' => ['file', 'mimetypes:image/jpeg,image/png,image/webp', 'max:10240'],
+        ]);
+
+        $existing = $this->settings->getWebsiteDesign();
+        $existingImages = (array) ($existing['images'] ?? []);
+
+        $navLogoPath = $this->resolveDesignLogoPath($request, 'nav_logo', (string) ($existingImages['nav_logo_path'] ?? ''));
+        $footerLogoPath = $this->resolveDesignLogoPath($request, 'footer_logo', (string) ($existingImages['footer_logo_path'] ?? ''));
+
+        $existingHeroPaths = collect((array) ($existingImages['hero_slide_paths'] ?? []))
+            ->map(fn ($path) => (string) $path)
+            ->values();
+
+        $heroPaths = $existingHeroPaths->all();
+        if ($request->filled('hero_order')) {
+            $order = json_decode((string) $request->input('hero_order'), true);
+            if (!is_array($order)) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'hero_order' => 'The hero slide order is invalid.',
+                ]);
+            }
+
+            $heroPaths = [];
+            foreach (array_slice($order, 0, $maxSlides) as $entry) {
+                $entry = (string) $entry;
+                if (Str::startsWith($entry, 'upload:')) {
+                    $index = (int) Str::after($entry, 'upload:');
+                    $file = $request->file("hero_uploads.{$index}");
+                    if ($file) {
+                        $heroPaths[] = $file->store('settings/design', 'public');
+                    }
+                    continue;
+                }
+
+                if ($existingHeroPaths->contains($entry)) {
+                    $heroPaths[] = $entry;
+                }
+            }
+            $heroPaths = array_values(array_unique($heroPaths));
+
+            foreach ($existingHeroPaths as $oldPath) {
+                if (!in_array($oldPath, $heroPaths, true)) {
+                    $this->deleteStoredAssetIfNeeded($oldPath, '');
+                }
+            }
+        }
+
+        $design = $this->settings->saveWebsiteDesign([
+            'colors' => $validated['colors'],
+            'fonts' => $validated['fonts'],
+            'images' => [
+                'nav_logo_path' => $navLogoPath,
+                'footer_logo_path' => $footerLogoPath,
+                'hero_slide_paths' => $heroPaths,
+            ],
+        ]);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'design' => $design,
+                'message' => 'Website design saved. The live site has been updated.',
+            ]);
+        }
+
+        return back()->with('success', 'Website design saved.');
+    }
+
+    private function resolveDesignLogoPath(Request $request, string $field, string $currentPath): string
+    {
+        if ($request->hasFile($field)) {
+            $newPath = $request->file($field)->store('settings/design', 'public');
+            $this->deleteStoredAssetIfNeeded($currentPath, $newPath);
+
+            return $newPath;
+        }
+
+        if ($request->boolean("{$field}_reset")) {
+            $this->deleteStoredAssetIfNeeded($currentPath, '');
+
+            return '';
+        }
+
+        return $currentPath;
+    }
+
     private function discountCodesPayload(): array
     {
         return Coupon::query()

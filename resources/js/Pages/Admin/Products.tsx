@@ -66,8 +66,6 @@ export default function Products({ categories }: Props) {
   const [expandedCategoryIds, setExpandedCategoryIds] = useState<number[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editName, setEditName] = useState("");
-  const [newCategoryName, setNewCategoryName] = useState("");
-  const [newSubByCategory, setNewSubByCategory] = useState<Record<number, { name: string }>>({});
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -168,75 +166,6 @@ export default function Products({ categories }: Props) {
     }
   };
 
-  const createCategory = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!activeRoot) {
-      setError(`Section root "${activeSection}" does not exist in DB.`);
-      return;
-    }
-    setLoading(true);
-    resetFeedback();
-    try {
-      const response = await fetch("/admin/categories", {
-        method: "POST",
-        credentials: "same-origin",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-          "X-CSRF-TOKEN": getCsrfToken(),
-          "X-Requested-With": "XMLHttpRequest",
-        },
-        body: JSON.stringify({
-          name: newCategoryName,
-          parent_id: activeRoot.id,
-        }),
-      });
-      if (!response.ok) throw new Error("Unable to add category.");
-      setNewCategoryName("");
-      setMessage("Category added.");
-      reload();
-    } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Unable to add category.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const createSubcategory = async (parentCategoryId: number) => {
-    const payload = newSubByCategory[parentCategoryId];
-    if (!payload?.name?.trim()) return;
-    setLoading(true);
-    resetFeedback();
-    try {
-      const response = await fetch("/admin/categories", {
-        method: "POST",
-        credentials: "same-origin",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-          "X-CSRF-TOKEN": getCsrfToken(),
-          "X-Requested-With": "XMLHttpRequest",
-        },
-        body: JSON.stringify({
-          name: payload.name,
-          parent_id: parentCategoryId,
-        }),
-      });
-      if (!response.ok) throw new Error("Unable to add subcategory.");
-      setNewSubByCategory((prev) => ({
-        ...prev,
-        [parentCategoryId]: { name: "" },
-      }));
-      setExpandedCategoryIds((prev) => (prev.includes(parentCategoryId) ? prev : [...prev, parentCategoryId]));
-      setMessage("Subcategory added.");
-      reload();
-    } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Unable to add subcategory.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
     <AuthenticatedLayout>
       <AdminTopNav />
@@ -286,22 +215,12 @@ export default function Products({ categories }: Props) {
             Active Section: {activeSection}
           </div>
 
-          <form onSubmit={createCategory} className="mt-5 grid grid-cols-1 gap-3 rounded-2xl border border-[#E5D4AF] bg-[#FFFDF7] p-4 md:grid-cols-2">
-            <input
-              value={newCategoryName}
-              onChange={(event) => setNewCategoryName(event.target.value)}
-              placeholder={`Add category to ${activeSection.toUpperCase()} (e.g. Accessories)`}
-              className="rounded-xl border border-[#DCC99D] bg-white px-3 py-2 text-sm"
-              required
-            />
-            <button
-              type="submit"
-              disabled={loading || newCategoryName.trim() === ""}
-              className="rounded-xl border border-[#D7BE84] bg-[#FFFCF4] px-4 py-2 text-sm font-semibold text-[#7B6530] disabled:opacity-60"
-            >
-              Add Category
-            </button>
-          </form>
+          <div className="mt-5 rounded-2xl border border-[#E5D4AF] bg-[#FFFDF7] p-4 text-sm text-[#6B5A34]">
+            Categories are now added straight from the website nav bar: hover a nav section while
+            signed in as an admin and use the <span className="font-semibold">+</span> button to add
+            one, or <span className="font-semibold">&minus;</span> to remove one. This page is for
+            renaming categories and managing their products.
+          </div>
 
           {message ? <p className="mt-3 text-sm text-[#3E6A1B]">{message}</p> : null}
           {error ? <p className="mt-3 text-sm text-[#8C3232]">{error}</p> : null}
@@ -314,7 +233,6 @@ export default function Products({ categories }: Props) {
             ) : (
               sectionCategories.map((category) => {
                 const isExpanded = expandedCategoryIds.includes(category.id);
-                const subForm = newSubByCategory[category.id] || { name: "" };
 
                 return (
                   <div key={category.id} className="rounded-2xl border border-[#E5D4AF] bg-[#FFFEFA] p-4">
@@ -417,27 +335,6 @@ export default function Products({ categories }: Props) {
                           </div>
                         )}
 
-                        <div className="grid grid-cols-1 gap-2 rounded-xl border border-[#E5D4AF] bg-white p-3 sm:grid-cols-2">
-                          <input
-                            value={subForm.name}
-                            onChange={(event) =>
-                              setNewSubByCategory((prev) => ({
-                                ...prev,
-                                [category.id]: { name: event.target.value },
-                              }))
-                            }
-                            placeholder="Add subcategory (e.g. Bears)"
-                            className="rounded-lg border border-[#DCC99D] px-2 py-2 text-sm"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => createSubcategory(category.id)}
-                            disabled={loading || !subForm.name?.trim()}
-                            className="rounded-lg border border-[#D7BE84] bg-[#FFFCF4] px-3 py-2 text-sm font-semibold text-[#7B6530] disabled:opacity-60"
-                          >
-                            Add Subcategory
-                          </button>
-                        </div>
                       </div>
                     )}
                   </div>

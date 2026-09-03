@@ -1,4 +1,5 @@
 import { Link } from "@inertiajs/react";
+import { useSiteDesign } from "@/Theme/siteDesign";
 import { FaFacebookF, FaInstagram, FaTiktok, FaXTwitter } from "react-icons/fa6";
 
 const sectionLinks = [
@@ -42,6 +43,9 @@ const socials = [
 ] as const;
 
 export default function SiteFooter() {
+  const siteDesign = useSiteDesign();
+  const footerLogoSrc = siteDesign?.images?.footer_logo_url || "/images/BL-LogoW.png";
+
   return (
     <footer className="mt-12 w-full border-t border-[#DFD8CA] bg-[#F5F5F2] text-[#2D2419]">
       <div className="mx-auto max-w-[1400px] px-4 py-12 md:px-8 lg:px-12">
@@ -107,7 +111,7 @@ export default function SiteFooter() {
         <div className="mx-auto grid max-w-[1400px] items-center gap-4 px-4 py-3 md:grid-cols-3 md:px-8 lg:px-12">
           <div className="flex items-center justify-start">
             <img
-              src="/images/BL-LogoW.png"
+              src={footerLogoSrc}
               alt="Bear Lane"
               loading="lazy"
               decoding="async"

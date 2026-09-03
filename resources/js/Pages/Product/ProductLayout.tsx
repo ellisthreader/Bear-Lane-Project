@@ -2388,57 +2388,79 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
           </div>
 
           {!isAdminEditor ? (
-          <section ref={reviewsRef} className="mx-4 mt-12 rounded-3xl border border-[#E5D9C4] bg-[#FFFCF7] p-5 sm:mx-6 sm:p-8 lg:mx-10">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#EFE4D0] pb-4">
-              <h2 className="text-2xl font-extrabold text-[#1E1A12]">Customer Reviews</h2>
-              <p className="text-sm text-[#6C5E43]">
-                {reviewCount > 0 ? `${rating.toFixed(1)} out of 5 based on ${reviewCount.toLocaleString()} reviews` : "No reviews yet"}
-              </p>
+          <section ref={reviewsRef} className="mx-4 mt-14 sm:mx-6 lg:mx-10">
+            <div className="flex flex-col gap-5 border-b border-[#DED3BF] pb-7 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-[#8A6D2B]">What customers say</p>
+                <h2 className="text-2xl font-extrabold tracking-tight text-[#1E1A12] sm:text-3xl">Customer reviews</h2>
+              </div>
+
+              {reviewCount > 0 ? (
+                <div className="flex items-center gap-3 sm:justify-end">
+                  <span className="text-4xl font-extrabold leading-none tracking-tight text-[#1E1A12]">{rating.toFixed(1)}</span>
+                  <div>
+                    <div className="flex items-center gap-0.5 text-[#C8941C]" aria-label={`${rating.toFixed(1)} out of 5 stars`}>
+                      {renderRatingStars(rating, "h-[18px] w-[18px]")}
+                    </div>
+                    <p className="mt-1 text-xs text-[#75694F]">Based on {reviewCount.toLocaleString()} {reviewCount === 1 ? "review" : "reviews"}</p>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-[#75694F]">No reviews yet</p>
+              )}
             </div>
 
-            <div className="mt-5 space-y-4">
+            <div className="divide-y divide-[#E6DDCD]">
               {reviewRows.length > 0 ? (
                 reviewRows.map((review, idx) => (
-                  <article key={`${review.id}-${idx}`} className="rounded-2xl border border-[#E8DDC8] bg-white p-4">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
+                  <article key={`${review.id}-${idx}`} className="py-7 sm:py-8">
+                    <div className="flex items-start justify-between gap-4">
                       <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 overflow-hidden rounded-full border border-[#E7DAC0] bg-[#FFF9EC]">
+                        <div className="h-11 w-11 shrink-0 overflow-hidden rounded-full bg-[#F2E8D3]">
                           {review.user?.avatar_url ? (
                             <img loading="lazy" decoding="async" src={review.user.avatar_url} alt={review.user.username || "Customer"} className="h-full w-full object-cover" />
                           ) : (
-                            <div className="flex h-full w-full items-center justify-center text-sm font-bold text-[#8A6D2B]">
+                            <div className="flex h-full w-full items-center justify-center text-sm font-bold text-[#806523]">
                               {String(review.user?.username || "C").slice(0, 1).toUpperCase()}
                             </div>
                           )}
                         </div>
                         <div>
-                          <p className="font-semibold text-[#2B2417]">@{review.user?.username || "customer"}</p>
-                          <p className="mt-0.5 text-xs text-[#7D6F54]">
-                            {review.created_at ? new Date(review.created_at).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "Recent"}
-                            {review.is_verified_purchase ? " • Verified purchase" : ""}
-                          </p>
+                          <p className="text-sm font-semibold text-[#2B2417]">@{review.user?.username || "customer"}</p>
+                          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[#7D715A]">
+                            <span>{review.created_at ? new Date(review.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "Recent"}</span>
+                            {review.is_verified_purchase ? (
+                              <span className="inline-flex items-center gap-1 font-medium text-[#6F5B2D]">
+                                <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
+                                Verified purchase
+                              </span>
+                            ) : null}
+                          </div>
                         </div>
                       </div>
-                      <div className="inline-flex items-center gap-1 text-[#C8941C]">
-                        {renderRatingStars(Number(review.rating || 0))}
-                        <span className="ml-1 text-xs font-semibold text-[#7E6A3C]">{Number(review.rating || 0).toFixed(1)}</span>
+                      <div className="hidden shrink-0 items-center gap-0.5 text-[#C8941C] sm:inline-flex" aria-label={`${Number(review.rating || 0).toFixed(1)} out of 5 stars`}>
+                        {renderRatingStars(Number(review.rating || 0), "h-[17px] w-[17px]")}
                       </div>
                     </div>
-                    <p className="mt-2 text-sm leading-relaxed text-[#4A3F2C]">{review.message}</p>
+                    <div className="mt-4 inline-flex items-center gap-0.5 text-[#C8941C] sm:hidden" aria-label={`${Number(review.rating || 0).toFixed(1)} out of 5 stars`}>
+                      {renderRatingStars(Number(review.rating || 0), "h-4 w-4")}
+                    </div>
+                    {review.title ? <h3 className="mt-4 text-base font-bold text-[#2B2417]">{review.title}</h3> : null}
+                    <p className={`${review.title ? "mt-2" : "mt-4"} max-w-3xl text-[15px] leading-7 text-[#514735]`}>{review.message}</p>
                     {Array.isArray(review.images) && review.images.length > 0 ? (
-                      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                      <div className="mt-5 flex flex-wrap gap-2.5">
                         {review.images.slice(0, 4).map((imageUrl, imageIndex) => (
                           <a
                             key={`${review.id}-image-${imageIndex}`}
                             href={imageUrl}
                             target="_blank"
                             rel="noreferrer"
-                            className="block overflow-hidden rounded-lg border border-[#E8DDC8] bg-[#FFFDF7]"
+                            className="group block h-24 w-24 overflow-hidden rounded-xl bg-[#F2EBDD] sm:h-28 sm:w-28"
                           >
                             <img loading="lazy" decoding="async"
                               src={imageUrl}
                               alt={`Review image ${imageIndex + 1}`}
-                              className="aspect-square w-full object-cover transition-transform duration-300 hover:scale-105"
+                              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                             />
                           </a>
                         ))}
@@ -2447,9 +2469,7 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
                   </article>
                 ))
               ) : (
-                <article className="rounded-2xl border border-[#E8DDC8] bg-white p-4 text-sm text-[#6C5E43]">
-                  No reviews yet.
-                </article>
+                <p className="py-8 text-sm leading-6 text-[#6C5E43]">Be the first to share your experience with this product.</p>
               )}
             </div>
           </section>

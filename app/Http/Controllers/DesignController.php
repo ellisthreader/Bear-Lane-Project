@@ -23,7 +23,7 @@ class DesignController extends Controller
     {
         $selectedColour = $request->query('colour');
         $selectedSize   = $request->query('size');
-        $selectedDesignType = $request->query('designType');
+        $selectedDesignType = 'printing';
         $savedDesignId  = $request->query('savedDesign');
 
         // Fetch product by slug instead of default ID binding

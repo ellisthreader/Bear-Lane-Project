@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useMemo, useState } from "react";
 import { toast } from "react-toastify";
-import type { EmbroideryType, QuoteSource } from "./types";
+import type { PrintType, QuoteSource } from "./types";
 import { executeRecaptcha } from "@/Utils/recaptcha";
 
 type QuoteStage = "form" | "quote";
@@ -12,8 +12,8 @@ type ProductQuoteContextValue = {
   source: QuoteSource;
   quantity: number;
   setQuantity: (value: number) => void;
-  embroideryType: EmbroideryType | "";
-  setEmbroideryType: (value: EmbroideryType | "") => void;
+  printType: PrintType | "";
+  setPrintType: (value: PrintType | "") => void;
   sides: string[];
   toggleSide: (side: string) => void;
   stage: QuoteStage;
@@ -29,7 +29,7 @@ type ProductQuoteContextValue = {
 
 const SIDE_OPTIONS = ["Front", "Back", "Left Sleeve", "Right Sleeve"];
 
-const EMBROIDERY_MULTIPLIERS: Record<EmbroideryType, number> = {
+const PRINT_MULTIPLIERS: Record<PrintType, number> = {
   Logo: 1,
   "Personalised Text": 0.95,
   Image: 1.15,
@@ -47,7 +47,7 @@ const isValidEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.
 export function ProductQuoteProvider({ source, children }: { source: QuoteSource; children: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
   const [quantity, setQuantity] = useState(1);
-  const [embroideryType, setEmbroideryType] = useState<EmbroideryType | "">("Image & Text");
+  const [printType, setPrintType] = useState<PrintType | "">("Image & Text");
   const [sides, setSides] = useState<string[]>(["Front"]);
   const [stage, setStage] = useState<QuoteStage>("form");
   const [quoteNumber, setQuoteNumber] = useState<number | null>(null);
@@ -55,10 +55,10 @@ export function ProductQuoteProvider({ source, children }: { source: QuoteSource
   const [sending, setSending] = useState(false);
 
   const sideMultiplier = 1 + Math.max(0, sides.length - 1) * 0.22;
-  const embroideryMultiplier = embroideryType ? EMBROIDERY_MULTIPLIERS[embroideryType] : 1;
+  const printMultiplier = printType ? PRINT_MULTIPLIERS[printType] : 1;
   const quoteTotal = useMemo(
-    () => roundTo2(Math.max(1, quantity) * Math.max(0, source.basePrice) * embroideryMultiplier * sideMultiplier),
-    [quantity, source.basePrice, embroideryMultiplier, sideMultiplier]
+    () => roundTo2(Math.max(1, quantity) * Math.max(0, source.basePrice) * printMultiplier * sideMultiplier),
+    [quantity, source.basePrice, printMultiplier, sideMultiplier]
   );
 
   const resetFlow = () => {
@@ -88,8 +88,8 @@ export function ProductQuoteProvider({ source, children }: { source: QuoteSource
   };
 
   const goToQuote = () => {
-    if (!embroideryType) {
-      toast.error("Please select an embroidery type.", { position: "top-center", autoClose: 3000 });
+    if (!printType) {
+      toast.error("Please select a print style.", { position: "top-center", autoClose: 3000 });
       return;
     }
 
@@ -132,7 +132,7 @@ export function ProductQuoteProvider({ source, children }: { source: QuoteSource
         {
           quantity: Math.max(1, quantity),
           productType: `${source.productName} (${source.colour})`,
-          designType: `${embroideryType || "Embroidery"} · ${sides.join(" + ")}`,
+          designType: `${printType || "Print"} · ${sides.join(" + ")}`,
           sizeCategory: source.sizeCategory,
           size: source.size,
         },
@@ -186,8 +186,8 @@ export function ProductQuoteProvider({ source, children }: { source: QuoteSource
       source,
       quantity,
       setQuantity,
-      embroideryType,
-      setEmbroideryType,
+      printType,
+      setPrintType,
       sides,
       toggleSide,
       stage,
@@ -204,7 +204,7 @@ export function ProductQuoteProvider({ source, children }: { source: QuoteSource
       isOpen,
       source,
       quantity,
-      embroideryType,
+      printType,
       sides,
       stage,
       quoteNumber,

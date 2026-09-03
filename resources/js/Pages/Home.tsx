@@ -13,15 +13,15 @@ import {
 
 const featuredProducts = [
   {
-    name: "Signature Embroidered Hoodie",
+    name: "Signature Printed Hoodie",
     category: "Trending Now",
-    description: "Premium heavyweight cotton with custom front and sleeve stitch.",
+    description: "Premium heavyweight cotton with custom front and sleeve print.",
     price: "From £48",
   },
   {
     name: "Teamwear Performance Polo",
     category: "New In",
-    description: "Moisture-wicking fabric with clean, professional crest embroidery.",
+    description: "Moisture-wicking fabric with a clean, professional crest print.",
     price: "From £32",
   },
   {

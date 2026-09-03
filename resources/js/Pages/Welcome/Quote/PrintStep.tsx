@@ -5,7 +5,7 @@ type Props = {
   onAdd: () => void;
 };
 
-export default function EmbroideryStep({
+export default function PrintStep({
   designType = "",
   setDesignType,
   onBack,
@@ -16,13 +16,13 @@ export default function EmbroideryStep({
   const isValid =
     designType && designType.trim() !== "";
 
-  const embroideryOptions = [
-    { name: "Logo", image: "/images/embroidery/logo.png" },
-    { name: "Custom Artwork Upload", image: "/images/embroidery/custom.png" },
-    { name: "Complex Pattern", image: "/images/embroidery/pattern.png" },
-    { name: "Personalised Text", image: "/images/embroidery/text.png" },
-    { name: "Event / Team Branding", image: "/images/embroidery/teambranding.png" },
-    { name: "Image & Text", image: "/images/embroidery/imagetext.png" },
+  const printOptions = [
+    { name: "Logo", icon: Badge },
+    { name: "Custom Artwork Upload", icon: FileImage },
+    { name: "Complex Pattern", icon: Layers3 },
+    { name: "Personalised Text", icon: Type },
+    { name: "Event / Team Branding", icon: Users },
+    { name: "Image & Text", icon: ImagePlus },
   ];
 
   return (
@@ -32,7 +32,7 @@ export default function EmbroideryStep({
       <div className="mb-8">
         <div className="w-fit">
           <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900">
-            Embroidery
+            Print Style
           </h2>
           <div className="h-[2px] mt-3" style={{ backgroundColor: gold }} />
         </div>
@@ -40,8 +40,9 @@ export default function EmbroideryStep({
 
       {/* DESIGN TYPE GRID */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 md:gap-6 mb-10 sm:mb-14">
-        {embroideryOptions.map((option) => {
+        {printOptions.map((option) => {
           const selected = designType === option.name;
+          const Icon = option.icon;
 
           return (
             <button
@@ -56,14 +57,10 @@ export default function EmbroideryStep({
                 boxShadow: selected ? `0 0 0 2px ${gold}20` : "none",
               }}
             >
-              <div className="aspect-[5/4] bg-gray-100 overflow-hidden">
-                <img
-                  src={option.image}
-                  alt={option.name}
-                  loading="lazy"
-                  decoding="async"
-                  className="w-full h-full object-contain p-0 scale-105 hover:scale-110 transition-transform duration-500"
-                />
+              <div className="flex aspect-[5/4] items-center justify-center bg-gradient-to-br from-[#FFF9EC] to-[#F4E4BD]">
+                <span className="flex h-16 w-16 items-center justify-center rounded-2xl border border-[#D8BD7A] bg-white text-[#80621F] shadow-sm transition-transform duration-300 hover:scale-105">
+                  <Icon className="h-8 w-8" aria-hidden="true" />
+                </span>
               </div>
 
               <div className="p-3 sm:p-4">
@@ -107,3 +104,4 @@ export default function EmbroideryStep({
     </div>
   );
 }
+import { Badge, FileImage, ImagePlus, Layers3, Type, Users } from "lucide-react";

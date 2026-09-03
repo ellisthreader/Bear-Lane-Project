@@ -163,7 +163,7 @@ export default function Company() {
             </motion.h2>
 
             <motion.p variants={fadeUp} className="text-lg leading-8 text-gray-700 dark:text-gray-300">
-              Every piece we offer embodies excellence. From the hand-finished stitching on a signature coat
+              Every piece we offer embodies excellence. From the carefully finished print on a signature coat
               to the artisanship of a leather handbag, we collaborate with designers and ateliers who share
               our standards for authenticity and longevity.
               <br />

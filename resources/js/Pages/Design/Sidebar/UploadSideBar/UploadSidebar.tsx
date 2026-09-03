@@ -36,7 +36,6 @@ type UploadSidebarProps = {
   >;
   onUpload: (url: string) => void;
   onValidateUpload?: (file: File) => Promise<{ allowed: boolean; message?: string }>;
-  enableStencilProcessing?: boolean;
   recentImages?: string[];
   onSelectImage?: (url: string | null) => void;
 
@@ -64,7 +63,6 @@ export default function UploadSidebar({
   setImageState,
   onUpload,
   onValidateUpload,
-  enableStencilProcessing = true,
   recentImages = [],
   onSelectImage,
   onDuplicateUploadedImage,
@@ -156,7 +154,7 @@ export default function UploadSidebar({
   }
 
 // ------------------- IMAGE EDITOR -------------------
-if (imagePropertiesOpen && layerExists && selectedImage) {
+if (imagePropertiesOpen && selectedImage && layer) {
   const restrictedBox = restrictedBoxProp;
   const positions =
     Object.keys(canvasPositions).length > 0
@@ -210,7 +208,6 @@ if (imagePropertiesOpen && layerExists && selectedImage) {
     <UploadPanel
       onUpload={onUpload}
       onValidateUpload={onValidateUpload}
-      enableStencilProcessing={enableStencilProcessing}
       recentImages={uploadOnlyImages}
       imageState={imageState}
       onSelectImage={handleSelectImage}

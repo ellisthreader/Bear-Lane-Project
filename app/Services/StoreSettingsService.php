@@ -13,12 +13,39 @@ class StoreSettingsService
     public const KEY_SIZE_GUIDE = 'size_guide';
     public const KEY_FRONT_PAGE_PRODUCTS = 'front_page_products';
     public const KEY_ADMIN_NOTIFICATION_SETTINGS = 'admin_notification_settings';
+    public const KEY_WEBSITE_DESIGN = 'website_design';
+
+    /** Font names must match resources/js/Theme/fonts.ts. */
+    public const WEBSITE_DESIGN_FONTS = [
+        'system',
+        'Inter',
+        'DM Sans',
+        'Poppins',
+        'Montserrat',
+        'Nunito',
+        'Lato',
+        'Raleway',
+        'Work Sans',
+        'Playfair Display',
+        'Lora',
+        'Merriweather',
+        'Cormorant Garamond',
+    ];
+
+    public const WEBSITE_DESIGN_MAX_HERO_SLIDES = 6;
 
     public function getDesignPricing(): array
     {
         $stored = $this->get(self::KEY_DESIGN_PRICING, []);
 
-        return $this->mergeDefaults($this->defaultDesignPricing(), is_array($stored) ? $stored : []);
+        return [
+            'printing' => [
+                'text_price' => $this->toMoney(data_get($stored, 'printing.text_price'), 0.75),
+                'clipart_price' => $this->toMoney(data_get($stored, 'printing.clipart_price'), 1.00),
+                'image_price' => $this->toMoney(data_get($stored, 'printing.image_price'), 1.50),
+                'per_side_price' => $this->toMoney(data_get($stored, 'printing.per_side_price'), 1.25),
+            ],
+        ];
     }
 
     public function saveDesignPricing(array $payload): array
@@ -29,12 +56,6 @@ class StoreSettingsService
                 'clipart_price' => $this->toMoney(data_get($payload, 'printing.clipart_price'), 1.00),
                 'image_price' => $this->toMoney(data_get($payload, 'printing.image_price'), 1.50),
                 'per_side_price' => $this->toMoney(data_get($payload, 'printing.per_side_price'), 1.25),
-            ],
-            'embroidery' => [
-                'text_price' => $this->toMoney(data_get($payload, 'embroidery.text_price'), 1.13),
-                'clipart_price' => $this->toMoney(data_get($payload, 'embroidery.clipart_price'), 1.50),
-                'image_price' => $this->toMoney(data_get($payload, 'embroidery.image_price'), 2.25),
-                'per_side_price' => $this->toMoney(data_get($payload, 'embroidery.per_side_price'), 1.88),
             ],
         ];
 
@@ -132,7 +153,7 @@ class StoreSettingsService
                 'description' => 'Quotes, chats, and support flow.',
                 'items' => [
                     ['key' => 'instant_quote_generated', 'title' => 'Instant quote generated', 'description' => 'Triggered when a customer generates an instant quote.'],
-                    ['key' => 'quote_request_submitted', 'title' => 'Embroidery artist request', 'description' => 'Triggered when a customer submits an embroidery artist request.'],
+                    ['key' => 'quote_request_submitted', 'title' => 'Print specialist request', 'description' => 'Triggered when a customer submits a print specialist request.'],
                     ['key' => 'support_message_submitted', 'title' => 'Support form message', 'description' => 'Triggered when a customer sends a message via the support page.'],
                     ['key' => 'new_live_chat', 'title' => 'New live chat started', 'description' => 'Triggered when a new live chat is opened.'],
                     ['key' => 'faq_request_submitted', 'title' => 'FAQ request submitted', 'description' => 'Triggered when a customer submits an FAQ request.'],
@@ -274,6 +295,122 @@ class StoreSettingsService
         return $this->getSizeGuide();
     }
 
+    public function getWebsiteDesign(): array
+    {
+        $stored = $this->get(self::KEY_WEBSITE_DESIGN, []);
+        $merged = $this->mergeDefaults($this->defaultWebsiteDesign(), is_array($stored) ? $stored : []);
+
+        $heroPaths = collect((array) data_get($merged, 'images.hero_slide_paths', []))
+            ->map(fn ($path) => trim((string) $path))
+            ->filter()
+            ->unique()
+            ->take(self::WEBSITE_DESIGN_MAX_HERO_SLIDES)
+            ->values();
+
+        $merged['images']['hero_slide_paths'] = $heroPaths->all();
+        $merged['images']['nav_logo_url'] = $this->publicUrlForPath((string) data_get($merged, 'images.nav_logo_path', ''));
+        $merged['images']['footer_logo_url'] = $this->publicUrlForPath((string) data_get($merged, 'images.footer_logo_path', ''));
+        $merged['images']['hero_slides'] = $heroPaths
+            ->map(fn (string $path) => ['path' => $path, 'url' => $this->publicUrlForPath($path)])
+            ->all();
+
+        return $merged;
+    }
+
+    public function saveWebsiteDesign(array $payload): array
+    {
+        $defaults = $this->defaultWebsiteDesign();
+        $existing = $this->getWebsiteDesign();
+
+        $color = function (string $key) use ($payload, $existing, $defaults): string {
+            $candidate = strtoupper(trim((string) data_get($payload, "colors.{$key}", '')));
+            if (preg_match('/^#[0-9A-F]{6}$/', $candidate) === 1) {
+                return $candidate;
+            }
+
+            return (string) data_get($existing, "colors.{$key}", data_get($defaults, "colors.{$key}"));
+        };
+
+        $font = function (string $key) use ($payload, $existing): string {
+            $candidate = trim((string) data_get($payload, "fonts.{$key}", ''));
+            if (in_array($candidate, self::WEBSITE_DESIGN_FONTS, true)) {
+                return $candidate;
+            }
+
+            $current = (string) data_get($existing, "fonts.{$key}", 'system');
+
+            return in_array($current, self::WEBSITE_DESIGN_FONTS, true) ? $current : 'system';
+        };
+
+        $heroPaths = collect((array) data_get($payload, 'images.hero_slide_paths', data_get($existing, 'images.hero_slide_paths', [])))
+            ->map(fn ($path) => trim((string) $path))
+            ->filter()
+            ->unique()
+            ->take(self::WEBSITE_DESIGN_MAX_HERO_SLIDES)
+            ->values()
+            ->all();
+
+        $normalized = [
+            'colors' => [
+                'accent' => $color('accent'),
+                'text' => $color('text'),
+                'surface' => $color('surface'),
+            ],
+            'fonts' => [
+                'heading' => $font('heading'),
+                'body' => $font('body'),
+            ],
+            'images' => [
+                'nav_logo_path' => trim((string) data_get($payload, 'images.nav_logo_path', data_get($existing, 'images.nav_logo_path', ''))),
+                'footer_logo_path' => trim((string) data_get($payload, 'images.footer_logo_path', data_get($existing, 'images.footer_logo_path', ''))),
+                'hero_slide_paths' => $heroPaths,
+            ],
+        ];
+
+        $this->put(self::KEY_WEBSITE_DESIGN, $normalized);
+
+        return $this->getWebsiteDesign();
+    }
+
+    public function getPublicWebsiteDesign(): array
+    {
+        $design = $this->getWebsiteDesign();
+
+        return [
+            'colors' => $design['colors'],
+            'fonts' => $design['fonts'],
+            'images' => [
+                'nav_logo_url' => $design['images']['nav_logo_url'],
+                'footer_logo_url' => $design['images']['footer_logo_url'],
+                'hero_slides' => array_values(array_filter(array_map(
+                    fn (array $slide) => $slide['url'],
+                    $design['images']['hero_slides']
+                ))),
+            ],
+        ];
+    }
+
+    public function defaultWebsiteDesign(): array
+    {
+        // Colour anchors MUST match resources/js/Theme/themeFamilies.js.
+        return [
+            'colors' => [
+                'accent' => '#C6A75E',
+                'text' => '#2D2515',
+                'surface' => '#FFFCF4',
+            ],
+            'fonts' => [
+                'heading' => 'system',
+                'body' => 'system',
+            ],
+            'images' => [
+                'nav_logo_path' => '',
+                'footer_logo_path' => '',
+                'hero_slide_paths' => [],
+            ],
+        ];
+    }
+
     public function getPublicSettings(): array
     {
         $site = $this->getSiteSettings();
@@ -292,6 +429,7 @@ class StoreSettingsService
             'tax' => $this->getTaxSettings(),
             'size_guide' => $this->getSizeGuide(),
             'front_page_products' => $this->getFrontPageProducts(),
+            'design' => $this->getPublicWebsiteDesign(),
         ];
     }
 
@@ -381,12 +519,6 @@ class StoreSettingsService
                 'clipart_price' => 1.00,
                 'image_price' => 1.50,
                 'per_side_price' => 1.25,
-            ],
-            'embroidery' => [
-                'text_price' => 1.13,
-                'clipart_price' => 1.50,
-                'image_price' => 2.25,
-                'per_side_price' => 1.88,
             ],
         ];
     }

@@ -1,20 +1,31 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
     public function up(): void
     {
         // Shippo signed URLs can exceed 255 chars.
-        DB::statement('ALTER TABLE `return_requests` MODIFY `shippo_label_url` TEXT NULL');
-        DB::statement('ALTER TABLE `orders` MODIFY `shippo_label_url` TEXT NULL');
+        Schema::table('return_requests', function (Blueprint $table) {
+            $table->text('shippo_label_url')->nullable()->change();
+        });
+
+        Schema::table('orders', function (Blueprint $table) {
+            $table->text('shippo_label_url')->nullable()->change();
+        });
     }
 
     public function down(): void
     {
-        DB::statement('ALTER TABLE `return_requests` MODIFY `shippo_label_url` VARCHAR(255) NULL');
-        DB::statement('ALTER TABLE `orders` MODIFY `shippo_label_url` VARCHAR(255) NULL');
+        Schema::table('return_requests', function (Blueprint $table) {
+            $table->string('shippo_label_url')->nullable()->change();
+        });
+
+        Schema::table('orders', function (Blueprint $table) {
+            $table->string('shippo_label_url')->nullable()->change();
+        });
     }
 };

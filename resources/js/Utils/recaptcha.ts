@@ -64,13 +64,32 @@ const loadScriptSrc = async (src: string): Promise<void> =>
   new Promise<void>((resolve, reject) => {
     const existing = document.querySelector<HTMLScriptElement>(`script[src="${src}"]`);
     if (existing) {
-      if (existing.dataset.recaptchaLoaded === "true") {
+      if (existing.dataset.recaptchaLoaded === "true" || resolveTurnstileApi()) {
         resolve();
         return;
       }
 
-      existing.addEventListener("load", () => resolve(), { once: true });
-      existing.addEventListener("error", () => reject(new Error("Failed to load CAPTCHA script.")), { once: true });
+      let settled = false;
+      const finish = (fn: () => void) => {
+        if (!settled) {
+          settled = true;
+          fn();
+        }
+      };
+
+      existing.addEventListener("load", () => finish(resolve), { once: true });
+      existing.addEventListener(
+        "error",
+        () => finish(() => reject(new Error("Failed to load CAPTCHA script."))),
+        { once: true }
+      );
+
+      // The tag is server-rendered in app.blade.php, so its load event may have
+      // fired long before we got here and neither listener would ever run. Poll
+      // for the API as well so this can never wait forever.
+      void waitForTurnstileApi().then((ready) => {
+        finish(() => (ready ? resolve() : reject(new Error("Failed to load CAPTCHA script."))));
+      });
       return;
     }
 
@@ -141,7 +160,7 @@ const loadRecaptchaScript = async (): Promise<void> => {
         recentCspViolations
       )}`
     );
-  });
+  })();
 
   try {
     await scriptLoadPromise;
@@ -153,6 +172,16 @@ const loadRecaptchaScript = async (): Promise<void> => {
 
 export const isRecaptchaConfigured = (): boolean => RECAPTCHA_SITE_KEY.length > 0;
 
+// The widget itself must appear within this window. This covers turnstile.ready()
+// plus render(); if it lapses, the script is genuinely broken rather than the user
+// being slow, so failing fast here is correct.
+const WIDGET_RENDER_BUDGET_MS = 15000;
+
+// Once the widget is on screen Cloudflare may serve an interactive challenge that a
+// human has to complete. That is a human-speed operation, so it gets a human-speed
+// budget instead of the render budget.
+const INTERACTION_BUDGET_MS = 120000;
+
 const executeTurnstile = async (action: string): Promise<string> => {
   const turnstile = resolveTurnstileApi();
   if (!turnstile) {
@@ -161,14 +190,17 @@ const executeTurnstile = async (action: string): Promise<string> => {
 
   const overlay = document.createElement("div");
   overlay.style.position = "fixed";
-  overlay.style.left = "16px";
-  overlay.style.bottom = "16px";
+  overlay.style.inset = "0";
   overlay.style.zIndex = "9999";
+  overlay.style.display = "flex";
+  overlay.style.alignItems = "center";
+  overlay.style.justifyContent = "center";
+  overlay.style.background = "rgba(38, 28, 8, 0.45)";
 
   const panel = document.createElement("div");
   panel.style.background = "linear-gradient(180deg, #fffefb 0%, #fff8ea 100%)";
   panel.style.borderRadius = "16px";
-  panel.style.padding = "12px";
+  panel.style.padding = "16px";
   panel.style.boxShadow = "0 18px 40px rgba(68, 50, 18, 0.22)";
   panel.style.maxWidth = "360px";
   panel.style.width = "min(360px, calc(100vw - 24px))";
@@ -185,8 +217,22 @@ const executeTurnstile = async (action: string): Promise<string> => {
 
   const container = document.createElement("div");
 
+  const cancel = document.createElement("button");
+  cancel.type = "button";
+  cancel.textContent = "Cancel";
+  cancel.style.marginTop = "10px";
+  cancel.style.width = "100%";
+  cancel.style.border = "1px solid #e6d4ab";
+  cancel.style.borderRadius = "10px";
+  cancel.style.background = "transparent";
+  cancel.style.padding = "6px";
+  cancel.style.fontSize = "12px";
+  cancel.style.color = "#6f5319";
+  cancel.style.cursor = "pointer";
+
   panel.appendChild(heading);
   panel.appendChild(container);
+  panel.appendChild(cancel);
   overlay.appendChild(panel);
   document.body.appendChild(overlay);
 
@@ -203,17 +249,60 @@ const executeTurnstile = async (action: string): Promise<string> => {
   };
 
   return new Promise<string>((resolve, reject) => {
-    const timeout = window.setTimeout(() => {
-      cleanup();
-      reject(new Error("CAPTCHA verification timed out."));
-    }, 12000);
+    let settled = false;
+    let timer: number | null = null;
 
-    const done = (fn: () => void) => {
-      window.clearTimeout(timeout);
+    const clearTimer = () => {
+      if (timer !== null) {
+        window.clearTimeout(timer);
+        timer = null;
+      }
+    };
+
+    // Every exit path funnels through here, so the widget and overlay can never be
+    // left behind and a late callback can never settle the promise twice.
+    const settle = (fn: () => void) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      clearTimer();
+      cleanup();
       fn();
     };
 
+    const arm = (ms: number, message: string) => {
+      clearTimer();
+      timer = window.setTimeout(() => settle(() => reject(new Error(message))), ms);
+    };
+
+    // A challenge that goes stale while the user is still working on it is
+    // recoverable: reset the widget and keep waiting rather than failing the submit.
+    const resetAndKeepWaiting = () => {
+      if (settled || widgetId === null) {
+        return;
+      }
+      try {
+        turnstile.reset(widgetId);
+      } catch {
+        // no-op
+      }
+    };
+
+    cancel.addEventListener("click", () =>
+      settle(() => reject(new Error("CAPTCHA cancelled.")))
+    );
+
+    arm(
+      WIDGET_RENDER_BUDGET_MS,
+      "CAPTCHA failed to display. Please refresh the page and try again."
+    );
+
     turnstile.ready(() => {
+      if (settled) {
+        return;
+      }
+
       try {
         widgetId = turnstile.render(container, {
           sitekey: RECAPTCHA_SITE_KEY,
@@ -221,9 +310,11 @@ const executeTurnstile = async (action: string): Promise<string> => {
           size: "normal",
           appearance: "always",
           execution: "render",
+          retry: "auto",
+          "retry-interval": 2000,
+          "refresh-expired": "auto",
           callback: (token: string) =>
-            done(() => {
-              cleanup();
+            settle(() => {
               if (!token) {
                 reject(new Error("CAPTCHA token was empty."));
                 return;
@@ -231,19 +322,20 @@ const executeTurnstile = async (action: string): Promise<string> => {
               resolve(token);
             }),
           "error-callback": () =>
-            done(() => {
-              cleanup();
+            settle(() => {
               reject(new Error("CAPTCHA verification failed."));
             }),
-          "expired-callback": () =>
-            done(() => {
-              cleanup();
-              reject(new Error("CAPTCHA expired. Please try again."));
-            }),
+          "expired-callback": resetAndKeepWaiting,
+          "timeout-callback": resetAndKeepWaiting,
         });
+
+        // The widget is up. Hand the remaining time to the human, unless a
+        // callback already resolved us during render().
+        if (!settled) {
+          arm(INTERACTION_BUDGET_MS, "CAPTCHA verification timed out.");
+        }
       } catch (error) {
-        done(() => {
-          cleanup();
+        settle(() => {
           reject(error instanceof Error ? error : new Error("CAPTCHA verification failed."));
         });
       }

@@ -96,7 +96,7 @@ function SupportDashboardContent() {
         {
           label: "Total Inbox",
           value: `${supportInboxMessages.length}`,
-          subValue: "Support + artist enquiries",
+          subValue: "Support + print enquiries",
           icon: <MessageSquareText className="h-5 w-5" />,
         },
       ];

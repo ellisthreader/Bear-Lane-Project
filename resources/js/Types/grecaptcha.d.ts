@@ -9,9 +9,13 @@ declare global {
     theme?: "auto" | "light" | "dark";
     execution?: "render" | "execute";
     appearance?: "always" | "execute" | "interaction-only";
+    retry?: "auto" | "never";
+    "retry-interval"?: number;
+    "refresh-expired"?: "auto" | "manual" | "never";
     callback?: (token: string) => void;
     "error-callback"?: () => void;
     "expired-callback"?: () => void;
+    "timeout-callback"?: () => void;
   }
 
   interface Turnstile {

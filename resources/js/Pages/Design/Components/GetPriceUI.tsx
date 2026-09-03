@@ -6,7 +6,6 @@ import {
   CircleDollarSign,
   Images,
   Palette,
-  PenTool,
   Printer,
   Ruler,
   Shirt,
@@ -63,8 +62,7 @@ function formatGBP(value: number): string {
   return `£${value.toFixed(2)}`;
 }
 
-const designTypeIcon = (designType: DesignType) =>
-  designType === "embroidery" ? <PenTool size={16} /> : <Printer size={16} />;
+const designTypeIcon = (_designType: DesignType) => <Printer size={16} />;
 
 const GetPriceUI: React.FC<GetPriceUIProps> = ({
   onClose,

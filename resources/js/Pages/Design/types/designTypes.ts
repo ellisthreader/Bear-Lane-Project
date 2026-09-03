@@ -99,7 +99,7 @@ export type SavedDesignPayload = {
   currentViewKey: ViewKey;
   selectedColour: string | null;
   selectedSize: string | null;
-  selectedDesignType?: "printing" | "embroidery" | null;
+  selectedDesignType?: "printing" | null;
   baseViewImages?: Partial<Record<ViewKey, string>>;
   previewByView?: Partial<Record<ViewKey, PricePreviewSnapshot>>;
   compositePngByView?: Partial<Record<ViewKey, string>>;
@@ -137,7 +137,7 @@ export type HistorySnapshot = {
   sizes: Record<string, { w: number; h: number }>;
   selectedColour: string | null;
   selectedSize: string | null;
-  selectedDesignType?: "printing" | "embroidery" | null;
+  selectedDesignType?: "printing" | null;
 };
 
 export type SidebarView =

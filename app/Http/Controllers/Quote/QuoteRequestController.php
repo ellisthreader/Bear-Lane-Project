@@ -96,11 +96,11 @@ class QuoteRequestController extends Controller
         SupportMessage::query()->create([
             'user_id' => $request->user()?->id,
             'quote_request_id' => $quote->id,
-            'source_type' => 'artist_request',
+            'source_type' => 'print_request',
             'name' => (string) $quote->name,
             'email' => (string) $quote->email,
             'phone' => (string) ($quote->phone ?? ''),
-            'subject' => 'Speak to an Embroidery Artist',
+            'subject' => 'Speak to a Print Specialist',
             'message' => (string) ($quote->details ?? ''),
             'attachments' => (array) ($quote->images ?? []),
             'metadata' => [
@@ -117,10 +117,10 @@ class QuoteRequestController extends Controller
                 'phone' => (string) ($quote->phone ?? ''),
                 'budget' => (string) ($quote->budget ?? ''),
                 'details' => (string) ($quote->details ?? ''),
-                'reference' => (string) ('BL-ARTIST-' . $quote->id),
+                'reference' => (string) ('BL-PRINT-' . $quote->id),
             ], function ($message) use ($quote) {
                 $message->to((string) $quote->email)
-                    ->subject('Your Embroidery Artist Request')
+                    ->subject('Your Print Specialist Request')
                     ->from((string) env('MAIL_FROM_ADDRESS'), (string) env('MAIL_FROM_NAME'));
             });
         } catch (\Throwable $exception) {
@@ -133,9 +133,9 @@ class QuoteRequestController extends Controller
 
         $adminNotificationService->sendAdminEventEmail(
             'quote_request_submitted',
-            'New Embroidery Artist Request',
-            'New embroidery artist request submitted',
-            "Reference: BL-ARTIST-{$quote->id}\nName: {$quote->name}\nEmail: {$quote->email}\nPhone: {$quote->phone}\nBudget: " . ($quote->budget ?: 'Not provided')
+            'New Print Specialist Request',
+            'New print specialist request submitted',
+            "Reference: BL-PRINT-{$quote->id}\nName: {$quote->name}\nEmail: {$quote->email}\nPhone: {$quote->phone}\nBudget: " . ($quote->budget ?: 'Not provided')
         );
 
         return response()->json([

@@ -41,7 +41,6 @@ type DashboardCard = {
   description: string;
   href?: string;
   icon: React.ReactNode;
-  accentClass: string;
   disabled?: boolean;
 };
 
@@ -78,42 +77,36 @@ export default function AdminDashboard({ auth, summary: incomingSummary }: Admin
       description: "Track growth, revenue, and order performance in one place.",
       href: "/admin/statistics",
       icon: <BarChart3 className="h-6 w-6" />,
-      accentClass: "from-[#C6A75E]/30 to-transparent",
     },
     {
       title: "Support & Live Chat",
       description: "Handle customer conversations and active support threads.",
       href: "/admin/support",
       icon: <MessageSquare className="h-6 w-6" />,
-      accentClass: "from-[#D9BE82]/30 to-transparent",
     },
     {
       title: "Products",
       description: "Manage navigation categories, subcategories, and product assignments.",
       href: "/admin/products",
       icon: <Package className="h-6 w-6" />,
-      accentClass: "from-[#BFA16A]/30 to-transparent",
     },
     {
       title: "Orders",
       description: "Review every placed order, update status, labels, and customer clarification.",
       href: "/admin/orders",
       icon: <ReceiptText className="h-6 w-6" />,
-      accentClass: "from-[#D4B373]/30 to-transparent",
     },
     {
       title: "Users",
       description: "View customer records and admin-level access controls.",
       href: "/admin/users",
       icon: <Users className="h-6 w-6" />,
-      accentClass: "from-[#E3C88E]/30 to-transparent",
     },
     {
       title: "Other",
       description: "Manage global store settings, tax, size guides, and discount rules.",
       href: "/admin/other",
       icon: <Settings2 className="h-6 w-6" />,
-      accentClass: "from-[#C9B17E]/30 to-transparent",
     },
   ];
 
@@ -161,12 +154,43 @@ export default function AdminDashboard({ auth, summary: incomingSummary }: Admin
     });
   }, [activities, activityTypeFilter, activityFromDate, activityToDate, activityUserFilter]);
 
+  // Stat-tile values: compact so a KPI row never reflows on a big number.
+  const formatCompact = (value: number) =>
+    new Intl.NumberFormat("en-GB", { notation: "compact", maximumFractionDigits: 1 }).format(
+      Number.isFinite(value) ? value : 0
+    );
+
+  const supportBadge =
+    Number(summary.live_chat_notifications || 0) + Number(summary.support_messages_notifications || 0);
+
+  const badgeForCard = (title: string) => {
+    if (title === "Support & Live Chat") return supportBadge;
+    if (title === "Orders") return Number(summary.orders_new_count || 0);
+    return 0;
+  };
+
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat("en-GB", {
       style: "currency",
       currency: "GBP",
       minimumFractionDigits: 2,
     }).format(Number.isFinite(value) ? value : 0);
+
+  const kpis: Array<{ label: string; value: string; note?: string }> = [
+    {
+      label: "Orders",
+      value: formatCompact(Number(summary.orders_total_count || 0)),
+      note: Number(summary.orders_new_count || 0) > 0 ? `${summary.orders_new_count} new` : undefined,
+    },
+    { label: "Products sold", value: formatCompact(Number(summary.product_sales_count || 0)) },
+    { label: "Quotes generated", value: formatCompact(Number(summary.quotes_generated || 0)) },
+    { label: "Reviews left", value: formatCompact(Number(summary.reviews_left || 0)) },
+    {
+      label: "Open chats",
+      value: formatCompact(Number(summary.open_live_chats || 0)),
+      note: supportBadge > 0 ? `${supportBadge} unread` : undefined,
+    },
+  ];
 
   const normalizedQuoteItems = useMemo(() => {
     if (!Array.isArray(quoteLookupResult?.items)) {
@@ -259,18 +283,12 @@ export default function AdminDashboard({ auth, summary: incomingSummary }: Admin
   return (
     <AuthenticatedLayout>
       <AdminTopNav />
-      <div className="relative min-h-screen overflow-x-hidden bg-gradient-to-br from-[#F9F5EA] via-[#FCF8EE] to-[#F4ECDD] px-6 py-10 text-[#2D2515] sm:px-10">
-        <div className="pointer-events-none absolute inset-0 opacity-[0.55]">
-          <div className="absolute -left-20 -top-24 h-80 w-80 rounded-full bg-[#C6A75E]/30 blur-3xl" />
-          <div className="absolute right-[-120px] top-[18%] h-[28rem] w-[28rem] rounded-full bg-[#E7D3A3]/30 blur-3xl" />
-          <div className="absolute bottom-[-140px] left-1/2 h-[24rem] w-[24rem] -translate-x-1/2 rounded-full bg-[#D7BB80]/25 blur-3xl" />
-        </div>
-
+      <div className="min-h-screen bg-[#FBF8F1] px-4 py-8 text-[#2D2515] sm:px-8">
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="mx-auto w-full max-w-6xl space-y-6"
+          transition={{ duration: 0.28, ease: "easeOut" }}
+          className="mx-auto w-full max-w-6xl"
         >
           <div className="lg:hidden">
             <button
@@ -280,149 +298,146 @@ export default function AdminDashboard({ auth, summary: incomingSummary }: Admin
                   window.history.back();
                 }
               }}
-              className="inline-flex items-center gap-2 rounded-full border border-[#D7BE84] bg-[#FFF8E8] px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-[#7B6530]"
+              className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-[#7B6530] transition hover:text-[#2D2515]"
             >
               <ArrowLeft className="h-4 w-4" />
               Back
             </button>
           </div>
 
-          <div className="w-full rounded-3xl border border-[#E5D4AF] bg-gradient-to-br from-[#FFFDF7] via-[#FFF9EC] to-[#FFFDF8] p-5 shadow-[0_20px_60px_rgba(91,70,27,0.10)] sm:p-6">
-            <div className="space-y-4">
-              <div className="rounded-2xl border border-[#E8D8B5] bg-white/75 p-4">
-                <div className="flex flex-wrap items-start justify-between gap-4">
-                  <div>
-                    <p className="mb-2 inline-flex items-center gap-2 rounded-full border border-[#D6BB80] bg-white/80 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[#8A6D2B]">
-                      <Shield className="h-3.5 w-3.5" />
-                      Admin Control Centre
-                    </p>
-                    <h1 className="text-2xl font-bold leading-tight sm:text-3xl">Welcome back, {userName}</h1>
-                    <p className="mt-2 text-sm text-[#6B5A34]">
-                      Everything you need to run Bear Lane is here. Monitor performance, manage inventory, and support customers quickly.
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsQuoteModalOpen(true);
-                      setQuoteLookupError(null);
-                    }}
-                    className="inline-flex items-center gap-2 rounded-xl bg-[#C6A75E] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#B8994E]"
-                  >
-                    View Quote
-                    <ArrowUpRight className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-[#E2D2AE] bg-white/95 p-4 text-left shadow-[0_8px_24px_rgba(91,70,27,0.08)]">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#846B37]">Admin Activity History</p>
-                    <p className="text-xs text-[#6B5A34]">Live notifications for admin changes</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setIsActivityModalOpen(true)}
-                    className="inline-flex items-center gap-2 rounded-xl border border-[#D6BB80] bg-white px-3 py-2 text-xs font-semibold uppercase tracking-wide text-[#7D6228] transition hover:border-[#C29A4F]"
-                  >
-                    Expand History
-                  </button>
-                </div>
-                <div className="mt-3 space-y-2">
-                  {activities.length === 0 ? (
-                    <p className="rounded-xl border border-dashed border-[#E2D2AE] bg-[#FFF9EB] px-3 py-4 text-sm text-[#6B5A34]">
-                      No recent activity yet.
-                    </p>
-                  ) : (
-                    activities.slice(0, 12).map((activity) => (
-                      <div key={activity.id} className="flex items-start gap-3 rounded-xl border border-[#E9DAB7] bg-[#FFF9EC] px-3 py-2.5">
-                        <span className="mt-0.5 inline-flex h-7 w-7 items-center justify-center rounded-full bg-white text-[#8A6D2B]">
-                          {iconForActivity(activity.icon)}
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-semibold text-[#2D2515]">{activity.title}</p>
-                          <p className="truncate text-xs text-[#6B5A34]">{activity.description}</p>
-                        </div>
-                        <p className="shrink-0 text-[11px] text-[#7A6A45]">
-                          {new Date(activity.created_at).toLocaleString("en-US")}
-                        </p>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
+          {/* Header: one hero figure, per the stat-tile contract */}
+          <header className="flex flex-wrap items-end justify-between gap-6 border-b border-[#E8DCC0] pb-8">
+            <div className="min-w-0">
+              <p className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.14em] text-[#9A8352]">
+                <Shield className="h-3.5 w-3.5" />
+                Admin Control Centre
+              </p>
+              <h1 className="mt-3 text-2xl font-semibold tracking-tight sm:text-3xl">
+                Welcome back, {userName}
+              </h1>
+              <p className="mt-1.5 text-sm text-[#6B5A34]">
+                Monitor performance, manage inventory, and support customers.
+              </p>
             </div>
-          </div>
 
-          <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
-            {cards.map((card, index) => (
-              <motion.div
-                key={card.title}
-                initial={{ opacity: 0, y: 28 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.08 * index, duration: 0.42, ease: "easeOut" }}
+            <div className="flex flex-wrap items-end gap-8">
+              <div>
+                <p className="text-xs font-medium text-[#6B5A34]">Product sales value</p>
+                <p className="mt-1 text-[48px] font-semibold leading-none tracking-tight text-[#2D2515]">
+                  {formatCurrency(Number(summary.product_sales_value || 0))}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsQuoteModalOpen(true);
+                  setQuoteLookupError(null);
+                }}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-[#2D2515] px-4 py-2.5 text-sm font-medium text-white transition hover:bg-[#443A22]"
               >
-                {card.disabled ? (
-                  <div className="group relative block h-full overflow-hidden rounded-2xl border border-[#E4D2AA] bg-white/95 p-5 shadow-[0_10px_30px_rgba(91,70,27,0.08)]">
-                    <div className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${card.accentClass} opacity-80`} />
-                    <div className="relative">
-                      <div className="inline-flex rounded-xl border border-[#E2CCA1] bg-[#FFF8E7] p-2.5 text-[#8A6D2B]">
-                        {card.icon}
-                      </div>
-                      <div className="mt-4 flex items-center gap-2">
-                        <h2 className="text-lg font-semibold">{card.title}</h2>
-                        {card.title === "Support & Live Chat" && (Number(summary.live_chat_notifications || 0) + Number(summary.support_messages_notifications || 0)) > 0 ? (
-                          <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-[#B42318] px-2 text-xs font-bold text-white">
-                            {Number(summary.live_chat_notifications || 0) + Number(summary.support_messages_notifications || 0)}
-                          </span>
-                        ) : null}
-                        {card.title === "Orders" && Number(summary.orders_new_count || 0) > 0 ? (
-                          <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-[#B42318] px-2 text-xs font-bold text-white">
-                            {summary.orders_new_count}
-                          </span>
-                        ) : null}
-                      </div>
-                      <p className="mt-2 text-sm leading-relaxed text-[#6B5A34]">{card.description}</p>
-                      <div className="mt-5 inline-flex items-center gap-1 text-sm font-semibold text-[#8A6D2B]/80">
-                        Coming Soon
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <Link
-                    href={card.href || "#"}
-                    className="group relative block h-full overflow-hidden rounded-2xl border border-[#E4D2AA] bg-white p-5 shadow-[0_10px_30px_rgba(91,70,27,0.08)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_18px_40px_rgba(91,70,27,0.13)]"
-                  >
-                    <div className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${card.accentClass} opacity-80`} />
-                    <div className="relative">
-                      <div className="inline-flex rounded-xl border border-[#E2CCA1] bg-[#FFF8E7] p-2.5 text-[#8A6D2B]">
-                        {card.icon}
-                      </div>
-                      <div className="mt-4 flex items-center gap-2">
-                        <h2 className="text-lg font-semibold">{card.title}</h2>
-                        {card.title === "Support & Live Chat" && (Number(summary.live_chat_notifications || 0) + Number(summary.support_messages_notifications || 0)) > 0 ? (
-                          <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-[#B42318] px-2 text-xs font-bold text-white">
-                            {Number(summary.live_chat_notifications || 0) + Number(summary.support_messages_notifications || 0)}
-                          </span>
-                        ) : null}
-                        {card.title === "Orders" && Number(summary.orders_new_count || 0) > 0 ? (
-                          <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-[#B42318] px-2 text-xs font-bold text-white">
-                            {summary.orders_new_count}
-                          </span>
-                        ) : null}
-                      </div>
-                      <p className="mt-2 text-sm leading-relaxed text-[#6B5A34]">{card.description}</p>
-                      <div className="mt-5 inline-flex items-center gap-1 text-sm font-semibold text-[#8A6D2B] transition group-hover:translate-x-1">
-                        Open
-                        <ArrowUpRight className="h-4 w-4" />
-                      </div>
-                    </div>
-                  </Link>
-                )}
-              </motion.div>
+                View quote
+                <ArrowUpRight className="h-4 w-4" />
+              </button>
+            </div>
+          </header>
+
+          {/* KPI row */}
+          <div className="grid grid-cols-2 gap-x-6 gap-y-6 border-b border-[#E8DCC0] py-7 sm:grid-cols-3 lg:grid-cols-5">
+            {kpis.map((kpi) => (
+              <div key={kpi.label}>
+                <p className="text-xs font-medium text-[#6B5A34]">{kpi.label}</p>
+                <p className="mt-1.5 text-2xl font-semibold leading-none tracking-tight text-[#2D2515]">
+                  {kpi.value}
+                </p>
+                {kpi.note ? (
+                  <p className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-[#9A5B23]">
+                    <TriangleAlert className="h-3 w-3" />
+                    {kpi.note}
+                  </p>
+                ) : null}
+              </div>
             ))}
           </div>
+
+          {/* Sections */}
+          <div className="grid grid-cols-1 gap-3 py-7 sm:grid-cols-2 lg:grid-cols-3">
+            {cards.map((card) => {
+              const badge = badgeForCard(card.title);
+              const body = (
+                <>
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="text-[#8A6D2B]">{card.icon}</span>
+                    {badge > 0 ? (
+                      <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#B42318] px-1.5 text-xs font-semibold text-white">
+                        {badge}
+                      </span>
+                    ) : null}
+                  </div>
+                  <h2 className="mt-4 text-base font-semibold tracking-tight">{card.title}</h2>
+                  <p className="mt-1 text-sm leading-relaxed text-[#6B5A34]">{card.description}</p>
+                  <p className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-[#8A6D2B]">
+                    {card.disabled ? "Coming soon" : "Open"}
+                    {card.disabled ? null : <ArrowUpRight className="h-3.5 w-3.5" />}
+                  </p>
+                </>
+              );
+
+              return card.disabled ? (
+                <div
+                  key={card.title}
+                  className="rounded-xl border border-[#E8DCC0] bg-white p-5 opacity-60"
+                >
+                  {body}
+                </div>
+              ) : (
+                <Link
+                  key={card.title}
+                  href={card.href || "#"}
+                  className="rounded-xl border border-[#E8DCC0] bg-white p-5 transition hover:border-[#C6A75E] hover:shadow-[0_2px_12px_rgba(91,70,27,0.07)]"
+                >
+                  {body}
+                </Link>
+              );
+            })}
+          </div>
+
+          {/* Activity */}
+          <section className="pb-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-base font-semibold tracking-tight">Activity</h2>
+                <p className="mt-0.5 text-sm text-[#6B5A34]">Live notifications for admin changes</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsActivityModalOpen(true)}
+                className="rounded-lg border border-[#E8DCC0] bg-white px-3 py-1.5 text-sm font-medium text-[#7D6228] transition hover:border-[#C6A75E]"
+              >
+                Expand history
+              </button>
+            </div>
+
+            <div className="mt-4 overflow-hidden rounded-xl border border-[#E8DCC0] bg-white">
+              {activities.length === 0 ? (
+                <p className="px-5 py-8 text-center text-sm text-[#6B5A34]">No recent activity yet.</p>
+              ) : (
+                <ul className="divide-y divide-[#F0E8D6]">
+                  {activities.slice(0, 12).map((activity) => (
+                    <li key={activity.id} className="flex items-center gap-3 px-4 py-3">
+                      <span className="shrink-0 text-[#8A6D2B]">{iconForActivity(activity.icon)}</span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-[#2D2515]">{activity.title}</p>
+                        <p className="truncate text-xs text-[#6B5A34]">{activity.description}</p>
+                      </div>
+                      <p className="shrink-0 text-xs tabular-nums text-[#9A8352]">
+                        {new Date(activity.created_at).toLocaleString("en-GB")}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </section>
         </motion.div>
       </div>
 
