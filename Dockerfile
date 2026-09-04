@@ -35,6 +35,8 @@ RUN npm ci
 
 COPY resources ./resources
 COPY public ./public
+# postcss.config.js imports scripts/postcss/siteThemeTokens.js
+COPY scripts ./scripts
 COPY vite.config.js tailwind.config.js postcss.config.js tsconfig.json jsconfig.json global.d.ts ./
 RUN npm run build
 
