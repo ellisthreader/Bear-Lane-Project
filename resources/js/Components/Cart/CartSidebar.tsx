@@ -1,0 +1,348 @@
+"use client";
+
+import React, { useState, useEffect, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { X, Plus, Minus, Trash2, ChevronDown } from "lucide-react";
+import { useCart } from "@/Context/CartContext";
+import { router } from "@inertiajs/react";
+import DesignPreview from "@/Pages/Design/Components/DesignPreview";
+import { widthPercentClass } from "@/Utils/percentClasses";
+
+// ✅ Import CartItem + AddToCartPayload types from your CartContext
+import type { CartItem } from "@/Context/CartContext";
+
+
+// ======= Custom Dropdown Component (Flannels-style) =======
+const SizeDropdown = ({
+  value,
+  onChange,
+  options,
+}: {
+  value: string;
+  onChange: (val: string) => void;
+  options: string[];
+}) => {
+  const [open, setOpen] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  // CLOSE WHEN CLICKING OUTSIDE
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        wrapperRef.current &&
+        e.target instanceof Node &&
+        !wrapperRef.current.contains(e.target)
+      ) {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  return (
+    <div ref={wrapperRef} className="relative w-32 text-sm">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex justify-between items-center px-3 py-2 border border-gray-300 bg-white rounded-lg focus:outline-none focus:ring-2 focus:ring-[#C6A75E]/30 focus:border-[#C6A75E] transition"
+      >
+        <span>{value}</span>
+        <ChevronDown className="w-4 h-4" />
+      </button>
+
+      {open && (
+        <div className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg">
+          <ul className="max-h-48 overflow-y-auto">
+            {options.map((opt) => (
+              <li
+                key={opt}
+                onClick={() => {
+                  onChange(opt);
+                  setOpen(false);
+                }}
+                className={`px-3 py-2 cursor-pointer hover:bg-[#C6A75E]/15 hover:text-[#8A6D2B] ${
+                  value === opt ? "bg-[#C6A75E]/10 text-[#8A6D2B]" : ""
+                }`}
+              >
+                {opt}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ======= Cart Sidebar Component =======
+const CartSidebar = () => {
+  const {
+    cart,
+    showCart,
+    toggleCart,
+    updateQuantity,
+    removeFromCart,
+    updateSize,
+    totalPrice,
+    openCart,
+  }: {
+    cart: CartItem[];
+    showCart: boolean;
+    toggleCart: () => void;
+    updateQuantity: (
+      slug: string,
+      colour: string,
+      size: string,
+      quantity: number,
+      designType?: "printing" | string | null
+    ) => void;
+    removeFromCart: (slug: string, colour: string, size: string, designType?: "printing" | string | null) => void;
+    updateSize: (
+      slug: string,
+      colour: string,
+      oldSize: string,
+      newSize: string,
+      designType?: "printing" | string | null
+    ) => void;
+    totalPrice: number;
+    openCart: () => void;
+  } = useCart();
+
+  const [isMobileViewport, setIsMobileViewport] = useState<boolean>(() =>
+    typeof window !== "undefined" ? window.matchMedia("(max-width: 767px)").matches : false
+  );
+
+  useEffect(() => {
+    document.body.style.overflow = showCart ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [showCart]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const query = window.matchMedia("(max-width: 767px)");
+    const sync = () => setIsMobileViewport(query.matches);
+    sync();
+
+    if (typeof query.addEventListener === "function") {
+      query.addEventListener("change", sync);
+      return () => query.removeEventListener("change", sync);
+    }
+
+    query.addListener(sync);
+    return () => query.removeListener(sync);
+  }, []);
+
+  const freeShippingGoal = 50;
+  const progress = Math.min(totalPrice / freeShippingGoal, 1) * 100;
+  const progressWidthClass = widthPercentClass(progress);
+
+  // ===== Handlers =====
+  const handleIncrease = (item: CartItem) => {
+    updateQuantity(item.slug, item.colour, item.size, item.quantity + 1, item.designType);
+  };
+
+  const handleDecrease = (item: CartItem) => {
+    if (item.quantity <= 1) {
+      removeFromCart(item.slug, item.colour, item.size, item.designType);
+    } else {
+      updateQuantity(item.slug, item.colour, item.size, item.quantity - 1, item.designType);
+    }
+  };
+
+  const handleCheckout = () => {
+    if (cart.length === 0) return;
+    if (!showCart) openCart();
+    setTimeout(() => router.get("/checkout"), 100);
+  };
+
+  // Suggested products removed; show only actual cart contents.
+
+  return (
+    <AnimatePresence>
+      {showCart && (
+        <>
+          {/* BACKDROP */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 0.5 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={toggleCart}
+            className="fixed inset-0 z-[10040] bg-black"
+          />
+
+          {/* SIDEBAR */}
+          <motion.div
+            initial={{ x: "100%" }}
+            animate={{ x: 0 }}
+            exit={{ x: "100%" }}
+            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            className="fixed right-0 top-0 z-[10050] flex h-full w-full max-w-full flex-col border-l-0 bg-[#FAFAF7] text-gray-900 shadow-2xl sm:w-[30rem] sm:max-w-[30rem] sm:border-l sm:border-[#C6A75E]/25"
+          >
+            {/* HEADER */}
+            <div className="flex items-center justify-between border-b border-[#C6A75E]/25 bg-gradient-to-r from-[#F8F3E6] via-[#FCFAF2] to-white px-3 py-3 sm:px-5 sm:py-4">
+              <h2 className="text-base font-semibold tracking-tight sm:text-lg">Your Cart</h2>
+              <button
+                onClick={toggleCart}
+                className="rounded-full p-1.5 hover:bg-gray-200/70 transition"
+              >
+                <X className="w-5 h-5 text-gray-700" />
+              </button>
+            </div>
+
+            {/* PROGRESS BAR */}
+            <div className="border-b border-[#C6A75E]/20 bg-[#FAFAF7] p-3 sm:p-4">
+              <div className="w-full h-2.5 bg-[#EFE9DA] rounded-full overflow-hidden">
+                <div
+                  className={`h-full bg-gradient-to-r from-[#C6A75E] to-[#B8994E] transition-all duration-300 ${progressWidthClass}`}
+                />
+              </div>
+
+              <div className="mt-2.5 rounded-xl border border-[#C6A75E]/30 bg-[#FAFAF7] px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_1px_6px_rgba(198,167,94,0.08)]">
+                <p className="text-center text-xs text-gray-700 sm:text-sm">
+                  {totalPrice >= freeShippingGoal ? (
+                    <>
+                      You unlocked <span className="font-semibold text-[#8A6D2B]">free shipping!</span>
+                    </>
+                  ) : (
+                    <>
+                      Spend £{(freeShippingGoal - totalPrice).toFixed(2)} more to get{" "}
+                      <span className="font-semibold text-[#8A6D2B]">free shipping</span>
+                    </>
+                  )}
+                </p>
+              </div>
+            </div>
+
+            {/* CART ITEMS */}
+            <div className="flex-1 space-y-4 overflow-x-hidden overflow-y-auto p-3 sm:space-y-6 sm:p-4">
+              {cart.length === 0 ? (
+                <p className="text-gray-500">Your cart is empty</p>
+              ) : (
+                cart.map((item: CartItem) => (
+                  <div
+                    key={`${item.slug}-${item.colour}-${item.size}-${item.designType}`}
+                    className="flex justify-between items-start space-x-3 border-b border-gray-200 pb-4"
+                  >
+                    <div className="h-20 w-20 flex-shrink-0 sm:h-24 sm:w-24">
+                      {item.previewSnapshot ? (
+                        <DesignPreview
+                          snapshot={item.previewSnapshot}
+                          fallbackImage={item.image}
+                          width={isMobileViewport ? 80 : 96}
+                          fixedSize={isMobileViewport ? 80 : 96}
+                          alt={`${item.title} preview`}
+                          className="h-full w-full rounded-xl border border-gray-200 bg-white"
+                          noFrame
+                        />
+                      ) : (
+                        <img loading="lazy" decoding="async"
+                          src={item.image}
+                          alt={item.title}
+                          className="w-full h-full object-cover rounded-xl border border-gray-200 bg-white"
+                        />
+                      )}
+                    </div>
+
+                    <div className="flex flex-1 flex-col text-xs sm:text-sm">
+                      <p className="font-semibold leading-tight text-gray-800">{item.brand}</p>
+                      <p className="mb-1 font-semibold">{item.title}</p>
+                      <p className="mb-1">
+                        Colour: <span className="font-normal text-gray-700">{item.colour}</span>
+                      </p>
+                      <p className="mb-1">
+                        Design: <span className="font-normal text-gray-700">Printing</span>
+                      </p>
+
+                      <p className="mb-1 text-gray-700">Size:</p>
+
+                      <SizeDropdown
+                        value={item.size}
+                        onChange={(val) =>
+                          updateSize(item.slug, item.colour, item.size, val, item.designType)
+                        }
+                        options={item.availableSizes}
+                      />
+
+                      <p className="mt-2 text-gray-800">£{item.price.toFixed(2)}</p>
+
+                      {/* QUANTITY */}
+                      <div className="mt-2 flex items-center space-x-2">
+                        <button
+                          onClick={() => handleDecrease(item)}
+                          className="p-1.5 border border-gray-300 rounded-lg hover:bg-[#C6A75E]/10 hover:border-[#C6A75E]/40 transition"
+                        >
+                          <Minus className="w-3 h-3" />
+                        </button>
+
+                        <span>{item.quantity}</span>
+
+                        <button
+                          onClick={() => handleIncrease(item)}
+                          className="p-1.5 border border-gray-300 rounded-lg hover:bg-[#C6A75E]/10 hover:border-[#C6A75E]/40 transition"
+                        >
+                          <Plus className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* PRICE & REMOVE */}
+                    <div className="flex flex-col items-end">
+                      <span className="text-sm font-semibold sm:text-base">
+                        £{(item.price * item.quantity).toFixed(2)}
+                      </span>
+                      <button
+                        onClick={() =>
+                          removeFromCart(item.slug, item.colour, item.size, item.designType)
+                        }
+                        className="mt-2 text-gray-400 hover:text-red-500 transition"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+
+              {/* Suggested products removed until real catalog data is wired in. */}
+            </div>
+
+            {/* FOOTER TOTAL */}
+            <div className="space-y-2.5 border-t border-[#C6A75E]/20 bg-white p-3 sm:space-y-3 sm:p-4">
+              <div className="flex justify-between text-base font-semibold sm:text-lg">
+                <span>Total:</span>
+                <span className="text-[#8A6D2B]">£{totalPrice.toFixed(2)}</span>
+              </div>
+
+              {/* CHECKOUT */}
+              <button
+                onClick={handleCheckout}
+                disabled={cart.length === 0}
+                className={`w-full rounded-lg py-2.5 text-sm text-white transition sm:py-3 sm:text-base ${
+                  cart.length === 0
+                    ? "bg-gray-400 cursor-not-allowed"
+                    : "bg-[#C6A75E] hover:bg-[#B8994E]"
+                }`}
+              >
+                Checkout
+              </button>
+
+              {/* CLOSE */}
+              <button
+                onClick={toggleCart}
+                className="w-full rounded-lg py-2 text-sm text-gray-700 transition hover:bg-gray-100 sm:text-base"
+              >
+                Close
+              </button>
+            </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+  );
+};
+
+export default CartSidebar;

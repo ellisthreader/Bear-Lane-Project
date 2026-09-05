@@ -1,0 +1,43 @@
+@extends('emails.layouts.base')
+
+@php
+    $emailTitle = 'Print Specialist Request';
+    $emailEyebrow = 'Request Received';
+    $emailHeading = 'Thanks, ' . $name;
+    $emailSubheading = 'Your request to speak with a print specialist has been received.';
+@endphp
+
+@section('content')
+    <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#5b4a29;">
+        We will review your details and contact you shortly.
+    </p>
+
+    <div style="margin:0 0 18px;padding:12px 14px;border:1px solid #e7d8b4;border-radius:10px;background:#fff9eb;">
+        <p style="margin:0 0 6px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#8a6d2b;font-weight:700;">Request Reference</p>
+        <p style="margin:0;font-size:16px;font-weight:700;color:#2d2515;">{{ $reference }}</p>
+    </div>
+
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;">
+        <tr>
+            <td style="padding:8px 0;border-bottom:1px solid #f0e6d2;font-size:14px;color:#6b5a34;">Email</td>
+            <td style="padding:8px 0;border-bottom:1px solid #f0e6d2;font-size:14px;color:#2d2515;font-weight:600;text-align:right;">{{ $email }}</td>
+        </tr>
+        <tr>
+            <td style="padding:8px 0;border-bottom:1px solid #f0e6d2;font-size:14px;color:#6b5a34;">Phone</td>
+            <td style="padding:8px 0;border-bottom:1px solid #f0e6d2;font-size:14px;color:#2d2515;font-weight:600;text-align:right;">{{ $phone !== '' ? $phone : 'Not provided' }}</td>
+        </tr>
+        <tr>
+            <td style="padding:8px 0;border-bottom:1px solid #f0e6d2;font-size:14px;color:#6b5a34;">Budget</td>
+            <td style="padding:8px 0;border-bottom:1px solid #f0e6d2;font-size:14px;color:#2d2515;font-weight:600;text-align:right;">{{ $budget !== '' ? $budget : 'Not provided' }}</td>
+        </tr>
+    </table>
+
+    <p style="margin:18px 0 8px;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:#8a6d2b;font-weight:700;">Your Brief</p>
+    <div style="padding:12px 14px;border:1px solid #eadfca;border-radius:10px;background:#fcfaf5;font-size:14px;line-height:1.6;color:#3b301c;">
+        {{ $details }}
+    </div>
+
+    <p style="margin:14px 0 0;font-size:13px;line-height:1.6;color:#6b5a34;">
+        Status: <strong style="color:#2d2515;">Received</strong>. We will email you again with the next update.
+    </p>
+@endsection
