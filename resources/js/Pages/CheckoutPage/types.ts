@@ -64,6 +64,7 @@ export type CheckoutRecoveryState = {
     postcode?: string;
   };
   shippingMethod: string;
+  shippingLabel?: string;
   shippingCost: number;
   discountCode: string;
   appliedDiscount: { code: string; type: "percent" | "fixed" | "shipping"; value: number } | null;

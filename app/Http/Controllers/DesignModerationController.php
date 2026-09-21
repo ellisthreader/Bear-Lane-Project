@@ -17,7 +17,7 @@ class DesignModerationController extends Controller
         ]);
 
         $text = trim((string) ($validated['text'] ?? ''));
-        if ($text === '') {
+        if ($text === '' || !$moderationService->isDesignModerationEnabled()) {
             return response()->json([
                 'allowed' => true,
             ]);
@@ -71,6 +71,10 @@ class DesignModerationController extends Controller
                 'allowed' => false,
                 'message' => 'Could not process uploaded image.',
             ], 422);
+        }
+
+        if (!$moderationService->isDesignModerationEnabled()) {
+            return response()->json(['allowed' => true]);
         }
 
         $imageDataUrl = $this->uploadedImageToDataUrl($image);

@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 
 import type { TextAlign } from "../../../../Types/Text";
+import { loadDesignFont, toCssFontFamily } from "../../../constants/designFonts";
 
 type Props = {
   textValue: string;
@@ -108,6 +109,20 @@ export default function TextProperties(props: Props) {
     setPanel("main");
   }, [isMobileViewport, props.onExitToCanvas]);
 
+  const [fontLoadTick, setFontLoadTick] = useState(0);
+
+  // Re-measure once the selected font has actually loaded, otherwise the
+  // size limits are derived from the fallback font's metrics.
+  React.useEffect(() => {
+    let cancelled = false;
+    void loadDesignFont(props.fontFamily).then(() => {
+      if (!cancelled) setFontLoadTick((tick) => tick + 1);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [props.fontFamily]);
+
   useLayoutEffect(() => {
     const span = measureRef.current;
     if (!span) return;
@@ -122,7 +137,7 @@ export default function TextProperties(props: Props) {
       w: Math.max(0.5, rect.width + props.borderWidth * 2),
       h: Math.max(0.5, rect.height + props.borderWidth * 2),
     });
-  }, [props.textValue, props.fontFamily, props.borderWidth]);
+  }, [props.textValue, props.fontFamily, props.borderWidth, fontLoadTick]);
 
   const { availableWidth, availableHeight } = React.useMemo(() => {
     const rightEdge = props.restrictedBox.left + props.restrictedBox.width;
@@ -238,7 +253,7 @@ export default function TextProperties(props: Props) {
       <span
         ref={measureRef}
         style={{
-          fontFamily: props.fontFamily,
+          fontFamily: toCssFontFamily(props.fontFamily),
           borderWidth: props.borderWidth,
           visibility: "hidden",
           position: "absolute",

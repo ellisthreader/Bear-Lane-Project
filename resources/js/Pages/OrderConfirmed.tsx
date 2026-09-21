@@ -73,13 +73,23 @@ const paymentTypeLabel = (value?: string | null) => {
 };
 
 const deliveryTypeLabel = (value?: string | null) => {
-  switch ((value || "").toUpperCase()) {
+  const key = (value || "").toUpperCase();
+  switch (key) {
+    case "":
+    case "STANDARD":
+      return "Standard Delivery";
     case "NEXT_DAY":
       return "Next Day Delivery";
     case "TIMED":
       return "Timed Delivery";
     default:
-      return "Standard Delivery";
+      // Admin-defined delivery methods (e.g. CLICK_COLLECT) are shown as words.
+      return key
+        .toLowerCase()
+        .split(/[_\s]+/)
+        .filter(Boolean)
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(" ");
   }
 };
 

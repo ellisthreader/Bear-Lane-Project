@@ -1,5 +1,6 @@
 import type { PricePreviewLayer, PricePreviewSnapshot } from "../Canvas/Canvas";
 import type { ViewKey } from "../types/designTypes";
+import { loadDesignFont, toCanvasFont } from "../constants/designFonts";
 
 const loadImage = (src: string): Promise<HTMLImageElement> =>
   new Promise((resolve, reject) => {
@@ -27,7 +28,7 @@ const drawTextLayer = (ctx: CanvasRenderingContext2D, layer: PricePreviewLayer, 
   ctx.beginPath();
   ctx.rect(-width / 2, -height / 2, width, height);
   ctx.clip();
-  ctx.font = `${fontSize}px ${fontFamily}`;
+  ctx.font = toCanvasFont(fontSize, fontFamily);
   ctx.textAlign = textAlign;
   ctx.textBaseline = "top";
   ctx.fillStyle = layer.color ?? "#000000";
@@ -106,6 +107,7 @@ export const renderSnapshotToPng = async (snapshot?: PricePreviewSnapshot): Prom
       if (scaleX !== 1 || scaleY !== 1) ctx.scale(scaleX, scaleY);
 
       if (layer.type === "text") {
+        await loadDesignFont(layer.fontFamily, Math.max(1, Number(layer.fontSize ?? 24)));
         drawTextLayer(ctx, layer, width, height);
       } else {
         await drawImageLayer(ctx, layer, width, height);
@@ -132,13 +134,7 @@ export const renderTextLayerToPng = async (layer?: PricePreviewLayer): Promise<s
   const fontFamily = layer.fontFamily ?? "Arial";
   const fontSize = Math.max(1, Number(layer.fontSize ?? 24));
 
-  if (typeof document !== "undefined" && (document as any).fonts?.load) {
-    try {
-      await (document as any).fonts.load(`${fontSize}px ${fontFamily}`);
-    } catch {
-      // Ignore and continue with browser fallback fonts.
-    }
-  }
+  await loadDesignFont(fontFamily, fontSize);
 
   const canvas = document.createElement("canvas");
   canvas.width = width;

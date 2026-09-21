@@ -304,7 +304,7 @@ class CheckoutController extends Controller
             'payment_intent_id' => 'nullable|string',
             'discount_code' => 'nullable|string',
             'options.reservation_id' => 'nullable|integer|exists:reservations,id',
-            'options.delivery_type' => 'nullable|string|in:STANDARD,NEXT_DAY,TIMED',
+            'options.delivery_type' => ['nullable', 'string', 'max:24', \Illuminate\Validation\Rule::in($this->deliveryOptionService->methodKeys())],
             'options.delivery_price' => 'nullable|numeric|min:0',
             'options.shipping_rate' => 'nullable|string|max:120',
             'options.gift_packaging' => 'nullable|boolean',

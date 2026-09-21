@@ -61,6 +61,24 @@ const COUNTRY_NAME_TO_ISO2: Record<string, string> = {
   "new zealand": "NZ",
 };
 
+const DELIVERY_KEY_LABELS: Record<string, string> = {
+  STANDARD: "Standard Delivery",
+  NEXT_DAY: "Next Day Delivery",
+  TIMED: "Timed Delivery",
+};
+
+const humaniseDeliveryKey = (key?: string | null) => {
+  const normalized = String(key || "").toUpperCase();
+  if (!normalized) return "Standard Delivery";
+  if (DELIVERY_KEY_LABELS[normalized]) return DELIVERY_KEY_LABELS[normalized];
+  return normalized
+    .toLowerCase()
+    .split(/[_\s]+/)
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+};
+
 const CheckoutForm = ({ initialEmail = "" }: CheckoutFormProps) => {
   const page = usePage<{
     auth?: { user?: Record<string, unknown> };
@@ -92,6 +110,8 @@ const CheckoutForm = ({ initialEmail = "" }: CheckoutFormProps) => {
     setShippingMethod,
     shippingCost = 0,
     setShippingCost,
+    shippingLabel,
+    setShippingLabel,
     discountCode,
     setDiscountCode,
     appliedDiscount,
@@ -206,19 +226,19 @@ const CheckoutForm = ({ initialEmail = "" }: CheckoutFormProps) => {
     return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
   }, [shippingMethod]);
 
+  // Delivery methods are configured by the admin, so any key can appear here.
+  // Timed delivery is the one special case: it carries the slot reservation id.
   const deliveryType = useMemo(() => {
+    if (!shippingMethod) return null;
     if (shippingMethod.startsWith("TIMED:")) return "TIMED";
-    if (shippingMethod === "NEXT_DAY") return "NEXT_DAY";
-    if (shippingMethod === "STANDARD") return "STANDARD";
-    return null;
+    return shippingMethod.toUpperCase();
   }, [shippingMethod]);
 
   const shippingRateLabel = useMemo(() => {
     if (!shippingMethod) return null;
-    if (deliveryType === "TIMED") return "Timed Delivery";
-    if (deliveryType === "NEXT_DAY") return "Next Day Delivery";
-    return "Standard Delivery";
-  }, [deliveryType, shippingMethod]);
+    if (shippingLabel && shippingLabel.trim()) return shippingLabel.trim();
+    return humaniseDeliveryKey(deliveryType);
+  }, [deliveryType, shippingLabel, shippingMethod]);
 
   useEffect(() => {
     if (!email && initialEmail) {
@@ -474,6 +494,7 @@ const CheckoutForm = ({ initialEmail = "" }: CheckoutFormProps) => {
         postcode: address?.postcode || "",
       },
       shippingMethod,
+      shippingLabel,
       shippingCost,
       discountCode,
       appliedDiscount: appliedDiscount
@@ -681,6 +702,7 @@ const CheckoutForm = ({ initialEmail = "" }: CheckoutFormProps) => {
         if (parsed.address.country) setCountry(parsed.address.country);
       }
       if (parsed.shippingMethod) setShippingMethod(parsed.shippingMethod);
+      if (parsed.shippingLabel) setShippingLabel(parsed.shippingLabel);
       if (Number.isFinite(parsed.shippingCost)) setShippingCost(parsed.shippingCost);
       if (parsed.discountCode) setDiscountCode(parsed.discountCode);
       if (parsed.appliedDiscount) setAppliedDiscount(parsed.appliedDiscount);

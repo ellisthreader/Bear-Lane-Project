@@ -55,6 +55,46 @@ class ShippoRateService
         });
     }
 
+    /**
+     * Carrier accounts connected to the Shippo account (cached briefly).
+     *
+     * @return array<int, array{carrier: string, name: string, active: bool, object_id: string}>
+     */
+    public function getCarrierAccounts(): array
+    {
+        $token = config('services.shippo.token');
+        if (empty($token)) {
+            return [];
+        }
+
+        return Cache::remember('shippo:carrier_accounts', now()->addMinutes(10), function () use ($token) {
+            $response = Http::withHeaders([
+                'Authorization' => 'ShippoToken ' . $token,
+            ])->get('https://api.goshippo.com/carrier_accounts', ['results' => 100]);
+
+            if ($response->failed()) {
+                throw new \RuntimeException('Shippo carrier accounts request failed.');
+            }
+
+            $results = (array) ($response->json('results') ?? []);
+
+            return array_values(array_map(function ($account) {
+                $carrier = strtolower(trim((string) ($account['carrier'] ?? '')));
+                $name = trim((string) ($account['carrier_name'] ?? ''));
+                if ($name === '') {
+                    $name = ucwords(str_replace('_', ' ', $carrier));
+                }
+
+                return [
+                    'carrier' => $carrier,
+                    'name' => $name,
+                    'active' => (bool) ($account['active'] ?? true),
+                    'object_id' => (string) ($account['object_id'] ?? ''),
+                ];
+            }, array_filter($results, 'is_array')));
+        });
+    }
+
     public function createTransaction(string $rateObjectId, string $labelFileType = 'PDF_4x6'): array
     {
         $token = config('services.shippo.token');

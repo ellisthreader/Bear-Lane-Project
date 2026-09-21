@@ -8,112 +8,35 @@ import { useWishlist } from "@/Context/WishlistContext";
 import { CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, CircleHelp, Heart, Plus, Sparkles, Star, X } from "lucide-react";
 import { toast } from "react-toastify";
 import SizeGuideButton from "./SizeGuide/SizeGuideButton";
-import { SizeGuideProvider } from "./SizeGuide/SizeGuideContext";
-import { inferSizeGuideGender } from "./SizeGuide/inferSizeGuideGender";
+import { SizeGuideProvider, useMeasurementGroups } from "./SizeGuide/SizeGuideContext";
+import { inferSizeGuideGender, inferSizeGuideGroupKey } from "./SizeGuide/inferSizeGuideGender";
 import { ProductQuoteProvider } from "./QuoteModal/ProductQuoteContext";
 import GetQuoteButton from "./QuoteModal/GetQuoteButton";
 import { DESIGN_TYPE_OPTIONS, designTypeLabel, normalizeDesignType, type DesignType } from "@/Utils/designType";
 import { executeRecaptcha } from "@/Utils/recaptcha";
+import VariantStudio from "./Admin/VariantStudio";
+import {
+  MANUAL_PARCEL_KEY,
+  colourHex,
+  defaultParcelKey,
+  newColourDraft,
+  newVariantDraft,
+  resolveStoredParcelKey,
+  variantShippingMetrics,
+  variantShippingPayload,
+  type AdminColourDraft,
+  type AdminVariantDraft,
+  type ParcelSettings,
+  type RestrictedBoxRatio,
+} from "./Admin/variantOptions";
 
 const ProductRailSection = lazy(() => import("./components/ProductRailSection"));
 const SizeGuideModal = lazy(() => import("./SizeGuide/SizeGuideModal"));
 const ProductQuoteModal = lazy(() => import("./QuoteModal/ProductQuoteModal"));
 
 const STANDARD_SIZES = ["XS", "S", "M", "L", "XL"] as const;
-const ADMIN_SIZE_GROUPS = [
-  {
-    label: "ADULT",
-    options: ["XL", "L", "M", "S", "XS"],
-  },
-  {
-    label: "JUNIOR",
-    options: ["12-13 years", "13-14 years", "14-15 years"],
-  },
-  {
-    label: "KIDS",
-    options: ["7-8 years", "8-9 years", "9-10 years", "10-11 years", "11-12 years"],
-  },
-  {
-    label: "LITTLE KIDS",
-    options: ["4-5 years", "5-6 years", "6-7 years"],
-  },
-  {
-    label: "TODDLER",
-    options: ["12-18 months", "18-24 months", "2-3 years (2T-3T)", "3-4 years (3T-4T)"],
-  },
-  {
-    label: "BABIES",
-    options: [
-      "Newborn (0-1 month)",
-      "0-3 months",
-      "3-6 months",
-      "6-9 months",
-      "9-12 months",
-      "12-18 months",
-      "18-24 months",
-    ],
-  },
-] as const;
-const COMMON_COLOUR_OPTIONS = [
-  "Black",
-  "White",
-  "Grey",
-  "Navy",
-  "Blue",
-  "Red",
-  "Green",
-  "Yellow",
-  "Orange",
-  "Purple",
-  "Pink",
-  "Brown",
-  "Beige",
-  "Cream",
-  "Burgundy",
-  "Olive",
-  "Khaki",
-  "Teal",
-  "Peach",
-  "Rust",
-] as const;
-
-const COMMON_COLOUR_RGB: Record<string, { r: number; g: number; b: number }> = {
-  black: { r: 0, g: 0, b: 0 },
-  white: { r: 255, g: 255, b: 255 },
-  grey: { r: 128, g: 128, b: 128 },
-  navy: { r: 0, g: 0, b: 128 },
-  blue: { r: 0, g: 0, b: 255 },
-  red: { r: 255, g: 0, b: 0 },
-  green: { r: 0, g: 128, b: 0 },
-  yellow: { r: 255, g: 255, b: 0 },
-  orange: { r: 255, g: 165, b: 0 },
-  purple: { r: 128, g: 0, b: 128 },
-  pink: { r: 255, g: 192, b: 203 },
-  brown: { r: 165, g: 42, b: 42 },
-  beige: { r: 245, g: 245, b: 220 },
-  cream: { r: 255, g: 253, b: 208 },
-  burgundy: { r: 128, g: 0, b: 32 },
-  olive: { r: 128, g: 128, b: 0 },
-  khaki: { r: 240, g: 230, b: 140 },
-  teal: { r: 0, g: 128, b: 128 },
-  peach: { r: 255, g: 218, b: 185 },
-  rust: { r: 183, g: 65, b: 14 },
-};
-
-type RestrictedBoxRatio = {
-  left: number;
-  top: number;
-  width: number;
-  height: number;
-};
-
 type AccordionKey = "description" | "delivery" | "returns";
 type AdminEditorErrorMap = Record<string, string>;
-type ParcelSizeTier = "very_small" | "small" | "medium" | "large";
-type ParcelCourierKey = "evri" | "royal_mail" | "dpd";
-type ParcelPresetKey = `${ParcelCourierKey}_${ParcelSizeTier}`;
-type ParcelSizeKey = ParcelPresetKey | "manual";
-type AdminVariantModalTab = "editor" | "help";
 
 const RESTRICTED_BOX_DEFAULT: RestrictedBoxRatio = {
   left: 0.2,
@@ -122,188 +45,6 @@ const RESTRICTED_BOX_DEFAULT: RestrictedBoxRatio = {
   height: 0.7,
 };
 const RESTRICTED_BOX_MIN_SIZE = 0.05;
-
-const PARCEL_COURIER_LABELS: Record<ParcelCourierKey, string> = {
-  evri: "EVRI",
-  royal_mail: "ROYAL MAIL",
-  dpd: "DPD",
-};
-
-const PARCEL_SIZE_TIER_LABELS: Record<ParcelSizeTier, string> = {
-  very_small: "Very Small",
-  small: "Small",
-  medium: "Medium",
-  large: "Large",
-};
-
-const PARCEL_TIER_IMAGES: Record<ParcelSizeTier, string> = {
-  very_small: "/images/Admin/parcels/Verysmall.png",
-  small: "/images/Admin/parcels/Small.png",
-  medium: "/images/Admin/parcels/Medium.png",
-  large: "/images/Admin/parcels/Large.png",
-};
-const PARCEL_COURIER_LOGOS: Record<ParcelCourierKey, string> = {
-  evri: "/images/Admin/couriers/evri.svg",
-  royal_mail: "/images/Admin/couriers/royal-mail.svg",
-  dpd: "/images/Admin/couriers/dpd.svg",
-};
-
-const PARCEL_COURIER_ORDER: ParcelCourierKey[] = ["evri", "royal_mail", "dpd"];
-const PARCEL_TIER_ORDER: ParcelSizeTier[] = ["very_small", "small", "medium", "large"];
-
-const PARCEL_SIZE_PRESETS: Record<
-  ParcelPresetKey,
-  {
-    courier: ParcelCourierKey;
-    tier: ParcelSizeTier;
-    label: string;
-    maxWeightKg: number;
-    lengthCm: number;
-    widthCm: number;
-    depthCm: number;
-    priceLabel: string;
-    description: string;
-  }
-> = {
-  evri_very_small: {
-    courier: "evri",
-    tier: "very_small",
-    label: "EVRI • Very Small",
-    maxWeightKg: 1,
-    lengthCm: 35,
-    widthCm: 25,
-    depthCm: 2.5,
-    priceLabel: "£2.62",
-    description: "Size 35 x 25 x 2.5 cm, under 1kg.",
-  },
-  evri_small: {
-    courier: "evri",
-    tier: "small",
-    label: "EVRI • Small",
-    maxWeightKg: 2,
-    lengthCm: 45,
-    widthCm: 35,
-    depthCm: 16,
-    priceLabel: "£2.62 - £3.20",
-    description: "Typical small parcel, usually 1-2kg.",
-  },
-  evri_medium: {
-    courier: "evri",
-    tier: "medium",
-    label: "EVRI • Medium",
-    maxWeightKg: 5,
-    lengthCm: 60,
-    widthCm: 50,
-    depthCm: 50,
-    priceLabel: "£2.62 - £5.87",
-    description: "Up to 60 x 50 x 50 cm, 2-5kg.",
-  },
-  evri_large: {
-    courier: "evri",
-    tier: "large",
-    label: "EVRI • Large",
-    maxWeightKg: 15,
-    lengthCm: 120,
-    widthCm: 63,
-    depthCm: 63,
-    priceLabel: "£5.87 - £9.01",
-    description: "Up to 120cm length / 245cm girth, 5-15kg.",
-  },
-  royal_mail_very_small: {
-    courier: "royal_mail",
-    tier: "very_small",
-    label: "ROYAL MAIL • Very Small",
-    maxWeightKg: 0.75,
-    lengthCm: 35,
-    widthCm: 25,
-    depthCm: 2.5,
-    priceLabel: "£1.55 - £3.60",
-    description: "Large Letter format, up to 750g.",
-  },
-  royal_mail_small: {
-    courier: "royal_mail",
-    tier: "small",
-    label: "ROYAL MAIL • Small",
-    maxWeightKg: 2,
-    lengthCm: 45,
-    widthCm: 35,
-    depthCm: 16,
-    priceLabel: "£3.90 - £4.99",
-    description: "Small parcel up to 2kg.",
-  },
-  royal_mail_medium: {
-    courier: "royal_mail",
-    tier: "medium",
-    label: "ROYAL MAIL • Medium",
-    maxWeightKg: 20,
-    lengthCm: 61,
-    widthCm: 46,
-    depthCm: 46,
-    priceLabel: "£6.29+",
-    description: "Tracked/courier parcel up to 20kg.",
-  },
-  royal_mail_large: {
-    courier: "royal_mail",
-    tier: "large",
-    label: "ROYAL MAIL • Large",
-    maxWeightKg: 20,
-    lengthCm: 70,
-    widthCm: 50,
-    depthCm: 50,
-    priceLabel: "£7+",
-    description: "Larger courier parcels, price varies.",
-  },
-  dpd_very_small: {
-    courier: "dpd",
-    tier: "very_small",
-    label: "DPD • Very Small",
-    maxWeightKg: 1,
-    lengthCm: 30,
-    widthCm: 30,
-    depthCm: 30,
-    priceLabel: "£4.79 - £6",
-    description: "Compact parcel under 1kg.",
-  },
-  dpd_small: {
-    courier: "dpd",
-    tier: "small",
-    label: "DPD • Small",
-    maxWeightKg: 5,
-    lengthCm: 45,
-    widthCm: 35,
-    depthCm: 35,
-    priceLabel: "£5 - £7",
-    description: "Up to 45 x 35 x 35 cm, 1-5kg.",
-  },
-  dpd_medium: {
-    courier: "dpd",
-    tier: "medium",
-    label: "DPD • Medium",
-    maxWeightKg: 20,
-    lengthCm: 70,
-    widthCm: 50,
-    depthCm: 50,
-    priceLabel: "£6 - £10",
-    description: "Up to 70 x 50 x 50 cm, 5-20kg.",
-  },
-  dpd_large: {
-    courier: "dpd",
-    tier: "large",
-    label: "DPD • Large",
-    maxWeightKg: 30,
-    lengthCm: 175,
-    widthCm: 63,
-    depthCm: 63,
-    priceLabel: "£10+",
-    description: "Up to 175cm length / 300cm girth, 20-30kg.",
-  },
-};
-
-const isParcelPresetKey = (value: string): value is ParcelPresetKey =>
-  Object.prototype.hasOwnProperty.call(PARCEL_SIZE_PRESETS, value);
-
-const asPositiveNumberString = (value: unknown) =>
-  Number.isFinite(Number(value)) && Number(value) > 0 ? String(Number(value)) : "";
 
 interface ColourProduct {
   colour: string;
@@ -381,6 +122,9 @@ interface Props {
     categoryName?: string;
     premade?: boolean;
   };
+  parcelSettings?: ParcelSettings | null;
+  /** Measurement group assigned to this product's category in Admin › Measurements. */
+  sizeGuideGroupKey?: string | null;
 }
 
 type ProductListItem = {
@@ -393,25 +137,6 @@ type ProductListItem = {
   is_premade_design?: boolean;
   premade_quote?: string | null;
   auto_badges?: string[] | null;
-};
-
-type AdminVariantDraft = {
-  id: string;
-  size: string;
-  stock: string;
-  parcelSize: ParcelSizeKey;
-  manualWeightKg: string;
-  manualLengthCm: string;
-  manualWidthCm: string;
-  manualDepthCm: string;
-};
-
-type AdminColourDraft = {
-  id: string;
-  name: string;
-  imageUrls: string[];
-  imageBoxes: Record<string, RestrictedBoxRatio>;
-  variants: AdminVariantDraft[];
 };
 
 type EditableField = "name" | "price" | "description" | null;
@@ -508,7 +233,9 @@ const renderRatingStars = (value: number, className = "h-4 w-4") => {
   });
 };
 
-export default function ProductLayout({ product, recommendedProducts = [], isPreMadeDesign = false, adminEditor }: Props) {
+export default function ProductLayout({ product, recommendedProducts = [], isPreMadeDesign = false, adminEditor, parcelSettings, sizeGuideGroupKey: assignedSizeGuideGroupKey = null }: Props) {
+  const parcelOptions = useMemo(() => parcelSettings?.parcel_options ?? [], [parcelSettings]);
+  const carrierOptions = useMemo(() => parcelSettings?.carriers ?? [], [parcelSettings]);
   const page = usePage<{ auth?: { user?: { id?: number; name?: string; email?: string; is_admin?: boolean } } }>();
   const isSignedIn = Boolean(page.props.auth?.user?.id);
   const isAdminUser = Boolean(page.props.auth?.user?.is_admin);
@@ -537,12 +264,15 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
   const [adminErrors, setAdminErrors] = useState<AdminEditorErrorMap>({});
   const [editingField, setEditingField] = useState<EditableField>(null);
   const [isVariantModalOpen, setIsVariantModalOpen] = useState(false);
-  const [adminVariantModalTab, setAdminVariantModalTab] = useState<AdminVariantModalTab>("editor");
-  const [activeParcelHelpCourier, setActiveParcelHelpCourier] = useState<ParcelCourierKey>("evri");
-  const [openAdminColourIds, setOpenAdminColourIds] = useState<string[]>([]);
   const [uploadingImage, setUploadingImage] = useState(false);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
+  const uploadTargetColourIdRef = useRef<string | null>(null);
   const [adminColours, setAdminColours] = useState<AdminColourDraft[]>(() => {
+    const options = parcelSettings?.parcel_options ?? [];
+    const fallbackParcel = defaultParcelKey(options);
+    const isPositive = (value: unknown) => Number.isFinite(Number(value)) && Number(value) > 0;
+    const numberString = (value: unknown) => (isPositive(value) ? String(Number(value)) : "");
+
     const fromProduct = (product.colourProducts || []).map((cp, index) => {
       const sizeStock = cp.size_stock ?? {};
       const sizes = cp.sizes?.length ? cp.sizes : Object.keys(sizeStock);
@@ -552,26 +282,21 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
           cp.size_shipping?.[normalizedSize]
           || cp.size_shipping?.[String(size || "").trim()]
           || null;
-        const storedCourier = String(shippingEntry?.parcel_courier || "").trim().toLowerCase();
-        const storedTier = String(shippingEntry?.parcel_size_tier || "").trim().toLowerCase();
-        const presetCandidate = `${storedCourier}_${storedTier}`;
-        const parcelSize: ParcelSizeKey =
-          isParcelPresetKey(presetCandidate)
-            ? presetCandidate
-            : (storedCourier === "manual" || storedTier === "manual")
-              ? "manual"
-              : "evri_small";
+        const parcelSize = shippingEntry
+          ? resolveStoredParcelKey(options, shippingEntry.parcel_courier, shippingEntry.parcel_size_tier)
+          : fallbackParcel;
+        const isManual = parcelSize === MANUAL_PARCEL_KEY;
 
         return {
           id: `variant-${index + 1}-${variantIndex + 1}`,
           size: normalizedSize,
           stock: String(Number(sizeStock[normalizedSize] ?? 0)),
           parcelSize,
-          manualWeightKg: parcelSize === "manual" ? asPositiveNumberString(shippingEntry?.weight_kg) : "",
-          manualLengthCm: parcelSize === "manual" ? asPositiveNumberString(shippingEntry?.length_cm) : "",
-          manualWidthCm: parcelSize === "manual" ? asPositiveNumberString(shippingEntry?.width_cm) : "",
-          manualDepthCm: parcelSize === "manual" ? asPositiveNumberString(shippingEntry?.height_cm) : "",
-        };
+          manualWeightKg: isManual ? numberString(shippingEntry?.weight_kg) : "",
+          manualLengthCm: isManual ? numberString(shippingEntry?.length_cm) : "",
+          manualWidthCm: isManual ? numberString(shippingEntry?.width_cm) : "",
+          manualDepthCm: isManual ? numberString(shippingEntry?.height_cm) : "",
+        } satisfies AdminVariantDraft;
       });
 
       return {
@@ -579,45 +304,13 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
         name: cp.colour || "",
         imageUrls: (cp.images || []).map((url) => String(url || "").trim()).filter(Boolean),
         imageBoxes: mapRestrictedBoxes(cp.image_boxes),
-        variants: variants.length
-          ? variants
-          : [
-              {
-                id: `variant-${index + 1}-1`,
-                size: "M",
-                stock: "0",
-                parcelSize: "evri_small" as const,
-                manualWeightKg: "",
-                manualLengthCm: "",
-                manualWidthCm: "",
-                manualDepthCm: "",
-              },
-            ],
-      };
+        variants: variants.length ? variants : [newVariantDraft("M", fallbackParcel, index + 1)],
+      } satisfies AdminColourDraft;
     });
 
     if (fromProduct.length > 0) return fromProduct;
 
-    return [
-      {
-        id: "colour-1",
-        name: "",
-        imageUrls: [],
-        imageBoxes: {},
-        variants: [
-          {
-            id: "variant-1-1",
-            size: "M",
-            stock: "0",
-            parcelSize: "evri_small" as const,
-            manualWeightKg: "",
-            manualLengthCm: "",
-            manualWidthCm: "",
-            manualDepthCm: "",
-          },
-        ],
-      },
-    ];
+    return [newColourDraft(fallbackParcel, 1)];
   });
   const [restrictedBoxDrafts, setRestrictedBoxDrafts] = useState<Record<string, RestrictedBoxRatio>>({});
   const [restrictedBoxDragState, setRestrictedBoxDragState] = useState<RestrictedBoxDragState | null>(null);
@@ -856,6 +549,18 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
       }),
     [breadcrumbTrailWithProduct, effectiveName, product.slug]
   );
+  const measurementGroups = useMeasurementGroups();
+  const sizeGuideGroupKey = useMemo(() => {
+    if (assignedSizeGuideGroupKey && measurementGroups.some((group) => group.key === assignedSizeGuideGroupKey)) {
+      return assignedSizeGuideGroupKey;
+    }
+    return inferSizeGuideGroupKey({
+      breadcrumbs: breadcrumbTrailWithProduct,
+      productName: effectiveName,
+      productSlug: product.slug,
+      groups: measurementGroups,
+    });
+  }, [assignedSizeGuideGroupKey, breadcrumbTrailWithProduct, effectiveName, product.slug, measurementGroups]);
 
   const quoteSizeCategory = useMemo(() => {
     if (sizeGuideGender === "women") return "Women";
@@ -1045,147 +750,33 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
     setAdminColours((prev) => prev.map((colour) => (colour.id === colourId ? updater(colour) : colour)));
   };
 
-  const isCommonColourOption = (value: string) =>
-    COMMON_COLOUR_OPTIONS.some((option) => option.toLowerCase() === value.trim().toLowerCase());
+  const getColourRgbCss = (value: string) => colourHex(value);
 
-  const getColourRgb = (value: string) => COMMON_COLOUR_RGB[value.trim().toLowerCase()];
-  const getColourRgbLabel = (value: string) => {
-    const rgb = getColourRgb(value);
-    return rgb ? `RGB(${rgb.r}, ${rgb.g}, ${rgb.b})` : null;
-  };
-  const getColourRgbCss = (value: string) => {
-    const rgb = getColourRgb(value);
-    return rgb ? `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})` : null;
-  };
+  const getVariantShippingMetrics = (variant: AdminVariantDraft) => variantShippingMetrics(variant, parcelOptions);
+  const getVariantShippingPayload = (variant: AdminVariantDraft) => variantShippingPayload(variant, parcelOptions);
 
-  const getVariantShippingMetrics = (variant: AdminVariantDraft) => {
-    if (variant.parcelSize !== "manual") {
-      const preset = PARCEL_SIZE_PRESETS[variant.parcelSize];
-      return {
-        weightKg: preset.maxWeightKg,
-        lengthCm: preset.lengthCm,
-        widthCm: preset.widthCm,
-        depthCm: preset.depthCm,
-        manualValid: true,
-      };
-    }
-
-    const weightKg = Number(variant.manualWeightKg);
-    const lengthCm = Number(variant.manualLengthCm);
-    const widthCm = Number(variant.manualWidthCm);
-    const depthCm = Number(variant.manualDepthCm);
-    const manualValid =
-      Number.isFinite(weightKg) &&
-      weightKg > 0 &&
-      Number.isFinite(lengthCm) &&
-      lengthCm > 0 &&
-      Number.isFinite(widthCm) &&
-      widthCm > 0 &&
-      Number.isFinite(depthCm) &&
-      depthCm > 0;
-
-    return {
-      weightKg,
-      lengthCm,
-      widthCm,
-      depthCm,
-      manualValid,
-    };
-  };
-
-  const getVariantShippingPayload = (variant: AdminVariantDraft) => {
-    const metrics = getVariantShippingMetrics(variant);
-    if (variant.parcelSize === "manual") {
-      return {
-        weight: metrics.weightKg,
-        parcel_courier: "manual",
-        parcel_size_tier: "manual",
-        parcel_length_cm: metrics.lengthCm,
-        parcel_width_cm: metrics.widthCm,
-        parcel_height_cm: metrics.depthCm,
-      };
-    }
-
-    const preset = PARCEL_SIZE_PRESETS[variant.parcelSize];
-    return {
-      weight: metrics.weightKg,
-      parcel_courier: preset.courier,
-      parcel_size_tier: preset.tier,
-      parcel_length_cm: metrics.lengthCm,
-      parcel_width_cm: metrics.widthCm,
-      parcel_height_cm: metrics.depthCm,
-    };
-  };
-
-  const addAdminColour = () => {
-    const colourId = `colour-${Date.now()}`;
-    setAdminColours((prev) => [
-      ...prev,
-      {
-        id: colourId,
-        name: "",
-        imageUrls: [],
-        imageBoxes: {},
-        variants: [
-          {
-            id: `variant-${Date.now()}-1`,
-            size: "M",
-            stock: "0",
-            parcelSize: "evri_small" as const,
-            manualWeightKg: "",
-            manualLengthCm: "",
-            manualWidthCm: "",
-            manualDepthCm: "",
-          },
-        ],
-      },
-    ]);
-    setOpenAdminColourIds((prev) => (prev.includes(colourId) ? prev : [...prev, colourId]));
-  };
-
-  const removeAdminColour = (colourId: string) => {
-    const canRemove = adminColours.length > 1;
-    setAdminColours((prev) => (prev.length > 1 ? prev.filter((colour) => colour.id !== colourId) : prev));
-    if (!canRemove) return;
+  const removeAdminImageFromColour = (colourId: string, imageUrl: string) => {
+    if (!isAdminEditor) return;
+    const target = adminColours.find((colour) => colour.id === colourId);
+    if (!target) return;
+    updateAdminColour(colourId, (colour) => ({
+      ...colour,
+      imageUrls: colour.imageUrls.map((url) => url.trim()).filter((url) => url && url !== imageUrl),
+      imageBoxes: Object.entries(colour.imageBoxes).reduce<Record<string, RestrictedBoxRatio>>((acc, [key, value]) => {
+        if (key !== imageUrl) acc[key] = value;
+        return acc;
+      }, {}),
+    }));
     setRestrictedBoxDrafts((prev) =>
       Object.entries(prev).reduce<Record<string, RestrictedBoxRatio>>((acc, [key, value]) => {
-        if (!key.startsWith(`${colourId}::`)) {
-          acc[key] = value;
-        }
+        if (key !== restrictedDraftKey(colourId, imageUrl)) acc[key] = value;
         return acc;
       }, {})
     );
-    Object.keys(restrictedBoxCanvasRefs.current).forEach((key) => {
-      if (key.startsWith(`${colourId}::`)) {
-        delete restrictedBoxCanvasRefs.current[key];
-      }
-    });
-  };
-
-  const addAdminVariant = (colourId: string) => {
-    updateAdminColour(colourId, (colour) => ({
-      ...colour,
-      variants: [
-        ...colour.variants,
-        {
-          id: `variant-${Date.now()}-${colour.variants.length + 1}`,
-          size: "M",
-          stock: "0",
-          parcelSize: "evri_small" as const,
-          manualWeightKg: "",
-          manualLengthCm: "",
-          manualWidthCm: "",
-          manualDepthCm: "",
-        },
-      ],
-    }));
-  };
-
-  const removeAdminVariant = (colourId: string, variantId: string) => {
-    updateAdminColour(colourId, (colour) => ({
-      ...colour,
-      variants: colour.variants.length > 1 ? colour.variants.filter((variant) => variant.id !== variantId) : colour.variants,
-    }));
+    if (restrictedBoxEditor && restrictedBoxEditor.colourId === colourId && restrictedBoxEditor.imageUrl === imageUrl) {
+      setRestrictedBoxDragState(null);
+      setRestrictedBoxEditor(null);
+    }
   };
   const removeAdminImage = (imageIndex: number) => {
     if (!isAdminEditor || imageIndex < 0) return;
@@ -1231,14 +822,6 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
     () => adminColours.findIndex((colour, index) => getPreviewColourName(colour, index) === selectedColour),
     [adminColours, selectedColour]
   );
-  useEffect(() => {
-    setOpenAdminColourIds((prev) => {
-      const valid = prev.filter((id) => adminColours.some((colour) => colour.id === id));
-      if (valid.length > 0) return valid;
-      return adminColours.length ? [adminColours[0].id] : [];
-    });
-  }, [adminColours]);
-
   useEffect(() => {
     if (!restrictedBoxDragState) return;
 
@@ -1294,12 +877,6 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
       window.removeEventListener("mouseup", handleMouseUp);
     };
   }, [restrictedBoxDragState]);
-
-  const toggleAdminColourTab = (colourId: string) => {
-    setOpenAdminColourIds((prev) =>
-      prev.includes(colourId) ? prev.filter((id) => id !== colourId) : [...prev, colourId]
-    );
-  };
 
   const beginRestrictedBoxDrag = (
     event: React.MouseEvent,
@@ -1391,6 +968,30 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
     });
   };
 
+  const openRestrictedBoxEditorFor = (colourId: string, imageUrl: string) => {
+    if (!isAdminEditor) return;
+    const targetIndex = adminColours.findIndex((colour) => colour.id === colourId);
+    const targetColour = adminColours[targetIndex];
+    if (!targetColour) return;
+    const cleanImages = targetColour.imageUrls.map((url) => url.trim()).filter(Boolean);
+    const imageIndex = cleanImages.indexOf(imageUrl);
+    if (imageIndex < 0) return;
+
+    const draftKey = restrictedDraftKey(targetColour.id, imageUrl);
+    const initialBox = normalizeRestrictedBox(
+      restrictedBoxDrafts[draftKey] ?? targetColour.imageBoxes[imageUrl] ?? RESTRICTED_BOX_DEFAULT
+    );
+    setRestrictedBoxDrafts((prev) => ({ ...prev, [draftKey]: initialBox }));
+    setSelectedColour(getPreviewColourName(targetColour, targetIndex));
+    setRestrictedBoxEditor({
+      colourId: targetColour.id,
+      imageUrl,
+      imageIndex,
+      imageCount: cleanImages.length,
+      colourName: getPreviewColourName(targetColour, targetIndex),
+    });
+  };
+
   const closeRestrictedBoxEditor = () => {
     setRestrictedBoxDragState(null);
     setRestrictedBoxEditor(null);
@@ -1428,12 +1029,13 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
     });
   };
 
-  const openImagePicker = () => {
+  const openImagePicker = (colourId?: string) => {
     if (!isAdminEditor) return;
     if (!adminColours.length) {
-      toast.error("Add at least one colour in the modal first.");
+      toast.error("Add at least one colour first.");
       return;
     }
+    uploadTargetColourIdRef.current = colourId ?? null;
     imageInputRef.current?.click();
   };
 
@@ -1442,7 +1044,11 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
     event.target.value = "";
     if (!files.length || !isAdminEditor) return;
 
-    const targetIndex = selectedAdminColourIndex >= 0 ? selectedAdminColourIndex : 0;
+    const requestedIndex = uploadTargetColourIdRef.current
+      ? adminColours.findIndex((colour) => colour.id === uploadTargetColourIdRef.current)
+      : -1;
+    uploadTargetColourIdRef.current = null;
+    const targetIndex = requestedIndex >= 0 ? requestedIndex : selectedAdminColourIndex >= 0 ? selectedAdminColourIndex : 0;
     const targetColour = adminColours[targetIndex];
     if (!targetColour) {
       toast.error("Please add a colour before uploading pictures.");
@@ -1839,7 +1445,7 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
   return (
     <AuthenticatedLayout>
       <Head title={isAdminEditor ? "Admin Product Creator" : effectiveName} />
-      <SizeGuideProvider initialGender={sizeGuideGender}>
+      <SizeGuideProvider initialGroupKey={sizeGuideGroupKey}>
         <ProductQuoteProvider
           source={{
             productName: effectiveName,
@@ -1891,15 +1497,10 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
               <div className="mt-3 flex flex-wrap gap-2">
                 <button
                   type="button"
-                  onClick={() => {
-                    setAdminVariantModalTab("editor");
-                    setIsVariantModalOpen(true);
-                  }}
+                  onClick={() => setIsVariantModalOpen(true)}
                   className="rounded-xl border border-[#D7BE84] bg-[#FFFCF4] px-4 py-2 text-sm font-semibold text-[#7B6530]"
                 >
-                  {isAdminPremadeEditor
-                    ? "Edit Colours, Sizes, Quantities & Parcel"
-                    : "Edit Colours, Sizes, Quantities, Parcel & Restricted Box"}
+                  Colours, sizes, quantities & parcels
                 </button>
                 <button
                   type="button"
@@ -1997,7 +1598,7 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
                   ))}
                   <button
                     type="button"
-                    onClick={openImagePicker}
+                    onClick={() => openImagePicker()}
                     className="group relative h-[260px] w-full overflow-hidden border-2 border-dashed border-[#C8951E] bg-[#FFF8E8] text-left sm:h-[360px] lg:h-[500px]"
                   >
                     <div className="absolute inset-0 flex flex-col items-center justify-center px-4 text-center text-[#8A5F00]">
@@ -2171,10 +1772,7 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
                     {isAdminEditor ? (
                       <button
                         type="button"
-                        onClick={() => {
-                          setAdminVariantModalTab("editor");
-                          setIsVariantModalOpen(true);
-                        }}
+                        onClick={() => setIsVariantModalOpen(true)}
                         className="rounded-full border border-[#D7BE84] bg-[#FFF9EA] px-3 py-1 text-xs font-semibold text-[#7B6530]"
                       >
                         Edit Colours
@@ -2548,484 +2146,22 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
               onChange={handleAdminImagePicked}
             />
 
-            {isVariantModalOpen ? (
-              <div className="fixed inset-0 z-[125] bg-black/50 p-3 sm:p-6" role="dialog" aria-modal="true">
-                <div className="mx-auto flex h-full w-full max-w-4xl flex-col overflow-hidden rounded-3xl border border-[#E8DAB8] bg-[#FFFCF6] shadow-[0_30px_70px_rgba(33,25,13,0.35)]">
-                  <header className="flex items-center justify-between border-b border-[#E9DFC8] bg-gradient-to-r from-[#FFF2D7] via-[#FFF8EA] to-[#FDF2D7] px-5 py-4">
-                    <div>
-                      <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#8A6A2F]">Admin Only</p>
-                      <h3 className="text-lg font-black text-[#271D0F]">
-                        {adminVariantModalTab === "help"
-                          ? "Parcel Size Help"
-                          : isAdminPremadeEditor
-                            ? "Colours, Sizes, Quantities & Parcel"
-                            : "Colours, Sizes, Quantities, Parcel & Restricted Box"}
-                      </h3>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setAdminVariantModalTab("editor");
-                        setIsVariantModalOpen(false);
-                      }}
-                      className="rounded-full border border-[#D9C79E] bg-white/80 p-2 text-[#5C4B27] transition hover:bg-white"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </header>
-
-                  <div className={`${adminVariantModalTab === "editor" ? "" : "hidden"} border-b border-[#E9DFC8] bg-[#FFF8EA] px-5 py-3`}>
-                    <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#7A5F2A]">How to fill this form</p>
-                    <p className="mt-1 text-sm text-[#5E4A22]">
-                      {isAdminPremadeEditor
-                        ? '1. Choose a colour from the dropdown or select "Add new colour". 2. Upload one or more images for that colour. 3. Add size rows with quantity and parcel size. 4. Use Manual if needed. 5. Click Done, then Save Product.'
-                        : '1. Choose a colour from the dropdown or select "Add new colour". 2. Upload one or more images for that colour. 3. Add size rows with quantity and parcel size. 4. Set and save restricted box for every uploaded image. 5. Use Manual if needed. 6. Click Done, then Save Product.'}
-                    </p>
-                    <div className="mt-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setActiveParcelHelpCourier("evri");
-                          setAdminVariantModalTab("help");
-                        }}
-                        className="rounded-lg border border-[#D7BE84] bg-white px-3 py-1.5 text-xs font-semibold text-[#7B6530]"
-                      >
-                        <span className="inline-flex items-center gap-1">
-                          <CircleHelp className="h-3.5 w-3.5" />
-                          Help With Parcel Sizes
-                        </span>
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className={`${adminVariantModalTab === "editor" ? "flex-1 space-y-3 overflow-y-auto p-4 sm:p-5" : "hidden"}`}>
-                    {adminColours.map((colour, colourIndex) => {
-                      const isOpen = openAdminColourIds.includes(colour.id);
-                      const previewName = getPreviewColourName(colour, colourIndex);
-                      const cleanImages = colour.imageUrls.map((url) => url.trim()).filter(Boolean);
-                      const savedRestrictedCount = cleanImages.reduce(
-                        (sum, imageUrl) => (isValidRestrictedBox(colour.imageBoxes[imageUrl]) ? sum + 1 : sum),
-                        0
-                      );
-                      return (
-                      <section key={colour.id} className="rounded-2xl border border-[#E8DCC3] bg-white">
-                        <div className="flex items-center justify-between gap-2 border-b border-[#F0E6D2] px-4 py-3">
-                          <button
-                            type="button"
-                            onClick={() => toggleAdminColourTab(colour.id)}
-                            className="inline-flex items-center gap-2 text-left"
-                          >
-                            <ChevronDown className={`h-4 w-4 text-[#786748] transition-transform duration-300 ${isOpen ? "rotate-180" : ""}`} />
-                            <span
-                              aria-hidden="true"
-                              className="inline-block h-2.5 w-2.5 rounded-full border border-[#DCC99D]"
-                              style={{ backgroundColor: getColourRgbCss(previewName) ?? "transparent" }}
-                            />
-                            <p className="text-xs font-bold uppercase tracking-[0.1em] text-[#6D5A34]">
-                              Colour {colourIndex + 1} - {previewName}
-                            </p>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => removeAdminColour(colour.id)}
-                            className="rounded-md border border-[#E3B9B9] bg-[#FFF3F3] px-2 py-1 text-[11px] font-semibold text-[#8C3232]"
-                          >
-                            Remove Colour
-                          </button>
-                        </div>
-
-                        <div className={`grid transition-all duration-300 ease-out ${isOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
-                        <div className={`overflow-hidden ${isOpen ? "p-4" : "p-0"}`}>
-                        <div className="mt-2 grid gap-2 sm:grid-cols-2 md:grid-cols-[1fr_1fr_auto]">
-                          <select
-                            value={
-                              !colour.name.trim()
-                                ? ""
-                                : isCommonColourOption(colour.name)
-                                  ? COMMON_COLOUR_OPTIONS.find(
-                                      (option) => option.toLowerCase() === colour.name.trim().toLowerCase()
-                                    ) || colour.name.trim()
-                                  : "__custom__"
-                            }
-                            onChange={(event) => {
-                              const value = event.target.value;
-                              updateAdminColour(colour.id, (item) => ({
-                                ...item,
-                                name: value === "__custom__" ? (isCommonColourOption(item.name) ? "" : item.name) : value,
-                              }));
-                            }}
-                            className="rounded-lg border border-[#DCC99D] px-3 py-2 text-sm"
-                          >
-                            <option value="">Select a colour</option>
-                            {COMMON_COLOUR_OPTIONS.map((option) => (
-                              <option key={option} value={option}>
-                                {option} {getColourRgbLabel(option) ? `- ${getColourRgbLabel(option)}` : ""}
-                              </option>
-                            ))}
-                            <option value="__custom__">Add new colour</option>
-                          </select>
-                          <input
-                            type="text"
-                            value={isCommonColourOption(colour.name) ? "" : colour.name}
-                            onChange={(event) =>
-                              updateAdminColour(colour.id, (item) => ({ ...item, name: event.target.value }))
-                            }
-                            placeholder="Type new colour name"
-                            disabled={!(!colour.name.trim() || !isCommonColourOption(colour.name))}
-                            className="rounded-lg border border-[#DCC99D] px-3 py-2 text-sm disabled:cursor-not-allowed disabled:bg-[#F6F1E5] disabled:text-[#9A8F78]"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedColour(getPreviewColourName(colour, colourIndex));
-                              setIsVariantModalOpen(false);
-                              openImagePicker();
-                            }}
-                            className="rounded-lg border border-[#D7BE84] bg-[#FFFCF4] px-3 py-2 text-xs font-semibold text-[#7B6530]"
-                          >
-                            Upload Image
-                          </button>
-                        </div>
-                        {adminErrors[`colour.${colour.id}.name`] ? (
-                          <p className="mt-1 text-xs text-[#8C3232]">{adminErrors[`colour.${colour.id}.name`]}</p>
-                        ) : null}
-                        {adminErrors[`colour.${colour.id}.images`] ? (
-                          <p className="mt-1 text-xs text-[#8C3232]">{adminErrors[`colour.${colour.id}.images`]}</p>
-                        ) : null}
-
-                        {!isAdminPremadeEditor ? (
-                          <div className="mt-3 rounded-xl border border-[#E8DABF] bg-[#FFF9EC] p-3">
-                            <div className="flex flex-wrap items-center justify-between gap-2">
-                              <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#7A5F2A]">
-                                Restricted Boxes
-                              </p>
-                              <p className="text-xs font-semibold text-[#6A5428]">
-                                Saved: {savedRestrictedCount}/{cleanImages.length}
-                              </p>
-                            </div>
-                            <p className="mt-1 text-xs text-[#6A5428]">
-                              Use the “Add Restricted Box” label on each product image to add or edit boxes.
-                            </p>
-                            {adminErrors[`colour.${colour.id}.image_boxes`] ? (
-                              <p className="mt-2 text-xs text-[#8C3232]">{adminErrors[`colour.${colour.id}.image_boxes`]}</p>
-                            ) : null}
-                          </div>
-                        ) : (
-                          <div className="mt-3 rounded-xl border border-[#E8DABF] bg-[#FFF9EC] p-3 text-xs text-[#6A5428]">
-                            Pre-made mode enabled: restricted boxes are not required for these images.
-                          </div>
-                        )}
-
-                        <div className="mt-3 rounded-lg border border-[#EFE5D2] bg-[#FFFCF7] p-2">
-                          <div className="mb-2 hidden grid-cols-[1fr_1fr_1.5fr_auto] gap-2 px-1 text-[10px] font-bold uppercase tracking-[0.08em] text-[#7A6742] sm:grid">
-                            <span>Size</span>
-                            <span>Quantity</span>
-                            <span>Parcel Size</span>
-                            <span />
-                          </div>
-                          <div className="space-y-2">
-                            {colour.variants.map((variant) => (
-                              <div key={variant.id} className="rounded-lg border border-[#EFE3CC] bg-white p-2">
-                                <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_1fr_1.5fr_auto]">
-                                  <select
-                                    value={variant.size}
-                                    onChange={(event) =>
-                                      updateAdminColour(colour.id, (item) => ({
-                                        ...item,
-                                        variants: item.variants.map((row) =>
-                                          row.id === variant.id ? { ...row, size: event.target.value.toUpperCase() } : row
-                                        ),
-                                      }))
-                                    }
-                                    className="rounded-lg border border-[#DCC99D] px-2 py-2 text-sm"
-                                  >
-                                    {ADMIN_SIZE_GROUPS.map((group) => (
-                                      <optgroup key={group.label} label={group.label}>
-                                        {group.options.map((size) => (
-                                          <option key={`${group.label}-${size}`} value={size.toUpperCase()}>
-                                            {size}
-                                          </option>
-                                        ))}
-                                      </optgroup>
-                                    ))}
-                                  </select>
-                                  <input
-                                    type="number"
-                                    min="0"
-                                    step="1"
-                                    value={variant.stock}
-                                    onChange={(event) =>
-                                      updateAdminColour(colour.id, (item) => ({
-                                        ...item,
-                                        variants: item.variants.map((row) =>
-                                          row.id === variant.id ? { ...row, stock: event.target.value } : row
-                                        ),
-                                      }))
-                                    }
-                                    className="rounded-lg border border-[#DCC99D] px-2 py-2 text-sm"
-                                  />
-                                  <div className="space-y-2">
-                                    <div className="flex flex-wrap items-center gap-2">
-                                      {PARCEL_COURIER_ORDER.map((courier) => (
-                                        <span
-                                          key={courier}
-                                          className="inline-flex items-center gap-1 rounded-full border border-[#E8DABF] bg-[#FFFAEE] px-2 py-1 text-[10px] font-semibold text-[#6A5428]"
-                                        >
-                                          <img
-                                            loading="lazy"
-                                            decoding="async"
-                                            src={PARCEL_COURIER_LOGOS[courier]}
-                                            alt={`${PARCEL_COURIER_LABELS[courier]} logo`}
-                                            className="h-3.5 w-3.5 rounded-sm object-contain"
-                                          />
-                                          {PARCEL_COURIER_LABELS[courier]}
-                                        </span>
-                                      ))}
-                                    </div>
-                                    <select
-                                      value={variant.parcelSize}
-                                      onChange={(event) =>
-                                        updateAdminColour(colour.id, (item) => ({
-                                          ...item,
-                                          variants: item.variants.map((row) =>
-                                            row.id === variant.id
-                                              ? { ...row, parcelSize: event.target.value as ParcelSizeKey }
-                                              : row
-                                          ),
-                                        }))
-                                      }
-                                      className="w-full rounded-lg border border-[#DCC99D] px-2 py-2 text-sm"
-                                    >
-                                      {PARCEL_COURIER_ORDER.map((courier) => (
-                                        <optgroup key={courier} label={PARCEL_COURIER_LABELS[courier]}>
-                                          {PARCEL_TIER_ORDER.map((tier) => {
-                                            const key = `${courier}_${tier}` as ParcelPresetKey;
-                                            const preset = PARCEL_SIZE_PRESETS[key];
-                                            return (
-                                              <option key={key} value={key}>
-                                                {PARCEL_SIZE_TIER_LABELS[tier]} - {preset.priceLabel}
-                                              </option>
-                                            );
-                                          })}
-                                        </optgroup>
-                                      ))}
-                                      <option value="manual">Manual</option>
-                                    </select>
-                                    {variant.parcelSize !== "manual" ? (
-                                      <p className="rounded-md bg-[#FFF4DC] px-2 py-1 text-[11px] text-[#6B5325]">
-                                        {PARCEL_SIZE_PRESETS[variant.parcelSize].label} · Max {PARCEL_SIZE_PRESETS[variant.parcelSize].maxWeightKg}kg ·{" "}
-                                        {PARCEL_SIZE_PRESETS[variant.parcelSize].lengthCm}x
-                                        {PARCEL_SIZE_PRESETS[variant.parcelSize].widthCm}x
-                                        {PARCEL_SIZE_PRESETS[variant.parcelSize].depthCm}cm ·
-                                        {" "}~{PARCEL_SIZE_PRESETS[variant.parcelSize].priceLabel}
-                                      </p>
-                                    ) : null}
-                                  </div>
-                                  <button
-                                    type="button"
-                                    onClick={() => removeAdminVariant(colour.id, variant.id)}
-                                    className="rounded-lg border border-[#E3B9B9] bg-[#FFF3F3] px-2 py-2 text-xs font-semibold text-[#8C3232] sm:px-2"
-                                  >
-                                    Remove
-                                  </button>
-                                </div>
-                                {variant.parcelSize === "manual" ? (
-                                  <div className="mt-2 grid grid-cols-2 gap-2 lg:grid-cols-4">
-                                    <input
-                                      type="number"
-                                      min="0.01"
-                                      step="0.01"
-                                      value={variant.manualWeightKg}
-                                      onChange={(event) =>
-                                        updateAdminColour(colour.id, (item) => ({
-                                          ...item,
-                                          variants: item.variants.map((row) =>
-                                            row.id === variant.id ? { ...row, manualWeightKg: event.target.value } : row
-                                          ),
-                                        }))
-                                      }
-                                      placeholder="Weight (kg)"
-                                      className="rounded-lg border border-[#DCC99D] px-2 py-2 text-sm"
-                                    />
-                                    <input
-                                      type="number"
-                                      min="0.01"
-                                      step="0.01"
-                                      value={variant.manualLengthCm}
-                                      onChange={(event) =>
-                                        updateAdminColour(colour.id, (item) => ({
-                                          ...item,
-                                          variants: item.variants.map((row) =>
-                                            row.id === variant.id ? { ...row, manualLengthCm: event.target.value } : row
-                                          ),
-                                        }))
-                                      }
-                                      placeholder="Length (cm)"
-                                      className="rounded-lg border border-[#DCC99D] px-2 py-2 text-sm"
-                                    />
-                                    <input
-                                      type="number"
-                                      min="0.01"
-                                      step="0.01"
-                                      value={variant.manualWidthCm}
-                                      onChange={(event) =>
-                                        updateAdminColour(colour.id, (item) => ({
-                                          ...item,
-                                          variants: item.variants.map((row) =>
-                                            row.id === variant.id ? { ...row, manualWidthCm: event.target.value } : row
-                                          ),
-                                        }))
-                                      }
-                                      placeholder="Width (cm)"
-                                      className="rounded-lg border border-[#DCC99D] px-2 py-2 text-sm"
-                                    />
-                                    <input
-                                      type="number"
-                                      min="0.01"
-                                      step="0.01"
-                                      value={variant.manualDepthCm}
-                                      onChange={(event) =>
-                                        updateAdminColour(colour.id, (item) => ({
-                                          ...item,
-                                          variants: item.variants.map((row) =>
-                                            row.id === variant.id ? { ...row, manualDepthCm: event.target.value } : row
-                                          ),
-                                        }))
-                                      }
-                                      placeholder="Depth (cm)"
-                                      className="rounded-lg border border-[#DCC99D] px-2 py-2 text-sm"
-                                    />
-                                  </div>
-                                ) : null}
-                                {adminErrors[`colour.${colour.id}.variant.${variant.id}.parcel`] ? (
-                                  <p className="mt-2 text-xs text-[#8C3232]">
-                                    {adminErrors[`colour.${colour.id}.variant.${variant.id}.parcel`]}
-                                  </p>
-                                ) : null}
-                              </div>
-                            ))}
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => addAdminVariant(colour.id)}
-                            className="mt-2 rounded-lg border border-[#D7BE84] bg-[#FFFCF4] px-3 py-2 text-xs font-semibold text-[#7B6530]"
-                          >
-                            Add Size Row
-                          </button>
-                        </div>
-                        </div>
-                        </div>
-                      </section>
-                    )})}
-                  </div>
-
-                  <footer className={`${adminVariantModalTab === "editor" ? "" : "hidden"} border-t border-[#E9DFC8] bg-[#FFF9EA] px-5 py-4`}>
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <button
-                        type="button"
-                        onClick={addAdminColour}
-                        className="rounded-xl border border-[#D7BE84] bg-[#FFFCF4] px-4 py-2 text-sm font-semibold text-[#7B6530]"
-                      >
-                        Add Colour
-                      </button>
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setAdminVariantModalTab("editor");
-                            setIsVariantModalOpen(false);
-                          }}
-                          className="rounded-xl border border-[#D7BE84] bg-white px-4 py-2 text-sm font-semibold text-[#7B6530]"
-                        >
-                          Done
-                        </button>
-                      </div>
-                    </div>
-                    {adminErrors.colours ? <p className="mt-2 text-xs text-[#8C3232]">{adminErrors.colours}</p> : null}
-                  </footer>
-
-                  <div className={`${adminVariantModalTab === "help" ? "grid flex-1 gap-3 overflow-y-auto p-5 md:grid-cols-1" : "hidden"}`}>
-                    <section className="rounded-2xl border border-[#E6D8BD] bg-[#FFFEFA] p-4">
-                      <div className="flex flex-wrap gap-2">
-                        {PARCEL_COURIER_ORDER.map((courier) => (
-                          <button
-                            key={courier}
-                            type="button"
-                            onClick={() => setActiveParcelHelpCourier(courier)}
-                            className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-bold uppercase tracking-[0.08em] transition ${
-                              activeParcelHelpCourier === courier
-                                ? "border-[#B08933] bg-[#FFF2D3] text-[#5E4618]"
-                                : "border-[#E1D4B8] bg-white text-[#7A5F2A] hover:bg-[#FFF8EA]"
-                            }`}
-                          >
-                            <img
-                              loading="lazy"
-                              decoding="async"
-                              src={PARCEL_COURIER_LOGOS[courier]}
-                              alt={`${PARCEL_COURIER_LABELS[courier]} logo`}
-                              className="h-4 w-4 rounded-sm object-contain"
-                            />
-                            {PARCEL_COURIER_LABELS[courier]}
-                          </button>
-                        ))}
-                      </div>
-
-                      <div className="mt-4 grid gap-3 md:grid-cols-2">
-                        {PARCEL_TIER_ORDER.map((tier) => {
-                          const key = `${activeParcelHelpCourier}_${tier}` as ParcelPresetKey;
-                          const item = PARCEL_SIZE_PRESETS[key];
-                          return (
-                            <article key={key} className="rounded-2xl border border-[#E6D8BD] bg-white p-4">
-                              <img loading="lazy" decoding="async"
-                                src={PARCEL_TIER_IMAGES[tier]}
-                                alt={`${item.label} parcel size visual`}
-                                className="h-24 w-44 rounded-xl object-cover"
-                              />
-                              <p className="mt-3 text-sm font-black text-[#2D220F]">{PARCEL_SIZE_TIER_LABELS[tier]}</p>
-                              <p className="mt-1 text-sm text-[#5E4A22]">Max weight: {item.maxWeightKg}kg</p>
-                              <p className="text-sm text-[#5E4A22]">
-                                Max: {item.lengthCm} x {item.widthCm} x {item.depthCm} cm
-                              </p>
-                              <p className="text-sm font-semibold text-[#6B5325]">Est. price: {item.priceLabel}</p>
-                              <p className="mt-2 text-xs text-[#6F5A2E]">{item.description}</p>
-                            </article>
-                          );
-                        })}
-                      </div>
-                    </section>
-                    <article className="rounded-2xl border border-dashed border-[#D6C39A] bg-[#FFF8E9] p-4">
-                      <p className="text-sm font-black text-[#2D220F]">Manual Option</p>
-                      <p className="mt-1 text-xs text-[#6F5A2E]">
-                        Select Manual in the row if none of the preset sizes fit. Enter custom weight (kg) and dimensions
-                        (length, width, depth in cm).
-                      </p>
-                    </article>
-                  </div>
-
-                  <footer className={`${adminVariantModalTab === "help" ? "" : "hidden"} border-t border-[#E9DFC8] bg-[#FFF9EA] px-5 py-4`}>
-                    <div className="flex justify-end gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setAdminVariantModalTab("editor")}
-                        className="rounded-xl border border-[#D7BE84] bg-white px-4 py-2 text-sm font-semibold text-[#7B6530]"
-                      >
-                        Back To Editor
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setAdminVariantModalTab("editor");
-                          setIsVariantModalOpen(false);
-                        }}
-                        className="rounded-xl bg-[#1F1A12] px-4 py-2 text-sm font-semibold text-white"
-                      >
-                        Close
-                      </button>
-                    </div>
-                  </footer>
-                </div>
-              </div>
-            ) : null}
+            <VariantStudio
+              open={isVariantModalOpen}
+              onClose={() => setIsVariantModalOpen(false)}
+              colours={adminColours}
+              onChange={(updater) => setAdminColours((prev) => updater(prev))}
+              parcelOptions={parcelOptions}
+              carriers={carrierOptions}
+              isPremade={isAdminPremadeEditor}
+              errors={adminErrors}
+              onUploadImages={(colourId) => openImagePicker(colourId)}
+              uploading={uploadingImage}
+              onRemoveImage={removeAdminImageFromColour}
+              onEditRestrictedBox={openRestrictedBoxEditorFor}
+              isValidRestrictedBox={(box) => isValidRestrictedBox(box)}
+              onOpenDeliverySettings={() => window.open("/admin/other/delivery?tab=parcels", "_blank", "noopener")}
+            />
 
             {!isAdminPremadeEditor && restrictedBoxEditor ? (
               <div className="fixed inset-0 z-[130] bg-black/60 p-3 sm:p-6" role="dialog" aria-modal="true">

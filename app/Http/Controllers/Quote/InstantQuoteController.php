@@ -3,14 +3,15 @@
 namespace App\Http\Controllers\Quote;
 
 use App\Http\Controllers\Controller;
-use App\Services\AdminNotificationService;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Mail\Message;
+use App\Mail\InstantQuoteMail;
 use App\Models\InstantQuote;
+use App\Models\User;
+use App\Services\AdminNotificationService;
 use App\Services\Security\RecaptchaService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Validator;
 
 class InstantQuoteController extends Controller
 {
@@ -38,98 +39,70 @@ class InstantQuoteController extends Controller
             'total' => $request->total,
         ]);
 
-        try {
-            Mail::send([], [], function (Message $message) use ($request) {
-                $message->to((string) $request->email)
-                    ->subject('Your Instant Quote')
-                    ->from((string) env('MAIL_FROM_ADDRESS'), (string) env('MAIL_FROM_NAME'));
+        $items = $this->normalizeItems((array) $request->items);
+        $name = (string) $request->name;
+        $email = (string) $request->email;
+        $quoteNumber = (string) $request->quoteNumber;
+        $total = (float) $request->total;
 
-                $message->html($this->generateQuoteHtml([
-                    'name' => (string) $request->name,
-                    'email' => (string) $request->email,
-                    'items' => (array) $request->items,
-                    'total' => (float) $request->total,
-                    'quoteNumber' => (string) $request->quoteNumber,
-                ]));
-            });
+        try {
+            Mail::to($email)->send(new InstantQuoteMail(
+                $name,
+                $email,
+                $quoteNumber,
+                $items,
+                $total,
+                $quote->created_at,
+            ));
         } catch (\Throwable $e) {
             Log::error('Instant quote email failed', [
-                'email' => (string) $request->email,
-                'quote_number' => (string) $request->quoteNumber,
+                'email' => $email,
+                'quote_number' => $quoteNumber,
                 'error' => $e->getMessage(),
             ]);
         }
 
-        $adminNotificationService->sendAdminEventEmail(
+        $accountStatus = $request->user()
+            ? 'Signed in (' . ($request->user()->email ?? 'account') . ')'
+            : (User::query()->where('email', $email)->exists() ? 'Has an account (not signed in)' : 'Guest');
+
+        $adminNotificationService->sendAdminEventView(
             'instant_quote_generated',
-            'New Instant Quote Generated',
-            'A customer generated an instant quote',
-            "Quote number: {$quote->quote_number}\nName: {$quote->name}\nEmail: {$quote->email}\nTotal: £" . number_format((float) $quote->total, 2)
+            'New instant quote #' . $quoteNumber . ' · £' . number_format($total, 2),
+            'emails.quotes.instant-admin',
+            [
+                'name' => $name,
+                'email' => $email,
+                'quoteNumber' => $quoteNumber,
+                'items' => $items,
+                'total' => $total,
+                'submittedAt' => $quote->created_at,
+                'accountStatus' => $accountStatus,
+            ]
         );
 
         return response()->json(['success' => true, 'quote' => $quote]);
     }
 
     /**
-     * @param array{name:string,email:string,items:array,total:float,quoteNumber:string} $data
+     * @return array<int, array<string, mixed>>
      */
-    private function generateQuoteHtml(array $data): string
+    private function normalizeItems(array $items): array
     {
-        $itemsHtml = '';
-        foreach ((array) ($data['items'] ?? []) as $item) {
-            $quantity = (int) ($item['quantity'] ?? 1);
-            $productType = (string) ($item['productType'] ?? '');
-            $designType = (string) ($item['designType'] ?? '');
-            $sizeCategory = (string) ($item['sizeCategory'] ?? '');
-            $size = (string) ($item['size'] ?? '');
+        return array_values(array_map(function ($item) {
+            $item = is_array($item) ? $item : [];
 
-            $itemsHtml .= "
-                <tr>
-                    <td style='padding: 10px; border: 1px solid #eee;'>{$quantity}</td>
-                    <td style='padding: 10px; border: 1px solid #eee;'>{$productType}</td>
-                    <td style='padding: 10px; border: 1px solid #eee;'>{$designType}</td>
-                    <td style='padding: 10px; border: 1px solid #eee;'>{$sizeCategory}</td>
-                    <td style='padding: 10px; border: 1px solid #eee;'>{$size}</td>
-                </tr>
-            ";
-        }
-
-        return "
-        <div style='font-family: Arial, sans-serif; color: #333; max-width: 650px; margin: auto; background-color: #ffffff; padding: 30px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);'>
-            <div style='text-align: center; margin-bottom: 20px;'>
-                <img src='" . asset('images/BLText.png') . "' alt='Bear Lane' style='max-width: 150px;'>
-            </div>
-
-            <h2 style='color: #C9A24D; text-align: center; margin-bottom: 10px;'>Hello {$data['name']},</h2>
-            <p style='font-size: 14px; text-align: center; font-weight: bold; color: #555; margin-bottom: 30px;'>
-                Quote #: {$data['quoteNumber']}
-            </p>
-            <p style='font-size: 16px; text-align: center; margin-bottom: 30px;'>
-                Thank you for requesting an instant quote. Here is your summary:
-            </p>
-
-            <table style='width: 100%; border-collapse: collapse; margin-bottom: 30px;'>
-                <thead>
-                    <tr style='background-color: #f8f8f8;'>
-                        <th style='padding: 12px; border: 1px solid #eee;'>Qty</th>
-                        <th style='padding: 12px; border: 1px solid #eee;'>Product</th>
-                        <th style='padding: 12px; border: 1px solid #eee;'>Design</th>
-                        <th style='padding: 12px; border: 1px solid #eee;'>Category</th>
-                        <th style='padding: 12px; border: 1px solid #eee;'>Size</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {$itemsHtml}
-                </tbody>
-            </table>
-
-            <p style='font-size: 18px; font-weight: bold; text-align: right; color: #C9A24D; margin-bottom: 30px;'>
-                Total Quote: £" . number_format((float) ($data['total'] ?? 0), 2) . "
-            </p>
-
-            <p style='font-size: 14px; color: #666; text-align: center; margin-top: 20px;'>
-                Bear Lane Studio
-            </p>
-        </div>";
+            return [
+                'quantity' => max(1, (int) ($item['quantity'] ?? 1)),
+                'productType' => (string) ($item['productType'] ?? ''),
+                'productGroup' => (string) ($item['productGroup'] ?? ''),
+                'productKey' => (string) ($item['productKey'] ?? ''),
+                'designType' => (string) ($item['designType'] ?? ''),
+                'sizeCategory' => (string) ($item['sizeCategory'] ?? ''),
+                'size' => (string) ($item['size'] ?? ''),
+                'unitPrice' => isset($item['unitPrice']) && is_numeric($item['unitPrice']) ? (float) $item['unitPrice'] : null,
+                'price' => isset($item['price']) && is_numeric($item['price']) ? (float) $item['price'] : null,
+            ];
+        }, $items));
     }
 }

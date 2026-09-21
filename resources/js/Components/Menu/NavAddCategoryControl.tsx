@@ -3,6 +3,19 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Plus, X } from "lucide-react";
 import { useCategoryEditorLock } from "@/Components/Menu/CategoryAdminControls";
+import { invalidateCategoryMenu } from "@/Components/Menu/GenericCategorySidebar";
+
+type MenuNode = { id: number; name: string; slug: string; children?: MenuNode[] };
+type FlatNode = { id: number; label: string; depth: number };
+
+const flattenTree = (node: MenuNode | null | undefined, depth = 0): FlatNode[] => {
+  if (!node) return [];
+  const children = Array.isArray(node.children) ? node.children : [];
+  return children.flatMap((child) => [
+    { id: child.id, label: `${"—".repeat(depth + 1)} ${child.name}`, depth: depth + 1 },
+    ...flattenTree(child, depth + 1),
+  ]);
+};
 
 // The nav bar's top-level sections are fixed, so a category added from here is
 // always created underneath one of them.
@@ -29,6 +42,9 @@ export default function NavAddCategoryControl({ variant = "desktop", onSaved }: 
   const [section, setSection] = useState<SectionKey>("women");
   const [name, setName] = useState("");
   const [rootIds, setRootIds] = useState<Partial<Record<SectionKey, number>> | null>(null);
+  const [sectionTrees, setSectionTrees] = useState<Partial<Record<SectionKey, FlatNode[]>>>({});
+  // "" means directly under the section root; otherwise the id of the chosen parent.
+  const [underId, setUnderId] = useState<string>("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
@@ -49,15 +65,19 @@ export default function NavAddCategoryControl({ variant = "desktop", onSaved }: 
         });
         if (!response.ok) throw new Error("Unable to load sections.");
 
-        const payload = (await response.json()) as Record<string, { tree?: { id?: number } | null }>;
+        const payload = (await response.json()) as Record<string, { tree?: MenuNode | null }>;
         if (cancelled) return;
 
         const resolved: Partial<Record<SectionKey, number>> = {};
+        const trees: Partial<Record<SectionKey, FlatNode[]>> = {};
         SECTIONS.forEach((key) => {
-          const id = payload?.[key]?.tree?.id;
+          const tree = payload?.[key]?.tree ?? null;
+          const id = tree?.id;
           if (typeof id === "number") resolved[key] = id;
+          trees[key] = flattenTree(tree);
         });
         setRootIds(resolved);
+        setSectionTrees(trees);
       } catch (loadError) {
         if (!cancelled) {
           setError(loadError instanceof Error ? loadError.message : "Unable to load sections.");
@@ -73,6 +93,7 @@ export default function NavAddCategoryControl({ variant = "desktop", onSaved }: 
   const close = () => {
     setOpen(false);
     setName("");
+    setUnderId("");
     setError(null);
   };
 
@@ -94,8 +115,11 @@ export default function NavAddCategoryControl({ variant = "desktop", onSaved }: 
     };
   }, [open]);
 
-  const parentId = rootIds ? rootIds[section] : undefined;
-  const missingSection = Boolean(rootIds) && parentId === undefined;
+  const rootId = rootIds ? rootIds[section] : undefined;
+  const parentId = underId !== "" ? Number(underId) : rootId;
+  const missingSection = Boolean(rootIds) && rootId === undefined;
+  const underOptions = sectionTrees[section] ?? [];
+  const underLabel = underId !== "" ? underOptions.find((node) => String(node.id) === underId)?.label.replace(/^—+\s*/, "") : null;
   const canSave = useMemo(
     () => name.trim() !== "" && typeof parentId === "number" && !saving,
     [name, parentId, saving],
@@ -121,6 +145,8 @@ export default function NavAddCategoryControl({ variant = "desktop", onSaved }: 
       });
       if (!response.ok) throw new Error("Unable to add category.");
 
+      invalidateCategoryMenu();
+      setRootIds(null); // re-fetch the tree so the new node is offered next time
       close();
       await onSaved?.();
     } catch (saveError) {
@@ -175,12 +201,31 @@ export default function NavAddCategoryControl({ variant = "desktop", onSaved }: 
               Add to
               <select
                 value={section}
-                onChange={(event) => setSection(event.target.value as SectionKey)}
+                onChange={(event) => {
+                  setSection(event.target.value as SectionKey);
+                  setUnderId("");
+                }}
                 className="mt-1 w-full rounded-lg border border-[#DCC99D] bg-white px-2 py-1.5 text-sm text-[#2B2417]"
               >
                 {SECTIONS.map((key) => (
                   <option key={key} value={key}>
                     {LABELS[key]}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="block text-[11px] font-medium text-[#6F5319]">
+              Under
+              <select
+                value={underId}
+                onChange={(event) => setUnderId(event.target.value)}
+                className="mt-1 w-full rounded-lg border border-[#DCC99D] bg-white px-2 py-1.5 text-sm text-[#2B2417]"
+              >
+                <option value="">{LABELS[section]} (top level)</option>
+                {underOptions.map((node) => (
+                  <option key={node.id} value={String(node.id)}>
+                    {node.label}
                   </option>
                 ))}
               </select>
@@ -209,7 +254,7 @@ export default function NavAddCategoryControl({ variant = "desktop", onSaved }: 
               disabled={!canSave}
               className="w-full rounded-lg border border-[#D7BE84] bg-[#FFF6DF] px-2 py-1.5 text-xs font-semibold uppercase tracking-wide text-[#7B6530] transition hover:border-[#D4AF37] hover:text-[#D4AF37] disabled:opacity-50"
             >
-              {saving ? "Saving…" : `Add to ${LABELS[section]}`}
+              {saving ? "Saving…" : `Add to ${underLabel ?? LABELS[section]}`}
             </button>
           </form>
         </div>

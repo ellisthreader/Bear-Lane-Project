@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Mail\AdminEventMail;
 use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
@@ -70,6 +71,50 @@ class AdminNotificationService
             } catch (\Throwable $exception) {
                 Log::warning('Admin event email failed', [
                     'event_key' => $eventKey,
+                    'recipient' => $recipientEmail,
+                    'error' => $exception->getMessage(),
+                ]);
+            }
+        }
+    }
+
+    /**
+     * Send a rich, Blade-rendered admin notification (one email per admin).
+     *
+     * @param array<string, mixed> $data View data; 'adminName' and 'logoUrl' are added per recipient.
+     */
+    public function sendAdminEventView(
+        string $eventKey,
+        string $subject,
+        string $view,
+        array $data,
+        ?int $excludeUserId = null
+    ): void {
+        if (!$this->emailEnabled($eventKey)) {
+            return;
+        }
+
+        $admins = $this->adminRecipients($excludeUserId);
+        if ($admins->isEmpty()) {
+            return;
+        }
+
+        foreach ($admins as $admin) {
+            $recipientEmail = trim((string) $admin->email);
+            if ($recipientEmail === '') {
+                continue;
+            }
+
+            try {
+                Mail::to($recipientEmail)->send(new AdminEventMail($eventKey, $subject, $view, [
+                    ...$data,
+                    'adminName' => (string) ($admin->name ?: $admin->username ?: 'Admin'),
+                    'logoUrl' => asset('images/BLText.png'),
+                ]));
+            } catch (\Throwable $exception) {
+                Log::warning('Admin event view email failed', [
+                    'event_key' => $eventKey,
+                    'view' => $view,
                     'recipient' => $recipientEmail,
                     'error' => $exception->getMessage(),
                 ]);

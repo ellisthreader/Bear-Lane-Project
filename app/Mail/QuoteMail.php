@@ -6,6 +6,10 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
 
+/**
+ * Legacy mailable kept for backwards compatibility. Renders the redesigned
+ * customer quote template.
+ */
 class QuoteMail extends Mailable
 {
     use Queueable, SerializesModels;
@@ -13,24 +17,26 @@ class QuoteMail extends Mailable
     public $name;
     public $items;
     public $total;
+    public $quoteNumber;
 
-    /**
-     * Create a new message instance.
-     */
-    public function __construct($name, $items, $total)
+    public function __construct($name, $items, $total, $quoteNumber = '')
     {
         $this->name = $name;
         $this->items = $items;
         $this->total = $total;
+        $this->quoteNumber = $quoteNumber;
     }
 
-    /**
-     * Build the message.
-     */
     public function build()
     {
         return $this->from(config('mail.from.address'), config('mail.from.name'))
-                    ->subject('Your Quote')
-                    ->view('emails.quote'); // Blade template
+            ->subject('Your Bear Lane quote' . ($this->quoteNumber !== '' ? ' #' . $this->quoteNumber : ''))
+            ->view('emails.quotes.instant-customer', [
+                'name' => (string) $this->name,
+                'items' => (array) $this->items,
+                'total' => (float) $this->total,
+                'quoteNumber' => (string) $this->quoteNumber,
+                'quoteDate' => now(),
+            ]);
     }
 }

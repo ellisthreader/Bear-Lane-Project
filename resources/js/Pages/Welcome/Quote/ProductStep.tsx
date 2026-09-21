@@ -1,9 +1,15 @@
 import React, { useState, useEffect } from "react";
 import { QuoteItem } from "./GetQuoteInstantly";
+import { catalogItemId, type QuoteCatalog, type QuoteCatalogItem } from "./quoteCatalog";
 
 type Props = {
-  productType: string;
-  setProductType: (v: string) => void;
+  catalog: QuoteCatalog | null;
+  catalogLoading: boolean;
+  catalogError: string | null;
+  onRetryCatalog: () => void;
+  productId: string;
+  setProductId: (v: string) => void;
+  selectedItem: QuoteCatalogItem | null;
   quantity: number;
   setQuantity: (v: number) => void;
   sizeCategory: string;
@@ -18,8 +24,13 @@ type Props = {
 };
 
 export default function ProductStep({
-  productType,
-  setProductType,
+  catalog,
+  catalogLoading,
+  catalogError,
+  onRetryCatalog,
+  productId,
+  setProductId,
+  selectedItem,
   quantity,
   setQuantity,
   sizeCategory,
@@ -35,10 +46,13 @@ export default function ProductStep({
   const [showProductForm, setShowProductForm] = useState(items.length === 0);
   const gold = "#C9A24D";
 
+  const groups = catalog?.groups ?? [];
+  const catalogEmpty = !catalogLoading && !catalogError && groups.length === 0;
+
   /* RESET WHEN FORM OPENS */
   useEffect(() => {
     if (showProductForm) {
-      setProductType("");
+      setProductId("");
       setQuantity(0);
       setSizeCategory("");
       setSize("");
@@ -47,10 +61,13 @@ export default function ProductStep({
 
   /* VALIDATION */
   const isValid =
-    productType.trim() !== "" &&
+    Boolean(selectedItem) &&
     quantity > 0 &&
     sizeCategory.trim() !== "" &&
     size.trim() !== "";
+
+  const selectClass =
+    "w-full rounded-xl border border-gray-200 px-5 py-4 bg-white focus:outline-none focus:ring-2 focus:ring-[#C9A24D] disabled:bg-gray-100";
 
   /* ================= PRODUCT FORM ================= */
   if (showProductForm) {
@@ -66,52 +83,69 @@ export default function ProductStep({
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-10 sm:mb-14">
-          {/* PRODUCT */}
-          <select
-            value={productType}
-            onChange={(e) => setProductType(e.target.value)}
-            className="w-full rounded-xl border border-gray-200 px-5 py-4 bg-white focus:outline-none focus:ring-2 focus:ring-[#C9A24D]"
-          >
-            <option value="" disabled>
-              Select Product
-            </option>
+          {/* PRODUCT (live categories from the admin dashboard) */}
+          <div>
+            {catalogLoading ? (
+              <div
+                className="h-[58px] w-full animate-pulse rounded-xl border border-gray-200 bg-gray-100"
+                aria-busy="true"
+                aria-label="Loading product categories"
+              />
+            ) : catalogError ? (
+              <div className="flex flex-col gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 sm:flex-row sm:items-center sm:justify-between">
+                <span>{catalogError}</span>
+                <button
+                  type="button"
+                  onClick={onRetryCatalog}
+                  className="shrink-0 rounded-lg border border-red-300 bg-white px-3 py-1.5 text-xs font-semibold text-red-700 transition hover:bg-red-100"
+                >
+                  Retry
+                </button>
+              </div>
+            ) : catalogEmpty ? (
+              <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
+                No product categories are set up yet. Please check back soon or speak to a print specialist.
+              </div>
+            ) : (
+              <select
+                value={productId}
+                onChange={(e) => setProductId(e.target.value)}
+                className={selectClass}
+                aria-label="Select product"
+              >
+                <option value="" disabled>
+                  Select Product
+                </option>
 
-            <optgroup label="CLOTHING">
-              <option value="T Shirts">T Shirts</option>
-              <option value="Long sleeve shirts">Long sleeve shirts</option>
-              <option value="Polo tops">Polo tops</option>
-              <option value="Trousers">Trousers</option>
-              <option value="Jeans">Jeans</option>
-              <option value="Joggers">Joggers</option>
-              <option value="Shorts">Shorts</option>
-              <option value="Hoodies">Hoodies</option>
-              <option value="Jackets">Jackets</option>
-              <option value="Quarter Zips">Quarter Zips</option>
-              <option value="Tracksuit">Tracksuit</option>
-              <option value="Nightwear">Nightwear</option>
-            </optgroup>
+                {groups.length === 1
+                  ? groups[0].items.map((item) => (
+                      <option key={catalogItemId(item)} value={catalogItemId(item)}>
+                        {item.label}
+                      </option>
+                    ))
+                  : groups.map((group) => (
+                      <optgroup key={group.key} label={group.label.toUpperCase()}>
+                        {group.items.map((item) => (
+                          <option key={catalogItemId(item)} value={catalogItemId(item)}>
+                            {item.label}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))}
+              </select>
+            )}
 
-            <optgroup label="SPORTS">
-              <option value="Sports uniform">Sports uniform</option>
-              <option value="Sports top">Sports top</option>
-              <option value="Sports bottoms">Sports bottoms</option>
-              <option value="Sports shorts">Sports shorts</option>
-            </optgroup>
-
-            <optgroup label="ACCESSORIES">
-              <option value="Socks">Socks</option>
-              <option value="Boxers">Boxers</option>
-              <option value="Gloves">Gloves</option>
-              <option value="Hats">Hats</option>
-              <option value="Scarves">Scarves</option>
-            </optgroup>
-
-            <optgroup label="OTHER">
-              <option value="Baby bibs">Baby bibs</option>
-              <option value="Bears">Bears</option>
-              <option value="Baby sets">Baby sets</option>
-            </optgroup>
-          </select>
+            {selectedItem ? (
+              <p className="mt-2 flex flex-wrap items-center gap-x-2 text-xs text-gray-500">
+                <span>{selectedItem.path}</span>
+                {selectedItem.base_price !== null ? (
+                  <span className="font-semibold" style={{ color: gold }}>
+                    From £{selectedItem.base_price.toFixed(2)}
+                  </span>
+                ) : null}
+              </p>
+            ) : null}
+          </div>
 
           {/* QUANTITY */}
           <input
@@ -133,7 +167,7 @@ export default function ProductStep({
               setSizeCategory(e.target.value);
               setSize("");
             }}
-            className="w-full rounded-xl border border-gray-200 px-5 py-4 bg-white focus:outline-none focus:ring-2 focus:ring-[#C9A24D]"
+            className={selectClass}
           >
             <option value="" disabled>
               Gender & Age Group
@@ -151,7 +185,7 @@ export default function ProductStep({
             value={size}
             onChange={(e) => setSize(e.target.value)}
             disabled={!sizeCategory}
-            className="w-full rounded-xl border border-gray-200 px-5 py-4 bg-white focus:outline-none focus:ring-2 focus:ring-[#C9A24D] disabled:bg-gray-100"
+            className={selectClass}
           >
             <option value="" disabled>
               Size Group
@@ -168,15 +202,16 @@ export default function ProductStep({
 
         <button
           onClick={() => {
-            if (!isValid) return; // 🚫 Prevent click if invalid
+            if (!isValid || catalogEmpty) return;
             setShowProductForm(false);
             onNext();
           }}
+          disabled={catalogEmpty}
           className="w-full py-3.5 sm:py-5 rounded-2xl text-sm sm:text-base text-white font-semibold tracking-wide transition-all duration-300"
           style={{
             backgroundColor: gold,
-            opacity: isValid ? 1 : 0.6, // optional slight visual cue (still gold)
-            cursor: isValid ? "pointer" : "not-allowed",
+            opacity: isValid && !catalogEmpty ? 1 : 0.6,
+            cursor: isValid && !catalogEmpty ? "pointer" : "not-allowed",
           }}
         >
           Add Product
@@ -205,6 +240,7 @@ export default function ProductStep({
           >
             <div>
               <p className="text-base sm:text-lg font-semibold text-gray-900">
+                {item.productGroup ? `${item.productGroup} → ` : ""}
                 {item.productType}
               </p>
               <p className="text-sm text-gray-600 mt-1">

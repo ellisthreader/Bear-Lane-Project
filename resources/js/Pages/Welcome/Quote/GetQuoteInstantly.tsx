@@ -1,16 +1,26 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import ProductStep from "./ProductStep";
 import PrintStep from "./PrintStep";
 import ContactStep from "./ContactStep";
 import SpeakToPrintSpecialist from "./SpeakToPrintSpecialist";
+import {
+  estimateLinePrice,
+  fetchQuoteCatalog,
+  findCatalogItem,
+  type QuoteCatalog,
+  type QuoteCatalogItem,
+} from "./quoteCatalog";
 
 /* ================= TYPES ================= */
 export type QuoteItem = {
   productType: string;
+  productGroup: string;
+  productKey: string;
   quantity: number;
   designType: string;
   sizeCategory: string;
   size: string;
+  unitPrice: number;
   price: number;
 };
 
@@ -25,71 +35,11 @@ export const sizeOptions: Record<string, string[]> = {
 
 /* ================= PRICE LOGIC ================= */
 export const calculatePrice = (
-  productType: string,
+  item: QuoteCatalogItem | null,
   quantity: number,
   designType: string,
   size: string
-) => {
-  let basePrice = 0;
-
-  const clothingBase: Record<string, number> = {
-    "T Shirts": 10,
-    "Long sleeve shirts": 12,
-    "Polo tops": 14,
-    Trousers: 15,
-    Jeans: 18,
-    Joggers: 12,
-    Shorts: 10,
-    Hoodies: 20,
-    Jackets: 30,
-    "Quater Zips": 28,
-    Nightwear: 15,
-    Tracksuit: 40,
-  };
-
-  const sportsBase: Record<string, number> = {
-    "Sports uniform": 25,
-    "Sports top": 12,
-    "Sports bottoms": 12,
-    "Sports shorts": 10,
-  };
-
-  const accessoriesBase: Record<string, number> = {
-    Socks: 5,
-    Gloves: 8,
-    Hats: 8,
-    Scarves: 7,
-    Boxers: 6,
-  };
-
-  const otherBase: Record<string, number> = {
-    "Baby bibs": 5,
-    Bears: 12,
-    "Baby sets": 20,
-  };
-
-  basePrice =
-    clothingBase[productType] ||
-    sportsBase[productType] ||
-    accessoriesBase[productType] ||
-    otherBase[productType] ||
-    10;
-
-  if (designType === "Custom Design") basePrice *= 1.2;
-  if (designType === "Complex Pattern") basePrice *= 1.5;
-  if (designType === "Text") basePrice *= 0.8;
-  if (designType === "Image") basePrice *= 1.3;
-
-  if (size.includes("XS") || size.includes("2-3") || size.includes("BABY"))
-    basePrice *= 1;
-  else if (size.includes("S")) basePrice *= 1.05;
-  else if (size.includes("M")) basePrice *= 1.1;
-  else if (size.includes("L") || size.includes("XL")) basePrice *= 1.2;
-  else if (size.includes("XXL") || size.includes("12-18M"))
-    basePrice *= 1.3;
-
-  return Math.round(basePrice * quantity);
-};
+) => estimateLinePrice({ basePrice: item?.base_price ?? null, quantity, designType, size });
 
 /* ================= MAIN ================= */
 type GetQuoteInstantlyProps = {
@@ -100,17 +50,66 @@ export default function GetQuoteInstantly({ embedded = false }: GetQuoteInstantl
   const [activeTab, setActiveTab] = useState<"instant" | "specialist">("instant");
   const [step, setStep] = useState<1 | 2 | 3>(1);
 
-  const [productType, setProductType] = useState("T Shirts");
+  // Selected product is the composite catalogue id ("group::key"), never a hard-coded name.
+  const [productId, setProductId] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [designType, setDesignType] = useState("Logo");
   const [sizeCategory, setSizeCategory] = useState("Women");
   const [size, setSize] = useState("XS");
 
   const [items, setItems] = useState<QuoteItem[]>([]);
-  const [total, setTotal] = useState(0);
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+
+  const [catalog, setCatalog] = useState<QuoteCatalog | null>(null);
+  const [catalogLoading, setCatalogLoading] = useState(true);
+  const [catalogError, setCatalogError] = useState<string | null>(null);
+
+  const total = useMemo(() => Math.round(items.reduce((sum, item) => sum + item.price, 0) * 100) / 100, [items]);
+  const selectedItem = useMemo(() => findCatalogItem(catalog, productId), [catalog, productId]);
+
+  const loadCatalog = useCallback(async (silent = false) => {
+    if (!silent) {
+      setCatalogLoading(true);
+      setCatalogError(null);
+    }
+    try {
+      const next = await fetchQuoteCatalog();
+      setCatalog(next);
+      setCatalogError(null);
+    } catch (error) {
+      if (!silent) {
+        setCatalogError(error instanceof Error ? error.message : "Unable to load product categories.");
+      }
+    } finally {
+      if (!silent) setCatalogLoading(false);
+    }
+  }, []);
+
+  // Load once, then refresh whenever the tab regains focus so admin changes appear without a reload.
+  useEffect(() => {
+    void loadCatalog(false);
+
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") {
+        void loadCatalog(true);
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("focus", onVisibility);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("focus", onVisibility);
+    };
+  }, [loadCatalog]);
+
+  // If the admin removed the category currently selected, clear it so it cannot be quoted.
+  useEffect(() => {
+    if (catalog && productId && !findCatalogItem(catalog, productId)) {
+      setProductId("");
+    }
+  }, [catalog, productId]);
 
   const initialInvoiceReference = useMemo(() => {
     if (typeof window === "undefined") return "";
@@ -131,25 +130,31 @@ export default function GetQuoteInstantly({ embedded = false }: GetQuoteInstantl
   }, []);
 
   const addItem = () => {
-    const price = calculatePrice(productType, quantity, designType, size);
+    if (!selectedItem) return;
+
+    const price = calculatePrice(selectedItem, quantity, designType, size);
+    const unitPrice = calculatePrice(selectedItem, 1, designType, size);
 
     setItems((prev) => [
       ...prev,
-      { productType, quantity, designType, sizeCategory, size, price },
+      {
+        productType: selectedItem.label,
+        productGroup: selectedItem.group,
+        productKey: selectedItem.key,
+        quantity,
+        designType,
+        sizeCategory,
+        size,
+        unitPrice,
+        price,
+      },
     ]);
-
-    setTotal((t) => t + price);
 
     setStep(1);
   };
 
   const removeItem = (index: number) => {
-    setItems((prev) => {
-      const updated = [...prev];
-      const removed = updated.splice(index, 1)[0];
-      setTotal((t) => t - removed.price);
-      return updated;
-    });
+    setItems((prev) => prev.filter((_, i) => i !== index));
   };
 
   return (
@@ -196,8 +201,13 @@ export default function GetQuoteInstantly({ embedded = false }: GetQuoteInstantl
             <>
               {step === 1 && (
                 <ProductStep
-                  productType={productType}
-                  setProductType={setProductType}
+                  catalog={catalog}
+                  catalogLoading={catalogLoading}
+                  catalogError={catalogError}
+                  onRetryCatalog={() => void loadCatalog(false)}
+                  productId={productId}
+                  setProductId={setProductId}
+                  selectedItem={selectedItem}
                   quantity={quantity}
                   setQuantity={setQuantity}
                   sizeCategory={sizeCategory}

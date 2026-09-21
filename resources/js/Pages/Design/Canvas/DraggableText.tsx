@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useRef, useLayoutEffect, useState } from "react";
+import React, { useRef, useLayoutEffect, useState, useEffect } from "react";
 import type { TextAlign } from "../Types/Text";
+import { loadDesignFont, toCssFontFamily } from "../constants/designFonts";
 
 type Props = {
   uid: string;
@@ -47,6 +48,19 @@ export default function DraggableText({
 
   const [measured, setMeasured] = useState({ w: 0, h: 0 });
   const lastMeasured = useRef<{ w: number; h: number } | null>(null);
+  const [fontLoadTick, setFontLoadTick] = useState(0);
+
+  // Once the real font file has loaded, measure again so the box matches it
+  // instead of the fallback face the browser painted first.
+  useEffect(() => {
+    let cancelled = false;
+    void loadDesignFont(fontFamily, fontSize).then(() => {
+      if (!cancelled) setFontLoadTick((tick) => tick + 1);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [fontFamily, fontSize]);
 
   const x = pos?.x ?? 0;
   const y = pos?.y ?? 0;
@@ -84,7 +98,7 @@ useLayoutEffect(() => {
   return () => {
     window.cancelAnimationFrame(frame);
   };
-}, [text, fontSize, fontFamily, borderWidth, rotation, flip, textAlign, color, borderColor, uid, onMeasure]);
+}, [text, fontSize, fontFamily, borderWidth, rotation, flip, textAlign, color, borderColor, uid, onMeasure, fontLoadTick]);
 
 
 
@@ -122,7 +136,7 @@ useLayoutEffect(() => {
             ref={measureRef}
             data-text-content="true"
             style={{
-            fontFamily,
+            fontFamily: toCssFontFamily(fontFamily),
             fontSize: `${fontSize}px`,
             whiteSpace: "pre",
             overflowWrap: "normal",

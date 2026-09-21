@@ -2,6 +2,7 @@
 
 import React from "react";
 import type { PricePreviewSnapshot } from "../Canvas/Canvas";
+import { toCssFontFamily } from "../constants/designFonts";
 
 type DesignPreviewProps = {
   snapshot?: PricePreviewSnapshot;
@@ -74,7 +75,7 @@ export default function DesignPreview({
             <div key={layer.uid} style={layerStyle}>
               <span
                 style={{
-                  fontFamily: layer.fontFamily ?? "Arial",
+                  fontFamily: toCssFontFamily(layer.fontFamily ?? "Arial"),
                   fontSize: `${(layer.fontSize ?? 24) * fitScale}px`,
                   whiteSpace: "pre-wrap",
                   color: layer.color ?? "#000000",

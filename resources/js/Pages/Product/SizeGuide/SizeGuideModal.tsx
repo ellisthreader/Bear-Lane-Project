@@ -3,7 +3,7 @@ import { X } from "lucide-react";
 import { useSizeGuide, useSizeGuideData } from "./SizeGuideContext";
 
 export default function SizeGuideModal() {
-  const { isOpen, close, gender } = useSizeGuide();
+  const { isOpen, close } = useSizeGuide();
   const guide = useSizeGuideData();
 
   useEffect(() => {
@@ -41,9 +41,33 @@ export default function SizeGuideModal() {
             <X className="h-4 w-4" />
           </button>
 
-          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#8A6A2F]">{gender.toUpperCase()} Guide</p>
+          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#8A6A2F]">{guide.activeLabel} Guide</p>
           <h2 className="mt-1 text-2xl font-black text-[#271D0F] sm:text-3xl">{guide.heading}</h2>
           <p className="mt-2 max-w-3xl text-sm text-[#5F4D29]">{guide.subtitle}</p>
+
+          {guide.groups.length > 1 ? (
+            <div className="mt-4 flex flex-wrap gap-2" role="tablist" aria-label="Measurement groups">
+              {guide.groups.map((group) => {
+                const active = group.key === guide.activeKey;
+                return (
+                  <button
+                    key={group.key}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => guide.setActiveKey(group.key)}
+                    className={`rounded-full border px-3.5 py-1.5 text-xs font-bold uppercase tracking-[0.08em] transition ${
+                      active
+                        ? "border-[#B08933] bg-[#1F1A13] text-white"
+                        : "border-[#E1D4B8] bg-white/80 text-[#7A5F2A] hover:bg-white"
+                    }`}
+                  >
+                    {group.label}
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
         </header>
 
         <div className="flex-1 space-y-4 overflow-y-auto bg-[#FFFDF9] p-4 sm:p-6">

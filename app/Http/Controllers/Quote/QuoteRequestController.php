@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Quote;
 
 use App\Http\Controllers\Controller;
+use App\Mail\PrintSpecialistRequestMail;
 use App\Models\SupportMessage;
 use App\Services\AdminNotificationService;
 use App\Services\OpenAiModerationService;
@@ -12,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 use App\Models\QuoteRequest;
 
 class QuoteRequestController extends Controller
@@ -110,19 +112,20 @@ class QuoteRequestController extends Controller
             'status' => 'new',
         ]);
 
+        $reference = 'BL-PRINT-' . $quote->id;
+        $invoiceReference = trim((string) $request->input('invoice_reference', ''));
+
         try {
-            Mail::send('emails.quote-request-confirmation', [
-                'name' => (string) $quote->name,
-                'email' => (string) $quote->email,
-                'phone' => (string) ($quote->phone ?? ''),
-                'budget' => (string) ($quote->budget ?? ''),
-                'details' => (string) ($quote->details ?? ''),
-                'reference' => (string) ('BL-PRINT-' . $quote->id),
-            ], function ($message) use ($quote) {
-                $message->to((string) $quote->email)
-                    ->subject('Your Print Specialist Request')
-                    ->from((string) env('MAIL_FROM_ADDRESS'), (string) env('MAIL_FROM_NAME'));
-            });
+            Mail::to((string) $quote->email)->send(new PrintSpecialistRequestMail(
+                (string) $quote->name,
+                (string) $quote->email,
+                (string) ($quote->phone ?? ''),
+                (string) ($quote->budget ?? ''),
+                (string) ($quote->details ?? ''),
+                $reference,
+                $invoiceReference,
+                count($imagePaths),
+            ));
         } catch (\Throwable $exception) {
             Log::error('Quote request confirmation email failed', [
                 'quote_request_id' => $quote->id,
@@ -131,11 +134,26 @@ class QuoteRequestController extends Controller
             ]);
         }
 
-        $adminNotificationService->sendAdminEventEmail(
+        $imageUrls = array_values(array_map(
+            fn (string $path) => Storage::disk('public')->url($path),
+            $imagePaths
+        ));
+
+        $adminNotificationService->sendAdminEventView(
             'quote_request_submitted',
-            'New Print Specialist Request',
-            'New print specialist request submitted',
-            "Reference: BL-PRINT-{$quote->id}\nName: {$quote->name}\nEmail: {$quote->email}\nPhone: {$quote->phone}\nBudget: " . ($quote->budget ?: 'Not provided')
+            'New print specialist request ' . $reference,
+            'emails.quotes.request-admin',
+            [
+                'name' => (string) $quote->name,
+                'email' => (string) $quote->email,
+                'phone' => (string) ($quote->phone ?? ''),
+                'budget' => (string) ($quote->budget ?? ''),
+                'details' => (string) ($quote->details ?? ''),
+                'reference' => $reference,
+                'invoiceReference' => $invoiceReference,
+                'imageUrls' => $imageUrls,
+                'submittedAt' => $quote->created_at,
+            ]
         );
 
         return response()->json([

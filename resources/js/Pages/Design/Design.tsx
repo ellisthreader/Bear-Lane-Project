@@ -13,6 +13,7 @@ import { X } from "lucide-react";
   import UploadSidebar from "./Sidebar/UploadSideBar/UploadSidebar";
   import ChangeProductModal from "./ChangeProduct";
 import Canvas from "./Canvas/Canvas";
+import { loadAllDesignFonts, loadDesignFont } from "./constants/designFonts";
 import { clampPositionAndSize } from "./Canvas/Utils/clampPosition";
 import type { PricePreviewSnapshot } from "./Canvas/Canvas";
 import type {
@@ -1485,9 +1486,23 @@ const pricePanelAvailableSizes = useMemo(
   const loadDiagnosticLoggedRef = useRef(false);
   const lastAppliedPropSelectionKeyRef = useRef<string | null>(null);
 
+  // Warm every editor font on mount so the first font pick renders instantly.
+  useEffect(() => {
+    void loadAllDesignFonts();
+  }, []);
+
   useEffect(() => {
     const payload = (initialSavedDesign as SavedDesign | null)?.payload;
     if (hasAppliedInitialSavedDesign.current || !payload) return;
+
+    // Load the fonts used by the saved design's text layers before they mount.
+    Object.values(payload.viewImageStates ?? {}).forEach((viewState) => {
+      Object.values((viewState ?? {}) as Record<string, ImageState>).forEach((layer) => {
+        if (layer?.type === "text" && layer.fontFamily) {
+          void loadDesignFont(layer.fontFamily, layer.fontSize ?? 24);
+        }
+      });
+    });
 
     const hydratedViewImageStates: Record<ViewKey, Record<string, ImageState>> = {
       front: { ...(payload.viewImageStates?.front ?? {}) },
@@ -2398,8 +2413,18 @@ const handleCanvasSelectionChange = (objects: string[]) => {
 // Update Text Layer
 const updateTextLayer = (uid: string, updates: Partial<ImageState>) => {
   if (!currentImageState[uid]) return;
+  const fontChanged =
+    typeof updates.fontFamily === "string" && updates.fontFamily !== currentImageState[uid].fontFamily;
+  if (fontChanged) {
+    void loadDesignFont(updates.fontFamily);
+  }
   updateCurrentImageState({
-    [uid]: { ...currentImageState[uid], ...updates },
+    [uid]: {
+      ...currentImageState[uid],
+      ...updates,
+      // A new render key forces the text layer to re-measure with the new font.
+      ...(fontChanged ? { renderKey: crypto.randomUUID() } : {}),
+    },
   });
 };
 

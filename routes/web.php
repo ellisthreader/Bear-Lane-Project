@@ -65,8 +65,9 @@ Route::get('/menu/categories', function () {
     $mainCategories = ['women', 'men', 'kids', 'sale'];
     $response = [];
     $categories = Category::query()
+        ->orderBy('sort_order')
         ->orderBy('name')
-        ->get(['id', 'parent_id', 'name', 'slug']);
+        ->get(['id', 'parent_id', 'name', 'slug', 'sort_order']);
     $childrenByParent = $categories->groupBy(
         fn (Category $category) => (string) ($category->parent_id ?? 'root')
     );
@@ -132,6 +133,9 @@ Route::post('/cookie-consent', [CookieConsentController::class, 'store'])->name(
 // Public theme payload used by open storefront tabs to pick up Website Design changes.
 Route::get('/site-design', fn () => response()->json(app(StoreSettingsService::class)->getPublicWebsiteDesign()))
     ->name('site-design');
+
+// Live category catalogue for the "Get Quote Instantly" widget (always reflects the admin's categories).
+Route::get('/quote/catalog', [\App\Http\Controllers\Quote\QuoteCatalogController::class, 'index'])->name('quote.catalog');
 
 Route::get('/', function () {
     $mensTShirtSlugs = [
@@ -593,6 +597,12 @@ Route::middleware(['auth', 'admin', 'admin.activity'])->prefix('admin')->group(f
     Route::put('/other/size-guide', [AdminOtherController::class, 'updateSizeGuide'])->name('admin.other.size-guide.update');
     Route::get('/other/front-page', [AdminOtherController::class, 'frontPage'])->name('admin.other.front-page');
     Route::put('/other/front-page', [AdminOtherController::class, 'updateFrontPage'])->name('admin.other.front-page.update');
+    Route::get('/other/homepage', [AdminOtherController::class, 'homepage'])->name('admin.other.homepage');
+    Route::put('/other/homepage/products', [AdminOtherController::class, 'updateFrontPage'])->name('admin.other.homepage.products');
+    Route::post('/other/homepage/categories', [AdminOtherController::class, 'updateHomepageCategories'])->name('admin.other.homepage.categories');
+    Route::get('/other/delivery', [AdminOtherController::class, 'delivery'])->name('admin.other.delivery');
+    Route::put('/other/delivery', [AdminOtherController::class, 'updateDelivery'])->name('admin.other.delivery.update');
+    Route::get('/other/delivery/carriers', [AdminOtherController::class, 'shippoCarriers'])->name('admin.other.delivery.carriers');
     Route::get('/other/notifications', [AdminOtherController::class, 'notifications'])->name('admin.other.notifications');
     Route::put('/other/notifications', [AdminOtherController::class, 'updateNotifications'])->name('admin.other.notifications.update');
     Route::get('/other/website-design', [AdminOtherController::class, 'websiteDesign'])->name('admin.other.website-design');
@@ -629,6 +639,8 @@ Route::middleware(['auth', 'admin', 'admin.activity'])->prefix('admin')->group(f
     Route::get('/products/create-layout', [AdminProductController::class, 'createLayout'])->name('admin.products.create-layout');
     Route::post('/products/create-layout', [AdminProductController::class, 'storeProductFromLayout'])->name('admin.products.store-layout');
     Route::post('/products/upload-image', [AdminProductController::class, 'uploadImage'])->name('admin.products.upload-image');
+    Route::get('/categories/tree', [AdminProductController::class, 'categoryTree'])->name('admin.categories.tree');
+    Route::patch('/categories/reorder', [AdminProductController::class, 'reorderCategories'])->name('admin.categories.reorder');
     Route::post('/categories', [AdminProductController::class, 'storeCategory']);
     Route::patch('/categories/{category}', [AdminProductController::class, 'updateCategory']);
     Route::delete('/categories/{category}', [AdminProductController::class, 'deleteCategory']);
@@ -1558,3 +1570,11 @@ Route::get('/auth/apple/callback', [OAuthController::class, 'handleAppleCallback
 Route::post('/oauth/send-code', [EmailVerificationController::class, 'sendCode']);
 Route::post('/oauth/verify-code', [EmailVerificationController::class, 'verifyCode']);
 Route::post('/oauth/resend-code', [EmailVerificationController::class, 'resendCode']);
+
+// ---- Personalise (Pick Your Product) ----
+Route::get('/personalise', [\App\Http\Controllers\PersonaliseController::class, 'index'])->name('personalise');
+
+Route::middleware(['auth', 'admin', 'admin.activity'])->prefix('admin')->group(function () {
+    Route::get('/other/personalise', [\App\Http\Controllers\Admin\PersonaliseAdminController::class, 'index'])->name('admin.other.personalise');
+    Route::put('/other/personalise', [\App\Http\Controllers\Admin\PersonaliseAdminController::class, 'update'])->name('admin.other.personalise.update');
+});

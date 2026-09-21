@@ -44,7 +44,7 @@ export default function StartProject() {
             </p>
             <button
               type="button"
-              onClick={() => scrollTo("featured-products")}
+              onClick={() => router.get("/personalise")}
               className="mt-4 inline-flex items-center gap-2 rounded-full border border-[#D7BE84] bg-[#FFF9EA] px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-[#7B6530] transition hover:bg-[#F8E9C9] touch-manipulation"
             >
               Pick your product

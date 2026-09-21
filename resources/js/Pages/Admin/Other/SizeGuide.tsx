@@ -1,292 +1,323 @@
-import React from "react";
-import { Head, Link } from "@inertiajs/react";
-import { ArrowLeft, Plus, Save, Trash2 } from "lucide-react";
-import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
-import AdminTopNav from "@/Components/Admin/AdminTopNav";
+import React, { useMemo, useState } from "react";
+import { toast } from "react-toastify";
+import { Plus, Trash2 } from "lucide-react";
+import { AdminPage, Button, Card, Input, Notice, PlusMinusButton, SaveBar, Select, adminFetch, inputClass } from "@/Components/Admin/ui";
 
-type SizeGuideRow = {
-  size: string;
-  chest: string;
-  length: string;
-  sleeve: string;
-};
+/*
+ * Measurements — one dropdown, one table.
+ *
+ *   Pick the table you want (Men, Women, Kids, Bags, or one you added), edit it,
+ *   save. Product pages pick the right table automatically from its name.
+ */
 
-type SizeGuideSection = {
+type Column = { key: string; label: string };
+
+type Group = {
+  key: string;
+  label: string;
   heading: string;
   subtitle: string;
-  rows: SizeGuideRow[];
-};
-
-type SizeGuideData = {
-  men: SizeGuideSection;
-  women: SizeGuideSection;
-  kids: SizeGuideSection;
+  keywords: string[];
+  category_ids: number[];
+  columns: Column[];
+  rows: Array<Record<string, string>>;
+  is_default: boolean;
+  _id: string;
 };
 
 type Props = {
-  sizeGuide: SizeGuideData;
+  sizeGuide: { groups: Array<Omit<Group, "_id" | "category_ids"> & { category_ids?: number[] }> };
 };
 
-const getCsrfToken = () =>
-  document.querySelector('meta[name="csrf-token"]')?.getAttribute("content") || "";
+let counter = 0;
+const localId = () => `g-${Date.now()}-${counter++}`;
 
-const sectionTabs: Array<{ key: keyof SizeGuideData; label: string }> = [
-  { key: "men", label: "Men" },
-  { key: "women", label: "Women" },
-  { key: "kids", label: "Kids" },
-];
+const slug = (value: string, fallback: string) => {
+  const key = value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return key || fallback;
+};
 
-const newRow = (): SizeGuideRow => ({ size: "", chest: "", length: "", sleeve: "" });
+const withIds = (groups: Props["sizeGuide"]["groups"]): Group[] =>
+  groups.map((group) => ({
+    ...group,
+    keywords: [...(group.keywords ?? [])],
+    category_ids: [...(group.category_ids ?? [])],
+    columns: group.columns.map((column) => ({ ...column })),
+    rows: group.rows.map((row) => ({ ...row })),
+    _id: localId(),
+  }));
 
-export default function SizeGuidePage({ sizeGuide }: Props) {
-  const [form, setForm] = React.useState<SizeGuideData>(sizeGuide);
-  const [activeSection, setActiveSection] = React.useState<keyof SizeGuideData>("men");
-  const [saving, setSaving] = React.useState(false);
-  const [message, setMessage] = React.useState<string | null>(null);
-  const [error, setError] = React.useState<string | null>(null);
+const serialize = (groups: Group[]) => JSON.stringify(groups.map(({ _id, ...rest }) => rest));
 
-  const section = form[activeSection];
+const blankTable = (): Group => ({
+  key: "",
+  label: "",
+  heading: "",
+  subtitle: "",
+  keywords: [],
+  category_ids: [],
+  columns: [
+    { key: "size", label: "Size" },
+    { key: "chest", label: "Chest CM" },
+    { key: "length", label: "Length CM" },
+  ],
+  rows: [
+    { size: "S", chest: "", length: "" },
+    { size: "M", chest: "", length: "" },
+    { size: "L", chest: "", length: "" },
+  ],
+  is_default: false,
+  _id: localId(),
+});
 
-  const updateSectionField = (field: keyof Omit<SizeGuideSection, "rows">, value: string) => {
-    setForm((prev) => ({
-      ...prev,
-      [activeSection]: {
-        ...prev[activeSection],
-        [field]: value,
-      },
-    }));
+/** Words in the table name that product pages use to pick it ("Men's shirts" → men, mens, shirt, shirts). */
+const keywordsFromName = (label: string) => {
+  const words = label
+    .toLowerCase()
+    .replace(/'/g, "")
+    .split(/[^a-z0-9]+/)
+    .filter((word) => word.length > 2);
+  const out = new Set<string>();
+  words.forEach((word) => {
+    out.add(word);
+    if (word.endsWith("s")) out.add(word.slice(0, -1));
+    else out.add(`${word}s`);
+  });
+  return Array.from(out);
+};
+
+export default function SizeGuide({ sizeGuide }: Props) {
+  const [groups, setGroups] = useState<Group[]>(() => withIds(sizeGuide.groups));
+  const [savedSnapshot, setSavedSnapshot] = useState(() => serialize(withIds(sizeGuide.groups)));
+  const [activeId, setActiveId] = useState<string>(() => groups[0]?._id ?? "");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  const active = groups.find((group) => group._id === activeId) ?? groups[0] ?? null;
+  const dirty = useMemo(() => serialize(groups) !== savedSnapshot, [groups, savedSnapshot]);
+
+  const update = (updater: (group: Group) => Group) => {
+    if (!active) return;
+    setGroups((prev) => prev.map((group) => (group._id === active._id ? updater(group) : group)));
   };
 
-  const updateRowField = (rowIndex: number, key: keyof SizeGuideRow, value: string) => {
-    setForm((prev) => {
-      const rows = [...prev[activeSection].rows];
-      rows[rowIndex] = {
-        ...rows[rowIndex],
-        [key]: value,
-      };
+  const addTable = () => {
+    const table = blankTable();
+    setGroups((prev) => [...prev, table]);
+    setActiveId(table._id);
+    setConfirmDelete(false);
+  };
 
-      return {
-        ...prev,
-        [activeSection]: {
-          ...prev[activeSection],
-          rows,
-        },
-      };
+  const deleteTable = () => {
+    if (!active || active.is_default) return;
+    if (!confirmDelete) {
+      setConfirmDelete(true);
+      return;
+    }
+    setConfirmDelete(false);
+    setGroups((prev) => {
+      const next = prev.filter((group) => group._id !== active._id);
+      setActiveId(next[0]?._id ?? "");
+      return next;
     });
   };
 
-  const addRow = () => {
-    setForm((prev) => ({
-      ...prev,
-      [activeSection]: {
-        ...prev[activeSection],
-        rows: [...prev[activeSection].rows, newRow()],
-      },
-    }));
-  };
+  const setHeading = (index: number, label: string) =>
+    update((group) => ({ ...group, columns: group.columns.map((column, i) => (i === index ? { ...column, label } : column)) }));
 
-  const removeRow = (index: number) => {
-    setForm((prev) => ({
-      ...prev,
-      [activeSection]: {
-        ...prev[activeSection],
-        rows: prev[activeSection].rows.filter((_, rowIndex) => rowIndex !== index),
-      },
-    }));
-  };
+  const addColumn = () =>
+    update((group) => {
+      const key = `col-${Date.now().toString(36)}`;
+      return { ...group, columns: [...group.columns, { key, label: "New column" }], rows: group.rows.map((row) => ({ ...row, [key]: "" })) };
+    });
 
-  const handleSave = async () => {
+  const removeColumn = (index: number) =>
+    update((group) => {
+      if (group.columns.length <= 1) return group;
+      const removed = group.columns[index];
+      return {
+        ...group,
+        columns: group.columns.filter((_, i) => i !== index),
+        rows: group.rows.map((row) => {
+          const next = { ...row };
+          delete next[removed.key];
+          return next;
+        }),
+      };
+    });
+
+  const setCell = (rowIndex: number, key: string, value: string) =>
+    update((group) => ({ ...group, rows: group.rows.map((row, i) => (i === rowIndex ? { ...row, [key]: value } : row)) }));
+
+  const addRow = () => update((group) => ({ ...group, rows: [...group.rows, Object.fromEntries(group.columns.map((column) => [column.key, ""]))] }));
+
+  const removeRow = (rowIndex: number) => update((group) => ({ ...group, rows: group.rows.filter((_, i) => i !== rowIndex) }));
+
+  const save = async () => {
+    if (groups.some((group) => !group.label.trim())) {
+      toast.error("Give every table a name.");
+      return;
+    }
     setSaving(true);
-    setMessage(null);
     setError(null);
-
     try {
-      const response = await fetch("/admin/other/size-guide", {
-        method: "PUT",
-        credentials: "same-origin",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-          "X-CSRF-TOKEN": getCsrfToken(),
-          "X-Requested-With": "XMLHttpRequest",
-        },
-        body: JSON.stringify(form),
-      });
-
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(payload.message || "Unable to save size guide.");
-      }
-
-      if (payload.size_guide) {
-        setForm(payload.size_guide as SizeGuideData);
-      }
-      setMessage(payload.message || "Size guide saved.");
-    } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Unable to save size guide.");
+      const payload = {
+        groups: groups.map(({ _id, ...group }, index) => ({
+          ...group,
+          key: group.key || slug(group.label, `table-${index + 1}`),
+          heading: group.heading.trim() || `${group.label.trim()} size guide`,
+          keywords: group.keywords.length ? group.keywords : keywordsFromName(group.label),
+          columns: group.columns.map((column, i) => ({ key: column.key || slug(column.label, `col-${i + 1}`), label: column.label })),
+        })),
+      };
+      const data = await adminFetch<{ size_guide: Props["sizeGuide"]; message?: string }>("/admin/other/size-guide", { method: "PUT", body: payload });
+      const next = withIds(data.size_guide.groups);
+      setGroups(next);
+      setSavedSnapshot(serialize(next));
+      setActiveId((next.find((group) => group.label === active?.label) ?? next[0])?._id ?? "");
+      toast.success(data.message || "Measurements saved.");
+    } catch (saveError) {
+      const message = saveError instanceof Error ? saveError.message : "Unable to save measurements.";
+      setError(message);
+      toast.error(message);
     } finally {
       setSaving(false);
     }
   };
 
+  const discard = () => {
+    const reset = withIds(sizeGuide.groups);
+    setGroups(reset);
+    setSavedSnapshot(serialize(reset));
+    setActiveId(reset[0]?._id ?? "");
+    setError(null);
+  };
+
   return (
-    <AuthenticatedLayout>
-      <Head title="Admin Size Guide" />
-      <AdminTopNav />
+    <AdminPage
+      eyebrow="Other / Measurements"
+      title="Measurements"
+      description="Choose a table, edit it, save. Products use the table that matches their type."
+      backHref="/admin/other"
+      backLabel="Back to Other"
+    >
+      {error ? <Notice tone="error">{error}</Notice> : null}
 
-      <div className="min-h-screen bg-[#FAF8F2] px-4 py-8 text-[#2D2515] sm:px-8">
-        <div className="mx-auto w-full max-w-7xl space-y-5">
-          <div className="rounded-3xl border border-[#E5D4AF] bg-white p-6 shadow-sm">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#8A6D2B]">OTHER / SIZE GUIDE</p>
-                <h1 className="mt-1 text-2xl font-bold">Size Guide Management</h1>
-                <p className="mt-1 text-sm text-[#6B5A34]">Edit size tables for men, women, and kids shown on product pages.</p>
-              </div>
-              <Link
-                href="/admin/other"
-                className="inline-flex items-center gap-2 rounded-xl border border-[#D6BB80] bg-white px-4 py-2 text-sm font-semibold text-[#7D6228] hover:border-[#C29A4F]"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Back
-              </Link>
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-[#E4D2AA] bg-white p-5 shadow-sm">
-            <div className="flex flex-wrap gap-2">
-              {sectionTabs.map((tab) => (
-                <button
-                  key={tab.key}
-                  type="button"
-                  onClick={() => setActiveSection(tab.key)}
-                  className={`rounded-xl border px-4 py-2 text-sm font-semibold transition ${
-                    activeSection === tab.key
-                      ? "border-[#D1B46F] bg-[#FFF3D6] text-[#6A541F]"
-                      : "border-[#E7DBC3] bg-white text-[#6B5A34]"
-                  }`}
-                >
-                  {tab.label}
-                </button>
+      <Card>
+        {/* Which table --------------------------------------------------- */}
+        <div className="flex flex-wrap items-end gap-3">
+          <label className="block min-w-[240px] flex-1">
+            <span className="mb-1 block text-[11px] font-bold uppercase tracking-[0.1em] text-[#6B5A34]">Which table?</span>
+            <Select
+              value={active?._id ?? ""}
+              onChange={(event) => {
+                setActiveId(event.target.value);
+                setConfirmDelete(false);
+              }}
+              className="h-12 text-base font-bold"
+            >
+              {groups.map((group) => (
+                <option key={group._id} value={group._id}>
+                  {group.label || "New table (unnamed)"}
+                </option>
               ))}
-            </div>
+            </Select>
+          </label>
+          <Button variant="primary" size="md" icon={<Plus className="h-4 w-4" />} onClick={addTable}>
+            New table
+          </Button>
+          {active && !active.is_default ? (
+            <Button variant={confirmDelete ? "danger" : "dangerGhost"} size="md" icon={<Trash2 className="h-4 w-4" />} onClick={deleteTable} onBlur={() => setConfirmDelete(false)}>
+              {confirmDelete ? "Delete this table?" : "Delete table"}
+            </Button>
+          ) : null}
+        </div>
 
-            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+        {active ? (
+          <>
+            {/* Name -------------------------------------------------------- */}
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
               <label className="block">
-                <span className="mb-1 block text-sm font-medium text-[#5F4C2A]">Heading</span>
-                <input
-                  type="text"
-                  value={section.heading}
-                  onChange={(event) => updateSectionField("heading", event.target.value)}
-                  className="w-full rounded-xl border border-[#DCC99D] bg-white px-3 py-2 text-sm"
+                <span className="mb-1 block text-[11px] font-bold uppercase tracking-[0.1em] text-[#6B5A34]">Table name</span>
+                <Input
+                  value={active.label}
+                  onChange={(event) => update((group) => ({ ...group, label: event.target.value }))}
+                  placeholder="e.g. Men's shirts"
+                  autoFocus={!active.label}
                 />
               </label>
               <label className="block">
-                <span className="mb-1 block text-sm font-medium text-[#5F4C2A]">Subtitle</span>
-                <input
-                  type="text"
-                  value={section.subtitle}
-                  onChange={(event) => updateSectionField("subtitle", event.target.value)}
-                  className="w-full rounded-xl border border-[#DCC99D] bg-white px-3 py-2 text-sm"
-                />
+                <span className="mb-1 block text-[11px] font-bold uppercase tracking-[0.1em] text-[#6B5A34]">Title customers see (optional)</span>
+                <Input value={active.heading} onChange={(event) => update((group) => ({ ...group, heading: event.target.value }))} placeholder={`${active.label || "Men's shirts"} size guide`} />
               </label>
             </div>
 
-            <div className="mt-5 overflow-x-auto rounded-xl border border-[#E8D8B5]">
-              <table className="min-w-full border-collapse text-sm">
+            {/* The table --------------------------------------------------- */}
+            <div className="mt-5 overflow-x-auto rounded-2xl border border-[#EBE2CF] bg-[#FFFDF8] p-3">
+              <table className="w-full min-w-[520px] border-separate border-spacing-1.5">
                 <thead>
-                  <tr className="bg-[#FBF4E5] text-left text-xs uppercase tracking-[0.1em] text-[#6A5530]">
-                    <th className="px-3 py-2">Size</th>
-                    <th className="px-3 py-2">Chest CM</th>
-                    <th className="px-3 py-2">Waist CM</th>
-                    <th className="px-3 py-2">Arm Length CM</th>
-                    <th className="px-3 py-2">Action</th>
+                  <tr>
+                    {active.columns.map((column, index) => (
+                      <th key={index} className="text-left">
+                        <div className="flex items-center gap-1">
+                          <input
+                            value={column.label}
+                            onChange={(event) => setHeading(index, event.target.value)}
+                            className={`${inputClass} h-10 bg-[#F6EFDF] py-1 text-[11px] font-bold uppercase tracking-[0.08em] text-[#6B5A34]`}
+                            aria-label={`Column ${index + 1} heading`}
+                          />
+                          {active.columns.length > 1 ? <PlusMinusButton mode="remove" size="sm" label="Remove column" onClick={() => removeColumn(index)} /> : null}
+                        </div>
+                      </th>
+                    ))}
+                    <th className="w-12 text-left">
+                      <PlusMinusButton mode="add" size="sm" label="Add column" onClick={addColumn} />
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {section.rows.map((row, index) => (
-                    <tr key={`${activeSection}-${index}`} className="border-t border-[#F2EBDD]">
-                      <td className="px-3 py-2">
-                        <input
-                          type="text"
-                          value={row.size}
-                          onChange={(event) => updateRowField(index, "size", event.target.value)}
-                          className="w-full rounded-lg border border-[#DCC99D] bg-white px-2 py-1.5"
-                        />
-                      </td>
-                      <td className="px-3 py-2">
-                        <input
-                          type="text"
-                          value={row.chest}
-                          onChange={(event) => updateRowField(index, "chest", event.target.value)}
-                          className="w-full rounded-lg border border-[#DCC99D] bg-white px-2 py-1.5"
-                        />
-                      </td>
-                      <td className="px-3 py-2">
-                        <input
-                          type="text"
-                          value={row.length}
-                          onChange={(event) => updateRowField(index, "length", event.target.value)}
-                          className="w-full rounded-lg border border-[#DCC99D] bg-white px-2 py-1.5"
-                        />
-                      </td>
-                      <td className="px-3 py-2">
-                        <input
-                          type="text"
-                          value={row.sleeve}
-                          onChange={(event) => updateRowField(index, "sleeve", event.target.value)}
-                          className="w-full rounded-lg border border-[#DCC99D] bg-white px-2 py-1.5"
-                        />
-                      </td>
-                      <td className="px-3 py-2">
-                        <button
-                          type="button"
-                          onClick={() => removeRow(index)}
-                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-red-200 text-red-600"
-                          aria-label="Delete row"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
+                  {active.rows.map((row, rowIndex) => (
+                    <tr key={rowIndex}>
+                      {active.columns.map((column, colIndex) => (
+                        <td key={colIndex}>
+                          <input
+                            value={row[column.key] ?? ""}
+                            onChange={(event) => setCell(rowIndex, column.key, event.target.value)}
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter" && rowIndex === active.rows.length - 1 && colIndex === active.columns.length - 1) {
+                                event.preventDefault();
+                                addRow();
+                              }
+                            }}
+                            className={`${inputClass} h-11 py-1.5 ${colIndex === 0 ? "font-semibold" : ""}`}
+                            aria-label={`${column.label} row ${rowIndex + 1}`}
+                          />
+                        </td>
+                      ))}
+                      <td>
+                        <PlusMinusButton mode="remove" size="sm" label={`Remove row ${rowIndex + 1}`} onClick={() => removeRow(rowIndex)} />
                       </td>
                     </tr>
                   ))}
-                  {section.rows.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} className="px-3 py-6 text-center text-sm text-[#6B5A34]">
-                        No rows added yet.
-                      </td>
-                    </tr>
-                  ) : null}
                 </tbody>
               </table>
-            </div>
-
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-              <button
-                type="button"
-                onClick={addRow}
-                className="inline-flex items-center gap-2 rounded-xl border border-[#D6BB80] bg-white px-4 py-2 text-sm font-semibold text-[#7D6228] hover:border-[#C29A4F]"
-              >
-                <Plus className="h-4 w-4" />
+              <Button size="sm" icon={<Plus className="h-3.5 w-3.5" />} onClick={addRow} className="mt-2">
                 Add row
-              </button>
-
-              <button
-                type="button"
-                onClick={handleSave}
-                disabled={saving}
-                className="inline-flex items-center gap-2 rounded-xl bg-[#C6A75E] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#B8994E] disabled:opacity-70"
-              >
-                <Save className="h-4 w-4" />
-                {saving ? "Saving..." : "Save Size Guide"}
-              </button>
+              </Button>
             </div>
+            <p className="mt-3 text-xs text-[#8F8060]">Tip: press Enter in the last cell to start a new row. Use + and − to add or remove columns and rows.</p>
+          </>
+        ) : (
+          <Notice className="mt-4">No tables yet. Press "New table" to add one.</Notice>
+        )}
+      </Card>
 
-            {message ? <p className="mt-3 text-sm text-emerald-700">{message}</p> : null}
-            {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
-          </div>
-        </div>
-      </div>
-    </AuthenticatedLayout>
+      <SaveBar dirty={dirty} saving={saving} onSave={save} onDiscard={discard} label="Save measurements" note="Applies to product pages as soon as you save." />
+    </AdminPage>
   );
 }

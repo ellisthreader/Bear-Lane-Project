@@ -48,10 +48,13 @@ export default function ContactStep({
       // Map all items including price
       const itemsWithDetails = items.map((item) => ({
         productType: item.productType,
+        productGroup: item.productGroup,
+        productKey: item.productKey,
         quantity: item.quantity ?? 1,
         designType: item.designType,
         sizeCategory: item.sizeCategory,
         size: item.size,
+        unitPrice: item.unitPrice,
         price: item.price,
       }));
       const recaptchaToken = await executeRecaptcha("instant_quote");
@@ -255,7 +258,8 @@ export default function ContactStep({
                     className="bg-[#FAF7ED] border border-[#EFE3C3] rounded-2xl p-4 sm:p-5"
                   >
                       <p className="font-semibold text-gray-900 text-lg">
-                        {item.quantity ?? 1} × {item.productType}
+                        {item.quantity ?? 1} × {item.productGroup ? `${item.productGroup} → ` : ""}
+                        {item.productType}
                       </p>
                       <p className="text-sm text-gray-500 mt-1">
                         {item.designType}, {item.sizeCategory}: {item.size}

@@ -26,44 +26,64 @@ class AdminOtherController extends Controller
         return Inertia::render('Admin/Other/OtherIndex', [
             'sections' => [
                 [
-                    'title' => 'Prices',
-                    'description' => 'Configure printing pricing rules.',
-                    'href' => '/admin/other/prices',
+                    'title' => 'Homepage',
+                    'description' => 'Category circles, featured products and pre-made design rails on the homepage.',
+                    'href' => '/admin/other/homepage',
+                    'group' => 'Storefront',
                 ],
                 [
-                    'title' => 'Discount Codes',
-                    'description' => 'Create, update, and deactivate checkout discount codes.',
-                    'href' => '/admin/other/discount-codes',
-                ],
-                [
-                    'title' => 'Site Settings',
-                    'description' => 'Edit brand-level site details, assets, and maintenance mode.',
-                    'href' => '/admin/other/site-settings',
-                ],
-                [
-                    'title' => 'Tax Settings',
-                    'description' => 'Set VAT/tax behaviour for checkout across the store.',
-                    'href' => '/admin/other/tax-settings',
-                ],
-                [
-                    'title' => 'Size Guide',
-                    'description' => 'Maintain men, women, and kids measurement tables.',
-                    'href' => '/admin/other/size-guide',
-                ],
-                [
-                    'title' => 'Front Page',
-                    'description' => 'Control featured products and pre-made design cards on the homepage.',
-                    'href' => '/admin/other/front-page',
-                ],
-                [
-                    'title' => 'Notifications',
-                    'description' => 'Configure which admin alerts appear on-site and which trigger email delivery.',
-                    'href' => '/admin/other/notifications',
+                    'title' => 'Personalise Products',
+                    'description' => 'Choose which products customers can pick and personalise from the homepage.',
+                    'href' => '/admin/other/personalise',
+                    'group' => 'Storefront',
                 ],
                 [
                     'title' => 'Website Design',
                     'description' => 'Change storefront colours, fonts, and imagery with a live preview.',
                     'href' => '/admin/other/website-design',
+                    'group' => 'Storefront',
+                ],
+                [
+                    'title' => 'Delivery & Carriers',
+                    'description' => 'Delivery methods, prices, carriers and parcel options.',
+                    'href' => '/admin/other/delivery',
+                    'group' => 'Products & Delivery',
+                ],
+                [
+                    'title' => 'Measurements',
+                    'description' => 'Size and measurement tables for clothing, kids and bags.',
+                    'href' => '/admin/other/size-guide',
+                    'group' => 'Products & Delivery',
+                ],
+                [
+                    'title' => 'Prices',
+                    'description' => 'Configure printing pricing rules.',
+                    'href' => '/admin/other/prices',
+                    'group' => 'Pricing',
+                ],
+                [
+                    'title' => 'Discount Codes',
+                    'description' => 'Create, update, and deactivate checkout discount codes.',
+                    'href' => '/admin/other/discount-codes',
+                    'group' => 'Pricing',
+                ],
+                [
+                    'title' => 'Tax Settings',
+                    'description' => 'Set VAT/tax behaviour for checkout across the store.',
+                    'href' => '/admin/other/tax-settings',
+                    'group' => 'Pricing',
+                ],
+                [
+                    'title' => 'Site Settings',
+                    'description' => 'Edit brand-level site details, assets, and maintenance mode.',
+                    'href' => '/admin/other/site-settings',
+                    'group' => 'Store',
+                ],
+                [
+                    'title' => 'Notifications',
+                    'description' => 'Configure which admin alerts appear on-site and which trigger email delivery.',
+                    'href' => '/admin/other/notifications',
+                    'group' => 'Store',
                 ],
             ],
         ]);
@@ -259,35 +279,43 @@ class AdminOtherController extends Controller
 
     public function sizeGuide(): Response
     {
+        $categories = \App\Models\Category::query()
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get(['id', 'name', 'slug', 'parent_id'])
+            ->map(fn (\App\Models\Category $category) => [
+                'id' => (int) $category->id,
+                'name' => (string) $category->name,
+                'slug' => (string) $category->slug,
+                'parent_id' => $category->parent_id ? (int) $category->parent_id : null,
+            ])
+            ->values()
+            ->all();
+
         return Inertia::render('Admin/Other/SizeGuide', [
             'sizeGuide' => $this->settings->getSizeGuide(),
+            'categories' => $categories,
         ]);
     }
 
     public function updateSizeGuide(Request $request): JsonResponse|RedirectResponse
     {
         $validated = $request->validate([
-            'men.heading' => ['required', 'string', 'max:160'],
-            'men.subtitle' => ['nullable', 'string', 'max:400'],
-            'men.rows' => ['required', 'array'],
-            'men.rows.*.size' => ['nullable', 'string', 'max:60'],
-            'men.rows.*.chest' => ['nullable', 'string', 'max:60'],
-            'men.rows.*.length' => ['nullable', 'string', 'max:60'],
-            'men.rows.*.sleeve' => ['nullable', 'string', 'max:60'],
-            'women.heading' => ['required', 'string', 'max:160'],
-            'women.subtitle' => ['nullable', 'string', 'max:400'],
-            'women.rows' => ['required', 'array'],
-            'women.rows.*.size' => ['nullable', 'string', 'max:60'],
-            'women.rows.*.chest' => ['nullable', 'string', 'max:60'],
-            'women.rows.*.length' => ['nullable', 'string', 'max:60'],
-            'women.rows.*.sleeve' => ['nullable', 'string', 'max:60'],
-            'kids.heading' => ['required', 'string', 'max:160'],
-            'kids.subtitle' => ['nullable', 'string', 'max:400'],
-            'kids.rows' => ['required', 'array'],
-            'kids.rows.*.size' => ['nullable', 'string', 'max:60'],
-            'kids.rows.*.chest' => ['nullable', 'string', 'max:60'],
-            'kids.rows.*.length' => ['nullable', 'string', 'max:60'],
-            'kids.rows.*.sleeve' => ['nullable', 'string', 'max:60'],
+            'groups' => ['required', 'array', 'min:1', 'max:20'],
+            'groups.*.key' => ['nullable', 'string', 'max:60'],
+            'groups.*.label' => ['required', 'string', 'max:80'],
+            'groups.*.heading' => ['nullable', 'string', 'max:160'],
+            'groups.*.subtitle' => ['nullable', 'string', 'max:400'],
+            'groups.*.category_ids' => ['nullable', 'array', 'max:200'],
+            'groups.*.category_ids.*' => ['integer'],
+            'groups.*.keywords' => ['nullable', 'array', 'max:30'],
+            'groups.*.keywords.*' => ['nullable', 'string', 'max:40'],
+            'groups.*.columns' => ['required', 'array', 'min:1', 'max:8'],
+            'groups.*.columns.*.key' => ['nullable', 'string', 'max:60'],
+            'groups.*.columns.*.label' => ['required', 'string', 'max:60'],
+            'groups.*.rows' => ['nullable', 'array', 'max:60'],
+            'groups.*.rows.*' => ['nullable', 'array'],
+            'groups.*.rows.*.*' => ['nullable', 'string', 'max:60'],
         ]);
 
         $sizeGuide = $this->settings->saveSizeGuide($validated);
@@ -296,16 +324,258 @@ class AdminOtherController extends Controller
             return response()->json([
                 'success' => true,
                 'size_guide' => $sizeGuide,
-                'message' => 'Size guide updated.',
+                'message' => 'Measurements saved.',
             ]);
         }
 
-        return back()->with('success', 'Size guide updated.');
+        return back()->with('success', 'Measurements saved.');
     }
 
-    public function frontPage(): Response
+    public function frontPage(Request $request): RedirectResponse
     {
-        $products = Product::query()
+        $tab = (string) $request->query('tab', '');
+        $target = '/admin/other/homepage' . ($tab !== '' ? '?tab=' . urlencode($tab) : '');
+
+        return redirect($target);
+    }
+
+    public function homepage(): Response
+    {
+        return Inertia::render('Admin/Other/Homepage', [
+            'frontPage' => $this->settings->getFrontPageProducts(),
+            'homepageCategories' => $this->settings->getHomepageCategories()['items'],
+            'products' => $this->productLibrary(),
+            'categoryLinks' => $this->categoryLinkOptions(),
+            'maxCategories' => StoreSettingsService::HOMEPAGE_CATEGORY_MAX,
+        ]);
+    }
+
+    /**
+     * Saves the homepage category circles. Sent as multipart so new images can be
+     * uploaded in the same request: `items` is a JSON list where an item may carry
+     * `upload_key` pointing at a file in `uploads[<key>]`.
+     */
+    public function updateHomepageCategories(Request $request): JsonResponse
+    {
+        $request->validate([
+            'items' => ['required', 'string', 'max:20000'],
+            'uploads' => ['nullable', 'array', 'max:' . StoreSettingsService::HOMEPAGE_CATEGORY_MAX],
+            'uploads.*' => ['file', 'mimetypes:image/jpeg,image/png,image/webp,image/avif,image/gif', 'max:8192'],
+        ]);
+
+        $decoded = json_decode((string) $request->input('items'), true);
+        if (!is_array($decoded)) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'items' => 'The category list is invalid.',
+            ]);
+        }
+
+        $existing = collect($this->settings->getHomepageCategories()['items'])->keyBy('id');
+        $keptPaths = [];
+        $items = [];
+
+        foreach (array_slice($decoded, 0, StoreSettingsService::HOMEPAGE_CATEGORY_MAX) as $entry) {
+            if (!is_array($entry)) {
+                continue;
+            }
+            $id = trim((string) ($entry['id'] ?? ''));
+            $name = trim((string) ($entry['name'] ?? ''));
+            if ($name === '') {
+                continue;
+            }
+
+            $current = $id !== '' ? $existing->get($id) : null;
+            $imagePath = (string) ($current['image_path'] ?? '');
+
+            $uploadKey = trim((string) ($entry['upload_key'] ?? ''));
+            if ($uploadKey !== '' && $request->hasFile("uploads.{$uploadKey}")) {
+                $file = $request->file("uploads.{$uploadKey}");
+                if ($file) {
+                    $imagePath = $file->store('settings/homepage', 'public');
+                }
+            } elseif (!empty($entry['image_path']) && is_string($entry['image_path'])) {
+                // Allow re-pointing at a bundled image (e.g. images/Category/x.jpg) but never at arbitrary paths.
+                $candidate = ltrim(trim($entry['image_path']), '/');
+                if ($candidate === (string) ($current['image_path'] ?? '') || str_starts_with($candidate, 'images/')) {
+                    $imagePath = $candidate;
+                }
+            }
+
+            if ($imagePath !== '') {
+                $keptPaths[] = $imagePath;
+            }
+
+            $items[] = [
+                'id' => $id,
+                'name' => $name,
+                'href' => (string) ($entry['href'] ?? ''),
+                'image_path' => $imagePath,
+            ];
+        }
+
+        if ($items === []) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'items' => 'Add at least one category.',
+            ]);
+        }
+
+        // Remove uploaded images that are no longer referenced.
+        foreach ($existing as $old) {
+            $oldPath = (string) ($old['image_path'] ?? '');
+            if ($oldPath !== '' && !in_array($oldPath, $keptPaths, true)) {
+                $this->deleteStoredAssetIfNeeded($oldPath, '');
+            }
+        }
+
+        $saved = $this->settings->saveHomepageCategories($items);
+
+        return response()->json([
+            'success' => true,
+            'homepage_categories' => $saved['items'],
+            'message' => 'Homepage categories saved.',
+        ]);
+    }
+
+    public function delivery(): Response
+    {
+        return Inertia::render('Admin/Other/Delivery', [
+            'delivery' => $this->settings->getDeliverySettings(),
+            'kinds' => StoreSettingsService::DELIVERY_METHOD_KINDS,
+            'priceModes' => StoreSettingsService::DELIVERY_PRICE_MODES,
+        ]);
+    }
+
+    /**
+     * Carriers the admin can tick. Combines the carrier accounts connected to
+     * Shippo with the UK carriers Shippo supports, so the list is useful even
+     * before a Shippo key is configured.
+     */
+    public function shippoCarriers(\App\Services\ShippoRateService $shippo): JsonResponse
+    {
+        $catalogue = [
+            ['key' => 'royal_mail', 'name' => 'Royal Mail', 'match' => ['royal mail', 'royalmail'], 'logo' => 'images/Admin/couriers/royal-mail.svg'],
+            ['key' => 'evri', 'name' => 'Evri', 'match' => ['evri', 'hermes'], 'logo' => 'images/Admin/couriers/evri.svg'],
+            ['key' => 'dpd', 'name' => 'DPD', 'match' => ['dpd'], 'logo' => 'images/Admin/couriers/dpd.svg'],
+            ['key' => 'parcelforce', 'name' => 'Parcelforce', 'match' => ['parcelforce', 'parcel force'], 'logo' => ''],
+            ['key' => 'ups', 'name' => 'UPS', 'match' => ['ups'], 'logo' => ''],
+            ['key' => 'dhl_express', 'name' => 'DHL Express', 'match' => ['dhl'], 'logo' => ''],
+            ['key' => 'fedex', 'name' => 'FedEx', 'match' => ['fedex'], 'logo' => ''],
+            ['key' => 'yodel', 'name' => 'Yodel', 'match' => ['yodel'], 'logo' => ''],
+            ['key' => 'collect_plus', 'name' => 'Collect+', 'match' => ['collect+', 'collectplus'], 'logo' => ''],
+            ['key' => 'dhl_parcel_uk', 'name' => 'DHL Parcel UK', 'match' => ['dhl parcel'], 'logo' => ''],
+        ];
+
+        $connected = [];
+        $shippoError = null;
+        try {
+            $connected = $shippo->getCarrierAccounts();
+        } catch (\Throwable $exception) {
+            $shippoError = $exception->getMessage();
+        }
+
+        $byKey = [];
+        foreach ($catalogue as $entry) {
+            $entry['connected'] = false;
+            $byKey[$entry['key']] = $entry;
+        }
+        foreach ($connected as $account) {
+            $key = str_replace('-', '_', (string) preg_replace('/[^a-z0-9]+/', '_', $account['carrier']));
+            $key = trim($key, '_');
+            if ($key === '') {
+                continue;
+            }
+            $matched = null;
+            foreach ($byKey as $candidateKey => $candidate) {
+                if ($candidateKey === $key || str_contains($key, $candidateKey) || str_contains($candidateKey, $key)) {
+                    $matched = $candidateKey;
+                    break;
+                }
+            }
+            if ($matched) {
+                $byKey[$matched]['connected'] = (bool) $account['active'];
+                continue;
+            }
+            $byKey[$key] = [
+                'key' => $key,
+                'name' => $account['name'],
+                'match' => [strtolower($account['name']), str_replace('_', ' ', $key)],
+                'logo' => '',
+                'connected' => (bool) $account['active'],
+            ];
+        }
+
+        $carriers = array_values($byKey);
+        usort($carriers, fn ($a, $b) => [$b['connected'], $a['name']] <=> [$a['connected'], $b['name']]);
+
+        return response()->json([
+            'carriers' => array_map(function (array $carrier) {
+                $carrier['logo_url'] = $carrier['logo'] !== '' ? $this->settings->resolveAssetUrl($carrier['logo']) : null;
+                return $carrier;
+            }, $carriers),
+            'shippo_connected' => trim((string) config('services.shippo.token')) !== '' && $shippoError === null,
+            'shippo_error' => $shippoError,
+        ]);
+    }
+
+    public function updateDelivery(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'carriers' => ['required', 'array', 'max:20'],
+            'carriers.*.key' => ['nullable', 'string', 'max:40'],
+            'carriers.*.name' => ['required', 'string', 'max:60'],
+            'carriers.*.enabled' => ['required', 'boolean'],
+            'carriers.*.match' => ['nullable', 'array', 'max:10'],
+            'carriers.*.match.*' => ['nullable', 'string', 'max:40'],
+            'carriers.*.logo' => ['nullable', 'string', 'max:255'],
+            'carriers.*.notes' => ['nullable', 'string', 'max:240'],
+            'methods' => ['required', 'array', 'min:1', 'max:20'],
+            'methods.*.key' => ['nullable', 'string', 'max:24'],
+            'methods.*.label' => ['required', 'string', 'max:80'],
+            'methods.*.description' => ['nullable', 'string', 'max:160'],
+            'methods.*.kind' => ['required', Rule::in(StoreSettingsService::DELIVERY_METHOD_KINDS)],
+            'methods.*.enabled' => ['required', 'boolean'],
+            'methods.*.price' => ['required', 'numeric', 'min:0', 'max:999'],
+            'methods.*.price_mode' => ['nullable', Rule::in(StoreSettingsService::DELIVERY_PRICE_MODES)],
+            'methods.*.carrier_key' => ['nullable', 'string', 'max:40'],
+            'methods.*.service_name' => ['nullable', 'string', 'max:120'],
+            'methods.*.eta_min_days' => ['nullable', 'integer', 'min:0', 'max:60'],
+            'methods.*.eta_max_days' => ['nullable', 'integer', 'min:0', 'max:60'],
+            'methods.*.cutoff_hour' => ['nullable', 'integer', 'min:0', 'max:23'],
+            'methods.*.free_for_members' => ['nullable', 'boolean'],
+            'methods.*.require_carrier_service' => ['nullable', 'boolean'],
+            'parcel_options' => ['nullable', 'array', 'max:60'],
+            'parcel_options.*.key' => ['nullable', 'string', 'max:60'],
+            'parcel_options.*.carrier_key' => ['required', 'string', 'max:40'],
+            'parcel_options.*.label' => ['required', 'string', 'max:60'],
+            'parcel_options.*.max_weight_kg' => ['required', 'numeric', 'min:0.01', 'max:200'],
+            'parcel_options.*.length_cm' => ['required', 'numeric', 'min:0.1', 'max:500'],
+            'parcel_options.*.width_cm' => ['required', 'numeric', 'min:0.1', 'max:500'],
+            'parcel_options.*.height_cm' => ['required', 'numeric', 'min:0.1', 'max:500'],
+            'parcel_options.*.price_label' => ['nullable', 'string', 'max:40'],
+            'parcel_options.*.description' => ['nullable', 'string', 'max:160'],
+        ]);
+
+        $delivery = $this->settings->saveDeliverySettings($validated);
+
+        if (collect($delivery['methods'])->where('enabled', true)->isEmpty()) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'methods' => 'Keep at least one delivery method enabled so customers can check out.',
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'delivery' => $delivery,
+            'message' => 'Delivery settings saved.',
+        ]);
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function productLibrary(): array
+    {
+        return Product::query()
             ->with('images')
             ->orderBy('name')
             ->limit(600)
@@ -325,11 +595,36 @@ class AdminOtherController extends Controller
             })
             ->values()
             ->all();
+    }
 
-        return Inertia::render('Admin/Other/FrontPage', [
-            'frontPage' => $this->settings->getFrontPageProducts(),
-            'products' => $products,
-        ]);
+    /**
+     * Link targets offered when editing a homepage category circle.
+     *
+     * @return array<int, array{label: string, href: string}>
+     */
+    private function categoryLinkOptions(): array
+    {
+        $special = [
+            ['label' => 'New In', 'href' => '/category/new-in'],
+            ['label' => 'Pre-made designs', 'href' => '/category/pre-made'],
+            ['label' => 'Sale', 'href' => '/category/sale'],
+            ['label' => 'Kids Clothing', 'href' => '/category/kids-clothing'],
+            ['label' => 'T-Shirts', 'href' => '/category/t-shirts'],
+            ['label' => 'Teddies', 'href' => '/category/teddies'],
+            ['label' => 'Bags', 'href' => '/category/bags'],
+            ['label' => 'Personalise a product', 'href' => '/personalise'],
+        ];
+
+        $categories = \App\Models\Category::query()
+            ->orderBy('slug')
+            ->get(['id', 'name', 'slug', 'parent_id'])
+            ->map(fn (\App\Models\Category $category) => [
+                'label' => trim(str_replace('/', ' › ', ucwords(str_replace('-', ' ', (string) $category->slug)))),
+                'href' => '/category/' . ltrim((string) $category->slug, '/'),
+            ])
+            ->all();
+
+        return array_values(array_merge($special, $categories));
     }
 
     public function updateFrontPage(Request $request): JsonResponse|RedirectResponse

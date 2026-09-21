@@ -23,3 +23,27 @@ export type GenderSizeGuide = {
   subtitle: string;
   sections: SizeGuideSection[];
 };
+
+/** Column definition inside a measurement group (matches the server shape). */
+export type MeasurementColumn = {
+  key: string;
+  label: string;
+};
+
+/**
+ * A measurement group as stored in `storeSettings.size_guide.groups`.
+ * Built-in groups (men / women / kids / bags) carry `is_default: true`.
+ */
+export type MeasurementGroup = {
+  key: string;
+  label: string;
+  heading: string;
+  subtitle: string;
+  keywords: string[];
+  category_ids?: number[];
+  columns: MeasurementColumn[];
+  rows: Array<Record<string, string>>;
+  is_default: boolean;
+};
+
+export const CLOTHING_GROUP_KEYS: readonly string[] = ["men", "women", "kids"];

@@ -2,8 +2,14 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { router, usePage } from "@inertiajs/react";
-import { ArrowLeft, ChevronRight } from "lucide-react";
-import { AddCategoryControl, DeleteCategoryControl } from "@/Components/Menu/CategoryAdminControls";
+import { ArrowLeft, ChevronRight, Plus } from "lucide-react";
+import {
+  AddCategoryControl,
+  DeleteCategoryControl,
+  RenameCategoryControl,
+  iconButtonClass,
+  useCategoryEditorLock,
+} from "@/Components/Menu/CategoryAdminControls";
 
 type MenuNode = {
   id: number;
@@ -68,6 +74,11 @@ export const prefetchCategoryMenu = async (): Promise<void> => {
   }
 };
 
+/** Lets other admin tools (nav "add category" popover) refresh every open sidebar. */
+export const invalidateCategoryMenu = (): void => {
+  cachedMenu = null;
+};
+
 type Props = {
   rootKey: "women" | "men" | "kids";
   title: string;
@@ -77,6 +88,41 @@ type Props = {
   quickLinks?: Array<{ label: string; href: string }>;
   hideRootCategoriesWhenQuickLinks?: boolean;
 };
+
+/**
+ * Inline "add subcategory under this node" row. Wraps AddCategoryControl but is
+ * opened from the node's "+" button rather than from a text link.
+ */
+function InlineAddRow({
+  node,
+  onSaved,
+  onClose,
+  indentClass,
+}: {
+  node: MenuNode;
+  onSaved: () => Promise<void>;
+  onClose: () => void;
+  indentClass: string;
+}) {
+  useCategoryEditorLock(true);
+  return (
+    <div className={`${indentClass} mb-1 rounded-lg border border-dashed border-[#E0C98A] bg-[#FFFBF0] px-2 py-1.5`}>
+      <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#846B37]">New subcategory in {node.name}</p>
+      <div className="normal-case tracking-normal">
+        <AddCategoryControl
+          parentId={node.id}
+          parentName={node.name}
+          defaultOpen
+          onSaved={async () => {
+            await onSaved();
+            onClose();
+          }}
+          onCancel={onClose}
+        />
+      </div>
+    </div>
+  );
+}
 
 export default function GenericCategorySidebar({
   rootKey,
@@ -92,6 +138,8 @@ export default function GenericCategorySidebar({
   const [error, setError] = useState<string | null>(null);
   const [path, setPath] = useState<MenuNode[]>([]);
   const [expandedIds, setExpandedIds] = useState<number[]>([]);
+  const [addingUnderId, setAddingUnderId] = useState<number | null>(null);
+  const [renamingId, setRenamingId] = useState<number | null>(null);
   const pointerClickGuardRef = useRef<null | string>(null);
   const page = usePage<{ auth?: { user?: { is_admin?: boolean } } }>();
   const isAdmin = Boolean(page.props.auth?.user?.is_admin);
@@ -142,6 +190,8 @@ export default function GenericCategorySidebar({
   useEffect(() => {
     setPath([]);
     setExpandedIds([]);
+    setAddingUnderId(null);
+    setRenamingId(null);
   }, [rootKey]);
 
   const rootNode = useMemo(() => menu?.[rootKey]?.tree ?? null, [menu, rootKey]);
@@ -233,6 +283,59 @@ export default function GenericCategorySidebar({
     return "pl-14";
   };
 
+  const startAddUnder = (node: MenuNode) => {
+    setRenamingId(null);
+    setAddingUnderId((prev) => (prev === node.id ? null : node.id));
+    // In accordion mode make sure the children (and the new row) are visible.
+    if (variant === "accordion" && !expandedIds.includes(node.id)) {
+      setExpandedIds((prev) => [...prev, node.id]);
+    }
+  };
+
+  /** Admin-only per-node buttons: add subcategory, rename, remove. */
+  const renderAdminNodeControls = (node: MenuNode) => {
+    if (!isAdmin) return null;
+    return (
+      <span className="ml-1 inline-flex shrink-0 items-center gap-1 normal-case tracking-normal">
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            startAddUnder(node);
+          }}
+          className={`${iconButtonClass} ${addingUnderId === node.id ? "border-[#D4AF37] text-[#D4AF37]" : ""}`}
+          aria-label={`Add subcategory to ${node.name}`}
+          title={`Add subcategory to ${node.name}`}
+        >
+          <Plus size={14} strokeWidth={2} />
+        </button>
+        <RenameCategoryControl
+          categoryId={node.id}
+          name={node.name}
+          open={renamingId === node.id}
+          onOpenChange={(open) => {
+            setRenamingId(open ? node.id : null);
+            if (open) setAddingUnderId(null);
+          }}
+          onSaved={refreshMenu}
+        />
+        <DeleteCategoryControl categoryId={node.id} name={node.name} onDeleted={refreshMenu} />
+      </span>
+    );
+  };
+
+  const renderRenameRow = (node: MenuNode, indentClass = "") => (
+    <div className={`${indentClass} flex items-center gap-2 py-1`}>
+      <RenameCategoryControl
+        categoryId={node.id}
+        name={node.name}
+        open
+        onOpenChange={(open) => setRenamingId(open ? node.id : null)}
+        onSaved={refreshMenu}
+      />
+    </div>
+  );
+
   const renderAccordionNodes = (nodes: MenuNode[], depth = 0) => {
     if (nodes.length === 0) return null;
     return (
@@ -241,18 +344,21 @@ export default function GenericCategorySidebar({
           const children = getChildren(node);
           const hasChildren = children.length > 0;
           const isOpen = expandedIds.includes(node.id);
+          const isAdding = addingUnderId === node.id;
           const labelClass = depth === 0 ? accordionLabelClass : accordionSubLabelClass;
           return (
             <div key={node.id} className={depth === 0 ? "rounded-2xl border border-[#EFE2C4] bg-white" : ""}>
-              {hasChildren ? (
+              {renamingId === node.id ? (
+                renderRenameRow(node, `${getDepthPaddingClass(depth)} px-3`)
+              ) : hasChildren ? (
                 <div className="flex items-center">
                   <button
                     type="button"
                     {...pressHandlers(() => openCategory(node.slug))}
-                  className={`${labelClass} ${getDepthPaddingClass(depth)} flex-1 touch-manipulation`}
-                >
-                  {node.name}
-                </button>
+                    className={`${labelClass} ${getDepthPaddingClass(depth)} flex-1 touch-manipulation`}
+                  >
+                    {node.name}
+                  </button>
                   <button
                     type="button"
                     {...pressHandlers(() => toggleExpanded(node.id))}
@@ -265,9 +371,7 @@ export default function GenericCategorySidebar({
                       className={`transition-transform ${isOpen ? "rotate-90" : ""}`}
                     />
                   </button>
-                  {isAdmin ? (
-                    <DeleteCategoryControl categoryId={node.id} name={node.name} onDeleted={refreshMenu} />
-                  ) : null}
+                  {renderAdminNodeControls(node)}
                 </div>
               ) : (
                 <div className="flex items-center">
@@ -278,19 +382,22 @@ export default function GenericCategorySidebar({
                   >
                     {node.name}
                   </button>
-                  {isAdmin ? (
-                    <DeleteCategoryControl categoryId={node.id} name={node.name} onDeleted={refreshMenu} />
-                  ) : null}
+                  {renderAdminNodeControls(node)}
                 </div>
               )}
+              {isAdding ? (
+                <div className="px-2">
+                  <InlineAddRow
+                    node={node}
+                    indentClass={getDepthPaddingClass(depth + 1)}
+                    onSaved={refreshMenu}
+                    onClose={() => setAddingUnderId(null)}
+                  />
+                </div>
+              ) : null}
               {hasChildren && isOpen ? (
                 <div className="pb-2 pt-1">
                   {renderAccordionNodes(children, depth + 1)}
-                  {isAdmin ? (
-                    <div className={getDepthPaddingClass(depth + 1)}>
-                      <AddCategoryControl parentId={node.id} parentName={node.name} onSaved={refreshMenu} />
-                    </div>
-                  ) : null}
                 </div>
               ) : null}
             </div>
@@ -362,12 +469,27 @@ export default function GenericCategorySidebar({
             <p className={textClass}>No categories yet.</p>
           ) : (
             options.map((node) => (
-              <div key={node.id} className="flex items-center gap-2">
-                <button type="button" {...pressHandlers(() => handleSelect(node))} className={`${textClass} flex-1 touch-manipulation`}>
-                  {node.name}
-                </button>
-                {isAdmin ? (
-                  <DeleteCategoryControl categoryId={node.id} name={node.name} onDeleted={refreshMenu} />
+              <div key={node.id}>
+                {renamingId === node.id ? (
+                  renderRenameRow(node)
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <button type="button" {...pressHandlers(() => handleSelect(node))} className={`${textClass} flex-1 touch-manipulation`}>
+                      {node.name}
+                      {getChildren(node).length > 0 ? (
+                        <ChevronRight size={14} strokeWidth={1.8} className="ml-1 inline-block align-middle text-[#8A6D2B]" />
+                      ) : null}
+                    </button>
+                    {renderAdminNodeControls(node)}
+                  </div>
+                )}
+                {addingUnderId === node.id ? (
+                  <InlineAddRow
+                    node={node}
+                    indentClass="ml-4 mt-1"
+                    onSaved={refreshMenu}
+                    onClose={() => setAddingUnderId(null)}
+                  />
                 ) : null}
               </div>
             ))

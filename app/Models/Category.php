@@ -16,6 +16,12 @@ class Category extends Model
         'section',
         'subsection',
         'parent_id',
+        'sort_order',
+        'age_group',
+    ];
+
+    protected $casts = [
+        'sort_order' => 'integer',
     ];
 
     /**

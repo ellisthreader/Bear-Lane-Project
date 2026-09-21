@@ -126,6 +126,17 @@ class OpenAiModerationService
      *   category_scores: array<string, mixed>
      * }
      */
+    /**
+     * Design-editor moderation can be switched off (DESIGN_MODERATION_ENABLED=false)
+     * and is automatically skipped when no OpenAI key is configured.
+     */
+    public function isDesignModerationEnabled(): bool
+    {
+        $enabled = filter_var(config('services.openai.design_moderation_enabled', true), FILTER_VALIDATE_BOOLEAN);
+
+        return $enabled && trim((string) config('services.openai.api_key')) !== '';
+    }
+
     public function moderate(string $input): array
     {
         return $this->moderateInput($input, $input);

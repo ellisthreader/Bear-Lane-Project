@@ -1,12 +1,12 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Minus, Plus } from "lucide-react";
+import { Check, Minus, Pencil, Plus, X } from "lucide-react";
 
 const getCsrfToken = () =>
   document.querySelector('meta[name="csrf-token"]')?.getAttribute("content") || "";
 
-const adminHeaders = () => ({
+export const adminHeaders = () => ({
   Accept: "application/json",
   "Content-Type": "application/json",
   "X-CSRF-TOKEN": getCsrfToken(),
@@ -30,17 +30,21 @@ export const useCategoryEditorLock = (open: boolean) => {
   }, [open]);
 };
 
-const iconButtonClass =
+export const iconButtonClass =
   "inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[#D7BE84] bg-[#FFFCF4] text-[#7B6530] transition hover:border-[#D4AF37] hover:text-[#D4AF37] disabled:opacity-50";
 
 type AddProps = {
   parentId: number | null;
   parentName: string;
   onSaved: () => void | Promise<void>;
+  /** Start with the input visible (used for "add under this node" rows). */
+  defaultOpen?: boolean;
+  /** Called when the form is dismissed (Escape / minus button) after opening. */
+  onCancel?: () => void;
 };
 
-export function AddCategoryControl({ parentId, parentName, onSaved }: AddProps) {
-  const [open, setOpen] = useState(false);
+export function AddCategoryControl({ parentId, parentName, onSaved, defaultOpen = false, onCancel }: AddProps) {
+  const [open, setOpen] = useState(defaultOpen);
   const [name, setName] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -102,10 +106,11 @@ export function AddCategoryControl({ parentId, parentName, onSaved }: AddProps) 
             if (event.key === "Escape") {
               setOpen(false);
               setName("");
+              onCancel?.();
             }
           }}
           placeholder="Category name"
-          className="w-full rounded-lg border border-[#DCC99D] bg-white px-2 py-1.5 text-sm text-[#2B2417]"
+          className="w-full rounded-lg border border-[#DCC99D] bg-white px-2 py-1.5 text-sm normal-case tracking-normal text-[#2B2417]"
         />
         <button type="submit" disabled={saving || name.trim() === ""} className={iconButtonClass} aria-label="Save category">
           <Plus size={14} strokeWidth={2} />
@@ -116,6 +121,7 @@ export function AddCategoryControl({ parentId, parentName, onSaved }: AddProps) 
             setOpen(false);
             setName("");
             setError(null);
+            onCancel?.();
           }}
           className={iconButtonClass}
           aria-label="Cancel"
@@ -172,5 +178,119 @@ export function DeleteCategoryControl({ categoryId, name, onDeleted }: DeletePro
     >
       <Minus size={14} strokeWidth={2} />
     </button>
+  );
+}
+
+type RenameProps = {
+  categoryId: number;
+  name: string;
+  onSaved: () => void | Promise<void>;
+  /** Render the trigger as a small round pencil button (default) or hide it when controlled. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+};
+
+/**
+ * Inline rename: a pencil button that swaps the label for a text input.
+ * Saves with Enter / tick, cancels with Escape / cross.
+ */
+export function RenameCategoryControl({ categoryId, name, onSaved, open: controlledOpen, onOpenChange }: RenameProps) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen ?? internalOpen;
+  const setOpen = (next: boolean) => {
+    if (controlledOpen === undefined) setInternalOpen(next);
+    onOpenChange?.(next);
+  };
+  const [value, setValue] = useState(name);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useCategoryEditorLock(open);
+
+  useEffect(() => {
+    if (open) setValue(name);
+  }, [open, name]);
+
+  const submit = async (event?: React.FormEvent) => {
+    event?.preventDefault();
+    const trimmed = value.trim();
+    if (!trimmed || saving) return;
+    if (trimmed === name) {
+      setOpen(false);
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+    try {
+      const response = await fetch(`/admin/categories/${categoryId}`, {
+        method: "PATCH",
+        credentials: "same-origin",
+        headers: adminHeaders(),
+        body: JSON.stringify({ name: trimmed }),
+      });
+      if (!response.ok) throw new Error("Unable to rename category.");
+      setOpen(false);
+      await onSaved();
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Unable to rename category.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => {
+          setError(null);
+          setOpen(true);
+        }}
+        className={iconButtonClass}
+        aria-label={`Rename ${name}`}
+        title={`Rename ${name}`}
+      >
+        <Pencil size={12} strokeWidth={2} />
+      </button>
+    );
+  }
+
+  return (
+    <form onSubmit={submit} className="flex w-full flex-col gap-1">
+      <div className="flex items-center gap-2">
+        <input
+          autoFocus
+          value={value}
+          onChange={(event) => setValue(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Escape") {
+              event.preventDefault();
+              setOpen(false);
+              setValue(name);
+            }
+          }}
+          onClick={(event) => event.stopPropagation()}
+          placeholder="Category name"
+          className="w-full min-w-0 rounded-lg border border-[#DCC99D] bg-white px-2 py-1.5 text-sm normal-case tracking-normal text-[#2B2417]"
+        />
+        <button type="submit" disabled={saving || value.trim() === ""} className={iconButtonClass} aria-label="Save name">
+          <Check size={14} strokeWidth={2} />
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setOpen(false);
+            setValue(name);
+            setError(null);
+          }}
+          className={iconButtonClass}
+          aria-label="Cancel rename"
+        >
+          <X size={14} strokeWidth={2} />
+        </button>
+      </div>
+      {error ? <p className="text-[11px] normal-case tracking-normal text-[#8C3232]">{error}</p> : null}
+    </form>
   );
 }

@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Services\AdminActivityLogService;
 use App\Services\OpenAiModerationService;
+use App\Services\StoreSettingsService;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Str;
@@ -25,14 +26,125 @@ class ProductController extends Controller
     {
         $this->normalizeCategorySlugs();
 
-        $categories = Category::query()
-            ->with(['products:id,name,slug,price,brand'])
-            ->orderByRaw('CASE WHEN parent_id IS NULL THEN 0 ELSE 1 END')
-            ->orderBy('name')
-            ->get();
+        return inertia('Admin/Products', [
+            'categories' => $this->categoryPayload(),
+            'products' => $this->productPayload(),
+        ]);
+    }
 
-        $products = Product::query()
-            ->with(['images' => fn ($query) => $query->orderBy('id')])
+    /**
+     * JSON version of the category tree used by the admin page after each change.
+     */
+    public function categoryTree()
+    {
+        return response()->json([
+            'categories' => $this->categoryPayload(),
+        ]);
+    }
+
+    /**
+     * Persists a new sibling order. Payload: items[] of {id, sort_order, parent_id?}.
+     * Moving a category to a different parent is allowed and regenerates its slug.
+     */
+    public function reorderCategories(Request $request)
+    {
+        $validated = $request->validate([
+            'items' => 'required|array|min:1|max:500',
+            'items.*.id' => 'required|integer|exists:categories,id',
+            'items.*.sort_order' => 'required|integer|min:0|max:100000',
+            'items.*.parent_id' => 'nullable|integer|exists:categories,id',
+        ]);
+
+        DB::transaction(function () use ($validated) {
+            foreach ($validated['items'] as $item) {
+                $category = Category::query()->find((int) $item['id']);
+                if (!$category) {
+                    continue;
+                }
+
+                $updates = ['sort_order' => (int) $item['sort_order']];
+
+                if (array_key_exists('parent_id', $item) && (int) ($item['parent_id'] ?? 0) !== (int) ($category->parent_id ?? 0)) {
+                    $newParentId = $item['parent_id'] !== null ? (int) $item['parent_id'] : null;
+                    if ($newParentId !== null && $this->wouldCreateCycle($category, $newParentId)) {
+                        throw ValidationException::withMessages([
+                            'items' => "'{$category->name}' cannot be moved inside one of its own subcategories.",
+                        ]);
+                    }
+                    $parent = $newParentId ? Category::query()->find($newParentId) : null;
+                    $leaf = Str::slug((string) $category->name);
+                    $baseSlug = $parent ? $this->rootSlugFromPath($parent->slug) . "/{$leaf}" : $leaf;
+                    $updates['parent_id'] = $parent?->id;
+                    $updates['slug'] = $this->uniqueSlug($baseSlug, $category->id);
+                    $updates['section'] = $parent ? ($parent->section ?: $parent->name) : $category->name;
+                    $updates['subsection'] = $parent?->name;
+                }
+
+                $category->update($updates);
+                if (isset($updates['slug'])) {
+                    $this->refreshDescendantSlugs($category->fresh());
+                }
+            }
+        });
+
+        $this->activityLogService->logFromRequest(
+            $request,
+            'category_reordered',
+            'Categories reordered',
+            'Updated category ordering (' . count($validated['items']) . ' items)',
+            ['icon' => 'package']
+        );
+
+        return response()->json([
+            'success' => true,
+            'categories' => $this->categoryPayload(),
+        ]);
+    }
+
+    private function wouldCreateCycle(Category $category, int $newParentId): bool
+    {
+        $cursor = Category::query()->find($newParentId);
+        $guard = 0;
+        while ($cursor && $guard++ < 50) {
+            if ((int) $cursor->id === (int) $category->id) {
+                return true;
+            }
+            $cursor = $cursor->parent_id ? Category::query()->find($cursor->parent_id) : null;
+        }
+
+        return false;
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function categoryPayload(): array
+    {
+        return Category::query()
+            ->withCount('products')
+            ->orderByRaw('CASE WHEN parent_id IS NULL THEN 0 ELSE 1 END')
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get()
+            ->map(fn (Category $category) => [
+                'id' => (int) $category->id,
+                'name' => (string) $category->name,
+                'slug' => (string) $category->slug,
+                'parent_id' => $category->parent_id ? (int) $category->parent_id : null,
+                'sort_order' => (int) ($category->sort_order ?? 0),
+                'products_count' => (int) ($category->products_count ?? 0),
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function productPayload(): array
+    {
+        return Product::query()
+            ->with(['images' => fn ($query) => $query->orderBy('id'), 'categories:id'])
             ->orderBy('name')
             ->get()
             ->map(fn (Product $product) => [
@@ -40,15 +152,16 @@ class ProductController extends Controller
                 'name' => $product->name,
                 'slug' => $product->slug,
                 'brand' => $product->brand,
-                'price' => $product->price,
+                'price' => (float) $product->price,
                 'image' => optional($product->images->first())->url,
+                'category_ids' => array_values(array_unique(array_filter([
+                    ...$product->categories->pluck('id')->map(fn ($id) => (int) $id)->all(),
+                    $product->category_id ? (int) $product->category_id : null,
+                ]))),
+                'is_premade_design' => (bool) ($product->is_premade_design ?? false),
             ])
-            ->values();
-
-        return inertia('Admin/Products', [
-            'categories' => $categories,
-            'products' => $products,
-        ]);
+            ->values()
+            ->all();
     }
 
     public function storeCategory(Request $request)
@@ -66,12 +179,17 @@ class ProductController extends Controller
         $baseSlug = $parent ? $this->rootSlugFromPath($parent->slug) . "/{$leaf}" : $leaf;
         $slug = $this->uniqueSlug($baseSlug);
 
+        $nextSortOrder = (int) Category::query()
+            ->where('parent_id', $parent?->id)
+            ->max('sort_order') + 1;
+
         $category = Category::create([
             'name' => $validated['name'],
             'slug' => $slug,
             'parent_id' => $parent?->id,
             'section' => $parent?->section ?: $validated['name'],
             'subsection' => $parent?->name,
+            'sort_order' => $nextSortOrder,
         ]);
 
         $this->activityLogService->logFromRequest(
@@ -90,7 +208,17 @@ class ProductController extends Controller
             ]
         );
 
-        return response()->json(['success' => true]);
+        return response()->json([
+            'success' => true,
+            'category' => [
+                'id' => (int) $category->id,
+                'name' => (string) $category->name,
+                'slug' => (string) $category->slug,
+                'parent_id' => $category->parent_id ? (int) $category->parent_id : null,
+                'sort_order' => (int) $category->sort_order,
+                'products_count' => 0,
+            ],
+        ]);
     }
 
     public function updateCategory(Request $request, Category $category)
@@ -308,8 +436,8 @@ class ProductController extends Controller
                 'colours.*.variants.*.size' => 'required|string|max:20',
                 'colours.*.variants.*.stock' => 'required|integer|min:0',
                 'colours.*.variants.*.weight' => 'required|numeric|min:0.01',
-                'colours.*.variants.*.parcel_courier' => 'nullable|string|in:evri,royal_mail,dpd,manual',
-                'colours.*.variants.*.parcel_size_tier' => 'nullable|string|in:very_small,small,medium,large,manual',
+                'colours.*.variants.*.parcel_courier' => 'nullable|string|max:40',
+                'colours.*.variants.*.parcel_size_tier' => 'nullable|string|max:60',
                 'colours.*.variants.*.parcel_length_cm' => 'nullable|numeric|min:0.01',
                 'colours.*.variants.*.parcel_width_cm' => 'nullable|numeric|min:0.01',
                 'colours.*.variants.*.parcel_height_cm' => 'nullable|numeric|min:0.01',
@@ -669,6 +797,7 @@ class ProductController extends Controller
                 'categoryName' => (string) $category->name,
                 'premade' => $isPreMadeEditor,
             ],
+            'parcelSettings' => app(StoreSettingsService::class)->getParcelOptionsForEditor(),
         ]);
     }
 
@@ -697,8 +826,8 @@ class ProductController extends Controller
             'colours.*.variants.*.size' => 'required|string|max:20',
             'colours.*.variants.*.stock' => 'required|integer|min:0',
             'colours.*.variants.*.weight' => 'required|numeric|min:0.01',
-            'colours.*.variants.*.parcel_courier' => 'nullable|string|in:evri,royal_mail,dpd,manual',
-            'colours.*.variants.*.parcel_size_tier' => 'nullable|string|in:very_small,small,medium,large,manual',
+            'colours.*.variants.*.parcel_courier' => 'nullable|string|max:40',
+            'colours.*.variants.*.parcel_size_tier' => 'nullable|string|max:60',
             'colours.*.variants.*.parcel_length_cm' => 'nullable|numeric|min:0.01',
             'colours.*.variants.*.parcel_width_cm' => 'nullable|numeric|min:0.01',
             'colours.*.variants.*.parcel_height_cm' => 'nullable|numeric|min:0.01',

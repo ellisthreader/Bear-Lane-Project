@@ -58,6 +58,26 @@ type Order = {
 const valueOrFallback = (value?: string | null, fallback = "Not provided") =>
   value && value.trim().length > 0 ? value : fallback;
 
+const deliveryTypeLabel = (value?: string | null) => {
+  const key = (value || "").toUpperCase();
+  switch (key) {
+    case "":
+    case "STANDARD":
+      return "Standard Delivery";
+    case "NEXT_DAY":
+      return "Next Day Delivery";
+    case "TIMED":
+      return "Timed Delivery";
+    default:
+      return key
+        .toLowerCase()
+        .split(/[_\s]+/)
+        .filter(Boolean)
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(" ");
+  }
+};
+
 const formatDate = (date?: string) => {
   if (!date) return "Unknown date";
   return new Date(date).toLocaleDateString("en-GB", {
@@ -310,7 +330,7 @@ export default function OrderDetails() {
               <h3 className="text-base font-semibold text-[#2D2415]">Shipping Method</h3>
               <div className="mt-2 space-y-1 text-sm text-[#6E5F41]">
                 <p>
-                  Method: <span className="font-medium text-[#2D2415]">{valueOrFallback(order.delivery_type, "Standard")}</span>
+                  Method: <span className="font-medium text-[#2D2415]">{deliveryTypeLabel(order.delivery_type)}</span>
                 </p>
                 <p>
                   Service: <span className="font-medium text-[#2D2415]">{valueOrFallback(order.shipping_rate || order.shipping_method, "Courier Service")}</span>

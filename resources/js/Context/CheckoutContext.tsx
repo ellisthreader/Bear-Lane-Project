@@ -52,6 +52,8 @@ interface CheckoutContextType {
   setShippingMethod: (val: string) => void;
   shippingCost: number;
   setShippingCost: (val: number) => void;
+  shippingLabel: string;
+  setShippingLabel: (val: string) => void;
 
   // Discounts
   discountCode: string;
@@ -100,6 +102,7 @@ export const CheckoutProvider = ({ children }: { children: ReactNode }) => {
   const [availableServices, setAvailableServices] = useState<ShippingService[]>([]);
   const [shippingMethod, setShippingMethod] = useState("");
   const [shippingCost, setShippingCost] = useState(0);
+  const [shippingLabel, setShippingLabel] = useState("");
 
   // Discounts
   const [discountCode, setDiscountCode] = useState("");
@@ -196,6 +199,8 @@ export const CheckoutProvider = ({ children }: { children: ReactNode }) => {
         setShippingMethod,
         shippingCost,
         setShippingCost,
+        shippingLabel,
+        setShippingLabel,
         discountCode,
         setDiscountCode,
         appliedDiscount,

@@ -1,27 +1,51 @@
 "use client";
 
-import React from "react";
-import { router } from "@inertiajs/react";
+import React, { useMemo } from "react";
+import { Link, router, usePage } from "@inertiajs/react";
 import { motion, useReducedMotion } from "framer-motion";
+import { Pencil } from "lucide-react";
 
-const categories = [
-  { name: "New In", image: "/images/Category/new-in.jpg" },
-  { name: "Pre made", image: "/images/Category/premade.jpg" },
-  { name: "Sale", image: "/images/Category/sale.jpeg" },
-  { name: "Kids Clothing", image: "/images/Category/kids.jpeg" },
-  { name: "Teddies", image: "/images/Category/teddies.jpg" },
-  { name: "T-Shirts", image: "/images/Category/tshirts.jpeg" },
+type HomepageCategory = {
+  id: string;
+  name: string;
+  href: string;
+  image_url: string;
+};
+
+type PageProps = {
+  auth?: { user?: { is_admin?: boolean } };
+  storeSettings?: { homepage_categories?: HomepageCategory[] };
+};
+
+const FALLBACK_CATEGORIES: HomepageCategory[] = [
+  { id: "new-in", name: "New In", href: "/category/new-in", image_url: "/images/Category/new-in.jpg" },
+  { id: "pre-made", name: "Pre made", href: "/category/pre-made", image_url: "/images/Category/premade.jpg" },
+  { id: "sale", name: "Sale", href: "/category/sale", image_url: "/images/Category/sale.jpeg" },
+  { id: "kids-clothing", name: "Kids Clothing", href: "/category/kids-clothing", image_url: "/images/Category/kids.jpeg" },
+  { id: "teddies", name: "Teddies", href: "/category/teddies", image_url: "/images/Category/teddies.jpg" },
+  { id: "t-shirts", name: "T-Shirts", href: "/category/t-shirts", image_url: "/images/Category/tshirts.jpeg" },
 ];
+
+const openHref = (href: string) => {
+  if (/^https?:\/\//i.test(href)) {
+    window.location.href = href;
+    return;
+  }
+  router.get(href);
+};
 
 export default function CategorySection() {
   const reduceMotion = useReducedMotion();
+  const { props } = usePage<PageProps>();
+  const isAdmin = Boolean(props.auth?.user?.is_admin);
 
-  const toSlug = (value: string) =>
-    value
-      .toLowerCase()
-      .replace(/&/g, "and")
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "");
+  const categories = useMemo(() => {
+    const fromSettings = props.storeSettings?.homepage_categories;
+    if (Array.isArray(fromSettings) && fromSettings.length > 0) {
+      return fromSettings.filter((item) => item && item.name);
+    }
+    return FALLBACK_CATEGORIES;
+  }, [props.storeSettings?.homepage_categories]);
 
   const containerVariants = {
     hidden: {},
@@ -43,7 +67,19 @@ export default function CategorySection() {
       };
 
   return (
-    <div id="shop-by-category" className="pt-10 pb-2 bg-white w-full">
+    <div id="shop-by-category" className="relative pt-10 pb-2 bg-white w-full">
+      {isAdmin ? (
+        <div className="absolute right-4 top-2 z-10 sm:right-6">
+          <Link
+            href="/admin/other/homepage?tab=categories"
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-[#6A6252] underline decoration-[#DCD5C7] decoration-1 underline-offset-4 transition hover:text-[#1F1A13] hover:decoration-[#1F1A13]"
+          >
+            <Pencil className="h-3 w-3" strokeWidth={1.75} />
+            Edit categories
+          </Link>
+        </div>
+      ) : null}
+
       <motion.div
         variants={containerVariants}
         initial="hidden"
@@ -56,13 +92,13 @@ export default function CategorySection() {
             type="button"
             variants={itemVariants}
             whileTap={reduceMotion ? undefined : { scale: 0.96 }}
-            key={`mobile-${category.name}`}
-            onClick={() => router.get(`/category/${toSlug(category.name)}`)}
+            key={`mobile-${category.id}`}
+            onClick={() => openHref(category.href)}
             className="group flex flex-col items-center"
           >
             <div className="h-[150px] w-full overflow-hidden rounded-2xl border border-[#E6D8B7] bg-white shadow-sm transition-all duration-300 group-hover:shadow-[0_8px_24px_rgba(45,34,15,0.12)]">
               <img
-                src={category.image}
+                src={category.image_url}
                 alt={category.name}
                 loading="lazy"
                 decoding="async"
@@ -91,14 +127,14 @@ export default function CategorySection() {
               whileHover={reduceMotion ? undefined : { y: -6 }}
               whileTap={reduceMotion ? undefined : { scale: 0.97 }}
               transition={{ type: "spring", stiffness: 300, damping: 20 }}
-              key={`desktop-${category.name}`}
-              onClick={() => router.get(`/category/${toSlug(category.name)}`)}
+              key={`desktop-${category.id}`}
+              onClick={() => openHref(category.href)}
               className="group flex shrink-0 flex-col items-center cursor-pointer text-left"
             >
               <div className="p-[2px] rounded-full bg-gradient-to-br from-[#9C7C19] via-[#D4AF37] to-[#7A5C12] transition-all duration-300 group-hover:shadow-[0_0_20px_rgba(212,175,55,0.6)]">
                 <div className="w-32 h-32 lg:w-36 lg:h-36 xl:w-44 xl:h-44 2xl:w-52 2xl:h-52 rounded-full overflow-hidden bg-white">
                   <img
-                    src={category.image}
+                    src={category.image_url}
                     alt={category.name}
                     loading="lazy"
                     decoding="async"

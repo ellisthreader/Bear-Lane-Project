@@ -167,7 +167,14 @@ class ProductController extends Controller
             $primaryCategory = $productModel->category;
         }
 
+        $productCategoryIds = array_values(array_unique(array_filter([
+            ...($productModel->relationLoaded('categories') ? $productModel->categories->pluck('id')->map(fn ($id) => (int) $id)->all() : []),
+            $productModel->category_id ? (int) $productModel->category_id : null,
+        ])));
+        $assignedSizeGuideGroup = app(StoreSettingsService::class)->findSizeGuideGroupForCategories($productCategoryIds);
+
         return Inertia::render('Product/ProductLayout', [
+            'sizeGuideGroupKey' => $assignedSizeGuideGroup['key'] ?? null,
             'product' => $product,
             'isPreMadeDesign' => $isPreMadeDesign,
             'recommendedProducts' => $recommendedProducts,
@@ -178,6 +185,7 @@ class ProductController extends Controller
                 'categoryName' => $primaryCategory?->name,
                 'premade' => $isPreMadeDesign,
             ] : null,
+            'parcelSettings' => $isAdminEditor ? app(StoreSettingsService::class)->getParcelOptionsForEditor() : null,
         ]);
     }
 

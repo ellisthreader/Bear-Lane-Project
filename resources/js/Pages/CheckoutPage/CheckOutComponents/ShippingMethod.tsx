@@ -3,10 +3,19 @@ import { useCheckout } from "@/Context/CheckoutContext";
 import { useCart } from "@/Context/CartContext";
 import { getCountryCode } from "@/Utils/countryCodes";
 
-type DeliveryType = "STANDARD" | "NEXT_DAY" | "TIMED";
+/*
+ * Delivery methods are configured in Admin → Other → Delivery & Carriers, so the
+ * option keys are not known ahead of time. The only special case is the timed
+ * method: its key is always TIMED and the chosen slot reservation is stored as
+ * "TIMED:<reservationId>" in the checkout context.
+ */
+
+type DeliveryType = string;
+type DeliveryKind = "standard" | "next_day" | "timed" | "collection";
 
 type DeliveryOption = {
   type: DeliveryType;
+  kind?: DeliveryKind;
   label: string;
   description: string;
   available: boolean;
@@ -14,6 +23,9 @@ type DeliveryOption = {
   display_price: string;
   unavailable_reason?: string | null;
   selected_shippo_service?: string | null;
+  carrier_name?: string | null;
+  eta_min_days?: number | null;
+  eta_max_days?: number | null;
 };
 
 type DeliverySlot = {
@@ -30,8 +42,28 @@ type DeliveryDay = {
   slots: DeliverySlot[];
 };
 
+const TIMED_KEY = "TIMED";
+
+const kindOf = (option: DeliveryOption): DeliveryKind => {
+  if (option.kind) return option.kind;
+  if (option.type === TIMED_KEY) return "timed";
+  if (option.type === "NEXT_DAY") return "next_day";
+  return "standard";
+};
+
+const etaText = (option: DeliveryOption): string | null => {
+  if (kindOf(option) === "collection") return "Collect from us";
+  if (kindOf(option) === "timed") return null;
+  const min = Number(option.eta_min_days);
+  const max = Number(option.eta_max_days);
+  if (!Number.isFinite(min) || !Number.isFinite(max) || max <= 0) return null;
+  if (min === max) return `Arrives in ${max} working day${max === 1 ? "" : "s"}`;
+  if (min <= 0) return `Arrives within ${max} working day${max === 1 ? "" : "s"}`;
+  return `Arrives in ${min}–${max} working days`;
+};
+
 export default function ShippingMethod() {
-  const { address, shippingMethod, setShippingMethod, setShippingCost } = useCheckout();
+  const { address, shippingMethod, setShippingMethod, setShippingCost, setShippingLabel } = useCheckout();
   const { cart } = useCart();
 
   const [loading, setLoading] = useState(false);
@@ -65,13 +97,13 @@ export default function ShippingMethod() {
     );
 
   const selectedType = useMemo<DeliveryType | null>(() => {
-    if (shippingMethod.startsWith("TIMED:")) return "TIMED";
-    if (shippingMethod === "STANDARD") return "STANDARD";
-    if (shippingMethod === "NEXT_DAY") return "NEXT_DAY";
+    if (shippingMethod.startsWith(`${TIMED_KEY}:`)) return TIMED_KEY;
+    if (shippingMethod) return shippingMethod;
     return chosenType;
   }, [shippingMethod, chosenType]);
 
-  const timedOption = useMemo(() => options.find((o) => o.type === "TIMED") ?? null, [options]);
+  const timedOption = useMemo(() => options.find((o) => kindOf(o) === "timed") ?? null, [options]);
+  const isTimedSelected = selectedType !== null && timedOption !== null && selectedType === timedOption.type;
   const visibleDays = useMemo(() => slotDays.slice(0, 14), [slotDays]);
   const topRowDays = useMemo(() => visibleDays.slice(0, 7), [visibleDays]);
   const bottomRowDays = useMemo(() => visibleDays.slice(7, 14), [visibleDays]);
@@ -99,10 +131,12 @@ export default function ShippingMethod() {
   }, [visibleDays]);
 
   const getServiceLabel = (option: DeliveryOption) => {
-    if (option.type === "TIMED") return "Service: Timed Delivery Service";
-    return option.selected_shippo_service
-      ? `Service: ${option.selected_shippo_service}`
-      : "Service: Carrier selected automatically";
+    const kind = kindOf(option);
+    if (kind === "collection") return null;
+    if (kind === "timed") return "Service: Timed Delivery Service";
+    if (option.selected_shippo_service) return `Service: ${option.selected_shippo_service}`;
+    if (option.carrier_name) return `Carrier: ${option.carrier_name}`;
+    return "Service: Carrier selected automatically";
   };
 
   const buildCartItemsPayload = () =>
@@ -165,11 +199,22 @@ export default function ShippingMethod() {
       setIsMember(Boolean(data?.is_member));
       setHasLoadedOptions(true);
 
-      if (selectedType && !nextOptions.some((opt) => opt.type === selectedType && opt.available)) {
+      const stillValid = selectedType
+        ? nextOptions.find((opt) => opt.type === selectedType && opt.available)
+        : null;
+
+      if (selectedType && !stillValid) {
         setShippingMethod("");
         setShippingCost(0);
+        setShippingLabel("");
         setReservation(null);
         setChosenType(null);
+      } else if (stillValid) {
+        // Keep the label and price in step with the latest admin configuration.
+        setShippingLabel(stillValid.label);
+        if (kindOf(stillValid) !== "timed") {
+          setShippingCost(stillValid.price);
+        }
       }
     } catch (err: any) {
       setError(err.message || "Failed to fetch delivery options");
@@ -230,7 +275,7 @@ export default function ShippingMethod() {
   ]);
 
   useEffect(() => {
-    if (selectedType !== "TIMED") return;
+    if (!isTimedSelected) return;
     if (!isAddressComplete()) return;
 
     fetchSlots();
@@ -243,7 +288,7 @@ export default function ShippingMethod() {
     return () => {
       window.clearInterval(interval);
     };
-  }, [selectedType, address.postcode]);
+  }, [isTimedSelected, address.postcode]);
 
   useEffect(() => {
     if (reservedDate) {
@@ -254,8 +299,10 @@ export default function ShippingMethod() {
   const handleSelectOption = (option: DeliveryOption) => {
     if (!option.available) return;
 
-    if (option.type === "TIMED") {
-      setChosenType("TIMED");
+    setShippingLabel(option.label);
+
+    if (kindOf(option) === "timed") {
+      setChosenType(option.type);
       setShippingMethod("");
       setShippingCost(0);
       return;
@@ -303,9 +350,10 @@ export default function ShippingMethod() {
         expiresAt: String(data.expires_at),
       });
 
-      setChosenType("TIMED");
-      setShippingMethod(`TIMED:${data.reservation_id}`);
+      setChosenType(TIMED_KEY);
+      setShippingMethod(`${TIMED_KEY}:${data.reservation_id}`);
       setShippingCost(timedOption?.price ?? 0);
+      if (timedOption) setShippingLabel(timedOption.label);
 
       fetchSlots();
       fetchDeliveryOptions(true);
@@ -425,6 +473,8 @@ export default function ShippingMethod() {
       <div className="grid gap-4">
         {options.map((option) => {
           const isSelected = selectedType === option.type;
+          const serviceLabel = getServiceLabel(option);
+          const eta = etaText(option);
 
           return (
             <button
@@ -445,11 +495,16 @@ export default function ShippingMethod() {
                   <p className={`font-semibold ${option.available ? "text-gray-900" : "text-gray-500"}`}>
                     {option.label}
                   </p>
-                  <p className={`text-sm ${option.available ? "text-gray-600" : "text-gray-400"}`}>
-                    {option.description}
-                  </p>
-                  {option.available && (
-                    <p className="mt-1 text-xs font-medium text-[#8A6D2B]">{getServiceLabel(option)}</p>
+                  {option.description ? (
+                    <p className={`text-sm ${option.available ? "text-gray-600" : "text-gray-400"}`}>
+                      {option.description}
+                    </p>
+                  ) : null}
+                  {option.available && eta && (
+                    <p className="mt-1 text-xs text-gray-500">{eta}</p>
+                  )}
+                  {option.available && serviceLabel && (
+                    <p className="mt-1 text-xs font-medium text-[#8A6D2B]">{serviceLabel}</p>
                   )}
                   {!option.available && option.unavailable_reason && (
                     <p className="mt-1 text-xs text-red-500">{option.unavailable_reason}</p>
@@ -464,7 +519,7 @@ export default function ShippingMethod() {
         })}
       </div>
 
-      {selectedType === "TIMED" && (
+      {isTimedSelected && (
         <div className="mt-5 space-y-4">
           <div className="flex items-baseline justify-between gap-4">
             <p className="text-sm font-semibold text-gray-900">Select a delivery date</p>

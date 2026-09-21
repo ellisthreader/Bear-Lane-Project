@@ -557,7 +557,7 @@ export default function Welcome() {
           <RailSectionHeader
             eyebrow="New In"
             title="Featured Products"
-            editHref={isAdminUser ? "/admin/other/front-page?tab=featured" : undefined}
+            editHref={isAdminUser ? "/admin/other/homepage?tab=featured" : undefined}
             editLabel="Edit featured"
             onPrev={() => scrollProductRail("prev")}
             onNext={() => scrollProductRail("next")}
@@ -651,7 +651,7 @@ export default function Welcome() {
             eyebrow="Studio Collection"
             title="Pre-Made Designs"
             description="Professionally crafted design templates from our studio team, ready to customise in minutes."
-            editHref={isAdminUser ? "/admin/other/front-page?tab=premade" : undefined}
+            editHref={isAdminUser ? "/admin/other/homepage?tab=premade" : undefined}
             editLabel="Edit pre-made"
             onPrev={() => scrollPreMadeRail("prev")}
             onNext={() => scrollPreMadeRail("next")}

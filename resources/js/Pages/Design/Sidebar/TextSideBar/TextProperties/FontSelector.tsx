@@ -1,5 +1,7 @@
 "use client";
 
+import { toCssFontFamily } from "../../../constants/designFonts";
+
 type Props = {
   fontFamily: string;
   onOpenFonts: () => void;
@@ -19,7 +21,7 @@ export default function FontSelector({ fontFamily, onOpenFonts }: Props) {
       {/* Font name — right side */}
       <div
         className="text-sm text-gray-600 truncate"
-        style={{ fontFamily }}
+        style={{ fontFamily: toCssFontFamily(fontFamily) }}
         title={fontFamily}
       >
         {fontFamily}

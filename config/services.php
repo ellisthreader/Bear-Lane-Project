@@ -62,6 +62,8 @@ return [
     // ---------------------------
     'openai' => [
         'api_key' => env('OPENAI_API_KEY'),
+        // Design text/image moderation. Off when disabled here or when no API key is set.
+        'design_moderation_enabled' => env('DESIGN_MODERATION_ENABLED', true),
         'moderation_model' => env('OPENAI_MODERATION_MODEL', 'omni-moderation-latest'),
         'timeout' => (int) env('OPENAI_TIMEOUT', 10),
     ],

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { DEFAULT_DESIGN_FONT, loadDesignFont, toCanvasFont } from "../../constants/designFonts";
 
 const MAX_TEXT_LENGTH = 260;
 
@@ -39,7 +40,7 @@ export default function AddText({
     let fontSize = maxFontSize;
 
     while (fontSize > 5) {
-      context.font = `${fontSize}px ${fontFamily}`;
+      context.font = toCanvasFont(fontSize, fontFamily);
       const textWidth = context.measureText(text).width;
       if (textWidth <= maxWidth) break;
       fontSize -= 1;
@@ -66,7 +67,7 @@ export default function AddText({
       };
     }
 
-    context.font = `${fontSize}px ${fontFamily}`;
+    context.font = toCanvasFont(fontSize, fontFamily);
     const widestLine = safeLines.reduce((max, line) => {
       const width = context.measureText(line).width;
       return Math.max(max, width);
@@ -87,20 +88,24 @@ export default function AddText({
     const maxWidth = 200;
     const maxFontSize = 40;
 
+    // Make sure the default font is loaded before measuring, otherwise the
+    // initial box is sized against the browser's fallback face.
+    await loadDesignFont(DEFAULT_DESIGN_FONT, maxFontSize);
+
     const adjustedFontSize = calculateFontSize(
       clampedText,
-      "Inter",
+      DEFAULT_DESIGN_FONT,
       maxWidth,
       maxFontSize
     );
 
-    const initialSize = measureTextBox(clampedText, "Inter", adjustedFontSize, 0);
+    const initialSize = measureTextBox(clampedText, DEFAULT_DESIGN_FONT, adjustedFontSize, 0);
 
     const result = await onAddText({
       id: crypto.randomUUID(),
       type: "text",
       text: clampedText,
-      font: "Inter",
+      font: DEFAULT_DESIGN_FONT,
       color: "#000000",
       fontSize: adjustedFontSize,
       rotation: 0,
