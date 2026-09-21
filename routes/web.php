@@ -83,6 +83,11 @@ Route::get('/menu/categories', function () {
         ];
     };
 
+    $mainCategories = array_values(array_unique([
+        ...$mainCategories,
+        ...$childrenByParent->get('root', collect())->pluck('slug')->all(),
+    ]));
+
     foreach ($mainCategories as $main) {
         $root = $categories->first(
             fn (Category $category) => $category->parent_id === null && $category->slug === $main

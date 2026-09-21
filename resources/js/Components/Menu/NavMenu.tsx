@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useCart } from "@/Context/CartContext";
 import { useWishlist } from "@/Context/WishlistContext";
 import { Link, usePage } from "@inertiajs/react";
@@ -26,7 +26,7 @@ import WishlistSidebar from "@/Components/Wishlist/WishlistSidebar";
 
 // SIDEBAR COMPONENTS
 import { isCategoryEditorOpen } from "@/Components/Menu/CategoryAdminControls";
-import { prefetchCategoryMenu } from "@/Components/Menu/GenericCategorySidebar";
+import GenericCategorySidebar, { prefetchCategoryMenu, requestCategoryMenu } from "@/Components/Menu/GenericCategorySidebar";
 import WomenSidebar from "@/Components/Menu/WomenSidebar/WomenSidebar";
 import MenSidebar from "@/Components/Menu/MenSidebar/MenSidebar";
 import KidsSidebar from "@/Components/Menu/KidsSidebar/KidsSidebar";
@@ -74,7 +74,25 @@ export default function NavMenu() {
   const mobileSearchInputRef = useRef<HTMLInputElement | null>(null);
   const mobilePointerRef = useRef<null | string>(null);
 
-  const categories = ["Women", "Men", "Kids", "Sale"];
+  const [navCategories, setNavCategories] = useState([
+    { slug: "women", name: "Women" },
+    { slug: "men", name: "Men" },
+    { slug: "kids", name: "Kids" },
+    { slug: "sale", name: "Sale" },
+  ]);
+  const categories = navCategories.map((category) => category.slug);
+  const categoryName = (slug: string) => navCategories.find((category) => category.slug === slug)?.name ?? slug;
+  const refreshNavCategories = useCallback(async () => {
+    const menu = await requestCategoryMenu();
+    setNavCategories(Object.entries(menu).map(([slug, entry]) => ({
+      slug,
+      name: entry.tree?.name ?? slug.charAt(0).toUpperCase() + slug.slice(1),
+    })));
+  }, []);
+
+  useEffect(() => {
+    void refreshNavCategories().catch(() => { /* Keep the default navigation available. */ });
+  }, [refreshNavCategories]);
   const getCsrfToken = () =>
     document.querySelector('meta[name="csrf-token"]')?.getAttribute("content") || "";
 
@@ -153,7 +171,7 @@ export default function NavMenu() {
       case "sale":
         return <SaleSidebar />;
       default:
-        return null;
+        return activeSidebar ? <GenericCategorySidebar key={activeSidebar} rootKey={activeSidebar} title={categoryName(activeSidebar)} closeSidebar={closeSidebar} /> : null;
     }
   };
 
@@ -168,7 +186,7 @@ export default function NavMenu() {
       case "sale":
         return <SaleSidebar variant="mobile" />;
       default:
-        return null;
+        return <GenericCategorySidebar key={category} rootKey={category} title={categoryName(category)} closeSidebar={closeMobileMenu} variant="accordion" showHeading={false} />;
     }
   };
 
@@ -564,7 +582,7 @@ export default function NavMenu() {
             </Link>
 
             <div
-              className={`hidden items-center gap-12 text-[17px] uppercase tracking-wide text-black transition-opacity duration-200 dark:text-gray-200 lg:flex ${
+              className={`hidden items-center gap-3 xl:gap-6 text-[17px] uppercase tracking-wide text-black transition-opacity duration-200 dark:text-gray-200 lg:flex ${
                 searchOpen ? "pointer-events-none invisible opacity-0" : "pointer-events-auto visible opacity-100"
               }`}
             >
@@ -581,7 +599,7 @@ export default function NavMenu() {
                     hover:after:w-full
                   "
                 >
-                  {cat}
+                  <Link href={`/category/${cat}`} onClick={() => setActiveSidebar(null)}>{categoryName(cat)}</Link>
                 </div>
               ))}
               {isAdmin && (
@@ -589,7 +607,7 @@ export default function NavMenu() {
                   className="relative flex items-center"
                   onMouseEnter={() => setActiveSidebar(null)}
                 >
-                  <NavAddCategoryControl variant="desktop" />
+                  <NavAddCategoryControl variant="desktop" onSaved={refreshNavCategories} />
                 </div>
               )}
             </div>
@@ -1019,7 +1037,7 @@ export default function NavMenu() {
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8A6D2B]">
                     Shop Categories
                   </p>
-                  {isAdmin && <NavAddCategoryControl variant="mobile" />}
+                  {isAdmin && <NavAddCategoryControl variant="mobile" onSaved={refreshNavCategories} />}
                   <div className="mt-3 space-y-2">
                     {categories.map((cat) => {
                       const isOpen = mobileCategoryOpen === cat;
@@ -1035,7 +1053,7 @@ export default function NavMenu() {
                             {...mobilePressHandlers(() => toggleMobileCategory(cat))}
                             className="flex w-full touch-manipulation items-center justify-between rounded-2xl px-4 py-3 text-left text-base font-semibold text-[#2B2417] transition hover:bg-[#FFF6DF]"
                           >
-                            <span>{cat}</span>
+                            <span>{categoryName(cat)}</span>
                             <ChevronRight
                               className={`h-5 w-5 text-[#8A6D2B] transition-transform ${
                                 isOpen ? "rotate-90" : ""

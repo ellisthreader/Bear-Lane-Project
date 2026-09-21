@@ -100,6 +100,30 @@ class PersonaliseCatalogueService
         ];
     }
 
+    /** Keep an unconfigured or stale selection from hiding the shop's products. */
+    public function getStorefrontCatalogue(): array
+    {
+        $catalogue = $this->getCatalogue();
+        if (collect($catalogue['groups'])->contains(fn (array $group) => $group['products'] !== [])) {
+            return $catalogue;
+        }
+
+        $products = Product::query()
+            ->where(fn ($query) => $query->where('is_premade_design', false)->orWhereNull('is_premade_design'))
+            ->with(['images', 'variants.images'])
+            ->orderBy('name')
+            ->orderBy('id')
+            ->get();
+
+        return ['groups' => $products->isEmpty() ? [] : [[
+            'key' => 'all-products',
+            'label' => 'All products',
+            'description' => 'Choose a product to make your own.',
+            'product_ids' => $products->modelKeys(),
+            'products' => $products->map(fn (Product $product) => $this->presentProduct($product))->all(),
+        ]]];
+    }
+
     /**
      * @param array<string, mixed> $payload
      * @return array{groups: array<int, array<string, mixed>>}

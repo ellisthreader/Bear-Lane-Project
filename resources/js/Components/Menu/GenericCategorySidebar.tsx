@@ -43,7 +43,7 @@ const remapPath = (root: MenuNode | null, previous: MenuNode[]): MenuNode[] => {
   return next;
 };
 
-const requestCategoryMenu = async (force = false): Promise<MenuPayload> => {
+export const requestCategoryMenu = async (force = false): Promise<MenuPayload> => {
   if (!force && cachedMenu) return cachedMenu;
   if (!force && pendingMenuRequest) return pendingMenuRequest;
 
@@ -80,7 +80,7 @@ export const invalidateCategoryMenu = (): void => {
 };
 
 type Props = {
-  rootKey: "women" | "men" | "kids";
+  rootKey: string;
   title: string;
   closeSidebar: () => void;
   variant?: "drilldown" | "accordion";
@@ -441,6 +441,12 @@ export default function GenericCategorySidebar({
           </button>
           <h3 className={headingClass + " mb-4"}>{currentNode?.name}</h3>
         </>
+      ) : null}
+
+      {rootNode && path.length === 0 ? (
+        <button type="button" {...pressHandlers(() => openCategory(rootNode.slug))} className={`${textClass} mb-4 touch-manipulation`}>
+          Shop all {title}
+        </button>
       ) : null}
 
       {loading ? <p className={textClass}>Loading...</p> : null}

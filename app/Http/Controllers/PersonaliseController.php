@@ -18,7 +18,7 @@ class PersonaliseController extends Controller
     public function index(): Response
     {
         return Inertia::render('Personalise/PickProduct', [
-            'catalogue' => $this->catalogue->getCatalogue(),
+            'catalogue' => $this->catalogue->getStorefrontCatalogue(),
         ]);
     }
 }
