@@ -1,3 +1,75 @@
+@import "./design-fonts.css";
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Website Design (Admin > Other): font variables are set on <html> at runtime. */
+@layer base {
+  :root {
+    --bl-font-body: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+    --bl-font-heading: var(--bl-font-body);
+  }
+
+  body {
+    font-family: var(--bl-font-body);
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--bl-font-heading);
+  }
+}
+
+/*
+ * On-page homepage editor (resources/js/Components/SiteEditor). The editing chrome is blue so it
+ * never gets recoloured by the gold storefront theme. Everything is scoped to html.bl-editing.
+ */
+.bl-editing [data-edit-target] {
+  cursor: pointer;
+  outline: 2px dashed transparent;
+  outline-offset: 3px;
+  transition: outline-color 0.15s ease;
+}
+.bl-editing [data-edit-target]:hover {
+  outline-color: rgba(59, 130, 246, 0.75);
+}
+.bl-editing [data-edit-target][data-edit-selected="true"],
+.bl-editing [data-edit-target]:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 3px;
+}
+.bl-editing .bl-edit-text {
+  cursor: text;
+  min-width: 1ch;
+}
+.bl-editing .bl-edit-text:empty::before {
+  content: attr(data-placeholder);
+  opacity: 0.45;
+}
+/* Room for the fixed editor bar so it never hides the bottom of the page. */
+html.bl-editing body {
+  padding-bottom: 5rem;
+}
+
+/*
+ * Moving and resizing (set with the editor's Move and A+/A- buttons). Position uses the `translate`
+ * property so it never fights other transforms, and both only apply from tablet width up: phones
+ * keep the original mobile layout.
+ */
+.bl-moved {
+  translate: var(--bl-x, 0px) var(--bl-y, 0px);
+}
+@media (min-width: 768px) {
+  .bl-sized {
+    font-size: var(--bl-fs) !important;
+  }
+}
+@media (max-width: 767.98px) {
+  .bl-moved {
+    translate: none;
+  }
+}
+html.bl-dragging,
+html.bl-dragging * {
+  cursor: grabbing !important;
+  user-select: none !important;
+}
