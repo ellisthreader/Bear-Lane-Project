@@ -30,6 +30,7 @@ use App\Http\Controllers\Admin\AdminStatisticsController;
 use App\Http\Controllers\Admin\SupportAdminController;
 use App\Http\Controllers\Admin\SupportChatController;
 use App\Http\Controllers\Admin\AdminOtherController;
+use App\Http\Controllers\Admin\HomepageEditorController;
 use App\Http\Controllers\DesignController;
 use App\Http\Controllers\DesignModerationController;
 use App\Http\Controllers\SavedDesignController;
@@ -179,9 +180,6 @@ Route::get('/', function () {
         ->filter(fn ($id) => $id > 0)
         ->unique()
         ->values();
-    $premadeQuotesById = collect((array) data_get($frontPage, 'premade_quotes', []))
-        ->mapWithKeys(fn ($quote, $id) => [(string) ((int) $id) => trim((string) $quote)]);
-
     $baseFrontPageQuery = Product::query()
         ->with('images')
         ->withAvg('approvedReviews as average_rating', 'rating')
@@ -204,19 +202,6 @@ Route::get('/', function () {
             ->values()
         : collect();
 
-    $attachPremadeQuote = static function ($collection) use ($premadeQuotesById) {
-        return $collection
-            ->map(function (Product $product) use ($premadeQuotesById) {
-                $product->setAttribute('premade_quote', (string) ($premadeQuotesById->get((string) ((int) $product->id), '')));
-                return $product;
-            })
-            ->values();
-    };
-
-    $products = $attachPremadeQuote($products);
-    $featuredProducts = $attachPremadeQuote($featuredProducts);
-    $preMadeProducts = $attachPremadeQuote($preMadeProducts);
-
     $badgeMap = app(ProductBadgeService::class)->badgesForVisibleProductsByCategory(
         $products->merge($featuredProducts)->merge($preMadeProducts)->unique('id')->values()
     );
@@ -238,7 +223,6 @@ Route::get('/', function () {
         'products'    => $products,
         'featuredProducts' => $featuredProducts,
         'preMadeProducts' => $preMadeProducts,
-        'preMadeQuotes' => (array) data_get($frontPage, 'premade_quotes', []),
         'canLogin'    => Route::has('login'),
         'canRegister' => Route::has('register'),
     ]);
@@ -605,6 +589,10 @@ Route::middleware(['auth', 'admin', 'admin.activity'])->prefix('admin')->group(f
     Route::get('/other/homepage', [AdminOtherController::class, 'homepage'])->name('admin.other.homepage');
     Route::put('/other/homepage/products', [AdminOtherController::class, 'updateFrontPage'])->name('admin.other.homepage.products');
     Route::post('/other/homepage/categories', [AdminOtherController::class, 'updateHomepageCategories'])->name('admin.other.homepage.categories');
+    Route::get('/homepage-editor/state', [HomepageEditorController::class, 'state'])->name('admin.homepage-editor.state');
+    Route::get('/homepage-editor/products', [HomepageEditorController::class, 'products'])->name('admin.homepage-editor.products');
+    Route::post('/homepage-editor/upload', [HomepageEditorController::class, 'upload'])->middleware('throttle:60,1')->name('admin.homepage-editor.upload');
+    Route::post('/homepage-editor/save', [HomepageEditorController::class, 'save'])->name('admin.homepage-editor.save');
     Route::get('/other/delivery', [AdminOtherController::class, 'delivery'])->name('admin.other.delivery');
     Route::put('/other/delivery', [AdminOtherController::class, 'updateDelivery'])->name('admin.other.delivery.update');
     Route::get('/other/delivery/carriers', [AdminOtherController::class, 'shippoCarriers'])->name('admin.other.delivery.carriers');

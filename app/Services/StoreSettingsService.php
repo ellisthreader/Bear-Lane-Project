@@ -16,6 +16,16 @@ class StoreSettingsService
     public const KEY_WEBSITE_DESIGN = 'website_design';
     public const KEY_HOMEPAGE_CATEGORIES = 'homepage_categories';
     public const KEY_DELIVERY_SETTINGS = 'delivery_settings';
+    public const KEY_HOMEPAGE_CONTENT = 'homepage_content';
+
+    /** Section ids must match resources/js/Components/SiteEditor/sections.ts. Owner-made blank sections are "custom-xxxx". */
+    public const HOMEPAGE_SECTIONS = ['hero', 'categories', 'idea', 'how', 'featured', 'premade', 'reviews', 'trust'];
+    public const HOMEPAGE_CUSTOM_SECTION_PATTERN = '/^custom-[a-z0-9]{3,12}$/';
+    public const HOMEPAGE_CONTENT_MAX_ENTRIES = 1000;
+    /** Furthest (px) an element may be dragged from where the layout put it, and the allowed font sizes. */
+    public const HOMEPAGE_MAX_OFFSET = 4000;
+    public const HOMEPAGE_FONT_SIZE_RANGE = [8, 200];
+    public const HOMEPAGE_CONTENT_UPLOAD_DIR = 'settings/homepage-content';
 
     public const HOMEPAGE_CATEGORY_MAX = 12;
     public const DELIVERY_METHOD_KINDS = ['standard', 'next_day', 'timed', 'collection'];
@@ -457,6 +467,219 @@ class StoreSettingsService
             ['id' => 'kids-clothing', 'name' => 'Kids Clothing', 'href' => '/category/kids-clothing', 'image_path' => 'images/Category/kids.jpeg'],
             ['id' => 'teddies', 'name' => 'Teddies', 'href' => '/category/teddies', 'image_path' => 'images/Category/teddies.jpg'],
             ['id' => 't-shirts', 'name' => 'T-Shirts', 'href' => '/category/t-shirts', 'image_path' => 'images/Category/tshirts.jpeg'],
+        ];
+    }
+
+    /**
+     * Owner-editable homepage copy. Everything is an override of a default that lives in the
+     * React components, keyed by element id (e.g. "idea.title"), so an empty store means
+     * "show the site as built".
+     *
+     * @return array{texts: array|object, links: array|object, images: array|object, styles: array|object, lists: array|object, hidden: array|object, sections: array{order: array}}
+     */
+    public function getHomepageContent(): array
+    {
+        $stored = $this->get(self::KEY_HOMEPAGE_CONTENT, []);
+        $content = $this->normalizeHomepageContent(is_array($stored) ? $stored : [], verifyImages: false);
+
+        $content['images'] = array_map(fn (string $path) => [
+            'path' => $path,
+            'url' => $this->resolveAssetUrl($path),
+        ], $content['images']);
+
+        foreach (['texts', 'links', 'images', 'styles', 'lists', 'hidden'] as $map) {
+            // Empty PHP arrays encode as [] — the client expects JSON objects for these maps.
+            $content[$map] = $content[$map] === [] ? new \stdClass() : $content[$map];
+        }
+
+        return $content;
+    }
+
+    public function saveHomepageContent(array $payload): array
+    {
+        $this->put(self::KEY_HOMEPAGE_CONTENT, $this->normalizeHomepageContent($payload, verifyImages: true));
+
+        return $this->getHomepageContent();
+    }
+
+    /**
+     * Image paths the editor may point at: files bundled in public/images (or the hero) and
+     * anything uploaded to the public disk under settings/. Never arbitrary paths or URLs.
+     */
+    public function isAllowedImagePath(string $path): bool
+    {
+        $relative = ltrim(trim($path), '/');
+        if ($relative === '' || preg_match('/\.\.|\\\\|[\x00-\x1F]/', $relative) === 1) {
+            return false;
+        }
+
+        if (preg_match('#^(images/|hero\.webp$)#', $relative) === 1) {
+            return is_file(public_path($relative));
+        }
+
+        if (str_starts_with($relative, 'settings/')) {
+            return Storage::disk('public')->exists($relative);
+        }
+
+        return false;
+    }
+
+    /**
+     * Every stored image path the homepage currently points at (content, design, categories).
+     *
+     * @return array<int, string>
+     */
+    public function referencedImagePaths(): array
+    {
+        $paths = array_values(
+            $this->normalizeHomepageContent((array) $this->get(self::KEY_HOMEPAGE_CONTENT, []), verifyImages: false)['images']
+        );
+
+        $design = $this->getWebsiteDesign();
+        $paths = array_merge(
+            $paths,
+            (array) data_get($design, 'images.hero_slide_paths', []),
+            [(string) data_get($design, 'images.nav_logo_path', ''), (string) data_get($design, 'images.footer_logo_path', '')],
+            array_map(fn (array $item) => (string) ($item['image_path'] ?? ''), $this->getHomepageCategories()['items'])
+        );
+
+        return array_values(array_unique(array_filter(array_map(
+            fn ($path) => ltrim(trim((string) $path), '/'),
+            $paths
+        ))));
+    }
+
+    /** Plain text only: no tags (a lone "<" as in "I <3 bears" is left alone), no line breaks, single spaces. */
+    private function plainText(mixed $value, int $max): string
+    {
+        $text = preg_replace('#</?[a-z][^<>]*>#i', '', (string) $value) ?? '';
+        $text = preg_replace('/[\x00-\x1F\x7F\s]+/u', ' ', $text) ?? '';
+
+        return mb_substr(trim($text), 0, $max);
+    }
+
+    /**
+     * @param array<string, mixed> $raw
+     * @return array{texts: array, links: array, images: array, styles: array, lists: array, hidden: array, sections: array{order: array}}
+     */
+    private function normalizeHomepageContent(array $raw, bool $verifyImages): array
+    {
+        $validId = static fn (mixed $id): bool => is_string($id) && preg_match('/^[a-z0-9][a-z0-9._-]{0,99}$/i', $id) === 1;
+        $map = static fn (mixed $value): array => is_array($value) ? $value : [];
+        $cap = self::HOMEPAGE_CONTENT_MAX_ENTRIES;
+
+        $texts = [];
+        foreach (array_slice($map($raw['texts'] ?? []), 0, $cap, true) as $id => $value) {
+            // Empty strings arrive as null (ConvertEmptyStringsToNull); a cleared text is a valid override.
+            if (!$validId($id) || !(is_scalar($value) || $value === null)) {
+                continue;
+            }
+            // The storefront also escapes it when rendering.
+            $texts[$id] = $this->plainText($value, 2000);
+        }
+
+        $links = [];
+        foreach (array_slice($map($raw['links'] ?? []), 0, $cap, true) as $id => $value) {
+            if (!$validId($id) || !(is_scalar($value) || $value === null)) {
+                continue;
+            }
+            $href = trim((string) $value);
+            // An empty link is meaningful (it hides a social icon), anything else must be a safe scheme.
+            if ($href === '' || (strlen($href) <= 255 && preg_match('#^(/(?!/)|https?://|mailto:|tel:|\#)[^\s\x00-\x1F]*$#i', $href) === 1)) {
+                $links[$id] = $href;
+            }
+        }
+
+        $images = [];
+        foreach (array_slice($map($raw['images'] ?? []), 0, $cap, true) as $id => $value) {
+            $path = is_array($value) ? ($value['path'] ?? '') : $value;
+            if (!$validId($id) || !is_string($path)) {
+                continue;
+            }
+            $path = ltrim(trim($path), '/');
+            if ($path === '' || strlen($path) > 255) {
+                continue;
+            }
+            if (!$verifyImages || $this->isAllowedImagePath($path)) {
+                $images[$id] = $path;
+            }
+        }
+
+        // Per element: colours, plus where it was dragged to (x/y, px) and its font size (px).
+        [$minSize, $maxSize] = self::HOMEPAGE_FONT_SIZE_RANGE;
+        $maxOffset = self::HOMEPAGE_MAX_OFFSET;
+        $styles = [];
+        foreach (array_slice($map($raw['styles'] ?? []), 0, $cap, true) as $id => $value) {
+            if (!$validId($id) || !is_array($value)) {
+                continue;
+            }
+            $entry = [];
+            foreach (['color', 'background'] as $property) {
+                $colour = strtoupper(trim((string) ($value[$property] ?? '')));
+                if (preg_match('/^#[0-9A-F]{6}$/', $colour) === 1) {
+                    $entry[$property] = $colour;
+                }
+            }
+            foreach (['x', 'y'] as $axis) {
+                if (isset($value[$axis]) && is_numeric($value[$axis]) && (int) round((float) $value[$axis]) !== 0) {
+                    $entry[$axis] = max(-$maxOffset, min($maxOffset, (int) round((float) $value[$axis])));
+                }
+            }
+            if (isset($value['size']) && is_numeric($value['size'])) {
+                $entry['size'] = max($minSize, min($maxSize, (int) round((float) $value['size'])));
+            }
+            if ($entry !== []) {
+                $styles[$id] = $entry;
+            }
+        }
+
+        $lists = [];
+        foreach (array_slice($map($raw['lists'] ?? []), 0, 80, true) as $id => $items) {
+            if (!$validId($id) || !is_array($items)) {
+                continue;
+            }
+            $lists[$id] = collect($items)
+                ->filter(fn ($item) => is_string($item) && preg_match('/^[a-z0-9_-]{1,40}$/i', $item) === 1)
+                ->unique()
+                ->take(100)
+                ->values()
+                ->all();
+        }
+
+        // Elements the owner deleted, with a short readable name so they can be brought back later.
+        $hidden = [];
+        foreach (array_slice($map($raw['hidden'] ?? []), 0, $cap, true) as $id => $label) {
+            if ($validId($id) && (is_scalar($label) || $label === null)) {
+                $hidden[$id] = $this->plainText($label, 80);
+            }
+        }
+
+        $sections = $map($raw['sections'] ?? []);
+        $knownSection = fn (mixed $id): bool => is_string($id)
+            && (in_array($id, self::HOMEPAGE_SECTIONS, true) || preg_match(self::HOMEPAGE_CUSTOM_SECTION_PATTERN, $id) === 1);
+
+        // Earlier versions kept deleted sections in sections.hidden; fold them into the general list.
+        foreach ((array) ($sections['hidden'] ?? []) as $legacyId) {
+            if (is_string($legacyId) && in_array($legacyId, self::HOMEPAGE_SECTIONS, true)) {
+                $hidden["section.{$legacyId}"] ??= 'Section: ' . ucfirst($legacyId);
+            }
+        }
+
+        return [
+            'texts' => $texts,
+            'links' => $links,
+            'images' => $images,
+            'styles' => $styles,
+            'lists' => $lists,
+            'hidden' => $hidden,
+            'sections' => [
+                'order' => collect(is_array($sections['order'] ?? null) ? $sections['order'] : [])
+                    ->filter($knownSection)
+                    ->unique()
+                    ->take(40)
+                    ->values()
+                    ->all(),
+            ],
         ];
     }
 
@@ -1115,6 +1338,7 @@ class StoreSettingsService
             'tax' => $this->getTaxSettings(),
             'size_guide' => $this->getSizeGuide(),
             'homepage_categories' => $this->getHomepageCategories()['items'],
+            'homepage_content' => $this->getHomepageContent(),
             'front_page_products' => $this->getFrontPageProducts(),
             'design' => $this->getPublicWebsiteDesign(),
         ];
@@ -1179,18 +1403,10 @@ class StoreSettingsService
         return in_array($normalized, ['1', 'true', 'yes', 'on'], true);
     }
 
+    /** Uploaded files live on the public disk; bundled ones (images/…, hero.webp) live in public/. */
     private function publicUrlForPath(string $path): ?string
     {
-        $trimmed = trim($path);
-        if ($trimmed === '') {
-            return null;
-        }
-
-        if (preg_match('/^https?:\/\//i', $trimmed) === 1) {
-            return $trimmed;
-        }
-
-        return Storage::disk('public')->url($trimmed);
+        return $this->resolveAssetUrl($path);
     }
 
     private function mergeDefaults(array $defaults, array $stored): array

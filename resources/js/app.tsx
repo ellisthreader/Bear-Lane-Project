@@ -1,5 +1,5 @@
 import "./bootstrap"; // Echo + axios first
-import React from "react";
+import React, { Suspense, lazy } from "react";
 import { createRoot } from "react-dom/client";
 import { createInertiaApp } from "@inertiajs/react";
 import { resolvePageComponent } from "laravel-vite-plugin/inertia-helpers";
@@ -10,10 +10,22 @@ import { CheckoutProvider } from "@/Context/CheckoutContext";
 import CookieConsentManager from "@/Components/Cookies/CookieConsentManager";
 import FloatingHelpLauncher from "@/Components/Support/FloatingHelpLauncher";
 import SiteDesignProvider from "@/Theme/SiteDesignProvider";
+import { bindEditorToInertia, useEditingRequested } from "@/Components/SiteEditor/store";
 import { PREVIEW_QUERY_PARAM, applySiteDesignToDocument, isAdminPath, type SiteDesign } from "@/Theme/siteDesign";
 
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+
+// The on-page editor is only downloaded once an admin switches edit mode on.
+const EditorHost = lazy(() => import("@/Components/SiteEditor/EditorHost"));
+
+function EditorMount() {
+  return useEditingRequested() ? (
+    <Suspense fallback={null}>
+      <EditorHost />
+    </Suspense>
+  ) : null;
+}
 
 if (typeof window !== "undefined") {
   window.addEventListener("unhandledrejection", (event) => {
@@ -53,6 +65,7 @@ createInertiaApp({
     // Apply the saved Website Design before first paint so themed pages never flash the default palette.
     const initialDesign = (props.initialPage.props as { storeSettings?: { design?: SiteDesign } }).storeSettings?.design ?? null;
     applySiteDesignToDocument(document, isAdminPath(window.location.pathname) ? null : initialDesign);
+    bindEditorToInertia(props.initialPage.props);
     const isDesignPreviewFrame =
       window.parent !== window && new URLSearchParams(window.location.search).get(PREVIEW_QUERY_PARAM) === "1";
 
@@ -63,6 +76,7 @@ createInertiaApp({
             <CheckoutProvider>
               <App {...props} />
               <SiteDesignProvider initialDesign={initialDesign} />
+              <EditorMount />
               {isDesignPreviewFrame ? null : <CookieConsentManager />}
               {isDesignPreviewFrame ? null : <FloatingHelpLauncher />}
 

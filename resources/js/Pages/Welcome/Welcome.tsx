@@ -7,6 +7,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type ReactNode,
 } from "react";
 import { Head, usePage } from "@inertiajs/react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
@@ -23,11 +24,19 @@ const ProductCard = lazy(() => import("../Product/ProductCard"));
 import {
   CheckCircle2,
   ShieldCheck,
+  ShoppingBag,
   SlidersHorizontal,
   Sparkles,
   Star,
   Truck,
+  type LucideIcon,
 } from "lucide-react";
+import { AddItemButton, BlankSection, EditSection, ItemControls } from "@/Components/SiteEditor/controls";
+import { ContentImage, cx, EditBlock, EditText, useLook } from "@/Components/SiteEditor/primitives";
+import { openProductPicker } from "@/Components/SiteEditor/selection";
+import { DEFAULT_ORDER_CLASSES, effectiveSectionOrder } from "@/Components/SiteEditor/sections";
+import { itemKey, useSectionConfig, useText, useVisibleIds } from "@/Components/SiteEditor/store";
+import type { SectionId } from "@/Components/SiteEditor/types";
 
 type User = {
   id: number;
@@ -45,7 +54,6 @@ type Product = {
   price: number;
   original_price?: number | null;
   is_premade_design?: boolean;
-  premade_quote?: string | null;
   auto_badges?: string[] | null;
   images: string[];
 };
@@ -57,128 +65,176 @@ type PageProps = {
   products: Product[];
   featuredProducts?: Product[];
   preMadeProducts?: Product[];
-  preMadeQuotes?: Record<string, string>;
 };
 
-const customerReviews = [
-  {
-    name: "vose-14",
-    quote: "Great seller, fast delivery, no nonsense! A*",
-    time: "4 days ago",
-    avatar: "/images/reviews/vinted/vose-14.webp",
-  },
-  {
-    name: "locko0",
-    quote: "Fast dispatch, item as described",
-    time: "1 month ago",
-  },
-  {
-    name: "rbw888",
-    quote: "Great hat, good price. Am really pleased, thank you 👍",
-    time: "1 month ago",
-    avatar: "/images/reviews/vinted/rbw888.webp",
-  },
-  {
-    name: "nashkins",
-    quote: "Beautiful caps, Just as described. A**** seller",
-    time: "1 month ago",
-  },
-  {
-    name: "finchs261",
-    quote: "A remarkably easy buying and selling experience that has furnished my bonce with a new adornment.",
-    time: "1 month ago",
-    avatar: "/images/reviews/vinted/finchs261.webp",
-  },
-  {
-    name: "icklegeordie",
-    quote: "Fantastic item and fabulous seller 👍🙏👍",
-    time: "1 month ago",
-    avatar: "/images/reviews/vinted/icklegeordie.webp",
-  },
-  {
-    name: "zoevictoriab",
-    quote: "Lovely item great condition thank you !",
-    time: "1 month ago",
-  },
-  {
-    name: "karlabcs",
-    quote: "great item. well packed. thank you !",
-    time: "1 month ago",
-    avatar: "/images/reviews/vinted/karlabcs.webp",
-  },
-  {
-    name: "jamhop1",
-    quote: "Item arrived quickly and as described. Thanks :)",
-    time: "2 months ago",
-  },
-  {
-    name: "lmacoct79",
-    quote: "Great seller with fast delivery and item as described. very happy. 🙂",
-    time: "2 months ago",
-  },
-];
-
-const trustSignals = [
-  {
-    title: "100% Satisfaction Guarantee",
-    description: "If your order is not right, we make it right quickly.",
-    icon: ShieldCheck,
-  },
-  {
-    title: "Easy Customisation Tools",
-    description: "Design, preview, and approve your products in minutes.",
-    icon: SlidersHorizontal,
-  },
-  {
-    title: "Free Standard Delivery",
-    description: "Reliable delivery with tracking on every qualifying order.",
-    icon: Truck,
-  },
-];
-
-type CustomerReview = {
+type Review = {
   name: string;
   quote: string;
   time: string;
   avatar?: string;
 };
 
-function ReviewCard({ review }: { review: CustomerReview }) {
+const REVIEWS_LIST = "reviews.items";
+const DEFAULT_REVIEWS: Record<string, Review> = {
+  r1: {
+    name: "vose-14",
+    quote: "Great seller, fast delivery, no nonsense! A*",
+    time: "4 days ago",
+    avatar: "/images/reviews/vinted/vose-14.webp",
+  },
+  r2: {
+    name: "locko0",
+    quote: "Fast dispatch, item as described",
+    time: "1 month ago",
+  },
+  r3: {
+    name: "rbw888",
+    quote: "Great hat, good price. Am really pleased, thank you 👍",
+    time: "1 month ago",
+    avatar: "/images/reviews/vinted/rbw888.webp",
+  },
+  r4: {
+    name: "nashkins",
+    quote: "Beautiful caps, Just as described. A**** seller",
+    time: "1 month ago",
+  },
+  r5: {
+    name: "finchs261",
+    quote: "A remarkably easy buying and selling experience that has furnished my bonce with a new adornment.",
+    time: "1 month ago",
+    avatar: "/images/reviews/vinted/finchs261.webp",
+  },
+  r6: {
+    name: "icklegeordie",
+    quote: "Fantastic item and fabulous seller 👍🙏👍",
+    time: "1 month ago",
+    avatar: "/images/reviews/vinted/icklegeordie.webp",
+  },
+  r7: {
+    name: "zoevictoriab",
+    quote: "Lovely item great condition thank you !",
+    time: "1 month ago",
+  },
+  r8: {
+    name: "karlabcs",
+    quote: "great item. well packed. thank you !",
+    time: "1 month ago",
+    avatar: "/images/reviews/vinted/karlabcs.webp",
+  },
+  r9: {
+    name: "jamhop1",
+    quote: "Item arrived quickly and as described. Thanks :)",
+    time: "2 months ago",
+  },
+  r10: {
+    name: "lmacoct79",
+    quote: "Great seller with fast delivery and item as described. very happy. 🙂",
+    time: "2 months ago",
+  },
+};
+const DEFAULT_REVIEW_IDS = Object.keys(DEFAULT_REVIEWS);
+const NEW_REVIEW: Review = { name: "customer", quote: "What a brilliant experience, thank you!", time: "Just now" };
+
+type TrustItem = { title: string; description: string; icon: LucideIcon };
+
+const TRUST_LIST = "trust.items";
+const DEFAULT_TRUST: Record<string, TrustItem> = {
+  t1: {
+    title: "100% Satisfaction Guarantee",
+    description: "If your order is not right, we make it right quickly.",
+    icon: ShieldCheck,
+  },
+  t2: {
+    title: "Easy Customisation Tools",
+    description: "Design, preview, and approve your products in minutes.",
+    icon: SlidersHorizontal,
+  },
+  t3: {
+    title: "Free Standard Delivery",
+    description: "Reliable delivery with tracking on every qualifying order.",
+    icon: Truck,
+  },
+};
+const DEFAULT_TRUST_IDS = Object.keys(DEFAULT_TRUST);
+const NEW_TRUST: TrustItem = {
+  title: "New benefit",
+  description: "Tell customers why they can rely on you.",
+  icon: Sparkles,
+};
+
+function ReviewCard({ id, review }: { id: string; review: Review }) {
+  const field = (name: string) => itemKey(REVIEWS_LIST, id, name);
+  const name = useText(field("name"), review.name);
+  const look = useLook(field("card"));
+
   return (
-    <figure className="w-[300px] shrink-0 rounded-2xl border border-[#EDE4CE] bg-[#FFFDF8] p-5">
+    <figure
+      className={cx("group/item relative w-[300px] shrink-0 rounded-2xl border border-[#EDE4CE] bg-[#FFFDF8] p-5", look.className)}
+      style={look.style}
+    >
+      <ItemControls listId={REVIEWS_LIST} itemId={id} defaults={DEFAULT_REVIEW_IDS} styleId={field("card")} noun="review" />
       <figcaption className="flex items-center gap-3">
-        {review.avatar ? (
-          <img
-            src={review.avatar}
-            alt=""
-            loading="lazy"
-            className="h-8 w-8 shrink-0 rounded-full bg-[#EAF5F4] object-cover"
-            aria-hidden="true"
-          />
-        ) : (
-          <span
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#EAF5F4] text-xs font-semibold uppercase text-[#007782]"
-            aria-hidden="true"
-          >
-            {review.name.charAt(0)}
-          </span>
-        )}
+        <ContentImage
+          id={field("avatar")}
+          src={review.avatar ?? ""}
+          alt=""
+          aria-hidden="true"
+          loading="lazy"
+          label="Profile picture"
+          className="h-8 w-8 shrink-0 rounded-full bg-[#EAF5F4] object-cover"
+          empty={
+            <span
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#EAF5F4] text-xs font-semibold uppercase text-[#007782]"
+              aria-hidden="true"
+            >
+              {name.charAt(0)}
+            </span>
+          }
+        />
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold text-[#1F1A13]">{review.name}</p>
+          <EditText id={field("name")} as="p" label="Name" className="truncate text-sm font-semibold text-[#1F1A13]">
+            {review.name}
+          </EditText>
           <div className="mt-0.5 flex items-center gap-1.5">
-            <span className="flex gap-px text-[#C9A24D]" aria-label="5 out of 5 stars">
+            <EditBlock id={field("stars")} label="Stars" as="span" className="flex gap-px text-[#C9A24D]" ariaLabel="5 out of 5 stars" background={false}>
               {Array.from({ length: 5 }).map((_, idx) => (
                 <Star key={idx} className="h-3 w-3 fill-current" aria-hidden="true" />
               ))}
-            </span>
-            <span className="text-xs text-[#8A7A5A]">{review.time}</span>
+            </EditBlock>
+            <EditText id={field("time")} as="span" label="Date" className="text-xs text-[#8A7A5A]">
+              {review.time}
+            </EditText>
           </div>
         </div>
       </figcaption>
-      <blockquote className="mt-3 text-[15px] leading-relaxed text-[#3A3020]">
+      <EditText id={field("quote")} as="blockquote" label="Review" className="mt-3 text-[15px] leading-relaxed text-[#3A3020]">
         {review.quote}
-      </blockquote>
+      </EditText>
     </figure>
+  );
+}
+
+function TrustCard({ id, item }: { id: string; item: TrustItem }) {
+  const field = (name: string) => itemKey(TRUST_LIST, id, name);
+  const look = useLook(field("card"));
+  const Icon = item.icon;
+
+  return (
+    <div
+      className={cx("group/item relative rounded-2xl border border-[#E8DDBF] bg-white p-6 text-center", look.className)}
+      style={look.style}
+    >
+      <ItemControls listId={TRUST_LIST} itemId={id} defaults={DEFAULT_TRUST_IDS} styleId={field("card")} noun="benefit" />
+      <EditBlock id={field("icon")} label="Icon" className="mx-auto w-fit text-[#8A6D2B]" background={false}>
+        <Icon className="mx-auto h-10 w-10" />
+      </EditBlock>
+      <EditText id={field("title")} as="h3" label="Heading" className="mt-4 text-base font-semibold text-[#1F1A13]">
+        {item.title}
+      </EditText>
+      <EditText id={field("description")} as="p" label="Paragraph" className="mt-2 text-sm text-[#685536]">
+        {item.description}
+      </EditText>
+    </div>
   );
 }
 
@@ -201,19 +257,6 @@ export default function Welcome() {
     if (!Array.isArray(props.preMadeProducts)) return [];
     return props.preMadeProducts.slice(0, 30);
   }, [props.preMadeProducts]);
-  const preMadeQuotes = useMemo(() => {
-    if (!props.preMadeQuotes || typeof props.preMadeQuotes !== "object") {
-      return {} as Record<string, string>;
-    }
-
-    return Object.entries(props.preMadeQuotes).reduce<Record<string, string>>((acc, [key, value]) => {
-      const normalizedId = String(Number(key));
-      const quote = String(value || "").trim();
-      if (!normalizedId || normalizedId === "NaN" || !quote) return acc;
-      acc[normalizedId] = quote;
-      return acc;
-    }, {});
-  }, [props.preMadeQuotes]);
   const productRailRef = useRef<HTMLDivElement | null>(null);
   const preMadeRailRef = useRef<HTMLDivElement | null>(null);
   const reviewsSectionRef = useRef<HTMLElement | null>(null);
@@ -512,321 +555,346 @@ export default function Welcome() {
     rail.scrollBy({ left: event.deltaY, behavior: "auto" });
   };
 
+  const sectionConfig = useSectionConfig();
+  const sectionOrder = effectiveSectionOrder(sectionConfig);
+  const hasCustomOrder = sectionConfig.order.length > 0;
+  const reviewIds = useVisibleIds(REVIEWS_LIST, DEFAULT_REVIEW_IDS);
+  const trustIds = useVisibleIds(TRUST_LIST, DEFAULT_TRUST_IDS);
+  const reviewSplit = Math.ceil(reviewIds.length / 2);
+  const reviewRows = [reviewIds.slice(0, reviewSplit), reviewIds.slice(reviewSplit)];
+
+  const chooseProducts = (kind: "featured" | "premade") => (
+    <button
+      type="button"
+      onClick={() => openProductPicker(kind)}
+      className="ml-1 inline-flex h-7 items-center gap-1.5 rounded-full bg-blue-500 px-3 text-xs font-semibold text-white transition hover:bg-blue-400"
+    >
+      <ShoppingBag className="h-3.5 w-3.5" />
+      Choose products
+    </button>
+  );
+
+  const sections: Record<string, ReactNode> = {
+    hero: <HeroSection />,
+    categories: (
+      <DeferredRender fallback={sectionFallback}>
+        <Suspense fallback={sectionFallback}>
+          <CategorySection />
+        </Suspense>
+      </DeferredRender>
+    ),
+    idea: (
+      <DeferredRender fallback={sectionFallback}>
+        <Suspense fallback={sectionFallback}>
+          <IdeaToIconicSection />
+        </Suspense>
+      </DeferredRender>
+    ),
+    how: (
+      <DeferredRender fallback={sectionFallback}>
+        <Suspense fallback={sectionFallback}>
+          <StackedScrollCards />
+        </Suspense>
+      </DeferredRender>
+    ),
+    featured: (
+        <section id="featured-products" className="py-16">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <RailSectionHeader
+              idPrefix="featured"
+              eyebrow="New In"
+              title="Featured Products"
+              description=""
+              editHref={isAdminUser ? "/admin/other/homepage?tab=featured" : undefined}
+              editLabel="Edit featured"
+              onPrev={() => scrollProductRail("prev")}
+              onNext={() => scrollProductRail("next")}
+              canPrev={canScrollPrev}
+              canNext={canScrollNext}
+              prevLabel="Previous featured products"
+              nextLabel="Next featured products"
+            />
+          </div>
+
+          <div className="mt-8 w-full px-4 sm:px-6 lg:px-8">
+            {spotlightProducts.length > 0 ? (
+              <>
+                <div
+                  ref={productRailRef}
+                  onPointerDown={(event) => {
+                    startProductRailDrag(event);
+                  }}
+                  onPointerMove={(event) => {
+                    moveProductRailDrag(event);
+                  }}
+                  onPointerUp={(event) => {
+                    endProductRailDrag(event);
+                  }}
+                  onPointerCancel={(event) => {
+                    endProductRailDrag(event);
+                  }}
+                  onPointerLeave={(event) => {
+                    if (event.pointerType === "mouse" && !productRailDraggingRef.current) {
+                      event.currentTarget.style.cursor = "grab";
+                    }
+                  }}
+                  onClickCapture={(event) => {
+                    if (productRailMovedRef.current) {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      productRailMovedRef.current = false;
+                    }
+                  }}
+                  onWheel={(event) => handleRailWheel(event, productRailRef.current)}
+                  onDragStart={(event) => event.preventDefault()}
+                  className="flex w-full cursor-grab select-none snap-x snap-mandatory gap-4 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden touch-pan-x active:cursor-grabbing"
+                >
+                  {spotlightProducts.map((product) => (
+                    <motion.div
+                      key={product.id}
+                      data-product-card
+                      className="min-w-[76%] snap-start sm:min-w-[48%] md:min-w-[32%] lg:w-[265px] lg:min-w-[265px]"
+                      initial={{ opacity: 0, y: 20 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true, amount: 0.2 }}
+                      transition={{ duration: 0.35 }}
+                    >
+                      <Suspense
+                        fallback={
+                          <div className="h-64 animate-pulse rounded-2xl border border-[#EDE8DE] bg-[#F4F2ED] md:h-72" />
+                        }
+                      >
+                        <ProductCard product={product} compact showPremadeQuoteInside={false} />
+                      </Suspense>
+                    </motion.div>
+                  ))}
+                </div>
+                <div className="mt-6 flex flex-wrap items-center justify-center gap-1.5">
+                  {spotlightProducts.map((product, index) => (
+                    <button
+                      key={`spotlight-dot-${product.id}`}
+                      type="button"
+                      onClick={() => jumpToProduct(index)}
+                      className={`h-1.5 rounded-full transition-all ${
+                        index === activeProductIndex
+                          ? "w-6 bg-[#1F1A13]"
+                          : "w-1.5 bg-[#DCD5C7] hover:bg-[#BDB5A4]"
+                      }`}
+                      aria-label={`Jump to featured product ${index + 1}`}
+                    />
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="rounded-2xl border border-dashed border-[#E8E2D6] bg-[#FBFAF7] px-4 py-8 text-center text-sm text-[#8A8172]">
+                No featured products selected yet.
+              </div>
+            )}
+          </div>
+        </section>
+    ),
+    premade: (
+        <section className="pb-12">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <RailSectionHeader
+              idPrefix="premade"
+              eyebrow="Studio Collection"
+              title="Pre-Made Designs"
+              description="Professionally crafted design templates from our studio team, ready to customise in minutes."
+              editHref={isAdminUser ? "/admin/other/homepage?tab=premade" : undefined}
+              editLabel="Edit pre-made"
+              onPrev={() => scrollPreMadeRail("prev")}
+              onNext={() => scrollPreMadeRail("next")}
+              canPrev={canScrollPreMadePrev}
+              canNext={canScrollPreMadeNext}
+              prevLabel="Previous pre-made designs"
+              nextLabel="Next pre-made designs"
+            />
+          </div>
+          <div className="mt-8 w-full px-4 sm:px-6 lg:px-8">
+            {preMadeProducts.length > 0 ? (
+              <>
+                <div
+                  ref={preMadeRailRef}
+                  onPointerDown={(event) => {
+                    startPreMadeRailDrag(event);
+                  }}
+                  onPointerMove={(event) => {
+                    movePreMadeRailDrag(event);
+                  }}
+                  onPointerUp={(event) => {
+                    endPreMadeRailDrag(event);
+                  }}
+                  onPointerCancel={(event) => {
+                    endPreMadeRailDrag(event);
+                  }}
+                  onPointerLeave={(event) => {
+                    if (event.pointerType === "mouse" && !preMadeRailDraggingRef.current) {
+                      event.currentTarget.style.cursor = "grab";
+                    }
+                  }}
+                  onClickCapture={(event) => {
+                    if (preMadeRailMovedRef.current) {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      preMadeRailMovedRef.current = false;
+                    }
+                  }}
+                  onWheel={(event) => handleRailWheel(event, preMadeRailRef.current)}
+                  onDragStart={(event) => event.preventDefault()}
+                  className="flex w-full cursor-grab select-none snap-x snap-mandatory gap-4 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden touch-pan-x active:cursor-grabbing"
+                >
+                  {preMadeProducts.map((product, index) => (
+                    <div
+                      key={`premade-${product.id}-${index}`}
+                      data-premade-card
+                      className="min-w-[76%] snap-start sm:min-w-[48%] md:min-w-[32%] lg:w-[265px] lg:min-w-[265px]"
+                    >
+                      <Suspense
+                        fallback={
+                          <div className="h-64 animate-pulse rounded-2xl border border-[#EDE8DE] bg-[#F4F2ED] md:h-72" />
+                        }
+                      >
+                        <ProductCard product={product} compact showPremadeQuoteInside={false} />
+                      </Suspense>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-6 flex flex-wrap items-center justify-center gap-1.5">
+                  {preMadeProducts.map((product, index) => (
+                    <button
+                      key={`premade-dot-${product.id}-${index}`}
+                      type="button"
+                      onClick={() => jumpToPreMade(index)}
+                      className={`h-1.5 rounded-full transition-all ${
+                        index === activePreMadeIndex
+                          ? "w-6 bg-[#1F1A13]"
+                          : "w-1.5 bg-[#DCD5C7] hover:bg-[#BDB5A4]"
+                      }`}
+                      aria-label={`Jump to pre-made design ${index + 1}`}
+                    />
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="rounded-2xl border border-dashed border-[#E8E2D6] bg-[#FBFAF7] px-4 py-8 text-center text-sm text-[#8A8172]">
+                No pre-made designs selected yet.
+              </div>
+            )}
+          </div>
+        </section>
+    ),
+    reviews: (
+        <section id="vinted-reviews" ref={reviewsSectionRef} className="pt-16">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <motion.div
+              className="flex flex-col items-center text-center"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.2 }}
+              transition={{ duration: 0.35 }}
+            >
+              <div className="flex items-center gap-2 text-[#007782]">
+                <ContentImage
+                  id="reviews.logo"
+                  src="/images/vinted-logo.svg"
+                  alt=""
+                  aria-hidden="true"
+                  label="Logo"
+                  className="h-6 w-6"
+                />
+                <EditText id="reviews.brand" as="span" label="Name" className="text-lg font-semibold tracking-tight">
+                  Vinted
+                </EditText>
+              </div>
+              <EditText id="reviews.title" as="h2" label="Heading" className="mt-4 text-3xl font-bold tracking-tight text-[#1F1A13]">
+                5-star feedback from Vinted buyers
+              </EditText>
+              <EditBlock id="reviews.stars" label="Stars" className="mt-4 flex gap-0.5 text-[#C9A24D]" ariaLabel="5 out of 5 stars" background={false}>
+                {Array.from({ length: 5 }).map((_, idx) => (
+                  <Star key={idx} className="h-4 w-4 fill-current" aria-hidden="true" />
+                ))}
+              </EditBlock>
+            </motion.div>
+
+            <div className="-mx-4 mt-10 space-y-4 overflow-x-clip sm:-mx-6 lg:-mx-8">
+              {reviewRows.map((rowIds, rowIndex) => (
+                <motion.div
+                  key={rowIndex}
+                  className="flex w-max gap-4"
+                  style={prefersReducedMotion ? undefined : { x: rowIndex === 0 ? reviewsRowOneX : reviewsRowTwoX }}
+                >
+                  {rowIds.map((id) => (
+                    <ReviewCard key={id} id={id} review={DEFAULT_REVIEWS[id] ?? NEW_REVIEW} />
+                  ))}
+                </motion.div>
+              ))}
+            </div>
+
+            <AddItemButton
+              listId={REVIEWS_LIST}
+              defaults={DEFAULT_REVIEW_IDS}
+              label="Add a review"
+              max={24}
+              wrapperClassName="mt-6 flex justify-center"
+            />
+          </div>
+        </section>
+    ),
+    trust: (
+        <section className="pb-16 pt-14">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <EditText id="trust.title" as="h2" label="Heading" className="text-center text-2xl font-bold text-[#1F1A13] sm:text-3xl">
+              Confidence in Every Order
+            </EditText>
+            <div className="mt-7 grid gap-4 md:grid-cols-3">
+              {trustIds.map((id) => (
+                <TrustCard key={id} id={id} item={DEFAULT_TRUST[id] ?? NEW_TRUST} />
+              ))}
+            </div>
+            <AddItemButton
+              listId={TRUST_LIST}
+              defaults={DEFAULT_TRUST_IDS}
+              label="Add a benefit"
+              max={6}
+              wrapperClassName="mt-4 flex justify-center"
+            />
+
+            <EditBlock id="qa.box" label="Box" className="mt-14 rounded-2xl border border-[#E8DDBF] bg-white p-6 text-center sm:p-8">
+              <EditBlock id="qa.pill" label="Label" className="inline-flex items-center gap-2 rounded-full border border-[#E8DDBF] bg-white px-4 py-1 text-xs font-semibold uppercase tracking-wider text-[#8A6D2B]">
+                <CheckCircle2 className="h-5 w-5" />
+                <EditText id="qa.badge" as="span" label="Label text">
+                  Professional quality assurance
+                </EditText>
+              </EditBlock>
+              <EditText id="qa.text" as="p" label="Paragraph" className="mx-auto mt-4 max-w-2xl text-sm text-[#5D4B2E] sm:text-base">
+                Every product is reviewed before dispatch to ensure premium finishing, accurate customisation, and dependable consistency for your brand.
+              </EditText>
+            </EditBlock>
+          </div>
+        </section>
+    ),
+  };
+
   return (
     <Layout>
       <Head title="Welcome">
         <link rel="preload" as="image" href="/hero.webp" />
       </Head>
 
-      <div className="flex flex-col">
-        {/* HERO */}
-        <div className="order-1">
-          <HeroSection />
-        </div>
-
-        {/* FROM IDEA TO ICONIC SECTION */}
-        <div className="order-2 md:order-3">
-          <DeferredRender fallback={sectionFallback}>
-            <Suspense fallback={sectionFallback}>
-              <IdeaToIconicSection />
-            </Suspense>
-          </DeferredRender>
-        </div>
-
-        {/* CATEGORIES */}
-        <div className="order-3 md:order-2">
-          <DeferredRender fallback={sectionFallback}>
-            <Suspense fallback={sectionFallback}>
-              <CategorySection />
-            </Suspense>
-          </DeferredRender>
-        </div>
-      </div>
-
-     
-
-      {/* STACKED FEATURE CARDS */}
-      <DeferredRender fallback={sectionFallback}>
-        <Suspense fallback={sectionFallback}>
-          <StackedScrollCards />
-        </Suspense>
-      </DeferredRender>
-
-      <section id="featured-products" className="bg-white py-16">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <RailSectionHeader
-            eyebrow="New In"
-            title="Featured Products"
-            editHref={isAdminUser ? "/admin/other/homepage?tab=featured" : undefined}
-            editLabel="Edit featured"
-            onPrev={() => scrollProductRail("prev")}
-            onNext={() => scrollProductRail("next")}
-            canPrev={canScrollPrev}
-            canNext={canScrollNext}
-            prevLabel="Previous featured products"
-            nextLabel="Next featured products"
-          />
-        </div>
-
-        <div className="mt-8 w-full px-4 sm:px-6 lg:px-8">
-          {spotlightProducts.length > 0 ? (
-            <>
-              <div
-                ref={productRailRef}
-                onPointerDown={(event) => {
-                  startProductRailDrag(event);
-                }}
-                onPointerMove={(event) => {
-                  moveProductRailDrag(event);
-                }}
-                onPointerUp={(event) => {
-                  endProductRailDrag(event);
-                }}
-                onPointerCancel={(event) => {
-                  endProductRailDrag(event);
-                }}
-                onPointerLeave={(event) => {
-                  if (event.pointerType === "mouse" && !productRailDraggingRef.current) {
-                    event.currentTarget.style.cursor = "grab";
-                  }
-                }}
-                onClickCapture={(event) => {
-                  if (productRailMovedRef.current) {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    productRailMovedRef.current = false;
-                  }
-                }}
-                onWheel={(event) => handleRailWheel(event, productRailRef.current)}
-                onDragStart={(event) => event.preventDefault()}
-                className="flex w-full cursor-grab select-none snap-x snap-mandatory gap-4 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden touch-pan-x active:cursor-grabbing"
-              >
-                {spotlightProducts.map((product) => (
-                  <motion.div
-                    key={product.id}
-                    data-product-card
-                    className="min-w-[76%] snap-start sm:min-w-[48%] md:min-w-[32%] lg:w-[265px] lg:min-w-[265px]"
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true, amount: 0.2 }}
-                    transition={{ duration: 0.35 }}
-                  >
-                    <Suspense
-                      fallback={
-                        <div className="h-64 animate-pulse rounded-2xl border border-[#EDE8DE] bg-[#F4F2ED] md:h-72" />
-                      }
-                    >
-                      <ProductCard product={product} compact />
-                    </Suspense>
-                  </motion.div>
-                ))}
-              </div>
-              <div className="mt-6 flex flex-wrap items-center justify-center gap-1.5">
-                {spotlightProducts.map((product, index) => (
-                  <button
-                    key={`spotlight-dot-${product.id}`}
-                    type="button"
-                    onClick={() => jumpToProduct(index)}
-                    className={`h-1.5 rounded-full transition-all ${
-                      index === activeProductIndex
-                        ? "w-6 bg-[#1F1A13]"
-                        : "w-1.5 bg-[#DCD5C7] hover:bg-[#BDB5A4]"
-                    }`}
-                    aria-label={`Jump to featured product ${index + 1}`}
-                  />
-                ))}
-              </div>
-            </>
-          ) : (
-            <div className="rounded-2xl border border-dashed border-[#E8E2D6] bg-[#FBFAF7] px-4 py-8 text-center text-sm text-[#8A8172]">
-              No featured products selected yet.
-            </div>
-          )}
-        </div>
-      </section>
-
-      <section className="bg-white pb-12">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <RailSectionHeader
-            eyebrow="Studio Collection"
-            title="Pre-Made Designs"
-            description="Professionally crafted design templates from our studio team, ready to customise in minutes."
-            editHref={isAdminUser ? "/admin/other/homepage?tab=premade" : undefined}
-            editLabel="Edit pre-made"
-            onPrev={() => scrollPreMadeRail("prev")}
-            onNext={() => scrollPreMadeRail("next")}
-            canPrev={canScrollPreMadePrev}
-            canNext={canScrollPreMadeNext}
-            prevLabel="Previous pre-made designs"
-            nextLabel="Next pre-made designs"
-          />
-        </div>
-        <div className="mt-8 w-full px-4 sm:px-6 lg:px-8">
-          {preMadeProducts.length > 0 ? (
-            <>
-              <div
-                ref={preMadeRailRef}
-                onPointerDown={(event) => {
-                  startPreMadeRailDrag(event);
-                }}
-                onPointerMove={(event) => {
-                  movePreMadeRailDrag(event);
-                }}
-                onPointerUp={(event) => {
-                  endPreMadeRailDrag(event);
-                }}
-                onPointerCancel={(event) => {
-                  endPreMadeRailDrag(event);
-                }}
-                onPointerLeave={(event) => {
-                  if (event.pointerType === "mouse" && !preMadeRailDraggingRef.current) {
-                    event.currentTarget.style.cursor = "grab";
-                  }
-                }}
-                onClickCapture={(event) => {
-                  if (preMadeRailMovedRef.current) {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    preMadeRailMovedRef.current = false;
-                  }
-                }}
-                onWheel={(event) => handleRailWheel(event, preMadeRailRef.current)}
-                onDragStart={(event) => event.preventDefault()}
-                className="flex w-full cursor-grab select-none snap-x snap-mandatory gap-4 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden touch-pan-x active:cursor-grabbing"
-              >
-                {preMadeProducts.map((product, index) => (
-                  <div
-                    key={`premade-${product.id}-${index}`}
-                    data-premade-card
-                    className="min-w-[76%] snap-start sm:min-w-[48%] md:min-w-[32%] lg:w-[265px] lg:min-w-[265px]"
-                  >
-                    <Suspense
-                      fallback={
-                        <div className="h-64 animate-pulse rounded-2xl border border-[#EDE8DE] bg-[#F4F2ED] md:h-72" />
-                      }
-                    >
-                      <ProductCard product={product} compact showPremadeQuoteInside={false} />
-                    </Suspense>
-                    {String(preMadeQuotes[String(product.id)] || String(product.premade_quote || "").trim()).trim() ? (
-                      <div className="mt-3 rounded-xl border border-[#EDE8DE] bg-[#FBFAF7] px-3.5 py-3">
-                        <span className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-[0.16em] text-[#9A8F7B]">
-                          <Sparkles className="h-3 w-3" strokeWidth={1.75} />
-                          Bear Lane Studio
-                        </span>
-                        <span className="mt-1.5 block text-sm leading-relaxed text-[#3D372C]">
-                          {String(preMadeQuotes[String(product.id)] || String(product.premade_quote || "").trim()).trim()}
-                        </span>
-                      </div>
-                    ) : null}
-                  </div>
-                ))}
-              </div>
-              <div className="mt-6 flex flex-wrap items-center justify-center gap-1.5">
-                {preMadeProducts.map((product, index) => (
-                  <button
-                    key={`premade-dot-${product.id}-${index}`}
-                    type="button"
-                    onClick={() => jumpToPreMade(index)}
-                    className={`h-1.5 rounded-full transition-all ${
-                      index === activePreMadeIndex
-                        ? "w-6 bg-[#1F1A13]"
-                        : "w-1.5 bg-[#DCD5C7] hover:bg-[#BDB5A4]"
-                    }`}
-                    aria-label={`Jump to pre-made design ${index + 1}`}
-                  />
-                ))}
-              </div>
-            </>
-          ) : (
-            <div className="rounded-2xl border border-dashed border-[#E8E2D6] bg-[#FBFAF7] px-4 py-8 text-center text-sm text-[#8A8172]">
-              No pre-made designs selected yet.
-            </div>
-          )}
-        </div>
-      </section>
-
-      <section id="vinted-reviews" ref={reviewsSectionRef} className="bg-white py-16">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <motion.div
-            className="flex flex-col items-center text-center"
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.2 }}
-            transition={{ duration: 0.35 }}
+      <div className="flex flex-col" data-edit-scope>
+        {sectionOrder.map((id) => (
+          <EditSection
+            key={id}
+            id={id}
+            orderClass={hasCustomOrder ? undefined : DEFAULT_ORDER_CLASSES[id as SectionId]}
+            noBackground={id === "hero"}
+            extra={id === "featured" || id === "premade" ? chooseProducts(id) : undefined}
           >
-            <div className="flex items-center gap-2 text-[#007782]">
-              <img src="/images/vinted-logo.svg" alt="" className="h-6 w-6" aria-hidden="true" />
-              <span className="text-lg font-semibold tracking-tight">Vinted</span>
-            </div>
-            <h2 className="mt-4 text-3xl font-bold tracking-tight text-[#1F1A13]">
-              5-star feedback from Vinted buyers
-            </h2>
-            <div className="mt-4 flex gap-0.5 text-[#C9A24D]" aria-label="5 out of 5 stars">
-              {Array.from({ length: 5 }).map((_, idx) => (
-                <Star key={idx} className="h-4 w-4 fill-current" aria-hidden="true" />
-              ))}
-            </div>
-          </motion.div>
-
-          <div className="-mx-4 mt-10 space-y-4 overflow-hidden sm:-mx-6 lg:-mx-8">
-            <motion.div
-              className="flex w-max gap-4"
-              style={prefersReducedMotion ? undefined : { x: reviewsRowOneX }}
-            >
-              {customerReviews.slice(0, 5).map((review) => (
-                <ReviewCard key={review.name} review={review} />
-              ))}
-            </motion.div>
-            <motion.div
-              className="flex w-max gap-4"
-              style={prefersReducedMotion ? undefined : { x: reviewsRowTwoX }}
-            >
-              {customerReviews.slice(5).map((review) => (
-                <ReviewCard key={review.name} review={review} />
-              ))}
-            </motion.div>
-          </div>
-
-          <div className="mt-14">
-            <h2 className="text-center text-2xl font-bold text-[#1F1A13] sm:text-3xl">
-              Confidence in Every Order
-            </h2>
-            <div className="mt-7 grid gap-4 md:grid-cols-3">
-              {trustSignals.map((signal) => {
-                const Icon = signal.icon;
-                return (
-                  <div
-                    key={signal.title}
-                    className="rounded-2xl border border-[#E8DDBF] bg-white p-6 text-center"
-                  >
-                    <div className="mx-auto text-[#8A6D2B]">
-                      <Icon className="mx-auto h-10 w-10" />
-                    </div>
-                    <h3 className="mt-4 text-base font-semibold text-[#1F1A13]">
-                      {signal.title}
-                    </h3>
-                    <p className="mt-2 text-sm text-[#685536]">
-                      {signal.description}
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="mt-14 rounded-2xl border border-[#E8DDBF] bg-white p-6 text-center sm:p-8">
-            <div className="inline-flex items-center gap-2 rounded-full border border-[#E8DDBF] bg-white px-4 py-1 text-xs font-semibold uppercase tracking-wider text-[#8A6D2B]">
-              <CheckCircle2 className="h-5 w-5" />
-              Professional quality assurance
-            </div>
-            <p className="mx-auto mt-4 max-w-2xl text-sm text-[#5D4B2E] sm:text-base">
-              Every product is reviewed before dispatch to ensure premium
-              finishing, accurate customisation, and dependable consistency for
-              your brand.
-            </p>
-          </div>
-        </div>
-      </section>
+            {sections[id] ?? <BlankSection id={id} />}
+          </EditSection>
+        ))}
+      </div>
     </Layout>
   );
 }

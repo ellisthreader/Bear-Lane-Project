@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Coupon;
-use App\Models\Product;
+use App\Services\HomepageEditorService;
 use App\Services\StoreSettingsService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -17,14 +17,22 @@ use Inertia\Response;
 
 class AdminOtherController extends Controller
 {
-    public function __construct(private readonly StoreSettingsService $settings)
-    {
+    public function __construct(
+        private readonly StoreSettingsService $settings,
+        private readonly HomepageEditorService $homepageEditor,
+    ) {
     }
 
     public function index(): Response
     {
         return Inertia::render('Admin/Other/OtherIndex', [
             'sections' => [
+                [
+                    'title' => 'Edit homepage live',
+                    'description' => 'Open the real homepage and click any text, image, colour or section to change it.',
+                    'href' => '/?edit=1',
+                    'group' => 'Storefront',
+                ],
                 [
                     'title' => 'Homepage',
                     'description' => 'Category circles, featured products and pre-made design rails on the homepage.',
@@ -344,8 +352,8 @@ class AdminOtherController extends Controller
         return Inertia::render('Admin/Other/Homepage', [
             'frontPage' => $this->settings->getFrontPageProducts(),
             'homepageCategories' => $this->settings->getHomepageCategories()['items'],
-            'products' => $this->productLibrary(),
-            'categoryLinks' => $this->categoryLinkOptions(),
+            'products' => $this->homepageEditor->productLibrary(),
+            'categoryLinks' => $this->homepageEditor->categoryLinkOptions(),
             'maxCategories' => StoreSettingsService::HOMEPAGE_CATEGORY_MAX,
         ]);
     }
@@ -568,63 +576,6 @@ class AdminOtherController extends Controller
             'delivery' => $delivery,
             'message' => 'Delivery settings saved.',
         ]);
-    }
-
-    /**
-     * @return array<int, array<string, mixed>>
-     */
-    private function productLibrary(): array
-    {
-        return Product::query()
-            ->with('images')
-            ->orderBy('name')
-            ->limit(600)
-            ->get()
-            ->map(function (Product $product) {
-                $firstImage = $product->images->first();
-
-                return [
-                    'id' => $product->id,
-                    'name' => (string) $product->name,
-                    'slug' => (string) $product->slug,
-                    'brand' => (string) ($product->brand ?? ''),
-                    'price' => (float) ($product->price ?? 0),
-                    'image_url' => (string) ($firstImage?->url ?? '/images/no-image.png'),
-                    'is_premade_design' => (bool) ($product->is_premade_design ?? false),
-                ];
-            })
-            ->values()
-            ->all();
-    }
-
-    /**
-     * Link targets offered when editing a homepage category circle.
-     *
-     * @return array<int, array{label: string, href: string}>
-     */
-    private function categoryLinkOptions(): array
-    {
-        $special = [
-            ['label' => 'New In', 'href' => '/category/new-in'],
-            ['label' => 'Pre-made designs', 'href' => '/category/pre-made'],
-            ['label' => 'Sale', 'href' => '/category/sale'],
-            ['label' => 'Kids Clothing', 'href' => '/category/kids-clothing'],
-            ['label' => 'T-Shirts', 'href' => '/category/t-shirts'],
-            ['label' => 'Teddies', 'href' => '/category/teddies'],
-            ['label' => 'Bags', 'href' => '/category/bags'],
-            ['label' => 'Personalise a product', 'href' => '/personalise'],
-        ];
-
-        $categories = \App\Models\Category::query()
-            ->orderBy('slug')
-            ->get(['id', 'name', 'slug', 'parent_id'])
-            ->map(fn (\App\Models\Category $category) => [
-                'label' => trim(str_replace('/', ' › ', ucwords(str_replace('-', ' ', (string) $category->slug)))),
-                'href' => '/category/' . ltrim((string) $category->slug, '/'),
-            ])
-            ->all();
-
-        return array_values(array_merge($special, $categories));
     }
 
     public function updateFrontPage(Request $request): JsonResponse|RedirectResponse

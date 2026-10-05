@@ -7,6 +7,17 @@ import { Link, usePage } from "@inertiajs/react";
 import NavAddCategoryControl from "@/Components/Menu/NavAddCategoryControl";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSiteDesign } from "@/Theme/siteDesign";
+import { PickableImage } from "@/Components/SiteEditor/primitives";
+import {
+  getEditorState,
+  setLogo,
+  startEditing,
+  stopEditing,
+  uploadImage,
+  useEditMode,
+  useEditingRequested,
+  useEditorDirty,
+} from "@/Components/SiteEditor/store";
 import {
   ShoppingCart,
   Search,
@@ -20,6 +31,7 @@ import {
   Menu,
   X,
   ChevronRight,
+  Pencil,
 } from "lucide-react";
 import CartSidebar from "@/Components/Cart/CartSidebar";
 import WishlistSidebar from "@/Components/Wishlist/WishlistSidebar";
@@ -47,6 +59,27 @@ export default function NavMenu() {
   const navLogoSrc = siteDesign?.images?.nav_logo_url || "/images/BLText.webp";
   const isAuthenticated = Boolean(page.props.auth?.user?.id);
   const isAdmin = Boolean(page.props.auth?.user?.is_admin);
+  // On-page homepage editor: the toggle only exists for admins, on the homepage.
+  const isHomePage = page.url.split("?")[0].split("#")[0] === "/";
+  const isEditing = useEditingRequested();
+  const hasUnsavedEdits = useEditorDirty();
+  const editMode = useEditMode();
+  const logoImage = useMemo(
+    () => ({
+      replace: async (file: File) => setLogo("nav_logo", await uploadImage(file, "logo")),
+      reset: () => setLogo("nav_logo", null),
+      canReset: () => Boolean(getEditorState().design?.nav_logo),
+    }),
+    [],
+  );
+  const toggleEditMode = () => {
+    if (!isEditing) {
+      void startEditing();
+      return;
+    }
+    if (hasUnsavedEdits && !window.confirm("Leave edit mode and discard your unsaved changes?")) return;
+    stopEditing();
+  };
   const { openCart } = useCart();
   const { toggleWishlist } = useWishlist();
 
@@ -570,13 +603,18 @@ export default function NavMenu() {
                   ${logoGlow ? "drop-shadow-[0_0_6px_#D4AF37] drop-shadow-[0_0_14px_rgba(212,175,55,0.1)] drop-shadow-[0_0_24px_rgba(212,175,55,0.1)]" : ""}
                 `}
               >
-                <img
-                  src={navLogoSrc}
-                  alt="Bear Lane"
-                  loading="eager"
-                  fetchPriority="high"
-                  decoding="async"
-                  className="h-full w-full object-contain select-none"
+                <PickableImage
+                  url={navLogoSrc}
+                  editing={editMode}
+                  label="Logo"
+                  image={logoImage}
+                  imgProps={{
+                    alt: "Bear Lane",
+                    loading: "eager",
+                    fetchPriority: "high",
+                    decoding: "async",
+                    className: "h-full w-full object-contain select-none",
+                  }}
                 />
               </div>
             </Link>
@@ -694,6 +732,22 @@ export default function NavMenu() {
             >
               <ShoppingCart className="h-5 w-5" />
             </button>
+            {isAdmin && isHomePage && (
+              <button
+                type="button"
+                onClick={toggleEditMode}
+                aria-pressed={isEditing}
+                title={isEditing ? "Exit edit mode" : "Edit this page"}
+                className={`hidden h-9 shrink-0 items-center gap-1.5 rounded-full border px-3 text-sm font-semibold transition md:inline-flex ${
+                  isEditing
+                    ? "border-blue-600 bg-blue-600 text-white hover:bg-blue-500"
+                    : "border-[#D4AF37]/50 bg-[#FFF9EC] text-[#7B6530] hover:border-[#D4AF37] hover:bg-[#FFF3D6]"
+                }`}
+              >
+                <Pencil className="h-4 w-4" />
+                {isEditing ? "Editing" : "Edit page"}
+              </button>
+            )}
             {isAdmin && (
               <Link
                 href="/admin/dashboard"

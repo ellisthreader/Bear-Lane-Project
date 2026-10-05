@@ -3,7 +3,22 @@
 import React, { useMemo } from "react";
 import { Link, router, usePage } from "@inertiajs/react";
 import { motion, useReducedMotion } from "framer-motion";
-import { Pencil } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pencil, Plus, Trash2 } from "lucide-react";
+import { announceDeleted } from "@/Components/SiteEditor/actions";
+import { PickableImage, RawEditable } from "@/Components/SiteEditor/primitives";
+import { selectTarget } from "@/Components/SiteEditor/selection";
+import {
+  addCategory,
+  getEditorState,
+  moveCategory,
+  removeCategory,
+  updateCategory,
+  uploadImage,
+  useEditMode,
+  useEditorCategories,
+  useEditorState,
+} from "@/Components/SiteEditor/store";
+import type { CategoryDraft } from "@/Components/SiteEditor/types";
 
 type HomepageCategory = {
   id: string;
@@ -38,6 +53,8 @@ export default function CategorySection() {
   const reduceMotion = useReducedMotion();
   const { props } = usePage<PageProps>();
   const isAdmin = Boolean(props.auth?.user?.is_admin);
+  const editing = useEditMode();
+  const draftCategories = useEditorCategories();
 
   const categories = useMemo(() => {
     const fromSettings = props.storeSettings?.homepage_categories;
@@ -66,8 +83,16 @@ export default function CategorySection() {
         },
       };
 
+  if (editing && draftCategories) {
+    return (
+      <div id="shop-by-category" className="relative w-full pb-2 pt-14">
+        <EditableCategories items={draftCategories} />
+      </div>
+    );
+  }
+
   return (
-    <div id="shop-by-category" className="relative pt-10 pb-2 bg-white w-full">
+    <div id="shop-by-category" className="relative pt-10 pb-2 w-full">
       {isAdmin ? (
         <div className="absolute right-4 top-2 z-10 sm:right-6">
           <Link
@@ -160,5 +185,127 @@ export default function CategorySection() {
         }
       `}</style>
     </div>
+  );
+}
+
+/** Edit mode: the same circles, but every one can be renamed, re-imaged, re-linked, moved or removed. */
+function EditableCategories({ items }: { items: CategoryDraft[] }) {
+  const { limits } = useEditorState();
+
+  return (
+    <div className="mx-auto flex max-w-7xl flex-wrap justify-center gap-x-8 gap-y-10 px-4 py-6">
+      {items.map((item, index) => (
+        <EditableCircle key={item.key} item={item} index={index} count={items.length} />
+      ))}
+
+      {items.length < limits.categories ? (
+        <div className="flex w-full justify-center">
+          <button
+            type="button"
+            data-editor-ui
+            onClick={addCategory}
+            className="inline-flex items-center gap-1.5 rounded-xl border-2 border-dashed border-blue-400 px-4 py-2.5 text-sm font-medium text-blue-600 transition hover:bg-blue-50"
+          >
+            <Plus className="h-4 w-4" />
+            Add a category
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function EditableCircle({ item, index, count }: { item: CategoryDraft; index: number; count: number }) {
+  const key = item.key;
+
+  // Reads the live draft (not this render's `item`) so the toolbar's link box is never stale.
+  const linkAccess = () => ({
+    link: {
+      get: () => getEditorState().categories?.find((category) => category.key === key)?.href ?? "",
+      set: (href: string) => updateCategory(key, { href }),
+      suggestions: true,
+    },
+  });
+
+  const image = {
+    replace: async (file: File) => {
+      const uploaded = await uploadImage(file);
+      updateCategory(key, { image_path: uploaded.path, image_url: uploaded.url ?? "" });
+    },
+    canReset: () => false,
+  };
+
+  return (
+    <div className="group/item relative flex shrink-0 flex-col items-center">
+      <div
+        data-editor-ui
+        className="absolute -top-8 left-1/2 z-30 flex -translate-x-1/2 items-center gap-0.5 rounded-full bg-gray-900/90 p-0.5 text-white opacity-0 shadow-lg transition focus-within:opacity-100 group-hover/item:opacity-100"
+      >
+        <CirclePill title="Move earlier" disabled={index === 0} onClick={() => moveCategory(key, -1)}>
+          <ChevronLeft className="h-3.5 w-3.5" />
+        </CirclePill>
+        <CirclePill title="Move later" disabled={index === count - 1} onClick={() => moveCategory(key, 1)}>
+          <ChevronRight className="h-3.5 w-3.5" />
+        </CirclePill>
+        <CirclePill
+          title={count <= 1 ? "Keep at least one category" : "Delete this category"}
+          disabled={count <= 1}
+          onClick={() => {
+            const name = `category “${item.name}”`;
+            removeCategory(key);
+            announceDeleted(name);
+          }}
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </CirclePill>
+      </div>
+
+      <div className="rounded-full bg-gradient-to-br from-[#9C7C19] via-[#D4AF37] to-[#7A5C12] p-[2px]">
+        <div className="h-32 w-32 overflow-hidden rounded-full bg-white lg:h-36 lg:w-36 xl:h-44 xl:w-44">
+          <PickableImage
+            url={item.image_url}
+            editing
+            label="Category image"
+            image={image}
+            extraTarget={linkAccess}
+            imgProps={{ alt: item.name, className: "h-full w-full object-cover" }}
+          />
+        </div>
+      </div>
+
+      <RawEditable
+        value={item.name}
+        onValue={(name) => updateCategory(key, { name })}
+        as="span"
+        placeholder="Name"
+        className="mt-3 text-center text-sm font-semibold tracking-wide text-[#C9A227] md:text-base lg:text-lg"
+        onSelect={(el) => selectTarget({ el, label: "Category name", ...linkAccess() })}
+      />
+    </div>
+  );
+}
+
+function CirclePill({
+  title,
+  onClick,
+  disabled,
+  children,
+}: {
+  title: string;
+  onClick: () => void;
+  disabled?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      title={title}
+      aria-label={title}
+      disabled={disabled}
+      onClick={onClick}
+      className="inline-flex h-7 w-7 items-center justify-center rounded-full transition hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent"
+    >
+      {children}
+    </button>
   );
 }

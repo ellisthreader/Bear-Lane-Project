@@ -1,38 +1,46 @@
 import { useEffect, useState } from "react";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import StartProject from "./StartProject";
-import GetQuoteInstantly from "./Quote/GetQuoteInstantly";
+import { ContentImage, EditAction, EditText } from "@/Components/SiteEditor/primitives";
+import { useEditMode, useHidden } from "@/Components/SiteEditor/store";
+
+const imageSets = [
+  {
+    concept: "/images/Examples/Example1.webp",
+    model: "/images/Examples/Example2.webp",
+    final: "/images/Examples/Example3.webp",
+  },
+  {
+    concept: "/images/Examples/Example4.webp",
+    model: "/images/Examples/Example5.webp",
+    final: "/images/Examples/Example6.webp",
+  },
+  {
+    concept: "/images/Examples/Example7.webp",
+    model: "/images/Examples/Example8.webp",
+    final: "/images/Examples/Example9.webp",
+  },
+];
 
 export default function IdeaToIconicSection() {
-  const imageSets = [
-    {
-      concept: "/images/Examples/Example1.webp",
-      model: "/images/Examples/Example2.webp",
-      final: "/images/Examples/Example3.webp",
-    },
-    {
-      concept: "/images/Examples/Example4.webp",
-      model: "/images/Examples/Example5.webp",
-      final: "/images/Examples/Example6.webp",
-    },
-    {
-      concept: "/images/Examples/Example7.webp",
-      model: "/images/Examples/Example8.webp",
-      final: "/images/Examples/Example9.webp",
-    },
-  ];
-
+  const editing = useEditMode();
   const [index, setIndex] = useState(0);
   const [showConcept, setShowConcept] = useState(false);
   const [showModel, setShowModel] = useState(false);
 
-  const [activePage, setActivePage] = useState<
-    "none" | "startProject" | "getQuote"
-  >("none");
+  const [activePage, setActivePage] = useState<"none" | "startProject">("none");
+  const buttonRemoved = useHidden("idea.cta1");
 
   useEffect(() => {
     let conceptTimer: ReturnType<typeof setTimeout>;
     let modelTimer: ReturnType<typeof setTimeout>;
+
+    // While editing, hold still with every image of the chosen example showing.
+    if (editing) {
+      setShowConcept(true);
+      setShowModel(true);
+      return;
+    }
 
     const scheduleReveals = () => {
       clearTimeout(conceptTimer);
@@ -55,17 +63,7 @@ export default function IdeaToIconicSection() {
       clearTimeout(conceptTimer);
       clearTimeout(modelTimer);
     };
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const params = new URLSearchParams(window.location.search);
-    const quoteTab = params.get("quote_tab");
-    const invoiceRef = params.get("invoice_ref");
-    if (quoteTab === "specialist" || quoteTab === "artist" || quoteTab === "instant" || invoiceRef) {
-      setActivePage("getQuote");
-    }
-  }, []);
+  }, [editing]);
 
   /* ================= FULL PAGE VIEWS ================= */
 
@@ -85,70 +83,33 @@ export default function IdeaToIconicSection() {
     );
   }
 
-  if (activePage === "getQuote") {
-    return (
-      <div className="bg-[#ffffff] pt-10 pb-0 px-4 overflow-y-auto">
-        <div className="max-w-7xl mx-auto">
-          <button
-            onClick={() => setActivePage("none")}
-            className="mb-6 text-sm text-[#C9A24D] hover:underline"
-          >
-            ← Back
-          </button>
-          <GetQuoteInstantly embedded />
-        </div>
-      </div>
-    );
-  }
-
   /* ================= HERO SECTION ================= */
 
   return (
-    <section className="w-full bg-white py-14 md:py-24">
+    <section className="w-full py-14 md:py-24">
       <div className="mx-auto grid max-w-7xl grid-cols-1 items-center gap-12 px-6 md:grid-cols-2 md:gap-16">
         {/* LEFT SIDE */}
         <div className="relative z-10 text-center md:text-left">
-          <h2 className="text-4xl font-bold leading-tight text-gray-900 md:text-5xl">
+          <EditText id="idea.title" as="h2" label="Heading" className="text-4xl font-bold leading-tight text-gray-900 md:text-5xl">
             From concept to something unforgettable
-          </h2>
+          </EditText>
 
-          <p className="mx-auto mt-6 max-w-lg text-gray-600 md:mx-0">
-            We help ambitious ideas grow into refined digital products — designed
-            with clarity, purpose, and impact.
-          </p>
+          <EditText id="idea.body" as="p" label="Paragraph" className="mx-auto mt-6 max-w-lg text-gray-600 md:mx-0">
+            We help ambitious ideas grow into refined digital products — designed with clarity, purpose, and impact.
+          </EditText>
 
-          <div className="mt-10 flex flex-wrap justify-center gap-4 md:justify-start">
-            <button
-              type="button"
-              onClick={() => {
-                setActivePage("startProject");
-              }}
-              className="px-8 py-4 rounded-2xl bg-[#C9A24D] text-white font-semibold shadow-lg hover:opacity-90 transition"
-            >
-              Start your project
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                if (typeof window !== "undefined") {
-                  const url = "/?quote_tab=instant#get-quote-instantly";
-                  window.history.replaceState({}, "", url);
-                }
-                setActivePage("getQuote");
-                requestAnimationFrame(() => {
-                  const target = document.getElementById("get-quote-instantly");
-                  if (target) {
-                    target.scrollIntoView({ behavior: "smooth", block: "start" });
-                  } else {
-                    window.scrollTo({ top: 0, behavior: "smooth" });
-                  }
-                });
-              }}
-              className="px-8 py-4 rounded-2xl border-2 border-[#C9A24D] text-[#C9A24D] font-semibold hover:bg-[#C9A24D] hover:text-white transition"
-            >
-              Get instant quote
-            </button>
-          </div>
+          {buttonRemoved ? null : (
+            <div className="mt-10 flex flex-wrap justify-center gap-4 md:justify-start">
+              <EditAction
+                id="idea.cta1"
+                label="Start your project"
+                onActivate={() => {
+                  setActivePage("startProject");
+                }}
+                className="px-8 py-4 rounded-2xl bg-[#C9A24D] text-white font-semibold shadow-lg hover:opacity-90 transition"
+              />
+            </div>
+          )}
         </div>
 
         {/* RIGHT SIDE */}
@@ -159,15 +120,19 @@ export default function IdeaToIconicSection() {
             return (
               <div
                 key={i}
-                className={`pointer-events-none absolute inset-0 flex flex-col gap-5 transition-all duration-[350ms] ease-out ${
+                className={`${
+                  editing && isActive ? "pointer-events-auto" : "pointer-events-none"
+                } absolute inset-0 flex flex-col gap-5 transition-all duration-[350ms] ease-out ${
                   isActive ? "z-10 scale-100 opacity-100" : "scale-[0.99] opacity-0"
                 }`}
               >
                 {/* FINAL IMAGE (TOP) */}
                 <div className="relative h-[74%] w-full overflow-hidden">
-                  <img
+                  <ContentImage
+                    id={`idea.s${i + 1}.final`}
                     src={set.final}
                     alt="Final product"
+                    label="Main image"
                     loading="lazy"
                     decoding="async"
                     className="h-full w-full rounded-3xl object-contain"
@@ -185,9 +150,11 @@ export default function IdeaToIconicSection() {
                           : "-translate-x-2 opacity-0"
                       }`}
                     >
-                      <img
+                      <ContentImage
+                        id={`idea.s${i + 1}.concept`}
                         src={set.concept}
                         alt="Design concept"
+                        label="Design image"
                         loading="lazy"
                         decoding="async"
                         className="h-full w-full object-contain"
@@ -211,9 +178,11 @@ export default function IdeaToIconicSection() {
                           : "translate-x-2 opacity-0"
                       }`}
                     >
-                      <img
+                      <ContentImage
+                        id={`idea.s${i + 1}.model`}
                         src={set.model}
                         alt="Real product"
+                        label="Product image"
                         loading="lazy"
                         decoding="async"
                         className="h-full w-full object-contain"
@@ -225,6 +194,35 @@ export default function IdeaToIconicSection() {
               </div>
             );
           })}
+
+          {editing ? (
+            <div
+              data-editor-ui
+              className="absolute -bottom-10 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1 rounded-full bg-gray-900 px-1.5 py-1 text-xs text-white shadow-lg"
+            >
+              <button
+                type="button"
+                data-edit-allow
+                onClick={() => setIndex((prev) => (prev + imageSets.length - 1) % imageSets.length)}
+                className="inline-flex h-6 w-6 items-center justify-center rounded-full hover:bg-white/20"
+                aria-label="Previous example"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <span className="px-1 font-medium">
+                Example {index + 1} of {imageSets.length}
+              </span>
+              <button
+                type="button"
+                data-edit-allow
+                onClick={() => setIndex((prev) => (prev + 1) % imageSets.length)}
+                className="inline-flex h-6 w-6 items-center justify-center rounded-full hover:bg-white/20"
+                aria-label="Next example"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          ) : null}
         </div>
       </div>
     </section>
