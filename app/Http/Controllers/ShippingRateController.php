@@ -47,6 +47,7 @@ class ShippingRateController extends Controller
 
         try {
             $rates = $this->shippoRateService->getFilteredRates($fromAddress, $toAddress, $parcel, 2);
+            $rates = app(\App\Services\StoreSettingsService::class)->filterCarrierRates($rates);
             return response()->json(['rates' => $rates]);
         } catch (\Throwable $e) {
             return response()->json([

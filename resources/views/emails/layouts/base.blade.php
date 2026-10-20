@@ -6,7 +6,7 @@
         $__site = [];
     }
     $__siteName = trim((string) ($__site['site_name'] ?? '')) ?: 'Bear Lane';
-    $__supportEmail = trim((string) ($__site['support_email'] ?? ''));
+    $__supportEmail = config('mail.owner.address');
     $__supportPhone = trim((string) ($__site['contact_phone'] ?? ''));
     $__logo = $logoUrl ?? (($__site['logo_url'] ?? null) ?: asset('images/BLText.png'));
     $__year = date('Y');

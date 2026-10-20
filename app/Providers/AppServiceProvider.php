@@ -24,6 +24,17 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        \Illuminate\Support\Facades\Event::listen(\Illuminate\Mail\Events\MessageSent::class, function ($event) {
+            if (empty($event->data['eventKey'])) {
+                return;
+            }
+            $message = $event->sent->getSymfonySentMessage()->getOriginalMessage();
+            \Illuminate\Support\Facades\Log::info('Owner notification sent', [
+                'event_key' => $event->data['eventKey'],
+                'provider_id' => $message->getHeaders()->get('X-Resend-Email-ID')?->getBodyAsString(),
+            ]);
+        });
+
         if ($this->app->environment('production')) {
             URL::forceScheme('https');
         }

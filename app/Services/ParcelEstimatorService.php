@@ -8,6 +8,10 @@ use App\Models\ProductVariant;
 
 class ParcelEstimatorService
 {
+    public function __construct(private readonly ProductShippingService $shipping)
+    {
+    }
+
     private const DEFAULT_PARCEL = [
         'length' => '30',
         'width' => '25',
@@ -56,6 +60,7 @@ class ParcelEstimatorService
                 continue;
             }
 
+            $item = $this->shipping->currentItem($item);
             $quantity = max(1, (int) ($item['quantity'] ?? 1));
             $product = $this->resolveProduct($item);
             $weightPerUnit = $this->resolveWeightPerUnitKg($product, $item);
@@ -77,10 +82,12 @@ class ParcelEstimatorService
             return self::DEFAULT_PARCEL;
         }
 
-        $normalizedLength = $this->roundBounded($maxLengthCm, 5, 120);
-        $normalizedWidth = $this->roundBounded($maxWidthCm, 5, 120);
-        $normalizedHeight = $this->roundBounded($totalHeightCm, 2, 120);
-        $normalizedWeight = $this->roundBounded($totalWeightKg, 0.05, 60);
+        // Do not truncate configured parcel sizes (e.g. a 175cm parcel) or
+        // multi-item weight. Let the carrier decide which services can carry it.
+        $normalizedLength = round(max(0.1, $maxLengthCm), 2);
+        $normalizedWidth = round(max(0.1, $maxWidthCm), 2);
+        $normalizedHeight = round(max(0.1, $totalHeightCm), 2);
+        $normalizedWeight = round(max(0.01, $totalWeightKg), 2);
 
         return [
             'length' => number_format($normalizedLength, 2, '.', ''),
@@ -209,16 +216,4 @@ class ParcelEstimatorService
         ];
     }
 
-    private function roundBounded(float $value, float $min, float $max): float
-    {
-        if ($value < $min) {
-            return $min;
-        }
-
-        if ($value > $max) {
-            return $max;
-        }
-
-        return round($value, 2);
-    }
 }

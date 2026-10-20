@@ -42,6 +42,11 @@ class QuoteController extends Controller
             ];
         }, (array) $data['items']));
 
+        app(\App\Services\AdminNotificationService::class)->sendAdminEventView(
+            'instant_quote_generated', 'Quote request #' . $data['quoteNumber'], 'emails.quotes.instant-admin',
+            [...$data, 'items' => $items, 'submittedAt' => now(), 'accountStatus' => $request->user() ? 'Signed in' : 'Guest']
+        );
+
         try {
             Mail::to((string) $data['email'])->send(new InstantQuoteMail(
                 (string) $data['name'],

@@ -58,6 +58,9 @@ class ShippoLabelService
             ->toIso8601String();
 
         $rates = $this->shippoRateService->getRates($fromAddress, $toAddress, $parcel, $shipDateIso);
+        $settings = app(StoreSettingsService::class);
+        $method = collect($settings->getDeliverySettings()['methods'])->firstWhere('key', $order->delivery_type);
+        $rates = $settings->filterCarrierRates($rates, $method);
 
         $normalizedRates = array_map(function (array $rate): array {
             $provider = trim((string) ($rate['provider'] ?? ''));

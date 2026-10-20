@@ -34,7 +34,7 @@ export const HELP_CATEGORIES: HelpCategory[] = [
         excerpt: "How long processing and delivery usually takes.",
         content: [
           "Orders are processed in 1 to 3 business days, then prepared for dispatch with tracking.",
-          "Standard UK shipping usually arrives in 3 to 7 business days. International delivery can take 7 to 14 business days depending on destination and customs.",
+          "Current delivery methods and estimated times are shown on the Orders & Shipping page. Availability and final prices are confirmed for your address at checkout.",
           "During launches or holiday periods, dispatch may take a little longer. Your tracking link is always sent as soon as your parcel leaves our warehouse.",
         ],
       },

@@ -79,7 +79,8 @@ class FaqRequestController extends Controller
             'faq_request_submitted',
             'New FAQ Request Submitted',
             'A customer submitted a new FAQ request',
-            "Question: {$faqRequest->question}\nFrom user ID: {$faqRequest->user_id}"
+            "Question: {$faqRequest->question}\nFrom: {$request->user()->name} <{$request->user()->email}>\n\n{$faqRequest->details}",
+            replyTo: $request->user()->email,
         );
 
         return response()->json([

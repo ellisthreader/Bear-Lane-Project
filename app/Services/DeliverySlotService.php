@@ -105,6 +105,9 @@ class DeliverySlotService
 
     public function reserveSlot(int $slotId, array $addressContext = []): Reservation
     {
+        if (!collect(app(StoreSettingsService::class)->getEnabledDeliveryMethods())->contains('kind', 'timed')) {
+            throw new \RuntimeException('Timed delivery is no longer available. Please choose another delivery option.');
+        }
         $this->releaseExpiredReservations();
 
         $lock = Cache::lock("delivery-slot:{$slotId}", 10);
@@ -278,6 +281,12 @@ class DeliverySlotService
 
         try {
             $rawRates = $this->shippoRateService->getRates($fromAddress, $toAddress, $parcel);
+            $settings = app(StoreSettingsService::class);
+            $timedMethod = collect($settings->getEnabledDeliveryMethods())->firstWhere('kind', 'timed');
+            if (!$timedMethod) {
+                return null;
+            }
+            $rawRates = $settings->filterCarrierRates($rawRates, $timedMethod);
 
             $normalizedRates = array_map(function (array $rate) {
                 $provider = trim((string) ($rate['provider'] ?? ''));
@@ -356,6 +365,11 @@ class DeliverySlotService
 
     private function resolvePreferredCourierFromItem(array $item): ?string
     {
+        $shipping = app(ProductShippingService::class);
+        if ($shipping->productForItem($item)) {
+            return $this->normalizePreferredCourier((string) ($shipping->currentItem($item)['preferred_courier'] ?? ''));
+        }
+
         $direct = $this->normalizePreferredCourier((string) ($item['preferred_courier'] ?? ''));
         if ($direct !== null) {
             return $direct;
@@ -406,9 +420,11 @@ class DeliverySlotService
     private function normalizePreferredCourier(string $value): ?string
     {
         $raw = strtolower(trim($value));
-        if ($raw === 'evri') return 'evri';
-        if ($raw === 'dpd') return 'dpd';
-        if ($raw === 'royal_mail' || $raw === 'royal mail') return 'royal mail';
+        foreach (app(StoreSettingsService::class)->getEnabledCarriers() as $carrier) {
+            if (str_replace(' ', '_', $raw) === $carrier['key']) {
+                return $carrier['match'][0] ?? mb_strtolower($carrier['name']);
+            }
+        }
         return null;
     }
 

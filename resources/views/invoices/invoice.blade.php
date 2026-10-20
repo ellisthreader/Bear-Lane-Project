@@ -217,7 +217,7 @@
 
     <div class="footer">
         Thank you for shopping with Bear Lane.
-        <br>For support contact <strong>support@bearlane.co.uk</strong>
+        <br>For support contact <strong>{{ config('mail.owner.address') }}</strong>
     </div>
 
 </div>

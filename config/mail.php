@@ -1,6 +1,9 @@
 <?php
 
 return [
+    // One inbox for customer requests, public contact links and customer replies.
+    'owner' => ['address' => 'bearlane01@gmail.com', 'name' => 'Bear Lane'],
+    'reply_to' => ['address' => 'bearlane01@gmail.com', 'name' => 'Bear Lane'],
 
     /*
     |--------------------------------------------------------------------------

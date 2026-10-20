@@ -610,6 +610,8 @@ class AdminOtherController extends Controller
         return Inertia::render('Admin/Other/Notifications', [
             'notificationSettings' => $this->settings->getAdminNotificationSettings(),
             'notificationCatalog' => $this->settings->getAdminNotificationCatalog(),
+            'requiredEmailEvents' => \App\Services\AdminNotificationService::REQUIRED_EVENTS,
+            'ownerEmail' => config('mail.owner.address'),
         ]);
     }
 

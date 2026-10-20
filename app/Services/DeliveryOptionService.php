@@ -39,7 +39,7 @@ class DeliveryOptionService
     ): array
     {
         $isMember = (bool) data_get($user, 'is_member', false);
-        $now = now();
+        $now = now('Europe/London');
         $nextDayDate = $now->copy()->addDay();
 
         $methods = $this->settings->getEnabledDeliveryMethods();
@@ -82,10 +82,20 @@ class DeliveryOptionService
                 $available = $timedAvailable;
                 $unavailableReason = $available ? null : 'No timed slots are currently available.';
                 // Timed delivery is priced per slot, never from a live rate.
-                $selectedRate = $this->selectTimedRate($rates);
+                // Keep the configured carrier/service restriction for timed delivery too.
+                $selectedRate = $this->selectTimedRate(array_values(array_filter($rates, fn ($rate) =>
+                    ($method['carrier_key'] === '' || $rate['carrier_key'] === $method['carrier_key'])
+                    && ($method['service_name'] === '' || str_contains(mb_strtolower($rate['service_name']), mb_strtolower($method['service_name'])))
+                )));
             } elseif ($kind === 'standard' && !empty($method['require_carrier_service']) && $selectedRate === null) {
                 $available = false;
                 $unavailableReason = sprintf('%s is unavailable for this address.', $method['label']);
+            }
+
+            if ($kind !== 'collection' && $kind !== 'timed' && $selectedRate === null
+                && ($method['price_mode'] === 'live' || $method['service_name'] !== '')) {
+                $available = false;
+                $unavailableReason = 'No matching carrier rate is currently available for this address.';
             }
 
             $options[] = $this->buildOption($method, $available, $isMember, $unavailableReason, $selectedRate, $carriers);
@@ -488,6 +498,11 @@ class DeliveryOptionService
 
     private function resolvePreferredCourierFromItem(array $item): ?string
     {
+        $shipping = app(ProductShippingService::class);
+        if ($shipping->productForItem($item)) {
+            return $this->normalizePreferredCourier((string) ($shipping->currentItem($item)['preferred_courier'] ?? ''));
+        }
+
         $direct = $this->normalizePreferredCourier((string) ($item['preferred_courier'] ?? ''));
         if ($direct !== null) {
             return $direct;

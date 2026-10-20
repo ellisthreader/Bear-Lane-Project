@@ -1,4 +1,5 @@
-import { useMemo } from "react";
+import { useMemo, useRef, useState } from "react";
+import { executeRecaptcha } from "@/Utils/recaptcha";
 import { useSiteDesign } from "@/Theme/siteDesign";
 import { AddItemButton, EditBand, ItemControls } from "@/Components/SiteEditor/controls";
 import { EditAction, EditAnchor, EditBlock, EditText, PickableImage } from "@/Components/SiteEditor/primitives";
@@ -89,6 +90,34 @@ function ColumnLinks({ column }: { column: FooterColumn }) {
 }
 
 export default function SiteFooter() {
+  const newsletterInput = useRef<HTMLInputElement>(null);
+  const newsletterPending = useRef(false);
+  const [newsletterStatus, setNewsletterStatus] = useState("");
+  const subscribe = async () => {
+    const input = newsletterInput.current;
+    if (!input || !input.reportValidity() || newsletterPending.current) return;
+    newsletterPending.current = true;
+    setNewsletterStatus("Sending...");
+    try {
+      const token = await executeRecaptcha("newsletter_request");
+      const response = await fetch("/newsletter/requests", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json", Accept: "application/json",
+          "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]')?.getAttribute("content") || "",
+        },
+        body: JSON.stringify({ email: input.value, consent: true, recaptcha_token: token }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || "Unable to send your request. Please try again.");
+      setNewsletterStatus(data.message);
+      input.value = "";
+    } catch (error) {
+      setNewsletterStatus(error instanceof Error ? error.message : "Unable to send your request. Please try again.");
+    } finally {
+      newsletterPending.current = false;
+    }
+  };
   const siteDesign = useSiteDesign();
   const editing = useEditMode();
   const footerLogoSrc = siteDesign?.images?.footer_logo_url || "/images/BL-LogoW.png";
@@ -128,6 +157,10 @@ export default function SiteFooter() {
             </EditText>
             <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
               <input
+                ref={newsletterInput}
+                required
+                aria-label="Newsletter email"
+                onKeyDown={(event) => { if (event.key === "Enter" && !editing) { event.preventDefault(); void subscribe(); } }}
                 type="email"
                 placeholder="Enter your email"
                 className="h-11 w-full rounded-xl border border-[#D9CCAF] bg-[#FFFEFB] px-4 text-sm text-[#2A241B] outline-none transition focus:border-[#C99B2E]"
@@ -135,10 +168,12 @@ export default function SiteFooter() {
               <EditAction
                 id="footer.newsletter.button"
                 label="Subscribe"
+                onActivate={() => void subscribe()}
                 linkable={false}
                 className="inline-flex h-11 items-center justify-center rounded-xl bg-[#B89443] px-5 text-sm font-semibold text-white transition hover:bg-[#A88434]"
               />
             </div>
+            <p role="status" className="mt-2 text-sm text-[#5A5145]">{newsletterStatus}</p>
 
             <p className="mt-3 text-xs leading-relaxed text-[#8A8377]">
               <EditText id="footer.legal.before" as="span">

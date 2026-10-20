@@ -71,9 +71,10 @@ class SupportMessageController extends Controller
 
         $adminNotificationService->sendAdminEventEmail(
             'support_message_submitted',
-            'New Support Message',
+            "Support #{$supportMessage->id}: {$supportMessage->subject}",
             'A customer sent a support message',
-            "From: {$supportMessage->name} <{$supportMessage->email}>\nSubject: {$supportMessage->subject}\n\n{$supportMessage->message}"
+            "From: {$supportMessage->name} <{$supportMessage->email}>\nReference: #{$supportMessage->id}\nSubject: {$supportMessage->subject}\n\n{$supportMessage->message}",
+            replyTo: $supportMessage->email,
         );
 
         return response()->json([

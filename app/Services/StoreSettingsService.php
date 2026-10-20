@@ -84,6 +84,7 @@ class StoreSettingsService
     {
         $stored = $this->get(self::KEY_SITE_SETTINGS, []);
         $merged = $this->mergeDefaults($this->defaultSiteSettings(), is_array($stored) ? $stored : []);
+        $merged['support_email'] = config('mail.owner.address');
 
         $merged['logo_url'] = $this->publicUrlForPath((string) ($merged['logo_path'] ?? ''));
         $merged['favicon_url'] = $this->publicUrlForPath((string) ($merged['favicon_path'] ?? ''));
@@ -97,7 +98,7 @@ class StoreSettingsService
 
         $normalized = [
             'site_name' => trim((string) ($payload['site_name'] ?? $existing['site_name'] ?? 'Bear Lane')),
-            'support_email' => trim((string) ($payload['support_email'] ?? $existing['support_email'] ?? '')),
+            'support_email' => config('mail.owner.address'),
             'contact_phone' => trim((string) ($payload['contact_phone'] ?? $existing['contact_phone'] ?? '')),
             'business_address' => trim((string) ($payload['business_address'] ?? $existing['business_address'] ?? '')),
             'logo_path' => trim((string) ($payload['logo_path'] ?? $existing['logo_path'] ?? '')),
@@ -718,6 +719,14 @@ class StoreSettingsService
             $carriers
         );
 
+        $enabledCarrierKeys = array_column(array_filter($carriers, fn ($carrier) => $carrier['enabled']), 'key');
+        if (!collect($methods)->contains(fn ($method) => $method['enabled']
+            && ($method['carrier_key'] === '' || in_array($method['carrier_key'], $enabledCarrierKeys, true)))) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'methods' => 'Keep at least one delivery method enabled so customers can check out.',
+            ]);
+        }
+
         $this->put(self::KEY_DELIVERY_SETTINGS, [
             'carriers' => $carriers,
             'methods' => $methods,
@@ -732,9 +741,13 @@ class StoreSettingsService
      */
     public function getEnabledDeliveryMethods(): array
     {
+        $settings = $this->getDeliverySettings();
+        $enabledCarriers = array_column(array_filter($settings['carriers'], fn ($carrier) => $carrier['enabled']), 'key');
+
         return array_values(array_filter(
-            $this->getDeliverySettings()['methods'],
+            $settings['methods'],
             fn (array $method) => (bool) $method['enabled']
+                && ($method['carrier_key'] === '' || in_array($method['carrier_key'], $enabledCarriers, true))
         ));
     }
 
@@ -744,6 +757,31 @@ class StoreSettingsService
             $this->getDeliverySettings()['carriers'],
             fn (array $carrier) => (bool) $carrier['enabled']
         ));
+    }
+
+    public function filterCarrierRates(array $rates, ?array $method = null): array
+    {
+        $carriers = $this->getEnabledCarriers();
+
+        return array_values(array_filter($rates, function ($rate) use ($carriers, $method) {
+            $name = mb_strtolower(trim((string) ($rate['provider'] ?? '') . ' ' . (string) data_get($rate, 'servicelevel.name', '')));
+            if ($method && $method['service_name'] !== ''
+                && !str_contains($name, mb_strtolower($method['service_name']))) {
+                return false;
+            }
+            foreach ($carriers as $carrier) {
+                if ($method && $method['carrier_key'] !== '' && $method['carrier_key'] !== $carrier['key']) {
+                    continue;
+                }
+                foreach ($carrier['match'] as $term) {
+                    if ($term !== '' && str_contains($name, mb_strtolower($term))) {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }));
     }
 
     /**
@@ -821,7 +859,6 @@ class StoreSettingsService
      */
     private function normalizeDeliveryMethods(array $methods, array $carriers): array
     {
-        $carrierKeys = array_map(fn (array $carrier) => $carrier['key'], $carriers);
         $normalized = [];
         $seen = [];
         $timedSeen = false;
@@ -863,9 +900,11 @@ class StoreSettingsService
             $seen[] = $key;
 
             $carrierKey = str_replace('-', '_', $this->slugKey((string) ($method['carrier_key'] ?? ''), ''));
-            if ($carrierKey !== '' && !in_array($carrierKey, $carrierKeys, true)) {
+            if ($kind === 'collection') {
                 $carrierKey = '';
             }
+            // Preserve missing carrier references so a deleted carrier cannot
+            // silently turn a pinned method into "any carrier".
 
             $priceMode = strtolower(trim((string) ($method['price_mode'] ?? 'fixed')));
             if (!in_array($priceMode, self::DELIVERY_PRICE_MODES, true)) {
@@ -1105,7 +1144,12 @@ class StoreSettingsService
     {
         $stored = $this->get(self::KEY_ADMIN_NOTIFICATION_SETTINGS, []);
 
-        return $this->mergeDefaults($this->defaultAdminNotificationSettings(), is_array($stored) ? $stored : []);
+        $settings = $this->mergeDefaults($this->defaultAdminNotificationSettings(), is_array($stored) ? $stored : []);
+        foreach (AdminNotificationService::REQUIRED_EVENTS as $event) {
+            $settings['events'][$event]['email'] = true;
+        }
+
+        return $settings;
     }
 
     public function saveAdminNotificationSettings(array $payload): array
@@ -1336,6 +1380,10 @@ class StoreSettingsService
             ],
             'design_pricing' => $this->getDesignPricing(),
             'tax' => $this->getTaxSettings(),
+            'delivery' => [
+                'methods' => $this->getEnabledDeliveryMethods(),
+                'carriers' => array_map(fn ($carrier) => ['key' => $carrier['key'], 'name' => $carrier['name']], $this->getEnabledCarriers()),
+            ],
             'size_guide' => $this->getSizeGuide(),
             'homepage_categories' => $this->getHomepageCategories()['items'],
             'homepage_content' => $this->getHomepageContent(),

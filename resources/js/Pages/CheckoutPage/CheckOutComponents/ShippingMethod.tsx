@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useCheckout } from "@/Context/CheckoutContext";
 import { useCart } from "@/Context/CartContext";
 import { getCountryCode } from "@/Utils/countryCodes";
@@ -72,6 +72,7 @@ export default function ShippingMethod() {
   const [options, setOptions] = useState<DeliveryOption[]>([]);
   const [isMember, setIsMember] = useState(false);
   const [chosenType, setChosenType] = useState<DeliveryType | null>(null);
+  const optionsRequestId = useRef(0);
 
   const [slotDays, setSlotDays] = useState<DeliveryDay[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
@@ -101,6 +102,8 @@ export default function ShippingMethod() {
     if (shippingMethod) return shippingMethod;
     return chosenType;
   }, [shippingMethod, chosenType]);
+  const selectedTypeRef = useRef(selectedType);
+  selectedTypeRef.current = selectedType;
 
   const timedOption = useMemo(() => options.find((o) => kindOf(o) === "timed") ?? null, [options]);
   const isTimedSelected = selectedType !== null && timedOption !== null && selectedType === timedOption.type;
@@ -156,6 +159,7 @@ export default function ShippingMethod() {
     }));
 
   const fetchDeliveryOptions = async (silent = false) => {
+    const requestId = ++optionsRequestId.current;
     if (!isAddressComplete()) {
       setLoading(false);
       return;
@@ -194,16 +198,18 @@ export default function ShippingMethod() {
         throw new Error(data?.message || `Failed to fetch delivery options (${response.status})`);
       }
 
+      if (requestId !== optionsRequestId.current) return;
       const nextOptions = Array.isArray(data?.options) ? (data.options as DeliveryOption[]) : [];
       setOptions(nextOptions);
       setIsMember(Boolean(data?.is_member));
       setHasLoadedOptions(true);
 
-      const stillValid = selectedType
-        ? nextOptions.find((opt) => opt.type === selectedType && opt.available)
+      const currentSelectedType = selectedTypeRef.current;
+      const stillValid = currentSelectedType
+        ? nextOptions.find((opt) => opt.type === currentSelectedType && opt.available)
         : null;
 
-      if (selectedType && !stillValid) {
+      if (currentSelectedType && !stillValid) {
         setShippingMethod("");
         setShippingCost(0);
         setShippingLabel("");
@@ -212,14 +218,13 @@ export default function ShippingMethod() {
       } else if (stillValid) {
         // Keep the label and price in step with the latest admin configuration.
         setShippingLabel(stillValid.label);
-        if (kindOf(stillValid) !== "timed") {
-          setShippingCost(stillValid.price);
-        }
+        setShippingCost(stillValid.price);
       }
     } catch (err: any) {
+      if (requestId !== optionsRequestId.current) return;
       setError(err.message || "Failed to fetch delivery options");
     } finally {
-      if (!silent && !hasLoadedOptions) {
+      if (requestId === optionsRequestId.current && !silent && !hasLoadedOptions) {
         setLoading(false);
       }
     }
@@ -275,6 +280,16 @@ export default function ShippingMethod() {
   ]);
 
   useEffect(() => {
+    const refresh = () => { if (!document.hidden) fetchDeliveryOptions(true); };
+    window.addEventListener("focus", refresh);
+    const timer = window.setInterval(refresh, 30000);
+    return () => {
+      window.removeEventListener("focus", refresh);
+      window.clearInterval(timer);
+    };
+  }, [address, cart, selectedType, hasLoadedOptions]);
+
+  useEffect(() => {
     if (!isTimedSelected) return;
     if (!isAddressComplete()) return;
 
@@ -282,7 +297,6 @@ export default function ShippingMethod() {
 
     const interval = window.setInterval(() => {
       fetchSlots();
-      fetchDeliveryOptions(true);
     }, 30000);
 
     return () => {

@@ -150,6 +150,13 @@ class ChatController extends Controller
                 'content' => $content,
             ]);
 
+            if (!(bool) ($user?->is_admin)) {
+                app(\App\Services\AdminNotificationService::class)->sendAdminEventEmail(
+                    'customer_chat_message', "Bear Lane live chat #{$chat->id}", 'Customer live chat message',
+                    "Chat: #{$chat->id}\nFrom: " . ($user?->email ?: 'Guest visitor') . "\n\n{$content}",
+                    replyTo: $user?->email,
+                );
+            }
             event(new MessageSent($message));
 
             return response()->json([

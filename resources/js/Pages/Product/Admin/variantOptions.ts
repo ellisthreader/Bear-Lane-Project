@@ -128,10 +128,7 @@ export const resolveStoredParcelKey = (
     if (match) return match.key;
   }
 
-  const sameCarrier = options.find((option) => option.carrier_key === courierKey);
-  if (sameCarrier) return sameCarrier.key;
-
-  return options[0]?.key ?? MANUAL_PARCEL_KEY;
+  return MANUAL_PARCEL_KEY;
 };
 
 export const defaultParcelKey = (options: ParcelOption[]) =>
@@ -167,7 +164,7 @@ export type VariantShippingMetrics = {
 
 export const variantShippingMetrics = (variant: AdminVariantDraft, options: ParcelOption[]): VariantShippingMetrics => {
   if (variant.parcelSize !== MANUAL_PARCEL_KEY) {
-    const option = findParcelOption(options, variant.parcelSize) ?? options[0] ?? null;
+    const option = findParcelOption(options, variant.parcelSize);
     if (option) {
       return {
         weightKg: option.max_weight_kg,

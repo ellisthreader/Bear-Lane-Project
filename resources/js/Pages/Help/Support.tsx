@@ -1,11 +1,13 @@
 import { useState } from "react";
-import { Head, Link } from "@inertiajs/react";
+import { Head, Link, usePage } from "@inertiajs/react";
 import { LifeBuoy, Mail, MessageCircle, SendHorizonal } from "lucide-react";
 import HelpShell from "./components/HelpShell";
 import HelpSearchBar from "./components/HelpSearchBar";
 import { executeRecaptcha } from "@/Utils/recaptcha";
 
 export default function Support() {
+  const { storeSettings } = usePage<{ storeSettings: { site: { support_email: string } } }>().props;
+  const supportEmail = storeSettings.site.support_email;
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -82,13 +84,13 @@ export default function Support() {
 
             <div className="mt-4 space-y-3">
               <a
-                href="mailto:support@bearlane.co.uk"
+                href={`mailto:${supportEmail}`}
                 className="flex items-start gap-3 rounded-xl border border-[#EDE3CE] bg-[#FFFCF5] px-4 py-3 transition hover:border-[#D8BE86]"
               >
                 <Mail className="mt-0.5 h-4 w-4 text-[#8B6B2A]" />
                 <div>
                   <p className="text-sm font-semibold text-[#2D241A]">Email support</p>
-                  <p className="text-xs text-[#72654F]">support@bearlane.co.uk</p>
+                  <p className="text-xs text-[#72654F]">{supportEmail}</p>
                 </div>
               </a>
 

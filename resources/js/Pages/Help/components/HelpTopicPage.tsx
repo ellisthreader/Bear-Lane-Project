@@ -1,3 +1,4 @@
+import DeliverySummary from "@/Components/DeliverySummary";
 import { Link } from "@inertiajs/react";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowRight, FileText } from "lucide-react";
@@ -93,6 +94,12 @@ export default function HelpTopicPage({ categoryKey, support_articles = [] }: He
         <HelpSearchBar />
       </div>
 
+      {categoryKey === "orders" ? (
+        <div className="mb-6 rounded-2xl border border-[#E7DBBF] bg-white p-5 text-sm">
+          <h2 className="mb-3 font-semibold">Current delivery options</h2>
+          <DeliverySummary />
+        </div>
+      ) : null}
       <div className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
         <aside className="h-fit rounded-2xl border border-[#E7DBBF] bg-white p-4 shadow-sm lg:sticky lg:top-4">
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-[0.14em] text-[#8C7749]">Articles</h2>

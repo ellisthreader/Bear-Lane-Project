@@ -226,7 +226,8 @@ class OrderReturnController extends Controller
             'return_request_submitted',
             "New Return Request for Order #{$orderNumber}",
             'A customer submitted a return request',
-            "Order: #{$orderNumber}\nReturn request ID: {$requestRecord->id}\nReason: {$requestRecord->reason_code}\nCustomer email: {$order->email}"
+            "Order: #{$orderNumber}\nReturn request ID: {$requestRecord->id}\nReason: {$requestRecord->reason_code}\nCustomer email: {$order->email}\n\n{$requestRecord->reason_text}\nReview items and evidence: " . url("/admin/orders"),
+            replyTo: $order->email,
         );
 
         return response()->json([
@@ -257,6 +258,10 @@ class OrderReturnController extends Controller
         $returnRequest->status = 'in_transit';
         $returnRequest->customer_shipped_at = now();
         $returnRequest->save();
+        $this->adminNotificationService->sendAdminEventEmail(
+            'return_parcel_sent', "Return #{$returnRequest->id} sent by customer", 'Return parcel sent',
+            "Order: {$order->order_number}\nCustomer: {$order->email}", replyTo: $order->email,
+        );
 
         return response()->json([
             'success' => true,
@@ -321,6 +326,11 @@ class OrderReturnController extends Controller
         $returnRequest->additional_info_submitted_at = now();
         $returnRequest->reviewed_at = null;
         $returnRequest->save();
+        $this->adminNotificationService->sendAdminEventEmail(
+            'return_evidence_submitted', "More evidence for return #{$returnRequest->id}", 'Customer submitted additional return evidence',
+            "Order: {$order->order_number}\nCustomer: {$order->email}\n\n{$message}\nReview attachments: " . url('/admin/orders'),
+            replyTo: $order->email,
+        );
 
         return response()->json([
             'success' => true,

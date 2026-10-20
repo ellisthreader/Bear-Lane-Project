@@ -3,13 +3,17 @@
 namespace App\Services;
 
 use App\Mail\AdminEventMail;
-use App\Models\User;
-use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
 class AdminNotificationService
 {
+    public const REQUIRED_EVENTS = [
+        'support_message_submitted', 'faq_request_submitted', 'quote_request_submitted',
+        'instant_quote_generated', 'new_live_chat', 'customer_chat_message',
+        'return_request_submitted', 'return_evidence_submitted', 'return_parcel_sent',
+        'restock_requested', 'newsletter_requested', 'new_order',
+    ];
+
     public function __construct(private readonly StoreSettingsService $settings)
     {
     }
@@ -21,19 +25,8 @@ class AdminNotificationService
 
     public function emailEnabled(string $eventKey): bool
     {
-        return $this->settings->isAdminEmailNotificationEnabled($eventKey);
-    }
-
-    public function adminRecipients(?int $excludeUserId = null): Collection
-    {
-        return User::query()
-            ->where('is_admin', true)
-            ->whereNotNull('email')
-            ->when($excludeUserId, fn ($query) => $query->where('id', '!=', $excludeUserId))
-            ->select(['id', 'name', 'username', 'email'])
-            ->get()
-            ->filter(fn (User $user) => trim((string) $user->email) !== '')
-            ->values();
+        return in_array($eventKey, self::REQUIRED_EVENTS, true)
+            || $this->settings->isAdminEmailNotificationEnabled($eventKey);
     }
 
     public function sendAdminEventEmail(
@@ -41,84 +34,36 @@ class AdminNotificationService
         string $subject,
         string $heading,
         string $messageBody,
-        ?int $excludeUserId = null
+        ?int $excludeUserId = null,
+        ?string $replyTo = null,
     ): void {
-        if (!$this->emailEnabled($eventKey)) {
-            return;
-        }
-
-        $admins = $this->adminRecipients($excludeUserId);
-        if ($admins->isEmpty()) {
-            return;
-        }
-
-        foreach ($admins as $admin) {
-            $recipientEmail = trim((string) $admin->email);
-            if ($recipientEmail === '') {
-                continue;
-            }
-
-            try {
-                Mail::send('emails.admin-message', [
-                    'heading' => $heading,
-                    'type' => 'message',
-                    'userName' => (string) ($admin->name ?: $admin->username ?: 'Admin'),
-                    'messageBody' => $messageBody,
-                    'logoUrl' => asset('images/BLText.png'),
-                ], function ($mail) use ($recipientEmail, $subject) {
-                    $mail->to($recipientEmail)->subject($subject);
-                });
-            } catch (\Throwable $exception) {
-                Log::warning('Admin event email failed', [
-                    'event_key' => $eventKey,
-                    'recipient' => $recipientEmail,
-                    'error' => $exception->getMessage(),
-                ]);
-            }
-        }
+        $this->sendAdminEventView($eventKey, $subject, 'emails.owner-notification', [
+            'heading' => $heading,
+            'messageBody' => $messageBody,
+            'email' => $replyTo,
+        ], $excludeUserId);
     }
 
-    /**
-     * Send a rich, Blade-rendered admin notification (one email per admin).
-     *
-     * @param array<string, mixed> $data View data; 'adminName' and 'logoUrl' are added per recipient.
-     */
     public function sendAdminEventView(
         string $eventKey,
         string $subject,
         string $view,
         array $data,
-        ?int $excludeUserId = null
+        ?int $excludeUserId = null,
     ): void {
         if (!$this->emailEnabled($eventKey)) {
             return;
         }
 
-        $admins = $this->adminRecipients($excludeUserId);
-        if ($admins->isEmpty()) {
-            return;
-        }
-
-        foreach ($admins as $admin) {
-            $recipientEmail = trim((string) $admin->email);
-            if ($recipientEmail === '') {
-                continue;
-            }
-
-            try {
-                Mail::to($recipientEmail)->send(new AdminEventMail($eventKey, $subject, $view, [
-                    ...$data,
-                    'adminName' => (string) ($admin->name ?: $admin->username ?: 'Admin'),
-                    'logoUrl' => asset('images/BLText.png'),
-                ]));
-            } catch (\Throwable $exception) {
-                Log::warning('Admin event view email failed', [
-                    'event_key' => $eventKey,
-                    'view' => $view,
-                    'recipient' => $recipientEmail,
-                    'error' => $exception->getMessage(),
-                ]);
-            }
-        }
+        // Persist on the database queue. The worker retries provider failures;
+        // exhausted attempts remain in failed_jobs instead of disappearing.
+        Mail::to(config('mail.owner.address'))->queue(
+            (new AdminEventMail($eventKey, $subject, $view, [
+                ...$data,
+                'adminName' => 'Bear Lane',
+                'logoUrl' => asset('images/BLText.png'),
+                'adminUrl' => url('/admin/support'),
+            ]))->onConnection('database')->afterCommit()
+        );
     }
 }

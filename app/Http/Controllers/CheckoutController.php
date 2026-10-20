@@ -109,38 +109,24 @@ class CheckoutController extends Controller
             $shippingAddress = is_array(data_get($data, 'shipping.address'))
                 ? data_get($data, 'shipping.address')
                 : [];
-            $shippingPrice = null;
-            if (!empty($shippingAddress['postcode'])) {
-                $optionsPayload = $this->deliveryOptionService->getOptions(
-                    auth()->user(),
-                    (string) $shippingAddress['postcode'],
-                    (string) ($shippingAddress['country'] ?? 'GB'),
-                    (string) ($shippingAddress['city'] ?? ''),
-                    (string) ($shippingAddress['street1'] ?? ''),
-                    is_array($items) ? $items : [],
-                );
-
-                $matchedOption = collect((array) ($optionsPayload['options'] ?? []))
-                    ->first(function ($option) use ($deliveryType) {
-                        return strtoupper((string) data_get($option, 'type')) === strtoupper($deliveryType);
-                    });
-
-                if (is_array($matchedOption) && is_numeric(data_get($matchedOption, 'price'))) {
-                    $shippingPrice = max(0, (float) data_get($matchedOption, 'price'));
-                }
+            $optionsPayload = $this->deliveryOptionService->getOptions(
+                $authUser,
+                $shippingAddress['postcode'] ?? null,
+                $shippingAddress['country'] ?? 'GB',
+                $shippingAddress['city'] ?? null,
+                $shippingAddress['street1'] ?? null,
+                $items,
+            );
+            $matchedOption = collect($optionsPayload['options'])->firstWhere('type', $deliveryType);
+            if (!$matchedOption || !$matchedOption['available']) {
+                return response()->json(['error' => 'This delivery option is no longer available. Please choose another option.'], 422);
             }
-
-            if ($shippingPrice !== null) {
-                $shipping_cents = (int) round($shippingPrice * 100);
-            } else {
-                $providedShippingCents = data_get($data, 'shipping.cost');
-                if (is_numeric($providedShippingCents)) {
-                    $shipping_cents = max(0, (int) round((float) $providedShippingCents));
-                } else {
-                    $shippingPrice = $this->deliveryOptionService->resolvePrice($deliveryType, auth()->user());
-                    $shipping_cents = (int) round($shippingPrice * 100);
-                }
+            $shippingPrice = (float) $matchedOption['price'];
+            $expectedPrice = data_get($data, 'shipping.expected_price');
+            if (is_numeric($expectedPrice) && (int) round((float) $expectedPrice * 100) !== (int) round($shippingPrice * 100)) {
+                return response()->json(['error' => 'The delivery price has changed. Please review your delivery option before paying.', 'delivery_price' => $shippingPrice], 409);
             }
+            $shipping_cents = (int) round($shippingPrice * 100);
             $gift_packaging_cents = max(0, (int) round((float) data_get($data, 'shipping.gift_packaging_cost', 0)));
 
             $subtotal_cents = 0;
@@ -209,6 +195,10 @@ class CheckoutController extends Controller
                     'discount_code' => $discount_code ?? '',
                     'user_id' => optional(auth()->user())->id,
                     'payment_type' => $paymentType,
+                    'delivery_type' => $deliveryType,
+                    'delivery_price' => $shippingPrice,
+                    'delivery_service' => $matchedOption['selected_shippo_service'] ?? $matchedOption['carrier_name'] ?? '',
+                    'shipping_total' => $final_shipping_cents / 100,
                 ],
             ];
 
@@ -304,7 +294,7 @@ class CheckoutController extends Controller
             'payment_intent_id' => 'nullable|string',
             'discount_code' => 'nullable|string',
             'options.reservation_id' => 'nullable|integer|exists:reservations,id',
-            'options.delivery_type' => ['nullable', 'string', 'max:24', \Illuminate\Validation\Rule::in($this->deliveryOptionService->methodKeys())],
+            'options.delivery_type' => ['nullable', 'string', 'max:24'],
             'options.delivery_price' => 'nullable|numeric|min:0',
             'options.shipping_rate' => 'nullable|string|max:120',
             'options.gift_packaging' => 'nullable|boolean',
@@ -321,21 +311,31 @@ class CheckoutController extends Controller
         try {
             $data = $request->all();
             $deliveryType = strtoupper((string) data_get($data, 'options.delivery_type', 'STANDARD'));
-            $deliveryPriceInput = data_get($data, 'options.delivery_price');
-            $deliveryPrice = is_numeric($deliveryPriceInput)
-                ? max(0, (float) $deliveryPriceInput)
-                : $this->deliveryOptionService->resolvePrice($deliveryType, auth()->user());
-            $resolvedShippingService = $this->deliveryOptionService->resolveSelectedServiceName(
-                $deliveryType,
-                auth()->user(),
-                data_get($data, 'delivery.postcode'),
-                data_get($data, 'delivery.country'),
-                data_get($data, 'delivery.city'),
-                data_get($data, 'delivery.line1'),
-                is_array($data['items'] ?? null) ? $data['items'] : [],
-            );
-            $requestedShippingRate = trim((string) data_get($data, 'options.shipping_rate', ''));
-            $shippingRate = $resolvedShippingService ?: ($requestedShippingRate !== '' ? $requestedShippingRate : null);
+            $deliveryOption = collect($this->deliveryOptionService->getOptions(
+                auth()->user(), data_get($data, 'delivery.postcode'), data_get($data, 'delivery.country'),
+                data_get($data, 'delivery.city'), data_get($data, 'delivery.line1'), $data['items'],
+            )['options'])->firstWhere('type', $deliveryType);
+            $paidDelivery = null;
+            if (!empty($data['payment_intent_id'])) {
+                StripeConfiguration::configure();
+                $intent = PaymentIntent::retrieve($data['payment_intent_id']);
+                if ($intent->status !== 'succeeded' || strtolower((string) data_get($intent, 'metadata.email')) !== strtolower($data['email'])) {
+                    throw new \RuntimeException('Payment has not been completed for this order.');
+                }
+                if (is_numeric(data_get($intent, 'metadata.delivery_price'))) {
+                    $paidDelivery = $intent->metadata;
+                    $deliveryType = (string) $paidDelivery->delivery_type;
+                }
+            }
+            // Honour the delivery quote already paid for, even if the owner edits
+            // settings between payment and confirmation. Older payments use current settings.
+            if (!$paidDelivery && (!$deliveryOption || !$deliveryOption['available'])) {
+                throw new \RuntimeException('This delivery option is no longer available. Please choose another option.');
+            }
+            $deliveryPrice = $paidDelivery ? (float) $paidDelivery->delivery_price : (float) $deliveryOption['price'];
+            $shippingRate = $paidDelivery ? (string) $paidDelivery->delivery_service
+                : ($deliveryOption['selected_shippo_service'] ?? $deliveryOption['carrier_name'] ?? null);
+            $shippingTotal = $paidDelivery ? (float) $paidDelivery->shipping_total : $deliveryPrice;
 
             // Create order
             $order = Order::create([
@@ -346,7 +346,7 @@ class CheckoutController extends Controller
                 'discount_code' => $data['discount_code'] ?? null,
                 'discount_amount' => $data['totals']['discount'] ?? 0,
                 'vat' => $data['totals']['vat'] ?? 0,
-                'shipping' => $data['totals']['shipping'] ?? 0,
+                'shipping' => $shippingTotal,
                 'total' => $data['totals']['total'] ?? 0,
                 'payment_intent_id' => $data['payment_intent_id'] ?? null,
                 'status' => 'paid',
@@ -377,16 +377,6 @@ class CheckoutController extends Controller
                     $confirmedShippingRate,
                 );
                 $order->refresh();
-            }
-
-            if ($deliveryType === 'TIMED') {
-                $labelData = $this->shippoLabelService->purchaseTimedLabelForOrder(
-                    $order,
-                    $order->shipping_rate
-                );
-
-                $order->fill($labelData);
-                $order->save();
             }
 
             $authUser = auth()->user();
@@ -483,6 +473,16 @@ class CheckoutController extends Controller
                 }
 
                 OrderItem::create($orderItemData);
+            }
+
+            if ($deliveryType === 'TIMED') {
+                $labelData = $this->shippoLabelService->purchaseTimedLabelForOrder(
+                    $order,
+                    $order->shipping_rate
+                );
+
+                $order->fill($labelData);
+                $order->save();
             }
 
             /**

@@ -135,7 +135,8 @@ export default function SiteSettingsPage({ siteSettings }: Props) {
                 <input
                   type="email"
                   value={form.support_email}
-                  onChange={(event) => setForm((prev) => ({ ...prev, support_email: event.target.value }))}
+                  readOnly
+                  title="All customer requests and replies go to this inbox."
                   className="w-full rounded-xl border border-[#DCC99D] bg-white px-3 py-2 text-sm"
                 />
               </label>

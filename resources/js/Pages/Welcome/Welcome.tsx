@@ -150,8 +150,8 @@ const DEFAULT_TRUST: Record<string, TrustItem> = {
     icon: SlidersHorizontal,
   },
   t3: {
-    title: "Free Standard Delivery",
-    description: "Reliable delivery with tracking on every qualifying order.",
+    title: "Delivery Options",
+    description: "See current delivery methods and prices at checkout.",
     icon: Truck,
   },
 };

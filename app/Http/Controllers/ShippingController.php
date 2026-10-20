@@ -50,6 +50,7 @@ class ShippingController extends Controller
 
         try {
             $rates = $this->shippingService->getRates($fromAddress, $toAddress, $parcel);
+            $rates = app(\App\Services\StoreSettingsService::class)->filterCarrierRates($rates);
             return response()->json($rates);
         } catch (\Throwable $e) {
             Log::error('Shipping rates request failed', [

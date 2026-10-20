@@ -535,8 +535,11 @@ Route::get('/help/payments', fn(SupportContentController $controller) => $contro
 Route::get('/help/technical', fn(SupportContentController $controller) => $controller->topic('technical'))->name('help.technical');
 Route::get('/help/privacy', fn(SupportContentController $controller) => $controller->topic('privacy'))->name('help.privacy');
 Route::get('/help/articles/{slug}', [SupportContentController::class, 'article'])->name('help.article');
+Route::redirect('/contact', '/support');
 Route::get('/support', fn() => Inertia::render('Help/Support'))->name('support');
 Route::post('/support/messages', [SupportMessageController::class, 'store'])->name('support.messages.store');
+Route::post('/newsletter/requests', [\App\Http\Controllers\NewsletterRequestController::class, 'store'])
+    ->middleware('throttle:5,1')->name('newsletter.requests.store');
 Route::get('/faq', [SupportContentController::class, 'faq'])->name('faq');
 Route::get('/help/livechat', fn() => Inertia::render('Help/Livechat'))->name('help.livechat');
 Route::middleware('auth')->post('/help/faq-requests', [FaqRequestController::class, 'store'])->name('help.faq-requests.store');

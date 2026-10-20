@@ -41,49 +41,20 @@ class LiveChatController extends Controller
 
     private function notifyAdminsOfNewChat(Chat $chat, Request $request): void
     {
-        if (!$this->adminNotificationService->emailEnabled('new_live_chat')) {
-            return;
-        }
+        $this->notifyOwnerOfMessage($chat, 'A customer started a live chat.');
+    }
 
-        $adminEmails = $this->adminNotificationService->adminRecipients()
-            ->pluck('email')
-            ->map(fn ($email) => trim((string) $email))
-            ->filter(fn ($email) => $email !== '')
-            ->values();
-
-        if ($adminEmails->isEmpty()) {
-            return;
-        }
-
-        $chatUser = $chat->relationLoaded('user') ? $chat->user : $chat->user()->first();
-        $customerName = $chatUser?->name ?: $chatUser?->username ?: 'Guest Visitor';
-        $customerEmail = $chatUser?->email ?: null;
-        $guestSession = $chat->session_id ?: (string) ($request->input('guest_id') ?: $request->cookie('chat_session_id') ?: '');
-        $sessionPreview = $guestSession !== '' ? Str::limit($guestSession, 28, '...') : null;
-        $chatType = $chat->user_id ? 'Registered user chat' : 'Guest chat';
-        $chatUrl = url('/admin/support');
-
-        foreach ($adminEmails as $email) {
-            try {
-                Mail::send('emails.livechat-new-admin-alert', [
-                    'chatId' => $chat->id,
-                    'chatType' => $chatType,
-                    'customerName' => $customerName,
-                    'customerEmail' => $customerEmail,
-                    'sessionPreview' => $sessionPreview,
-                    'createdAt' => now()->format('d M Y, H:i'),
-                    'chatUrl' => $chatUrl,
-                ], function ($mail) use ($email, $chat) {
-                    $mail->to($email)->subject("New BearLane Live Chat #{$chat->id}");
-                });
-            } catch (\Throwable $exception) {
-                Log::warning('Failed to send new live chat admin email', [
-                    'chat_id' => $chat->id,
-                    'admin_email' => $email,
-                    'error' => $exception->getMessage(),
-                ]);
-            }
-        }
+    private function notifyOwnerOfMessage(Chat $chat, string $content): void
+    {
+        $customer = $chat->user;
+        $this->adminNotificationService->sendAdminEventEmail(
+            'customer_chat_message',
+            "Bear Lane live chat #{$chat->id}",
+            'Customer live chat message',
+            "Chat: #{$chat->id}\nFrom: " . ($customer?->name ?: 'Guest visitor')
+                . ($customer?->email ? " <{$customer->email}>" : '') . "\n\n" . $content,
+            replyTo: $customer?->email,
+        );
     }
 
     private function resolveChat(Request $request): Chat
@@ -316,6 +287,7 @@ class LiveChatController extends Controller
                 'title' => $this->buildAdminChatTitle($handover),
             ]);
             $chat->touch();
+            $this->notifyOwnerOfMessage($chat, $content);
 
             return response()->json([
                 'chat_id' => $chat->id,
@@ -332,6 +304,9 @@ class LiveChatController extends Controller
 
         $chat->touch();
         $message->load('user');
+        if (!(bool) ($user?->is_admin)) {
+            $this->notifyOwnerOfMessage($chat, $message->content);
+        }
 
         $this->safeBroadcast(new MessageSent($message));
 
@@ -429,6 +404,9 @@ class LiveChatController extends Controller
 
         $chat->touch();
         $message->load('user');
+        if (!(bool) ($user?->is_admin)) {
+            $this->notifyOwnerOfMessage($chat, $message->content);
+        }
         $this->safeBroadcast(new MessageSent($message));
 
         return response()->json([

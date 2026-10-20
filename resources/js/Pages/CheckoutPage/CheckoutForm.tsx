@@ -890,6 +890,7 @@ const CheckoutForm = ({ initialEmail = "" }: CheckoutFormProps) => {
           shipping: {
             method: shippingMethod,
             cost: totals.shipping_cents,
+            expected_price: shippingCost,
             gift_packaging_cost: Math.round(giftPackagingCost * 100),
             address: {
               postcode: postcode || "",

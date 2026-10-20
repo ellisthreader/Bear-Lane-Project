@@ -1,6 +1,7 @@
 "use client";
 
 import React, { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
+import DeliverySummary from "@/Components/DeliverySummary";
 import { Head, Link, router, usePage } from "@inertiajs/react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { useCart } from "@/Context/CartContext";
@@ -244,6 +245,12 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
   const authName = String(page.props.auth?.user?.name || "").trim();
   const { toggleWishlistItem, isInWishlist, openWishlist } = useWishlist();
   const isAdminEditor = Boolean(adminEditor?.enabled);
+  useEffect(() => {
+    if (!isAdminEditor) return;
+    const refresh = () => router.reload({ only: ["parcelSettings", "storeSettings"] });
+    window.addEventListener("focus", refresh);
+    return () => window.removeEventListener("focus", refresh);
+  }, [isAdminEditor]);
   const serverPremadeState = Boolean((product.is_premade_design ?? isPreMadeDesign) || adminEditor?.premade);
   const [isAdminPremadeEditor, setIsAdminPremadeEditor] = useState<boolean>(() => serverPremadeState);
   const isPremadeProduct = isAdminEditor ? isAdminPremadeEditor : serverPremadeState;
@@ -588,10 +595,7 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
           || currentVariant?.size_shipping?.[selectedSize.toUpperCase()]
           || null;
         const preferredCourierRaw = String(sizeShipping?.parcel_courier || "").trim().toLowerCase();
-        const preferredCourier =
-          preferredCourierRaw === "evri" || preferredCourierRaw === "royal_mail" || preferredCourierRaw === "dpd"
-            ? preferredCourierRaw
-            : undefined;
+        const preferredCourier = preferredCourierRaw && preferredCourierRaw !== "manual" ? preferredCourierRaw : undefined;
         addToCart({
           productId: Number.isFinite(Number(product.id)) ? Number(product.id) : undefined,
           slug: product.slug,
@@ -1931,7 +1935,7 @@ export default function ProductLayout({ product, recommendedProducts = [], isPre
                     key: "delivery" as const,
                     title: "Delivery",
                     content:
-                      "Standard delivery: 2-4 working days (Evri / Royal Mail). Express delivery: 1 working days (DPD) . Free delivery over £50. Orders are tracked and dispatched Monday to Saturday.",
+                      <DeliverySummary />,
                   },
                   {
                     key: "returns" as const,

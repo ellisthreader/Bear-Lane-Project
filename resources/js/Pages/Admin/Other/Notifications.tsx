@@ -29,6 +29,8 @@ type NotificationCatalogSection = {
 type Props = {
   notificationSettings: NotificationSettings;
   notificationCatalog: NotificationCatalogSection[];
+  requiredEmailEvents: string[];
+  ownerEmail: string;
 };
 
 const getCsrfToken = () => document.querySelector('meta[name="csrf-token"]')?.getAttribute("content") || "";
@@ -52,7 +54,7 @@ const normalize = (
   return next;
 };
 
-export default function NotificationsPage({ notificationSettings, notificationCatalog }: Props) {
+export default function NotificationsPage({ notificationSettings, notificationCatalog, requiredEmailEvents, ownerEmail }: Props) {
   const [form, setForm] = React.useState<NotificationSettings>(() => normalize(notificationCatalog, notificationSettings));
   const [saving, setSaving] = React.useState(false);
   const [message, setMessage] = React.useState<string | null>(null);
@@ -124,7 +126,7 @@ export default function NotificationsPage({ notificationSettings, notificationCa
                 <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#8A6D2B]">OTHER / NOTIFICATIONS</p>
                 <h1 className="mt-1 text-2xl font-bold">Admin Notification Controls</h1>
                 <p className="mt-1 text-sm text-[#6B5A34]">
-                  Decide which events appear as on-site admin notifications and which send emails to every admin account.
+                  Choose dashboard alerts and optional owner emails. Customer requests always email {ownerEmail}.
                 </p>
               </div>
               <Link
@@ -182,6 +184,7 @@ export default function NotificationsPage({ notificationSettings, notificationCa
                           <input
                             type="checkbox"
                             checked={eventSettings.email}
+                            disabled={requiredEmailEvents.includes(item.key)}
                             onChange={(event) => setToggle(item.key, "email", event.target.checked)}
                             className="h-4 w-4 rounded border-[#CFAF67]"
                           />
@@ -197,7 +200,7 @@ export default function NotificationsPage({ notificationSettings, notificationCa
             <div className="rounded-2xl border border-[#E4D2AA] bg-white p-4 shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <p className="text-sm text-[#6B5A34]">
-                  Email alerts go to all users with <code className="rounded bg-[#FFF3D6] px-1.5 py-0.5 text-[#6A541F]">is_admin = true</code>. On-site alerts control admin dashboard indicators and feed visibility.
+                  Email alerts go to {ownerEmail}. Customer requests always send an email. On-site alerts control dashboard indicators and feed visibility.
                 </p>
                 <button
                   type="submit"
