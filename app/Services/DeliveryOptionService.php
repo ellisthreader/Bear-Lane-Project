@@ -572,7 +572,11 @@ class DeliveryOptionService
 
         foreach ($rates as $rate) {
             $service = strtolower((string) ($rate['service_name'] ?? ''));
-            if ($this->matchesDpdNextDay($service)) {
+            $days = $rate['estimated_days'] ?? null;
+            // Shippo can omit estimated_days for an explicitly named next-day
+            // service, including Hermes/Evri ParcelShop Drop-Off Next Day.
+            // Keep an explicit slower estimate authoritative when one is supplied.
+            if (($days === null || $days <= 1) && preg_match('/\bnext[\s-]*day\b/', $service) === 1) {
                 return $rate;
             }
         }
@@ -597,10 +601,4 @@ class DeliveryOptionService
             && str_contains($service, 'guaranteed');
     }
 
-    private function matchesDpdNextDay(string $service): bool
-    {
-        return str_contains($service, 'dpd')
-            && str_contains($service, 'next')
-            && str_contains($service, 'day');
-    }
 }

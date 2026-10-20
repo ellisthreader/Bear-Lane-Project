@@ -48,4 +48,32 @@ Customer requests and order emails cannot be disabled by optional notification t
 - 22 focused tests / 114 assertions pass for owner routing, contact/quote/chat/FAQ/restock/newsletter requests, reply-to headers, real queue retry, delivery edits, product presets, saved-cart overrides, carrier restrictions, membership, payment repricing and preserving paid delivery quotes.
 - Production frontend build passes.
 - Full suite: 62 passed, 22 failed. The same 22 failures reproduce on the original HEAD (authentication/profile/legacy CAPTCHA expectations); no new failing tests.
-- Production web and worker deployments and a live support-form delivery check are recorded below after release verification.
+
+## Production release verification
+
+- Commit `0a47031076a3adc827b626e321fcc5a12051071d` was pushed to `main` and deployed successfully on both Railway services on 20 October 2026:
+  - Website: `99a46b79-1462-4750-a638-16a59f3b9d55`.
+  - Email worker: `69ab4c50-5737-41dc-8980-6b080fc74a97`.
+- A verified database dump and public-upload archive were saved before release in `backups/20261020_122516_production/`.
+- Live HTTP checks passed for `/support`, `/contact` (redirects to `/support`), `/help/orders`, and three product pages (`cloudmonster`, `air-zoom-pegasus-40-blue`, `air-zoom-pegasus-40-red`). Their public settings contain `bearlane01@gmail.com`, the saved £5.95 / £7.95 / £10.95 methods, and Royal Mail / Evri, excluding disabled DPD.
+- The public `/api/delivery-options` endpoint returns those saved prices. Next-day delivery correctly remains unavailable without a matching address/carrier service.
+- Production web and worker configurations both use the owner Gmail address. The worker has the new plain-text template.
+- A clearly labelled test support record, reference **#4**, was created through the production application and sent through the same database queue and owner notification service used by the support form. Subject: **Support #4: Website email delivery check - 20 October 2026 - 0a47031**.
+- At **14:32:08 UTC**, the worker completed the test send; Resend accepted it with provider ID `01a159ba-0e84-76b5-8c1a-68932808e422`. Afterwards the production queue contained **0 pending jobs and 0 failed jobs**.
+- Gmail receipt is **not independently confirmed**: Resend's production key is send-only and rejects delivery-status reads; the connected Gmail account is not the destination inbox. Inbox/spam receipt confirmation was requested from the owner.
+- A live browser form submission could not be completed because the browser-control service failed to start. No CAPTCHA or security settings were disabled. Form handlers were covered by automated tests; the production check verifies the shared application queue, template and email transport.
+
+## Owner-requested follow-up tests
+
+- At the owner's request, two more plain-text test emails were sent to `bearlane01@gmail.com` on 20 October 2026: **test - Bear Lane support** (reference #5) and **test - Bear Lane requests** (reference #6). Both contain “test” and are clearly identified as tests.
+- The production worker sent both at **14:41:38 UTC**. Resend accepted the support email as `01a159c2-c218-7cf6-95b2-66cf2a8e3e01` and the request email as `01a159c2-c2e9-72df-87f2-48c29ac179ab`. Queue and failed-job counts were both zero afterwards. Gmail receipt remains for the owner to confirm.
+- Re-ran delivery regression tests: **12 tests / 65 assertions passed**. These cover owner edits reaching public settings and checkout, existing product presets and stale carts, disabled carriers, membership, repricing, and paid-order delivery quotes.
+- Rechecked the live product page, delivery help page and delivery-options API: saved prices still agree at £5.95 / £7.95 / £10.95, and disabled DPD remains excluded. No production delivery settings were changed for these checks.
+
+## Next-day screenshot investigation
+
+- The later screenshot exposed a remaining service-matching bug. Production logs showed `Hermes UK ParcelShop Drop-Off Next Day` among the returned rates while the website marked Next Day Delivery unavailable.
+- The cached carrier response identified service token `hermes_uk_parcelshop_dropoff_nextday` with `estimated_days: null`. The matcher recognized Royal Mail and DPD service names without this field, but required a numeric one-day estimate for Evri/Hermes.
+- Corrected matching for explicitly named next-day services when the estimate is absent. Explicit estimates longer than one day remain ineligible; disabled carriers, owner restrictions and the cutoff still apply.
+- **15 delivery tests / 82 assertions pass**, including the exact Hermes response, unknown services, slower estimates, disabled Evri and the cutoff.
+- Also confirmed that production uses a **Shippo test API key**. These responses are test-mode quotes. The owner must configure a live Shippo key and connected services for real shipping; no customer-side change fixes that setup. The local project has no configured live Shippo key. No credentials or carrier settings were changed during this investigation.

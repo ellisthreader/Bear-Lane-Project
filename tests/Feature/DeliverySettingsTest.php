@@ -130,6 +130,63 @@ class DeliverySettingsTest extends TestCase
         $this->postJson('/api/delivery-options', ['postcode' => 'CM2 6AT'])->assertOk()->assertJsonPath('options.0.available', false);
     }
 
+    public function test_evri_next_day_service_is_recognized_when_shippo_omits_the_numeric_estimate(): void
+    {
+        $this->mock(ShippoRateService::class)->shouldReceive('getRates')->andReturn([
+            ['provider' => 'Hermes UK', 'servicelevel' => ['name' => 'ParcelShop Drop-Off'], 'amount' => '2.90', 'estimated_days' => null],
+            ['provider' => 'Hermes UK', 'servicelevel' => ['name' => 'ParcelShop Drop-Off Next Day'], 'amount' => '4.10', 'estimated_days' => null],
+        ]);
+
+        $this->postJson('/api/delivery-options', ['postcode' => 'CM2 6AT'])->assertOk()
+            ->assertJsonPath('options.0.selected_shippo_service', 'Hermes UK ParcelShop Drop-Off')
+            ->assertJsonPath('options.1.available', true)
+            ->assertJsonPath('options.1.selected_shippo_service', 'Hermes UK ParcelShop Drop-Off Next Day')
+            ->assertJsonPath('options.1.carrier_name', 'Evri')
+            ->assertJsonPath('options.1.price', 7.95);
+    }
+
+    public function test_unknown_or_explicitly_slower_services_are_not_offered_as_next_day(): void
+    {
+        $this->mock(ShippoRateService::class)->shouldReceive('getRates')->twice()->andReturn(
+            [['provider' => 'Hermes UK', 'servicelevel' => ['name' => 'ParcelShop Drop-Off'], 'amount' => '4.10', 'estimated_days' => null]],
+            [['provider' => 'Hermes UK', 'servicelevel' => ['name' => 'ParcelShop Drop-Off Next Day'], 'amount' => '4.10', 'estimated_days' => 2]],
+        );
+        for ($attempt = 0; $attempt < 2; $attempt++) {
+            $this->postJson('/api/delivery-options', ['postcode' => 'CM2 6AT'])->assertOk()
+                ->assertJsonPath('options.1.available', false)
+                ->assertJsonPath('options.1.selected_shippo_service', null);
+        }
+    }
+
+    public function test_named_next_day_service_still_respects_disabled_carriers_and_order_cutoff(): void
+    {
+        $this->mock(ShippoRateService::class)->shouldReceive('getRates')->andReturn([
+            ['provider' => 'Hermes UK', 'servicelevel' => ['name' => 'ParcelShop Drop-Off Next Day'], 'amount' => '4.10', 'estimated_days' => null],
+        ]);
+        $delivery = $this->settings()->getDeliverySettings();
+        foreach ($delivery['carriers'] as &$carrier) {
+            if ($carrier['key'] === 'evri') {
+                $carrier['enabled'] = false;
+            }
+        }
+        unset($carrier);
+        $this->settings()->saveDeliverySettings($delivery);
+        $this->postJson('/api/delivery-options', ['postcode' => 'CM2 6AT'])->assertOk()
+            ->assertJsonPath('options.1.available', false);
+
+        foreach ($delivery['carriers'] as &$carrier) {
+            if ($carrier['key'] === 'evri') {
+                $carrier['enabled'] = true;
+            }
+        }
+        unset($carrier);
+        $delivery['methods'][1]['cutoff_hour'] = 22;
+        $this->settings()->saveDeliverySettings($delivery);
+        $this->travelTo(\Carbon\Carbon::parse('2026-10-20 22:00:00', 'Europe/London'));
+        $this->postJson('/api/delivery-options', ['postcode' => 'CM2 6AT'])->assertOk()
+            ->assertJsonPath('options.1.available', false);
+    }
+
     public function test_membership_and_timed_prices_follow_owner_settings(): void
     {
         $delivery = $this->settings()->getDeliverySettings();
