@@ -13,6 +13,7 @@ use Illuminate\Validation\Rules;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
+use App\Services\Security\RecaptchaService;
 
 class NewPasswordController extends Controller
 {
@@ -32,8 +33,10 @@ class NewPasswordController extends Controller
      *
      * @throws \Illuminate\Validation\ValidationException
      */
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request, RecaptchaService $recaptchaService): RedirectResponse
     {
+        $recaptchaService->verifyOrFail($request, 'reset_password');
+
         $request->validate([
             'token' => 'required',
             'email' => 'required|email',

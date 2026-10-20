@@ -1,0 +1,617 @@
+import React, { useEffect, useMemo, useState } from "react";
+import { usePage } from "@inertiajs/react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  CircleDollarSign,
+  Images,
+  Palette,
+  Printer,
+  Ruler,
+  Shirt,
+  Sticker,
+  Type,
+} from "lucide-react";
+import type { PricePreviewSnapshot } from "../Canvas/Canvas";
+import { calculateDesignPricingFromSides, type DesignPricingRules } from "../utils/designPricing";
+import { designTypeLabel, normalizeDesignType, type DesignType } from "@/Utils/designType";
+
+import DesignPreview from "./DesignPreview";
+
+type SideStatus = {
+  key: "front" | "back" | "rightSleeve" | "leftSleeve";
+  pictureNumber: 1 | 2 | 3 | 4;
+  label: string;
+  edited: boolean;
+  imageSrc?: string;
+  preview?: PricePreviewSnapshot;
+};
+
+interface GetPriceUIProps {
+  onClose: () => void;
+  docked?: boolean;
+  productName: string;
+  selectedColour?: string | null;
+  availableColours?: string[];
+  onColourChange?: (colour: string) => void;
+  sides: SideStatus[];
+  basePrice?: number | string;
+  availableSizes?: string[];
+  selectedSize?: string | null;
+  onSizeChange?: (size: string) => void;
+  selectedDesignType?: DesignType | null;
+  onAddToCart?: (payload: {
+    quantity: number;
+    sizeBreakdown: Record<string, number>;
+    unitPrice: number;
+    designType: DesignType;
+    previewSnapshot?: PricePreviewSnapshot;
+    previewByView?: Partial<Record<"front" | "back" | "leftSleeve" | "rightSleeve", PricePreviewSnapshot>>;
+  }) => void;
+  onBuyNow?: (payload: {
+    quantity: number;
+    sizeBreakdown: Record<string, number>;
+    unitPrice: number;
+    designType: DesignType;
+    previewSnapshot?: PricePreviewSnapshot;
+    previewByView?: Partial<Record<"front" | "back" | "leftSleeve" | "rightSleeve", PricePreviewSnapshot>>;
+  }) => void;
+}
+
+function formatGBP(value: number): string {
+  return `£${value.toFixed(2)}`;
+}
+
+const designTypeIcon = (_designType: DesignType) => <Printer size={16} />;
+
+const GetPriceUI: React.FC<GetPriceUIProps> = ({
+  onClose,
+  docked = false,
+  productName,
+  selectedColour,
+  availableColours = [],
+  onColourChange,
+  sides,
+  basePrice,
+  availableSizes = [],
+  selectedSize,
+  onSizeChange,
+  selectedDesignType,
+  onAddToCart,
+  onBuyNow,
+}) => {
+  const page = usePage<{ storeSettings?: { design_pricing?: DesignPricingRules } }>();
+  const designPricingRules = page.props.storeSettings?.design_pricing;
+  const [step, setStep] = useState<"configure" | "summary">("configure");
+  const [loadingPrice, setLoadingPrice] = useState(false);
+  const [zoomedSide, setZoomedSide] = useState<SideStatus | null>(null);
+  const [activeOrderSideIndex, setActiveOrderSideIndex] = useState(0);
+  const [sizeBreakdown, setSizeBreakdown] = useState<Record<string, number>>(() => {
+    if (!availableSizes.length) return {};
+    const defaultSize = selectedSize && availableSizes.includes(selectedSize) ? selectedSize : availableSizes[0];
+    return availableSizes.reduce<Record<string, number>>((acc, size) => {
+      acc[size] = size === defaultSize ? 1 : 0;
+      return acc;
+    }, {});
+  });
+  useEffect(() => {
+    setStep("configure");
+    setLoadingPrice(false);
+  }, []);
+
+  useEffect(() => {
+    if (!availableSizes.length) {
+      const fallback = selectedSize?.trim() ? selectedSize : "One Size";
+      setSizeBreakdown(prev => {
+        if (typeof prev[fallback] === "number") return prev;
+        return { ...prev, [fallback]: 1 };
+      });
+      return;
+    }
+
+    const defaultSize =
+      selectedSize && availableSizes.includes(selectedSize)
+        ? selectedSize
+        : availableSizes[0];
+
+    setSizeBreakdown(prev =>
+      availableSizes.reduce<Record<string, number>>((acc, size) => {
+        if (typeof prev[size] === "number") {
+          acc[size] = prev[size];
+        } else {
+          acc[size] = size === defaultSize ? 1 : 0;
+        }
+        return acc;
+      }, {})
+    );
+
+    if ((!selectedSize || !availableSizes.includes(selectedSize)) && defaultSize) {
+      onSizeChange?.(defaultSize);
+    }
+  }, [availableSizes, selectedSize, onSizeChange]);
+  const sizeList = useMemo(() => {
+    if (availableSizes.length > 0) return availableSizes;
+    if (Object.keys(sizeBreakdown).length > 0) return Object.keys(sizeBreakdown);
+    if (selectedSize?.trim()) return [selectedSize];
+    return ["One Size"];
+  }, [availableSizes, sizeBreakdown, selectedSize]);
+
+  const sizeSummaryItems = sizeList
+    .map(size => {
+      const qty = sizeBreakdown[size] ?? 0;
+      return qty > 0 ? `${size}: ${qty}` : null;
+    })
+    .filter(Boolean) as string[];
+  const sizeSummary =
+    sizeSummaryItems.length > 0 ? sizeSummaryItems.join(" • ") : "No quantities selected yet";
+
+  const editedCount = sides.filter(side => side.edited).length;
+  const frontSide = sides.find(side => side.key === "front") ?? sides[0];
+  const orderedSides = useMemo(
+    () => [...sides].sort((a, b) => a.pictureNumber - b.pictureNumber),
+    [sides]
+  );
+  useEffect(() => {
+    setActiveOrderSideIndex(0);
+  }, [orderedSides.length, step]);
+  const pricing = useMemo(
+    () => calculateDesignPricingFromSides(sides, basePrice, selectedDesignType, designPricingRules),
+    [sides, basePrice, selectedDesignType, designPricingRules]
+  );
+  const designCounts = pricing.counts;
+  const unitPrice = pricing.unitPrice;
+  const totalQuantity = sizeList.reduce(
+    (sum, sizeKey) => sum + (sizeBreakdown[sizeKey] ?? 0),
+    0
+  );
+  const totalPrice = unitPrice * Math.max(totalQuantity, 1);
+
+  const selectedColourValue =
+    selectedColour ?? availableColours[0] ?? "White";
+  const selectedSizeValue =
+    selectedSize ?? availableSizes[0] ?? "One Size";
+  const selectedDesignTypeValue = normalizeDesignType(selectedDesignType);
+  const selectedDesignTypeDisplay = designTypeLabel(selectedDesignTypeValue);
+  const activeOrderSide = orderedSides[activeOrderSideIndex] ?? orderedSides[0];
+
+  const showNextOrderSide = () => {
+    if (!orderedSides.length) return;
+    setActiveOrderSideIndex((prev) => (prev + 1) % orderedSides.length);
+  };
+
+  const showPreviousOrderSide = () => {
+    if (!orderedSides.length) return;
+    setActiveOrderSideIndex((prev) => (prev - 1 + orderedSides.length) % orderedSides.length);
+  };
+
+  const designTags = [
+    {
+      key: "text",
+      label: `${designCounts.text} Text`,
+      icon: <Type size={14} />,
+      show: designCounts.text > 0,
+    },
+    {
+      key: "image",
+      label: `${designCounts.image} Image`,
+      icon: <Images size={14} />,
+      show: designCounts.image > 0,
+    },
+    {
+      key: "clipart",
+      label: `${designCounts.clipart} Clipart`,
+      icon: <Sticker size={14} />,
+      show: designCounts.clipart > 0,
+    },
+    {
+      key: "sides",
+      label: `${designCounts.editedSides} Edited Side${designCounts.editedSides === 1 ? "" : "s"}`,
+      icon: <Shirt size={14} />,
+      show: designCounts.editedSides > 0,
+    },
+  ].filter(tag => tag.show);
+
+  const handleContinue = () => {
+    setLoadingPrice(true);
+    window.setTimeout(() => {
+      setLoadingPrice(false);
+      setStep("summary");
+    }, 550);
+  };
+
+  const actionPayload = {
+    quantity: Math.max(totalQuantity, 1),
+    sizeBreakdown: availableSizes.length ? sizeBreakdown : {},
+    unitPrice,
+    designType: selectedDesignTypeValue,
+    previewSnapshot: frontSide?.preview,
+    previewByView: orderedSides.reduce<Partial<Record<"front" | "back" | "leftSleeve" | "rightSleeve", PricePreviewSnapshot>>>((acc, side) => {
+      if (side.preview) {
+        acc[side.key] = side.preview;
+      }
+      return acc;
+    }, {}),
+  };
+
+  const wrapperClass = docked
+    ? "h-full"
+    : "fixed inset-0 z-[9999] flex items-center justify-center bg-black/45 backdrop-blur-sm p-4";
+  const panelClass = docked
+    ? "h-full w-full bg-white flex flex-col overflow-hidden lg:rounded-3xl lg:border lg:border-gray-100 lg:shadow-[0_15px_50px_rgba(0,0,0,0.06)]"
+    : "max-h-[92vh] w-[1080px] max-w-[98vw] overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-[0_15px_50px_rgba(0,0,0,0.06)] flex flex-col";
+  const headerClass = docked
+    ? "sticky top-0 z-20 flex items-center justify-between px-4 py-3 bg-white/95 backdrop-blur border-b border-gray-200 shadow-sm"
+    : "flex items-center justify-between border-b p-6";
+  const mutedTextClass = "text-gray-600";
+  const inputClass = "w-full rounded-lg border bg-white px-3 py-2";
+  const tagClass = "inline-flex items-center gap-1 rounded-full border bg-white px-3 py-1 text-xs font-medium shadow-sm";
+  const desktopOrderImageSize = docked ? 160 : 180;
+
+  return (
+    <div className={wrapperClass}>
+      <div className={panelClass}>
+        <div className={headerClass}>
+          <div className="inline-flex bg-gray-50 rounded-full p-1 border border-gray-200">
+            <button
+              type="button"
+              onClick={() => setStep("configure")}
+              className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all ${
+                step === "configure"
+                  ? "bg-[#C6A75E] text-white shadow-sm"
+                  : "text-gray-600 hover:text-black"
+              }`}
+            >
+              Configure
+            </button>
+            <button
+              type="button"
+              onClick={() => setStep("summary")}
+              className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all ${
+                step === "summary"
+                  ? "bg-[#C6A75E] text-white shadow-sm"
+                  : "text-gray-600 hover:text-black"
+              }`}
+            >
+              Summary
+            </button>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-md text-gray-600 hover:bg-[#C6A75E]/15 hover:text-[#8A6D2B] transition"
+            aria-label="Close pricing panel"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="flex-1 min-h-0 overflow-hidden">
+          {step === "configure" ? (
+            <div className="flex h-full flex-col gap-5 overflow-hidden px-6 py-5">
+              <div className="flex gap-4">
+                <div className="h-32 w-32 overflow-hidden rounded-2xl bg-gray-100">
+                  {(frontSide?.imageSrc || orderedSides[0]?.imageSrc) && (
+                    <img loading="lazy" decoding="async"
+                      src={frontSide?.imageSrc || orderedSides[0]?.imageSrc}
+                      alt={`${productName}`}
+                      className="h-full w-full object-cover"
+                    />
+                  )}
+                </div>
+                <div className="flex-1 flex flex-col justify-between">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.3em] text-gray-500">Product</p>
+                    <p className="text-2xl font-semibold text-gray-900">{productName}</p>
+                    <p className="mt-1 text-sm text-gray-500">
+                      Colour: {selectedColourValue} • Size: {selectedSizeValue} • Design: {selectedDesignTypeDisplay}
+                    </p>
+                  </div>
+                  <p className="text-sm font-medium text-gray-700">
+                    Edited sides: {editedCount} / {sides.length}
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-2">
+                <label className="block">
+                  <span className="mb-1 flex items-center gap-2 text-sm text-gray-700">
+                    <Palette size={14} />
+                    Colour
+                  </span>
+                  <select
+                    value={selectedColourValue}
+                    onChange={e => onColourChange?.(e.target.value)}
+                    className={inputClass}
+                  >
+                    {(availableColours.length ? availableColours : [selectedColourValue]).map(colour => (
+                      <option key={colour} value={colour}>
+                        {colour}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="block">
+                  <span className="mb-1 flex items-center gap-2 text-sm text-gray-700">
+                    <Ruler size={14} />
+                    Size
+                  </span>
+                  <select
+                    value={selectedSizeValue}
+                    onChange={e => onSizeChange?.(e.target.value)}
+                    className={inputClass}
+                  >
+                    {(availableSizes.length ? availableSizes : [selectedSizeValue]).map(size => (
+                      <option key={size} value={size}>
+                        {size}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              <div className="rounded-2xl border border-gray-200 bg-white p-3">
+                <p className="mb-1 text-sm font-semibold text-gray-700">Design type</p>
+                <p className="inline-flex items-center gap-2 text-sm text-gray-700">
+                  {designTypeIcon(selectedDesignTypeValue)}
+                  {selectedDesignTypeDisplay}
+                </p>
+              </div>
+
+              <div className="rounded-3xl border border-dashed border-gray-200 bg-white/80 p-5 shadow-sm flex flex-col gap-3">
+                <p className="text-sm font-medium">Set quantity by size</p>
+                <div className="overflow-x-auto">
+                  <div className="flex min-w-max items-end gap-3">
+                    {sizeList.map(size => (
+                      <label key={size} className="w-16">
+                        <span className={`block text-center text-xs font-medium ${mutedTextClass}`}>{size}</span>
+                        <input
+                          type="number"
+                          min={0}
+                          value={sizeBreakdown[size] ? String(sizeBreakdown[size]) : ""}
+                          onChange={e => {
+                            const raw = e.target.value;
+                            if (raw === "") {
+                              setSizeBreakdown(prev => ({ ...prev, [size]: 0 }));
+                              return;
+                            }
+                            if (!/^\d+$/.test(raw)) return;
+                            setSizeBreakdown(prev => ({
+                              ...prev,
+                              [size]: Number.parseInt(raw, 10),
+                            }));
+                          }}
+                          className="mt-1 h-10 w-full rounded-md border px-1 text-center"
+                        />
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-auto flex justify-end">
+                <button
+                  onClick={handleContinue}
+                  disabled={loadingPrice || totalQuantity <= 0}
+                  className="rounded-xl bg-[#C6A75E] px-6 py-3 font-semibold text-white shadow-lg hover:bg-[#B8994E] disabled:cursor-not-allowed disabled:bg-gray-400"
+                >
+                  {loadingPrice ? "Loading price..." : "Continue"}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex h-full flex-col gap-5 overflow-y-auto px-6 py-5 pb-28 lg:pb-5">
+              <div className="min-h-[9rem] space-y-3">
+                <p className="text-xs uppercase tracking-[0.4em] text-gray-500">Price per item</p>
+                <div className="text-5xl font-bold text-gray-900">{formatGBP(unitPrice)}</div>
+                <span className="text-sm text-gray-500">each {productName}</span>
+                <p className="text-sm text-gray-600">
+                  Total {Math.max(totalQuantity, 1)} item(s): {formatGBP(totalPrice)}
+                </p>
+                <p className="inline-flex items-center gap-2 text-sm font-medium text-gray-700">
+                  {designTypeIcon(selectedDesignTypeValue)}
+                  Design type: {selectedDesignTypeDisplay}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {designTags.length > 0 ? (
+                    designTags.map(tag => (
+                      <span key={tag.key} className={tagClass}>
+                        {tag.icon}
+                        {tag.label}
+                      </span>
+                    ))
+                  ) : (
+                    <span className={tagClass}>
+                      <CircleDollarSign size={14} />
+                      No design extras added
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="min-h-[23rem] w-full overflow-hidden rounded-3xl border border-[#DAC885]/60 bg-gradient-to-br from-white via-white/90 to-[#FDFBF6] px-6 py-5 shadow-[0_25px_65px_rgba(198,167,94,0.25)]">
+                <div className="flex items-center justify-between text-gray-500">
+                  <p className="text-[10px] uppercase tracking-[0.5em]">Your Order</p>
+                  <span className="text-[10px] uppercase tracking-[0.5em]">Qty {Math.max(totalQuantity, 1)}</span>
+                </div>
+                <div className="mt-2 flex flex-col gap-1 text-sm">
+                  <p className="text-lg font-semibold text-gray-900">{productName}</p>
+                  <p className="text-sm text-gray-500">Colour: {selectedColourValue}</p>
+                  <p className="inline-flex items-center gap-2 text-sm text-gray-500">
+                    {designTypeIcon(selectedDesignTypeValue)}
+                    Design type: {selectedDesignTypeDisplay}
+                  </p>
+                </div>
+                <div className="mt-2 flex flex-wrap gap-1.5 lg:hidden">
+                  {designTags.length > 0 ? (
+                    designTags.map(tag => (
+                      <span key={`order-${tag.key}`} className="inline-flex items-center gap-1 rounded-full border border-[#E6D8B7] bg-white px-2 py-0.5 text-[11px] font-medium text-[#6C5530]">
+                        {tag.icon}
+                        {tag.label}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="inline-flex items-center gap-1 rounded-full border border-[#E6D8B7] bg-white px-2 py-0.5 text-[11px] font-medium text-[#6C5530]">
+                      <CircleDollarSign size={13} />
+                      No design extras
+                    </span>
+                  )}
+                </div>
+                <div className="space-y-2 lg:hidden">
+                    <div className="flex items-center justify-between rounded-2xl border border-gray-200 bg-gray-50/80 p-2">
+                      <button
+                        type="button"
+                        onClick={showPreviousOrderSide}
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-gray-300 bg-white text-gray-700"
+                        aria-label="Previous side"
+                      >
+                        <ChevronLeft size={16} />
+                      </button>
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-gray-500">
+                        {activeOrderSide?.label ?? "Preview"}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={showNextOrderSide}
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-gray-300 bg-white text-gray-700"
+                        aria-label="Next side"
+                      >
+                        <ChevronRight size={16} />
+                      </button>
+                    </div>
+                    {activeOrderSide ? (
+                      <div className="rounded-2xl border border-gray-200 bg-gray-50/80 p-2">
+                        <div className="mx-auto w-full max-w-[188px]">
+                          <DesignPreview
+                            snapshot={activeOrderSide.preview}
+                            fallbackImage={activeOrderSide.imageSrc}
+                            width={188}
+                            fixedSize={188}
+                            alt={`${activeOrderSide.label} preview`}
+                            className="w-full rounded-2xl"
+                            noFrame
+                          />
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                <div className="hidden flex-wrap items-start gap-3 overflow-x-auto lg:flex">
+                    {orderedSides.map(side => (
+                      <div
+                        key={side.key}
+                        className="flex flex-col items-center gap-2 rounded-2xl border border-gray-200 bg-gray-50/80 p-2"
+                        style={{ width: desktopOrderImageSize }}
+                      >
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-gray-500">
+                          {side.label}
+                        </p>
+                        <DesignPreview
+                          snapshot={side.preview}
+                          fallbackImage={side.imageSrc}
+                          width={desktopOrderImageSize}
+                          alt={`${side.label} preview`}
+                          className="w-full"
+                          noFrame
+                        />
+                      </div>
+                    ))}
+                  </div>
+              </div>
+
+              <div className="flex min-h-[5rem] justify-center">
+                <div className="flex items-center gap-4">
+                  <img loading="lazy" decoding="async"
+                    src="/images/BLSatisfaction.png"
+                    alt="Satisfaction badge"
+                    className="h-20 w-20 object-contain"
+                  />
+                  <div className="flex flex-col">
+                    <p className="text-base font-semibold text-[#C6A75E]">100% Satisfaction Guarantee</p>
+                    <p className="text-xs text-gray-500">We deliver excellence.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div
+                className={`z-30 mt-auto border-t border-gray-200 bg-white px-4 py-3 shadow-[0_-6px_20px_rgba(0,0,0,0.08)] lg:hidden ${
+                  docked
+                    ? "fixed bottom-0 left-0 right-0"
+                    : "sticky bottom-0 -mx-6"
+                }`}
+              >
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    onClick={() => setStep("configure")}
+                    className="rounded-xl border border-gray-300 px-2 py-2 text-xs font-medium text-gray-700 hover:border-[#C6A75E] hover:bg-[#C6A75E]/10"
+                  >
+                    Edit sizes
+                  </button>
+                  <button
+                    onClick={() => onAddToCart?.(actionPayload)}
+                    className="rounded-xl bg-[#8A6D2B] px-2 py-2 text-xs font-semibold text-white hover:bg-[#755A22]"
+                  >
+                    Add to cart
+                  </button>
+                  <button
+                    onClick={() => onBuyNow?.(actionPayload)}
+                    className="rounded-xl bg-[#C6A75E] px-2 py-2 text-xs font-semibold text-white hover:bg-[#B8994E]"
+                  >
+                    Buy now
+                  </button>
+                </div>
+              </div>
+              <div className="hidden flex-wrap items-center justify-end gap-3 lg:flex">
+                <button
+                  onClick={() => setStep("configure")}
+                  className="rounded-xl border border-gray-300 px-5 py-2 font-medium text-gray-700 hover:border-[#C6A75E] hover:bg-[#C6A75E]/10"
+                >
+                  Edit quantity / sizes
+                </button>
+                <button
+                  onClick={() => onAddToCart?.(actionPayload)}
+                  className="rounded-xl bg-[#8A6D2B] px-5 py-2 font-semibold text-white hover:bg-[#755A22]"
+                >
+                  Add to Cart
+                </button>
+                <button
+                  onClick={() => onBuyNow?.(actionPayload)}
+                  className="rounded-xl bg-[#C6A75E] px-5 py-2 font-semibold text-white hover:bg-[#B8994E]"
+                >
+                  Buy Now
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {zoomedSide && (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/70 p-6">
+          <button
+            type="button"
+            className="absolute inset-0 cursor-zoom-out"
+            onClick={() => setZoomedSide(null)}
+            aria-label="Close zoom preview"
+          />
+          <div className="relative z-10 rounded-2xl bg-white p-4 shadow-2xl">
+            <button
+              type="button"
+              onClick={() => setZoomedSide(null)}
+              className="absolute right-3 top-3 rounded-md border bg-white px-2 py-1 text-sm"
+            >
+              Close
+            </button>
+            <p className="mb-3 text-sm font-semibold text-gray-700">{zoomedSide.label}</p>
+            <DesignPreview
+              snapshot={zoomedSide.preview}
+              fallbackImage={zoomedSide.imageSrc}
+              width={docked ? 700 : 760}
+              alt={`${zoomedSide.label} zoomed preview`}
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default GetPriceUI;
