@@ -25,7 +25,8 @@ class ShippoRateService
             $payload['shipment_date'] = $shipmentDate;
         }
 
-        $cacheKey = 'shippo:rates:' . md5(json_encode($payload));
+        // Test/live credentials and different Shippo accounts must never share rates.
+        $cacheKey = 'shippo:rates:' . hash('sha256', $token) . ':' . md5(json_encode($payload));
 
         return Cache::remember($cacheKey, now()->addMinutes(5), function () use ($payload, $token) {
             $response = Http::withHeaders([
@@ -67,7 +68,9 @@ class ShippoRateService
             return [];
         }
 
-        return Cache::remember('shippo:carrier_accounts', now()->addMinutes(10), function () use ($token) {
+        $cacheKey = 'shippo:carrier_accounts:' . hash('sha256', $token);
+
+        return Cache::remember($cacheKey, now()->addMinutes(10), function () use ($token) {
             $response = Http::withHeaders([
                 'Authorization' => 'ShippoToken ' . $token,
             ])->get('https://api.goshippo.com/carrier_accounts', ['results' => 100]);

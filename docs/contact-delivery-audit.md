@@ -77,3 +77,12 @@ Customer requests and order emails cannot be disabled by optional notification t
 - Corrected matching for explicitly named next-day services when the estimate is absent. Explicit estimates longer than one day remain ineligible; disabled carriers, owner restrictions and the cutoff still apply.
 - **15 delivery tests / 82 assertions pass**, including the exact Hermes response, unknown services, slower estimates, disabled Evri and the cutoff.
 - Also confirmed that production uses a **Shippo test API key**. These responses are test-mode quotes. The owner must configure a live Shippo key and connected services for real shipping; no customer-side change fixes that setup. The local project has no configured live Shippo key. No credentials or carrier settings were changed during this investigation.
+- Commit `dfeece92a351ad19cd3534370504d8e9fb79d95d` is live on the website through successful Railway deployment `aa0fb3e6-1100-4216-9f79-e4c72fdcdf87`. The same public delivery-options request returned `NEXT_DAY.available: false` before deployment and `true` afterwards, with price £7.95 and service `Hermes UK ParcelShop Drop-Off Next Day`. This verifies service recognition using the existing test-mode connection, not live-carrier eligibility.
+
+## Live Shippo configuration
+
+- The owner supplied and explicitly authorized a live Shippo credential. It authenticated successfully against Shippo's carrier-account endpoint; Evri/Hermes is active in live mode.
+- Stored the credential directly in the production `SHIPPO_API_KEY` environment variable for both Railway services. It was passed through hidden input and stdin, never written into repository files, local dotenv files or command-line arguments, and never printed in tool output.
+- Rate and carrier-account caches now include a one-way credential fingerprint, so switching from test to live mode cannot reuse test quotes or another account's carriers.
+- **17 focused tests / 90 assertions pass**, covering credential-isolated caches and the delivery regression cases.
+- Deployment and live-rate verification follow this configuration update; no shipping label purchase is part of the verification.
